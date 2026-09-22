@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Plus,
@@ -16,20 +16,32 @@ import { useAuth } from '../hooks/useAuth';
 const Sidebar = ({ isOpen, closeSidebar }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isIhlr = location.pathname.startsWith('/ihlr');
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const navItems = [
-    { name: 'Dashboard', path: '/process-audit/dashboard', icon: LayoutDashboard },
-    { name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true },
-    { name: 'My Requests', path: '/process-audit/my-requests', icon: Layers },
-    { name: 'User Management', path: '/users', icon: Users },
-    { name: 'Notifications', path: '/process-audit/notifications', icon: Bell },
-    { name: 'Profile', path: '/process-audit/profile', icon: User },
-  ];
+  const navItems = isIhlr
+    ? [
+        { name: 'Dashboard', path: '/ihlr/dashboard', icon: LayoutDashboard },
+        { name: 'Create Request', path: '/ihlr/create-request', icon: Plus, isAction: true },
+        { name: 'My Requests', path: '/ihlr/my-requests', icon: Layers },
+        { name: 'User Management', path: '/users', icon: Users },
+        { name: 'Notifications', path: '/ihlr/notifications', icon: Bell },
+        { name: 'Profile', path: '/ihlr/profile', icon: User },
+      ]
+    : [
+        { name: 'Dashboard', path: '/process-audit/dashboard', icon: LayoutDashboard },
+        { name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true },
+        { name: 'My Requests', path: '/process-audit/my-requests', icon: Layers },
+        { name: 'User Management', path: '/users', icon: Users },
+        { name: 'Notifications', path: '/process-audit/notifications', icon: Bell },
+        { name: 'Profile', path: '/process-audit/profile', icon: User },
+      ];
 
   return (
     <>
@@ -65,7 +77,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
                   Electricals Ltd
                 </span>
                 <span className="block text-[9px] text-slate-400 font-medium mt-0.5">
-                  Process Audit Observation
+                  {isIhlr ? 'In-House Line Rejection' : 'Process Audit Observation'}
                 </span>
               </div>
             </div>
@@ -77,12 +89,12 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
 
           {/* User Profile Card */}
           <div className="my-5 p-3 rounded-2xl bg-[#131b2e] border border-slate-800 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+            <div className={`w-9 h-9 rounded-full ${isIhlr ? 'bg-amber-600' : 'bg-blue-600'} text-white flex items-center justify-center font-bold text-sm shadow-sm`}>
               {user?.name ? user.name.charAt(0).toUpperCase() : 'I'}
             </div>
             <div className="text-left flex-1 min-w-0">
               <p className="text-xs font-bold text-white truncate">{user?.name || 'iyyu'}</p>
-              <p className="text-[10px] text-slate-400">Request Creator</p>
+              <p className="text-[10px] text-slate-400">{isIhlr ? 'IHLR Quality Team' : 'Request Creator'}</p>
             </div>
           </div>
 
@@ -96,9 +108,9 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
                 ACTIVE SYSTEM
               </span>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                <span className="text-xs font-bold text-white group-hover:text-blue-400 transition">
-                  Process Audit Observation
+                <span className={`w-2 h-2 rounded-full ${isIhlr ? 'bg-amber-500' : 'bg-blue-500'} animate-pulse`}></span>
+                <span className={`text-xs font-bold text-white transition ${isIhlr ? 'group-hover:text-amber-400' : 'group-hover:text-blue-400'}`}>
+                  {isIhlr ? 'In-House Line Rejection' : 'Process Audit Observation'}
                 </span>
               </div>
             </div>
@@ -119,7 +131,9 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-semibold transition-all duration-150 ${
                       isActive
-                        ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30'
+                        ? isIhlr
+                          ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
+                          : 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30'
                         : 'text-slate-400 hover:bg-[#131b2e] hover:text-white'
                     }`
                   }
@@ -137,7 +151,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
         {/* Bottom Actions: Notifications & Logout */}
         <div className="p-5 border-t border-slate-800/80 space-y-1">
           <NavLink
-            to="/process-audit/notifications"
+            to={isIhlr ? "/ihlr/notifications" : "/process-audit/notifications"}
             className="flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-[#131b2e] hover:text-white transition"
           >
             <Bell className="w-4 h-4" />

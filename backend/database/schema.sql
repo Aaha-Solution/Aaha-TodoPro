@@ -49,3 +49,30 @@ CREATE TABLE IF NOT EXISTS line_stoppers (
   clearance_remarks TEXT,
   cleared_at TIMESTAMP NULL
 );
+
+-- IHLR (In-House Line Rejection) Analysis Reports
+CREATE TABLE IF NOT EXISTS ihlr_requests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  req_no VARCHAR(50) NOT NULL,
+  batch_date DATE NOT NULL,
+  shift VARCHAR(20) NOT NULL,
+  problem VARCHAR(255) NOT NULL,
+  model VARCHAR(100) NOT NULL,
+  problem_detected_at VARCHAR(100) NOT NULL,
+  received_from VARCHAR(100) NOT NULL,
+  analysis_done_by VARCHAR(100) NOT NULL,
+  defect_image TEXT,
+  qa_why_why JSON,
+  actual_qty INT DEFAULT 1,
+  four_m VARCHAR(50) DEFAULT 'MAN',
+  resp VARCHAR(50) DEFAULT 'PROD',
+  prod_why_why JSON,
+  action TEXT,
+  evidence_attachment TEXT,
+  target_date DATE,
+  remarks TEXT,
+  status ENUM('OPEN', 'IN_PROGRESS', 'CLOSED') DEFAULT 'OPEN',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+

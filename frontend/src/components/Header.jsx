@@ -8,15 +8,16 @@ const Header = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const isIhlr = location.pathname.startsWith('/ihlr');
 
   // Match exact screenshot subtitles
-  let pageTitle = 'Creator Dashboard';
+  let pageTitle = isIhlr ? 'IHLR Analytics & Overview' : 'Creator Dashboard';
   if (location.pathname.includes('/create-request')) {
-    pageTitle = 'Create Production Request';
+    pageTitle = isIhlr ? 'Create IHLR Analysis Request' : 'Create Production Request';
   } else if (location.pathname.includes('/my-requests')) {
-    pageTitle = 'Request Tracking';
+    pageTitle = isIhlr ? 'IHLR Request Tracking' : 'Request Tracking';
   } else if (location.pathname.includes('/notifications')) {
-    pageTitle = 'Notification Center';
+    pageTitle = isIhlr ? 'IHLR Notifications' : 'Notification Center';
   } else if (location.pathname.includes('/profile') || location.pathname.includes('/users')) {
     pageTitle = 'User Profile & Team Management';
   }
@@ -37,8 +38,13 @@ const Header = ({ toggleSidebar }) => {
           onClick={() => navigate('/system-selection')}
           className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 text-slate-800 text-xs font-semibold cursor-pointer transition"
         >
-          <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-          <span>Module: <strong className="font-bold text-slate-900">Process Audit Observation</strong></span>
+          <span className={`w-2 h-2 rounded-full ${isIhlr ? 'bg-amber-500' : 'bg-blue-600'}`}></span>
+          <span>
+            Module:{' '}
+            <strong className="font-bold text-slate-900">
+              {isIhlr ? 'In-House Line Rejection (IHLR)' : 'Process Audit Observation'}
+            </strong>
+          </span>
           <ChevronDown className="w-3.5 h-3.5 text-slate-500 ml-0.5" />
         </div>
 

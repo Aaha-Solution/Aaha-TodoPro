@@ -1,16 +1,31 @@
 import { Router } from 'express';
 import {
   getDashboardStats,
-  getLineRejections,
-  createLineRejection,
-  getScrapMonitoring
+  getIhlrRequests,
+  getIhlrRequestById,
+  createIhlrRequest,
+  updateIhlrRequest,
+  deleteIhlrRequest,
+  getIhlrNotifications
 } from '../controllers/ihlrController.js';
 
 const router = Router();
 
+// Dashboard & KPI
 router.get('/dashboard', getDashboardStats);
-router.get('/line-rejections', getLineRejections);
-router.post('/line-rejections', createLineRejection);
-router.get('/scrap', getScrapMonitoring);
+
+// IHLR Analysis Requests
+router.get('/requests', getIhlrRequests);
+router.get('/requests/:id', getIhlrRequestById);
+router.post('/requests', createIhlrRequest);
+router.put('/requests/:id', updateIhlrRequest);
+router.delete('/requests/:id', deleteIhlrRequest);
+
+// Activity & Notifications
+router.get('/notifications', getIhlrNotifications);
+
+// Backward compatibility alias
+router.get('/line-rejections', getIhlrRequests);
+router.post('/line-rejections', createIhlrRequest);
 
 export default router;

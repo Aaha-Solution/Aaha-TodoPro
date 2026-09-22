@@ -21,6 +21,13 @@ import ProcessAuditNotifications from '../features/processAudit/Notifications';
 import EditUser from '../features/processAudit/users/EditUser';
 import UserDetails from '../features/processAudit/users/UserDetails';
 
+// IHLR (In-House Line Rejection) Feature
+import IhlrDashboard from '../features/ihlr/Dashboard';
+import IhlrCreateRequest from '../features/ihlr/CreateRequest';
+import IhlrMyRequests from '../features/ihlr/MyRequests';
+import IhlrNotifications from '../features/ihlr/Notifications';
+import IhlrProfile from '../features/ihlr/Profile';
+
 // Route Guards
 import ProtectedRoute from './ProtectedRoute';
 
@@ -55,6 +62,17 @@ const AppRoutes = () => {
           <Route path="users/create" element={<Navigate to="/users?action=new" replace />} />
           <Route path="users/edit/:id" element={<EditUser />} />
           <Route path="users/:id" element={<UserDetails />} />
+        </Route>
+
+        {/* IHLR (In-House Line Rejection) Module Workspace */}
+        <Route path="/ihlr" element={<DashboardLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<IhlrDashboard />} />
+          <Route path="create-request" element={<IhlrCreateRequest />} />
+          <Route path="my-requests" element={<IhlrMyRequests />} />
+          <Route path="notifications" element={<IhlrNotifications />} />
+          <Route path="profile" element={<IhlrProfile />} />
+          <Route path="users" element={<UserManagement />} />
         </Route>
       </Route>
 
