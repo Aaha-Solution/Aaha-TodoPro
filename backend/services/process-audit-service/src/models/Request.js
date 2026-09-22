@@ -1,13 +1,28 @@
 import pool from '../../../shared/db.js';
 
-// Auto-ensure table structure matches the actual form fields
+// Auto-ensure table structure matches the actual form fields with INT AUTO_INCREMENT primary key
 const ensureTable = async () => {
   if (!pool) return;
   try {
     const [cols] = await pool.query(`SHOW COLUMNS FROM process_audit_requests`).catch(() => [[]]);
     const colNames = cols.map((c) => c.Field);
+    const idCol = cols.find((c) => c.Field === 'id');
 
-    // If existing table is empty and has the old obsolete columns (like 'quantity' / 'unit' / 'stage'), drop it
+    // If table exists but id is not AUTO_INCREMENT, migrate it
+    if (idCol && (!idCol.Extra || !idCol.Extra.toLowerCase().includes('auto_increment'))) {
+      const [rows] = await pool.query(`SELECT id FROM process_audit_requests`);
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const numericId = parseInt(String(row.id).replace(/\D/g, ''), 10) || (i + 1);
+        await pool.query(`UPDATE process_audit_requests SET id = ?, issue_no = ? WHERE id = ?`, [numericId, String(numericId), row.id]);
+      }
+      await pool.query(`ALTER TABLE process_audit_requests MODIFY id INT AUTO_INCREMENT`);
+    }
+
+    // Ensure all existing rows have issue_no formatted with 'PA-'
+    await pool.query(`UPDATE process_audit_requests SET issue_no = CONCAT('PA-', id) WHERE issue_no NOT LIKE 'PA-%'`).catch(() => {});
+
+    // If existing table is empty and has obsolete columns, drop it
     if (cols.length > 0 && !colNames.includes('product')) {
       const [rows] = await pool.query(`SELECT COUNT(*) as count FROM process_audit_requests`).catch(() => [[{ count: 0 }]]);
       if (rows[0]?.count === 0) {
@@ -17,7 +32,7 @@ const ensureTable = async () => {
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS process_audit_requests (
-        id VARCHAR(50) PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         issue_no VARCHAR(50) NOT NULL,
         escalation_date DATE NOT NULL,
         product VARCHAR(100) NOT NULL,
@@ -45,40 +60,24 @@ ensureTable();
 export const ProcessAuditRequest = {
   findAll: async () => {
     if (!pool) throw new Error('Database connection pool is not available');
-    const [rows] = await pool.query('SELECT * FROM process_audit_requests ORDER BY created_at DESC');
+    const [rows] = await pool.query('SELECT * FROM process_audit_requests ORDER BY id DESC');
     return rows;
   },
 
   getNextId: async () => {
-    if (!pool) return 'PA-1';
+    if (!pool) return '1';
     try {
-      const [rows] = await pool.query('SELECT id, issue_no FROM process_audit_requests ORDER BY created_at DESC, id DESC LIMIT 50');
-      if (!rows || rows.length === 0) {
-        return 'PA-1';
-      }
-
-      let maxNum = 0;
-      for (const row of rows) {
-        const idStr = String(row.issue_no || row.id || '');
-        const match = idStr.match(/(?:PA-|REQ-)?(\d+)/i);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxNum) maxNum = num;
-        }
-      }
-
-      const nextNum = maxNum > 0 ? maxNum + 1 : 1;
-      return `PA-${nextNum}`;
+      const [rows] = await pool.query('SELECT COALESCE(MAX(id), 0) + 1 AS nextId FROM process_audit_requests');
+      const nextId = rows?.[0]?.nextId;
+      return String(nextId || 1);
     } catch (err) {
       console.warn('Could not calculate next ID:', err.message);
-      return 'PA-1';
+      return '1';
     }
   },
 
   create: async (data) => {
     if (!pool) throw new Error('Database connection pool is not available');
-    const issue_no = data.issue_no || data.requestId || data.id || await ProcessAuditRequest.getNextId();
-    const id = issue_no;
     const escalation_date = data.escalation_date || data.date || new Date().toISOString().split('T')[0];
     const product = data.product || data.unit || 'Standard';
     const model = data.model || data.stage || 'Standard';
@@ -93,57 +92,41 @@ export const ProcessAuditRequest = {
     const comments = data.comments || '';
     const status = data.status || 'Pending Execution';
 
+    // issue_no can be passed from frontend or match the auto-increment id
+    let issue_no = data.issue_no || data.requestId || '';
+
+    // Notice: id is omitted from the INSERT query so MySQL's AUTO_INCREMENT automatically assigns 1, 2, 3...
     const query = `
       INSERT INTO process_audit_requests 
-      (id, issue_no, escalation_date, product, model, process_operation, shift, issue_type, priority, issue_observation, attachments, department, executor, comments, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (issue_no, escalation_date, product, model, process_operation, shift, issue_type, priority, issue_observation, attachments, department, executor, comments, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    try {
-      await pool.query(query, [
-        id,
-        issue_no,
-        escalation_date,
-        product,
-        model,
-        process_operation,
-        shift,
-        issue_type,
-        priority,
-        issue_observation,
-        attachments,
-        department,
-        executor,
-        comments,
-        status
-      ]);
-    } catch (err) {
-      if (err.code === 'ER_DUP_ENTRY') {
-        const nextNum = await ProcessAuditRequest.getNextId();
-        await pool.query(query, [
-          nextNum,
-          nextNum,
-          escalation_date,
-          product,
-          model,
-          process_operation,
-          shift,
-          issue_type,
-          priority,
-          issue_observation,
-          attachments,
-          department,
-          executor,
-          comments,
-          status
-        ]);
-        const [rows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ?', [nextNum]);
-        return rows[0] || { id: nextNum, issue_no: nextNum, ...data };
-      }
-      throw err;
+    const [result] = await pool.query(query, [
+      issue_no || 'TEMP',
+      escalation_date,
+      product,
+      model,
+      process_operation,
+      shift,
+      issue_type,
+      priority,
+      issue_observation,
+      attachments,
+      department,
+      executor,
+      comments,
+      status
+    ]);
+
+    const insertedId = result.insertId;
+
+    if (!issue_no || issue_no === 'TEMP') {
+      issue_no = `PA-${insertedId}`;
+      await pool.query('UPDATE process_audit_requests SET issue_no = ? WHERE id = ?', [issue_no, insertedId]);
     }
 
-    const [rows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ?', [id]);
-    return rows[0] || { id, issue_no, ...data };
+    const [rows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ?', [insertedId]);
+    return rows[0] || { id: insertedId, issue_no: issue_no || `PA-${insertedId}`, ...data };
   }
 };

@@ -32,7 +32,8 @@ export const processAuditService = {
   getNextId: async () => {
     try {
       const res = await api.get('/process-audit/requests/next-id');
-      return res.data?.data?.nextId || res.data?.nextId || 'PA-1';
+      const raw = res.data?.data?.nextId || res.data?.nextId || '1';
+      return String(raw).startsWith('PA-') ? raw : `PA-${raw}`;
     } catch {
       return 'PA-1';
     }

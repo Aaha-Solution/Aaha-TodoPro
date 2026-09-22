@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Process Audit Production Requests
 CREATE TABLE IF NOT EXISTS process_audit_requests (
-  id VARCHAR(50) PRIMARY KEY,
+  id INT AUTO_INCREMENT PRIMARY KEY,
   issue_no VARCHAR(50) NOT NULL,
   escalation_date DATE NOT NULL,
   product VARCHAR(100) NOT NULL,
