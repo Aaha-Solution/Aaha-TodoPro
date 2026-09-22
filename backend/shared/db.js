@@ -8,7 +8,7 @@ export const getDbPool = (customConfig = {}) => {
   const config = {
     host: customConfig.host || process.env.DB_HOST || 'localhost',
     user: customConfig.user || process.env.DB_USER || 'root',
-    password: customConfig.password || process.env.DB_PASSWORD || '2002',
+    password: customConfig.password || process.env.DB_PASSWORD || '',
     database: customConfig.database || process.env.DB_NAME || 'inel_todo',
     waitForConnections: true,
     connectionLimit: 10,
