@@ -12,8 +12,41 @@ import {
   Calendar,
   X,
   Eye,
-  Download
+  Download,
+  FileSpreadsheet,
+  Presentation,
+  File,
+  Image as ImageIcon
 } from 'lucide-react';
+
+const DEPARTMENT_EXECUTORS = {
+  'Assembly': [
+    'Mr. Kumar (Assembly Lead)',
+    'Mr. Murugan (Line 1 Supervisor)',
+    'Ms. Kavitha (Assembly Specialist)',
+  ],
+  'Quality Control': [
+    'Mr. Ravi (Inspection Head)',
+    'Mr. Prakash (QC Inspector)',
+    'Ms. Deepa (Quality Auditor)',
+  ],
+  'Packaging': [
+    'Mr. Arjun (Packaging Supervisor)',
+    'Mr. Balaji (Packaging Lead)',
+  ],
+  'Machining & Tooling': [
+    'Mr. Suresh (Floor Engineer)',
+    'Mr. Vignesh (CNC Lead)',
+  ],
+  'Production Planning': [
+    'Mr. Ramesh (Production Planner)',
+    'Mr. Sathish (Operations Executive)',
+  ],
+  'Maintenance': [
+    'Mr. Karthik (Maintenance Engineer)',
+    'Mr. Rajesh (Electrical Lead)',
+  ],
+};
 
 const CreateRequest = () => {
   const navigate = useNavigate();
@@ -29,15 +62,16 @@ const CreateRequest = () => {
   const [formData, setFormData] = useState({
     requestId: 'PA-001',
     date: getTodayDate(),
-    shift: 'Morning (06:00 - 14:30)',
-    priority: 'Select',
-    issueType: 'Select',
-    processOperation: 'Assembly & Sub-Assembly',
+    shift: '',
+    priority: '',
+    issueType: '',
+    processOperation: '',
     quantity: '1,500',
-    unit: 'Units',
-    stage: 'Assembly',
+    unit: '',
+    stage: '',
     line: 'Line A - Main Chassis Assembly',
-    executor: 'Select Executor',
+    department: '',
+    executor: '',
     comments: '',
   });
 
@@ -48,6 +82,43 @@ const CreateRequest = () => {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const getFileMeta = (file) => {
+    const ext = (file?.type || '').toUpperCase();
+    if (file?.isImage || ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'].includes(ext)) {
+      return {
+        badgeBg: 'bg-blue-50 text-blue-600 border-blue-200',
+        icon: ImageIcon,
+        typeName: 'Image',
+      };
+    }
+    if (file?.isPdf || ext === 'PDF') {
+      return {
+        badgeBg: 'bg-red-50 text-red-600 border-red-200',
+        icon: FileText,
+        typeName: 'PDF Document',
+      };
+    }
+    if (file?.isExcel || ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext)) {
+      return {
+        badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        icon: FileSpreadsheet,
+        typeName: 'Excel Spreadsheet',
+      };
+    }
+    if (file?.isPpt || ['PPT', 'PPTX', 'PPSX'].includes(ext)) {
+      return {
+        badgeBg: 'bg-orange-50 text-orange-700 border-orange-200',
+        icon: Presentation,
+        typeName: 'PowerPoint Presentation',
+      };
+    }
+    return {
+      badgeBg: 'bg-slate-50 text-slate-700 border-slate-200',
+      icon: File,
+      typeName: 'Document',
+    };
+  };
+
   const processFiles = (fileList) => {
     const files = Array.from(fileList || []);
     if (files.length > 0) {
@@ -55,6 +126,8 @@ const CreateRequest = () => {
         const ext = file.name.split('.').pop()?.toUpperCase() || 'FILE';
         const isImage = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'].includes(ext);
         const isPdf = ext === 'PDF';
+        const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
+        const isPpt = ['PPT', 'PPTX', 'PPSX'].includes(ext);
         return {
           name: file.name,
           size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
@@ -62,6 +135,8 @@ const CreateRequest = () => {
           type: ext,
           isImage,
           isPdf,
+          isExcel,
+          isPpt,
           url: URL.createObjectURL(file),
         };
       });
@@ -162,10 +237,11 @@ const CreateRequest = () => {
                   onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                 >
-                  <option>Units</option>
-                  <option>Kg</option>
-                  <option>Batches</option>
-                  <option>Sets</option>
+                  <option value="">Select</option>
+                  <option value="Units">Units</option>
+                  <option value="Kg">Kg</option>
+                  <option value="Batches">Batches</option>
+                  <option value="Sets">Sets</option>
                 </select>
               </div>
 
@@ -178,43 +254,34 @@ const CreateRequest = () => {
                   onChange={(e) => setFormData({ ...formData, stage: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                 >
-                  <option>Assembly</option>
-                  <option>Inspection</option>
-                  <option>Packaging</option>
-                  <option>Raw Material</option>
-                  <option>Production</option>
+                  <option value="">Select</option>
+                  <option value="Assembly">Assembly</option>
+                  <option value="Inspection">Inspection</option>
+                  <option value="Packaging">Packaging</option>
+                  <option value="Raw Material">Raw Material</option>
+                  <option value="Production">Production</option>
                 </select>
               </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             </div>
 
             {/* Row 2 */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Process / Operation*
+                  Process / Operation *
                 </label>
-                <input
-                  type="text"
+                <select
                   required
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                />
+                  value={formData.processOperation}
+                  onChange={(e) => setFormData({ ...formData, processOperation: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                >
+                  <option value="">Select</option>
+                  <option value="Laser Marking">Laser Marking</option>
+                  <option value="Stator Winding & Lacing">Stator Winding & Lacing</option>
+                  <option value="Rotor Die Casting">Rotor Die Casting</option>
+                  <option value="CNC Milling & Machining">CNC Milling & Machining</option>
+                </select>
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -225,10 +292,11 @@ const CreateRequest = () => {
                   onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                 >
-                  <option>Morning (06:00 - 14:30)</option>
-                  <option>Evening (14:30 - 22:30)</option>
-                  <option>Night (22:30 - 06:00)</option>
-                  <option>General (08:30 - 17:00)</option>
+                  <option value="">Select</option>
+                  <option value="Morning (06:00 - 14:30)">Morning (06:00 - 14:30)</option>
+                  <option value="Evening (14:30 - 22:30)">Evening (14:30 - 22:30)</option>
+                  <option value="Night (22:30 - 06:00)">Night (22:30 - 06:00)</option>
+                  <option value="General (08:30 - 17:00)">General (08:30 - 17:00)</option>
                 </select>
               </div>
 
@@ -241,11 +309,11 @@ const CreateRequest = () => {
                   onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                 >
-
-                  <option>High</option>
-                  <option>Medium</option>
-                  <option>Low</option>
-                  <option>Critical</option>
+                  <option value="">Select</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                  <option value="Critical">Critical</option>
                 </select>
               </div>
               <div>
@@ -257,8 +325,9 @@ const CreateRequest = () => {
                   onChange={(e) => setFormData({ ...formData, issueType: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                 >
-                  <option>Repeated</option>
-                  <option>New</option>
+                  <option value="">Select</option>
+                  <option value="Repeated">Repeated</option>
+                  <option value="New">New</option>
                 </select>
               </div>
             </div>
@@ -299,6 +368,7 @@ const CreateRequest = () => {
             <input
               type="file"
               multiple
+              accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.csv,.ppt,.pptx,application/pdf,image/jpeg,image/png,image/*,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
               onChange={handleFileUpload}
               className="hidden"
             />
@@ -309,61 +379,65 @@ const CreateRequest = () => {
               Drag & drop files here or <span className="text-blue-600 underline">browse</span>
             </p>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Supports PDF, PNG, JPG, DOCX (Max 25MB per file) • Select multiple files
+              Supports Excel (.xlsx, .xls), PowerPoint (.pptx, .ppt), JPEG/Images, and PDF (Max 25MB per file) • Select multiple files
             </p>
           </label>
 
           {/* Attached Files List */}
           {attachments.length > 0 && (
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {attachments.map((file, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => setPreviewAttachment(file)}
-                  className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs hover:border-blue-400 hover:shadow-xs transition cursor-pointer group"
-                  title="Click to preview file"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    {file.isImage && file.url ? (
-                      <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-slate-200 bg-slate-50 flex items-center justify-center">
-                        <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+              {attachments.map((file, idx) => {
+                const meta = getFileMeta(file);
+                const IconComponent = meta.icon;
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => setPreviewAttachment(file)}
+                    className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs hover:border-blue-400 hover:shadow-xs transition cursor-pointer group"
+                    title="Click to preview file"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      {file.isImage && file.url ? (
+                        <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-slate-200 bg-slate-50 flex items-center justify-center">
+                          <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className={`w-8 h-8 rounded-lg shrink-0 border flex items-center justify-center font-bold text-[10px] ${meta.badgeBg}`}>
+                          <IconComponent className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-blue-600 transition" title={file.name}>
+                          {file.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {file.type} • {file.size} • {file.date}
+                        </p>
                       </div>
-                    ) : (
-                      <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded-md border border-red-200 shrink-0">
-                        {file.type}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span
+                        className="p-1.5 rounded-lg text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-50 transition"
+                        title="Preview file"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
                       </span>
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-blue-600 transition" title={file.name}>
-                        {file.name}
-                      </p>
-                      <p className="text-[10px] text-slate-400">
-                        {file.size} • {file.date}
-                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeAttachment(idx);
+                        }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                        title="Remove file"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span 
-                      className="p-1.5 rounded-lg text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-50 transition" 
-                      title="Preview file"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeAttachment(idx);
-                      }}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
-                      title="Remove file"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -376,29 +450,68 @@ const CreateRequest = () => {
             <div>
               <h2 className="text-sm font-bold text-slate-900">3. Assign Executor</h2>
               <p className="text-xs text-slate-500">
-                Designate the technician or supervisor accountable for running this batch.
+                Designate the department and technician or supervisor accountable for running this batch.
               </p>
             </div>
           </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Select Executor *
-            </label>
-            <select
-              value={formData.executor}
-              onChange={(e) => setFormData({ ...formData, executor: e.target.value })}
-              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-            >
-              <option>Mr. Kumar (Assembly Lead)</option>
-              <option>Mr. Ravi (Inspection Head)</option>
-              <option>Mr. Arjun (Packaging Supervisor)</option>
-              <option>Mr. Suresh (Floor Engineer)</option>
-            </select>
-            <span className="text-[11px] text-slate-400 mt-1.5 block">
-              An automated dispatch and in-app alert will notify the executor upon submission.
-            </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Department *
+              </label>
+              <select
+                required
+                value={formData.department}
+                onChange={(e) => {
+                  const newDept = e.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    department: newDept,
+                    executor: '',
+                  }));
+                }}
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+              >
+                <option value="">Select</option>
+                {Object.keys(DEPARTMENT_EXECUTORS).map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Assign Executor *
+              </label>
+              <select
+                required
+                disabled={!formData.department}
+                value={formData.executor}
+                onChange={(e) => setFormData({ ...formData, executor: e.target.value })}
+                className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium transition ${
+                  formData.department
+                    ? 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
+                    : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                <option value="">
+                  {formData.department ? 'Select' : 'Select Department first'}
+                </option>
+                {(DEPARTMENT_EXECUTORS[formData.department] || []).map((exec) => (
+                  <option key={exec} value={exec}>
+                    {exec}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
+          <span className="text-[11px] text-slate-400 mt-2.5 block">
+            An automated dispatch and in-app alert will notify the executor upon submission.
+          </span>
         </div>
 
 
@@ -441,89 +554,120 @@ const CreateRequest = () => {
       </form>
 
       {/* Attachment Preview Modal */}
-      {previewAttachment && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-150"
-          onClick={() => setPreviewAttachment(null)}
-        >
-          <div 
-            className="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
+      {previewAttachment && (() => {
+        const meta = getFileMeta(previewAttachment);
+        const IconComponent = meta.icon;
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+            onClick={() => setPreviewAttachment(null)}
           >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
-              <div className="flex items-center gap-3 min-w-0 pr-4">
-                <span className="px-2.5 py-1 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-200 shrink-0">
-                  {previewAttachment.type}
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-slate-900 truncate" title={previewAttachment.name}>
-                    {previewAttachment.name}
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    {previewAttachment.size} • {previewAttachment.date}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-               
-                <button
-                  type="button"
-                  onClick={() => setPreviewAttachment(null)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                  title="Close preview"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Content Preview */}
-            <div className="flex-1 overflow-auto p-4 my-2 flex items-center justify-center min-h-[300px] bg-slate-50/70 rounded-2xl border border-slate-100">
-              {previewAttachment.isImage && previewAttachment.url ? (
-                <img
-                  src={previewAttachment.url}
-                  alt={previewAttachment.name}
-                  className="max-h-[65vh] w-auto max-w-full object-contain rounded-xl shadow-xs"
-                />
-              ) : previewAttachment.isPdf && previewAttachment.url ? (
-                <iframe
-                  src={previewAttachment.url}
-                  title={previewAttachment.name}
-                  className="w-full h-[65vh] rounded-xl border border-slate-200"
-                />
-              ) : (
-                <div className="text-center py-10 px-4 max-w-md">
-                  <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3 text-lg font-bold border border-blue-200">
+            <div
+              className="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-3 min-w-0 pr-4">
+                  <span className={`px-2.5 py-1 text-xs font-bold rounded-lg border shrink-0 flex items-center gap-1.5 ${meta.badgeBg}`}>
+                    <IconComponent className="w-3.5 h-3.5" />
                     {previewAttachment.type}
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-slate-900 truncate" title={previewAttachment.name}>
+                      {previewAttachment.name}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      {meta.typeName} • {previewAttachment.size} • {previewAttachment.date}
+                    </p>
                   </div>
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">
-                    {previewAttachment.name}
-                  </h4>
-                  <p className="text-xs text-slate-500 mb-4">
-                    This file format ({previewAttachment.type}) cannot be directly rendered inline in the browser. You can download or open it using your device's default application.
-                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
                   {previewAttachment.url && (
                     <a
                       href={previewAttachment.url}
                       download={previewAttachment.name}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition"
+                      className="p-2 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                      title="Download file"
                     >
                       <Download className="w-4 h-4" />
-                      Download / Open {previewAttachment.name}
                     </a>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setPreviewAttachment(null)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                    title="Close preview"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
 
-          
+              {/* Modal Content Preview */}
+              <div className="flex-1 overflow-auto p-4 my-2 flex items-center justify-center min-h-[300px] bg-slate-50/70 rounded-2xl border border-slate-100">
+                {previewAttachment.isImage && previewAttachment.url ? (
+                  <img
+                    src={previewAttachment.url}
+                    alt={previewAttachment.name}
+                    className="max-h-[65vh] w-auto max-w-full object-contain rounded-xl shadow-xs"
+                  />
+                ) : previewAttachment.isPdf && previewAttachment.url ? (
+                  <iframe
+                    src={previewAttachment.url}
+                    title={previewAttachment.name}
+                    className="w-full h-[65vh] rounded-xl border border-slate-200"
+                  />
+                ) : (
+                  <div className="text-center py-10 px-4 max-w-md">
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 text-lg font-bold border shadow-xs ${meta.badgeBg}`}>
+                      <IconComponent className="w-8 h-8" />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-800 mb-1">
+                      {previewAttachment.name}
+                    </h4>
+                    <p className="text-xs text-slate-500 mb-4">
+                      {previewAttachment.isExcel
+                        ? 'This Microsoft Excel spreadsheet can be downloaded or opened with Excel / Office viewer.'
+                        : previewAttachment.isPpt
+                        ? 'This Microsoft PowerPoint presentation can be downloaded or opened with PowerPoint / presentation viewer.'
+                        : `This file format (${previewAttachment.type}) cannot be directly rendered inline in the browser.`}
+                    </p>
+                    {previewAttachment.url && (
+                      <div className="flex flex-wrap items-center justify-center gap-3">
+                        <a
+                          href={previewAttachment.url}
+                          download={previewAttachment.name}
+                          className={`inline-flex items-center gap-2 px-4 py-2.5 text-white text-xs font-semibold rounded-xl shadow-xs transition ${
+                            previewAttachment.isExcel
+                              ? 'bg-emerald-600 hover:bg-emerald-700'
+                              : previewAttachment.isPpt
+                              ? 'bg-orange-600 hover:bg-orange-700'
+                              : 'bg-blue-600 hover:bg-blue-700'
+                          }`}
+                        >
+                          <Download className="w-4 h-4" />
+                          Download {previewAttachment.type} File
+                        </a>
+                        <a
+                          href={previewAttachment.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl shadow-xs transition"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Open in Browser Tab
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
