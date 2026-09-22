@@ -28,7 +28,8 @@ const CreateRequest = () => {
     requestId: 'PA-001',
     date: getTodayDate(),
     shift: 'Morning (06:00 - 14:30)',
-    priority: 'New',
+    priority: 'High',
+    issueType: 'New',
     quantity: '1,500',
     unit: 'Units',
     stage: 'Assembly',
@@ -240,13 +241,12 @@ const CreateRequest = () => {
                   Issue Type
                 </label>
                 <select
-                  value={formData.priority}
-                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                  value={formData.issueType}
+                  onChange={(e) => setFormData({ ...formData, issueType: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                 >
                   <option>Repeated</option>
                   <option>New</option>
-
                 </select>
               </div>
             </div>
@@ -303,18 +303,20 @@ const CreateRequest = () => {
 
           {/* Attached Files List */}
           {attachments.length > 0 && (
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {attachments.map((file, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs"
+                  className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs hover:border-slate-300 transition"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded-md border border-red-200">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded-md border border-red-200 shrink-0">
                       {file.type}
                     </span>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-800">{file.name}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 truncate" title={file.name}>
+                        {file.name}
+                      </p>
                       <p className="text-[10px] text-slate-400">
                         {file.size} • {file.date}
                       </p>
@@ -324,7 +326,8 @@ const CreateRequest = () => {
                   <button
                     type="button"
                     onClick={() => removeAttachment(idx)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition shrink-0 cursor-pointer"
+                    title="Remove file"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -396,13 +399,7 @@ const CreateRequest = () => {
 
         {/* Bottom Actions Bar */}
         <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => alert('Draft saved successfully!')}
-            className="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 transition shadow-2xs cursor-pointer"
-          >
-            Save Draft
-          </button>
+        
 
           <button
             type="submit"
