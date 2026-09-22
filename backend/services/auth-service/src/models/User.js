@@ -42,10 +42,10 @@ export const User = {
 
   update: async (id, updates) => {
     if (!pool) throw new Error('Database connection pool is not available');
-    const { name, email, role, department, status } = updates;
+    const { name, role, department, status } = updates;
     await pool.query(
-      'UPDATE users SET name = ?, email = ?, role = ?, department = ?, status = ? WHERE id = ?',
-      [name, email, role, department, status ? status.toUpperCase() : 'ACTIVE', id]
+      'UPDATE users SET name = ?, role = ?, department = ?, status = ? WHERE id = ?',
+      [name, role, department, status ? status.toUpperCase() : 'ACTIVE', id]
     );
     const [rows] = await pool.query(
       'SELECT id, name, email, role, department, status, updated_at FROM users WHERE id = ?',

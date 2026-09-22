@@ -24,7 +24,7 @@ export const getUserById = async (req, res) => {
 
 export const createUser = async (req, res) => {
   try {
-    const { name, email, role, department, status, systems, employeeId } = req.body;
+    const { name, email, password, role, department, status, systems, employeeId } = req.body;
     if (!name || !email) {
       return errorResponse(res, 'Name and Email are required', 400);
     }
@@ -32,8 +32,9 @@ export const createUser = async (req, res) => {
     const newUser = await User.create({
       name,
       email,
+      password: password || 'PlantUser@123',
       role: role || 'CREATOR',
-      department: department || 'Production Planning',
+      department: department || 'PRODUCTION',
       status: status || 'ACTIVE',
       systems: systems || ['processAudit'],
       employeeId

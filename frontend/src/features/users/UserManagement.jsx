@@ -64,7 +64,7 @@ const UserManagement = () => {
     department: 'PRODUCTION',
     status: 'Active',
     systems: ['processAudit', 'ihlr', 'tryOutStatus'],
-    tempPassword: ''
+    password: ''
   });
 
   // Load users from backend / local storage on mount
@@ -92,13 +92,14 @@ const UserManagement = () => {
 
   const handleOpenAddModal = () => {
     setFormData({
+      employeeId: '',
       name: '',
       email: '',
       role: 'admin',
-      department: 'Production Planning',
+      department: 'PRODUCTION',
       status: 'ACTIVE',
       systems: ['processAudit', 'ihlr', 'tryOutStatus'],
-      tempPassword: 'PlantUser@123'
+      password: ''
     });
     setShowAddModal(true);
   };
@@ -131,10 +132,16 @@ const UserManagement = () => {
 
   const handleEditUserSubmit = async (e) => {
     e.preventDefault();
-    if (!editingUser.name.trim() || !editingUser.email.trim()) return;
+    if (!editingUser.name.trim()) return;
 
     try {
-      await userService.updateUser(editingUser.id, editingUser);
+      // Email is fixed/disabled and not modified on update
+      await userService.updateUser(editingUser.id, {
+        name: editingUser.name,
+        role: editingUser.role,
+        department: editingUser.department,
+        status: editingUser.status
+      });
       const freshData = await userService.getUsers();
       dispatch(setUsers(freshData));
       setShowEditModal(false);
@@ -635,16 +642,17 @@ const UserManagement = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Temporary Password
+                    Password *
                   </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
                     <input
-                      type="text"
-                      value={formData.tempPassword}
-                      onChange={(e) => setFormData({ ...formData, tempPassword: e.target.value })}
-                      placeholder="PlantUser@123"
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-mono"
+                      type="password"
+                      required
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Enter password"
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                     />
                   </div>
                 </div>
@@ -722,15 +730,15 @@ const UserManagement = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Enterprise Email *
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Enterprise Email</span>
+                  <span className="text-[10px] text-slate-400 lowercase font-medium tracking-normal">(cannot be modified)</span>
                 </label>
                 <input
                   type="email"
-                  required
+                  disabled
                   value={editingUser.email}
-                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 cursor-not-allowed outline-none select-none font-medium"
                 />
               </div>
 
