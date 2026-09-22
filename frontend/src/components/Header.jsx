@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, ChevronDown, Users } from 'lucide-react';
+import { Menu, ChevronDown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Notification from './Notification';
@@ -53,15 +53,6 @@ const Header = ({ toggleSidebar }) => {
 
       {/* Right User & Stopper Controls */}
       <div className="flex items-center gap-2 sm:gap-4">
-        <button
-          onClick={() => navigate('/users')}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 border border-slate-200/60 rounded-xl transition shadow-2xs cursor-pointer"
-          title="Enterprise User Directory"
-        >
-          <Users className="w-3.5 h-3.5 text-slate-600" />
-          <span className="hidden md:inline">Users</span>
-        </button>
-
         {/* Notification Bell */}
         <Notification />
 
@@ -69,7 +60,7 @@ const Header = ({ toggleSidebar }) => {
 
         {/* User Info Avatar */}
         <div 
-          onClick={() => navigate('/users')}
+          onClick={() => navigate(isIhlr ? '/ihlr/users' : '/process-audit/users')}
           className="flex items-center gap-2.5 cursor-pointer select-none"
           title="Manage Users & Profile"
         >

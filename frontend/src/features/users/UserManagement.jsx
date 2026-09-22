@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Users,
@@ -47,8 +47,10 @@ const ROLES = [
 
 const UserManagement = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
+  const isIhlr = location.pathname.startsWith('/ihlr');
   const { user: currentAuthUser, login: updateAuthUser } = useAuth();
   const { users } = useSelector((state) => state.user);
 
@@ -214,7 +216,7 @@ const UserManagement = () => {
   const standardUserCount = users.filter((u) => (u.role || '').toLowerCase() === 'user').length;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 antialiased flex flex-col justify-between font-sans">
+    <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-in fade-in slide-in-from-bottom-3 duration-200">
@@ -223,83 +225,42 @@ const UserManagement = () => {
         </div>
       )}
 
-      {/* Top Global Header */}
-      <header className="w-full bg-white border-b border-slate-200/90 px-4 sm:px-8 lg:px-10 py-3 sticky top-0 z-30 shadow-2xs">
-        <div className="w-full flex items-center justify-between gap-4">
-          {/* Left: Brand & Return Navigation */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/system-selection')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition cursor-pointer shadow-2xs"
+      {/* Page Title & Actions Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
+            <span 
+              className="hover:text-slate-800 cursor-pointer" 
+              onClick={() => navigate(isIhlr ? '/ihlr/dashboard' : '/process-audit/dashboard')}
             >
-              <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
-              <span className="hidden sm:inline">Back to Systems</span>
-            </button>
-
-            <div className="h-5 w-px bg-slate-200 hidden sm:block" />
-
-            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/system-selection')}>
-              <img src="/images/logo.png" alt="INEL Logo" className="w-7 h-7 object-contain" />
-              <div className="leading-tight">
-                <span className="block text-xs font-bold text-slate-900 tracking-tight">India Nippon Electricals Ltd</span>
-                <span className="block text-[10px] font-semibold text-slate-500">Enterprise User Directory &amp; RBAC</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Add User Primary Action & Profile */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleOpenAddModal}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Add New User</span>
-            </button>
-
-            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
-
-            {/* Current Logged In Admin Profile */}
-            <div className="flex items-center gap-2.5 pl-1">
-              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                {currentAuthUser?.name?.charAt(0).toUpperCase() || 'A'}
-              </div>
-              <div className="text-left hidden md:block leading-tight">
-                <span className="block text-xs font-bold text-slate-900">{currentAuthUser?.name || 'Admin'}</span>
-                <span className="block text-[10px] text-blue-600 font-semibold">Super Admin • Full Control</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Workspace Body */}
-      <main className="flex-1 w-full px-4 sm:px-8 lg:px-10 py-8 space-y-6">
-        {/* Page Title & Breadcrumbs */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <span className="hover:text-slate-800 cursor-pointer" onClick={() => navigate('/system-selection')}>
-                Portal Selection
-              </span>
-              <span>/</span>
-              <span className="text-blue-600 font-semibold">User &amp; Access Management</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Enterprise User Management
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Common centralized administration across all manufacturing portals with unified access to all tabs.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold">
-              <Shield className="w-3.5 h-3.5" />
-              <span>Admin Privileges Active</span>
+              {isIhlr ? 'In-House Line Rejection' : 'Process Audit Observation'}
             </span>
+            <span>/</span>
+            <span className="text-blue-600 font-semibold">User &amp; Access Management</span>
           </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Enterprise User Management
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Common centralized administration across all manufacturing portals with unified access to all tabs.
+          </p>
         </div>
+
+        <div className="flex items-center gap-3">
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold">
+            <Shield className="w-3.5 h-3.5" />
+            <span>Admin Privileges Active</span>
+          </span>
+
+          <button
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Add New User</span>
+          </button>
+        </div>
+      </div>
 
         {/* KPI Metrics Strip - Common across all tabs */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -550,7 +511,6 @@ const UserManagement = () => {
             </table>
           </div>
         </div>
-      </main>
 
       {/* ADD USER MODAL */}
       {showAddModal && (

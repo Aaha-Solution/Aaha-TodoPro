@@ -46,9 +46,9 @@ const AppRoutes = () => {
         <Route path="/system-selection" element={<SystemSelection />} />
         <Route path="/dashboard" element={<Navigate to="/process-audit/dashboard" replace />} />
 
-        {/* Common Project-Wide User Management & Admin Add User */}
-        <Route path="/users" element={<UserManagement />} />
-        <Route path="/admin/users" element={<UserManagement />} />
+        {/* Common Project-Wide User Management & Admin Add User Redirect */}
+        <Route path="/users" element={<Navigate to="/process-audit/users" replace />} />
+        <Route path="/admin/users" element={<Navigate to="/process-audit/users" replace />} />
 
         {/* Process Audit Observation Module Workspace */}
         <Route path="/process-audit" element={<DashboardLayout />}>
@@ -59,7 +59,7 @@ const AppRoutes = () => {
           <Route path="notifications" element={<ProcessAuditNotifications />} />
           <Route path="profile" element={<UserDetails />} />
           <Route path="users" element={<UserManagement />} />
-          <Route path="users/create" element={<Navigate to="/users?action=new" replace />} />
+          <Route path="users/create" element={<Navigate to="/process-audit/users?action=new" replace />} />
           <Route path="users/edit/:id" element={<EditUser />} />
           <Route path="users/:id" element={<UserDetails />} />
         </Route>
