@@ -29,16 +29,7 @@ import {
   toggleUserStatus
 } from '../../redux/slices/userSlice';
 import { userService } from '../../services/userService';
-
-const DEPARTMENTS = [
-  'Production Planning',
-  'Assembly',
-  'Quality Control',
-  'Machining & Tooling',
-  'Plant',
-  'Maintenance',
-  'Executive'
-];
+import { DEPARTMENTS } from '../../utils/constants';
 
 const ROLES = [
   'admin',
@@ -70,7 +61,7 @@ const UserManagement = () => {
     name: '',
     email: '',
     role: 'admin',
-    department: 'Production Planning',
+    department: 'PRODUCTION',
     status: 'Active',
     systems: ['processAudit', 'ihlr', 'tryOutStatus'],
     tempPassword: ''
@@ -214,6 +205,27 @@ const UserManagement = () => {
   const activeCount = users.filter((u) => u.status === 'Active' || u.status === 'ACTIVE').length;
   const adminCount = users.filter((u) => (u.role || '').toLowerCase() === 'admin').length;
   const standardUserCount = users.filter((u) => (u.role || '').toLowerCase() === 'user').length;
+  const isAdmin = currentAuthUser?.role?.toUpperCase() === 'ADMIN' || currentAuthUser?.role?.toUpperCase() === 'SUPER_ADMIN';
+
+  if (!isAdmin) {
+    return (
+      <div className="bg-white rounded-3xl p-8 border border-slate-200 text-center max-w-lg mx-auto my-12 space-y-4 shadow-sm">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+          <Shield className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900">Access Restricted</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          User Management is restricted to Administrators only. You do not have permissions to access enterprise user directory and access settings.
+        </p>
+        <button
+          onClick={() => navigate(isIhlr ? '/ihlr/dashboard' : '/process-audit/dashboard')}
+          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+        >
+          Return to Dashboard
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

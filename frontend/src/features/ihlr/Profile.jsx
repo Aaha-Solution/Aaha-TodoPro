@@ -8,7 +8,7 @@ const IhlrProfile = () => {
   const activeName = user?.name || 'iyyu';
   const activeEmail = user?.email || 'iyyu@inel.co.in';
   const activeRole = user?.role || 'Quality Assurance Lead';
-  const activeDepartment = user?.department || 'Quality Assurance';
+  const activeDepartment = user?.department || 'INCOMING QUALITY';
 
   return (
     <div className="space-y-6 w-full pb-16">

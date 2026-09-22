@@ -18,6 +18,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   const location = useLocation();
 
   const isIhlr = location.pathname.startsWith('/ihlr');
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPER_ADMIN';
 
   const handleLogout = () => {
     logout();
@@ -29,7 +30,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
         { name: 'Dashboard', path: '/ihlr/dashboard', icon: LayoutDashboard },
         { name: 'Create Request', path: '/ihlr/create-request', icon: Plus, isAction: true },
         { name: 'My Requests', path: '/ihlr/my-requests', icon: Layers },
-        { name: 'User Management', path: '/ihlr/users', icon: Users },
+        ...(isAdmin ? [{ name: 'User Management', path: '/ihlr/users', icon: Users }] : []),
         { name: 'Notifications', path: '/ihlr/notifications', icon: Bell },
         { name: 'Profile', path: '/ihlr/profile', icon: User },
       ]
@@ -37,7 +38,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
         { name: 'Dashboard', path: '/process-audit/dashboard', icon: LayoutDashboard },
         { name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true },
         { name: 'My Requests', path: '/process-audit/my-requests', icon: Layers },
-        { name: 'User Management', path: '/process-audit/users', icon: Users },
+        ...(isAdmin ? [{ name: 'User Management', path: '/process-audit/users', icon: Users }] : []),
         { name: 'Notifications', path: '/process-audit/notifications', icon: Bell },
         { name: 'Profile', path: '/process-audit/profile', icon: User },
       ];

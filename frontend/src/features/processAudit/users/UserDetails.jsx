@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, X, Check, ArrowRightLeft } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
+import { DEPARTMENTS } from '../../../utils/constants';
 
 const UserDetails = () => {
   const { user, login } = useAuth();
@@ -10,7 +11,7 @@ const UserDetails = () => {
     name: 'iyyu',
     role: 'Request Creator',
     employeeId: 'USR-001',
-    department: 'Production Planning',
+    department: 'PRODUCTION',
     email: 'iyyu@inel.co.in',
   });
 
@@ -92,7 +93,7 @@ const UserDetails = () => {
   const [newUserData, setNewUserData] = useState({
     name: '',
     role: 'Line Execution Lead',
-    department: 'Assembly',
+    department: 'PRODUCTION',
     email: '',
   });
 
@@ -420,12 +421,9 @@ const UserDetails = () => {
                   onChange={(e) => setNewUserData({ ...newUserData, department: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 >
-                  <option>Production Planning</option>
-                  <option>Assembly</option>
-                  <option>Quality Control</option>
-                  <option>Machining & Tooling</option>
-                  <option>Plant</option>
-                  <option>Executive</option>
+                  {DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
                 </select>
               </div>
 

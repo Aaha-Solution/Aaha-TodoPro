@@ -22,6 +22,8 @@ const Header = ({ toggleSidebar }) => {
     pageTitle = 'User Profile & Team Management';
   }
 
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPER_ADMIN';
+
   return (
     <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-8 flex items-center justify-between shadow-2xs">
       <div className="flex items-center gap-3 sm:gap-6">
@@ -53,16 +55,16 @@ const Header = ({ toggleSidebar }) => {
 
         {/* User Info Avatar */}
         <div 
-          onClick={() => navigate(isIhlr ? '/ihlr/users' : '/process-audit/users')}
+          onClick={() => navigate(isAdmin ? (isIhlr ? '/ihlr/users' : '/process-audit/users') : (isIhlr ? '/ihlr/profile' : '/process-audit/profile'))}
           className="flex items-center gap-2.5 cursor-pointer select-none"
-          title="Manage Users & Profile"
+          title={isAdmin ? "Manage Users & Profile" : "View Profile"}
         >
           <div className="w-8 h-8 rounded-full bg-[#2563eb] text-white flex items-center justify-center font-bold text-xs shadow-sm">
             {user?.name ? user.name.charAt(0).toUpperCase() : 'I'}
           </div>
           <div className="text-left hidden sm:block leading-tight">
             <span className="block text-xs font-bold text-slate-900">{user?.name || 'iyyu'}</span>
-            <span className="block text-[10px] text-slate-400 font-medium">Production Planning</span>
+            <span className="block text-[10px] text-slate-400 font-medium">{user?.department || 'PRODUCTION'}</span>
           </div>
         </div>
       </div>

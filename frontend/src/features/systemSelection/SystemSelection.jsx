@@ -74,6 +74,7 @@ const SystemSelection = () => {
   ];
 
   const currentUserName = user?.name || 'Admin';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPER_ADMIN';
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col justify-between text-slate-800 antialiased">
@@ -106,21 +107,27 @@ const SystemSelection = () => {
 
         {/* Right User Bar */}
         <div className="flex items-center gap-3 sm:gap-4">
-          <button
-            onClick={() => navigate('/users')}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-all shadow-2xs cursor-pointer"
-            title="Enterprise User Directory"
-          >
-            <Users className="w-3.5 h-3.5 text-slate-500" />
-            <span>Users</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/process-audit/users')}
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-all shadow-2xs cursor-pointer"
+              title="Enterprise User Directory"
+            >
+              <Users className="w-3.5 h-3.5 text-slate-500" />
+              <span>Users</span>
+            </button>
+          )}
 
-          <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+          {isAdmin && <div className="h-5 w-px bg-slate-200 hidden sm:block" />}
 
           <div 
-            onClick={() => navigate('/users')}
-            className="flex items-center gap-2.5 cursor-pointer hover:opacity-85 transition"
-            title="Manage user directory"
+            onClick={() => {
+              if (isAdmin) {
+                navigate('/process-audit/users');
+              }
+            }}
+            className={`flex items-center gap-2.5 ${isAdmin ? 'cursor-pointer hover:opacity-85' : ''} transition`}
+            title={isAdmin ? "Manage user directory" : "Active session"}
           >
             <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
               {currentUserName.charAt(0).toUpperCase()}

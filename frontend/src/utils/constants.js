@@ -11,6 +11,15 @@ export const ROLES = {
   VIEWER: "VIEWER",
 };
 
+export const DEPARTMENTS = [
+  'MAINTENANCE',
+  'PRODUCTION',
+  'PED',
+  'MATERIALS',
+  'MARKETING',
+  'INCOMING QUALITY'
+];
+
 export const SYSTEMS = [
   {
     id: "processAudit",
