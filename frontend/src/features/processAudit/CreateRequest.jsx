@@ -299,7 +299,20 @@ const CreateRequest = () => {
                   <option value="General (08:30 - 17:00)">General (08:30 - 17:00)</option>
                 </select>
               </div>
-
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Issue Type
+                </label>
+                <select
+                  value={formData.issueType}
+                  onChange={(e) => setFormData({ ...formData, issueType: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                >
+                  <option value="">Select</option>
+                  <option value="Repeated">Repeated</option>
+                  <option value="New">New</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Priority
@@ -316,20 +329,7 @@ const CreateRequest = () => {
                   <option value="Critical">Critical</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Issue Type
-                </label>
-                <select
-                  value={formData.issueType}
-                  onChange={(e) => setFormData({ ...formData, issueType: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-                >
-                  <option value="">Select</option>
-                  <option value="Repeated">Repeated</option>
-                  <option value="New">New</option>
-                </select>
-              </div>
+
             </div>
 
             {/* Row 3 */}
@@ -491,11 +491,10 @@ const CreateRequest = () => {
                 disabled={!formData.department}
                 value={formData.executor}
                 onChange={(e) => setFormData({ ...formData, executor: e.target.value })}
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium transition ${
-                  formData.department
+                className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium transition ${formData.department
                     ? 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
                     : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-                }`}
+                  }`}
               >
                 <option value="">
                   {formData.department ? 'Select' : 'Select Department first'}
@@ -631,21 +630,20 @@ const CreateRequest = () => {
                       {previewAttachment.isExcel
                         ? 'This Microsoft Excel spreadsheet can be downloaded or opened with Excel / Office viewer.'
                         : previewAttachment.isPpt
-                        ? 'This Microsoft PowerPoint presentation can be downloaded or opened with PowerPoint / presentation viewer.'
-                        : `This file format (${previewAttachment.type}) cannot be directly rendered inline in the browser.`}
+                          ? 'This Microsoft PowerPoint presentation can be downloaded or opened with PowerPoint / presentation viewer.'
+                          : `This file format (${previewAttachment.type}) cannot be directly rendered inline in the browser.`}
                     </p>
                     {previewAttachment.url && (
                       <div className="flex flex-wrap items-center justify-center gap-3">
                         <a
                           href={previewAttachment.url}
                           download={previewAttachment.name}
-                          className={`inline-flex items-center gap-2 px-4 py-2.5 text-white text-xs font-semibold rounded-xl shadow-xs transition ${
-                            previewAttachment.isExcel
+                          className={`inline-flex items-center gap-2 px-4 py-2.5 text-white text-xs font-semibold rounded-xl shadow-xs transition ${previewAttachment.isExcel
                               ? 'bg-emerald-600 hover:bg-emerald-700'
                               : previewAttachment.isPpt
-                              ? 'bg-orange-600 hover:bg-orange-700'
-                              : 'bg-blue-600 hover:bg-blue-700'
-                          }`}
+                                ? 'bg-orange-600 hover:bg-orange-700'
+                                : 'bg-blue-600 hover:bg-blue-700'
+                            }`}
                         >
                           <Download className="w-4 h-4" />
                           Download {previewAttachment.type} File
