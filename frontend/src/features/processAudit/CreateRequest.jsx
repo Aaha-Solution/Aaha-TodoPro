@@ -10,7 +10,9 @@ import {
   Send,
   Check,
   Calendar,
-  X
+  X,
+  Eye,
+  Download
 } from 'lucide-react';
 
 const CreateRequest = () => {
@@ -28,8 +30,8 @@ const CreateRequest = () => {
     requestId: 'PA-001',
     date: getTodayDate(),
     shift: 'Morning (06:00 - 14:30)',
-    priority: 'High',
-    issueType: 'New',
+    priority: 'Select',
+    issueType: 'Select',
     quantity: '1,500',
     unit: 'Units',
     stage: 'Assembly',
@@ -39,6 +41,7 @@ const CreateRequest = () => {
   });
 
   const [attachments, setAttachments] = useState([]);
+  const [previewAttachment, setPreviewAttachment] = useState(null);
 
   const removeAttachment = (index) => {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
@@ -47,12 +50,20 @@ const CreateRequest = () => {
   const processFiles = (fileList) => {
     const files = Array.from(fileList || []);
     if (files.length > 0) {
-      const newAttachments = files.map((file) => ({
-        name: file.name,
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        date: 'Just now',
-        type: file.name.split('.').pop()?.toUpperCase() || 'FILE',
-      }));
+      const newAttachments = files.map((file) => {
+        const ext = file.name.split('.').pop()?.toUpperCase() || 'FILE';
+        const isImage = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'].includes(ext);
+        const isPdf = ext === 'PDF';
+        return {
+          name: file.name,
+          size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+          date: 'Just now',
+          type: ext,
+          isImage,
+          isPdf,
+          url: URL.createObjectURL(file),
+        };
+      });
       setAttachments((prev) => [...prev, ...newAttachments]);
     }
   };
@@ -307,14 +318,22 @@ const CreateRequest = () => {
               {attachments.map((file, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs hover:border-slate-300 transition"
+                  onClick={() => setPreviewAttachment(file)}
+                  className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs hover:border-blue-400 hover:shadow-xs transition cursor-pointer group"
+                  title="Click to preview file"
                 >
                   <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded-md border border-red-200 shrink-0">
-                      {file.type}
-                    </span>
+                    {file.isImage && file.url ? (
+                      <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-slate-200 bg-slate-50 flex items-center justify-center">
+                        <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded-md border border-red-200 shrink-0">
+                        {file.type}
+                      </span>
+                    )}
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 truncate" title={file.name}>
+                      <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-blue-600 transition" title={file.name}>
                         {file.name}
                       </p>
                       <p className="text-[10px] text-slate-400">
@@ -323,14 +342,25 @@ const CreateRequest = () => {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => removeAttachment(idx)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition shrink-0 cursor-pointer"
-                    title="Remove file"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span 
+                      className="p-1.5 rounded-lg text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-50 transition" 
+                      title="Preview file"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeAttachment(idx);
+                      }}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                      title="Remove file"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -399,8 +429,6 @@ const CreateRequest = () => {
 
         {/* Bottom Actions Bar */}
         <div className="flex items-center justify-end gap-3 pt-2">
-        
-
           <button
             type="submit"
             className="px-6 py-2.5 bg-[#2563eb] hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 flex items-center gap-2 transition cursor-pointer"
@@ -410,6 +438,91 @@ const CreateRequest = () => {
           </button>
         </div>
       </form>
+
+      {/* Attachment Preview Modal */}
+      {previewAttachment && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+          onClick={() => setPreviewAttachment(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-3 min-w-0 pr-4">
+                <span className="px-2.5 py-1 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-200 shrink-0">
+                  {previewAttachment.type}
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-slate-900 truncate" title={previewAttachment.name}>
+                    {previewAttachment.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    {previewAttachment.size} • {previewAttachment.date}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+               
+                <button
+                  type="button"
+                  onClick={() => setPreviewAttachment(null)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                  title="Close preview"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content Preview */}
+            <div className="flex-1 overflow-auto p-4 my-2 flex items-center justify-center min-h-[300px] bg-slate-50/70 rounded-2xl border border-slate-100">
+              {previewAttachment.isImage && previewAttachment.url ? (
+                <img
+                  src={previewAttachment.url}
+                  alt={previewAttachment.name}
+                  className="max-h-[65vh] w-auto max-w-full object-contain rounded-xl shadow-xs"
+                />
+              ) : previewAttachment.isPdf && previewAttachment.url ? (
+                <iframe
+                  src={previewAttachment.url}
+                  title={previewAttachment.name}
+                  className="w-full h-[65vh] rounded-xl border border-slate-200"
+                />
+              ) : (
+                <div className="text-center py-10 px-4 max-w-md">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3 text-lg font-bold border border-blue-200">
+                    {previewAttachment.type}
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-1">
+                    {previewAttachment.name}
+                  </h4>
+                  <p className="text-xs text-slate-500 mb-4">
+                    This file format ({previewAttachment.type}) cannot be directly rendered inline in the browser. You can download or open it using your device's default application.
+                  </p>
+                  {previewAttachment.url && (
+                    <a
+                      href={previewAttachment.url}
+                      download={previewAttachment.name}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download / Open {previewAttachment.name}
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+          
+          </div>
+        </div>
+      )}
     </div>
   );
 };
