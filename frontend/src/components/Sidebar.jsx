@@ -9,18 +9,13 @@ import {
   LogOut,
   ChevronRight,
   X,
-  AlertOctagon,
   Users
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { useDispatch, useSelector } from 'react-redux';
-import { openStopperModal } from '../redux/slices/stopperSlice';
 
 const Sidebar = ({ isOpen, closeSidebar }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const activeStopperCount = useSelector((state) => state.stopper.activeStopperCount);
 
   const handleLogout = () => {
     logout();

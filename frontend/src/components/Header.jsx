@@ -1,17 +1,13 @@
 import React from 'react';
-import { Menu, ChevronDown, Bell, AlertOctagon, Users } from 'lucide-react';
+import { Menu, ChevronDown, Users } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useDispatch, useSelector } from 'react-redux';
-import { openStopperModal } from '../redux/slices/stopperSlice';
 import Notification from './Notification';
 
 const Header = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const dispatch = useDispatch();
-  const activeStopperCount = useSelector((state) => state.stopper.activeStopperCount);
 
   // Match exact screenshot subtitles
   let pageTitle = 'Creator Dashboard';
@@ -58,25 +54,6 @@ const Header = ({ toggleSidebar }) => {
         >
           <Users className="w-3.5 h-3.5 text-slate-600" />
           <span className="hidden md:inline">Users</span>
-        </button>
-
-        {/* Emergency Line Stopper Pill */}
-        <button
-          onClick={() => dispatch(openStopperModal())}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition shadow-xs cursor-pointer ${
-            activeStopperCount > 0
-              ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse'
-              : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
-          }`}
-          title="Line Stopper System"
-        >
-          <AlertOctagon className="w-4 h-4" />
-          <span className="hidden sm:inline">Line Stopper</span>
-          {activeStopperCount > 0 && (
-            <span className="bg-white text-red-600 text-[10px] font-extrabold px-1.5 rounded-full">
-              {activeStopperCount}
-            </span>
-          )}
         </button>
 
         {/* Notification Bell */}
