@@ -20,31 +20,35 @@ import {
 } from 'lucide-react';
 
 const DEPARTMENT_EXECUTORS = {
-  'Assembly': [
+  'PRODUCTION': [
     'Mr. Kumar (Assembly Lead)',
     'Mr. Murugan (Line 1 Supervisor)',
     'Ms. Kavitha (Assembly Specialist)',
+    'Mr. Suresh (Floor Engineer)',
   ],
-  'Quality Control': [
+  'INCOMING QUALITY': [
     'Mr. Ravi (Inspection Head)',
     'Mr. Prakash (QC Inspector)',
     'Ms. Deepa (Quality Auditor)',
   ],
-  'Packaging': [
-    'Mr. Arjun (Packaging Supervisor)',
-    'Mr. Balaji (Packaging Lead)',
-  ],
-  'Machining & Tooling': [
-    'Mr. Suresh (Floor Engineer)',
-    'Mr. Vignesh (CNC Lead)',
-  ],
-  'Production Planning': [
-    'Mr. Ramesh (Production Planner)',
-    'Mr. Sathish (Operations Executive)',
-  ],
-  'Maintenance': [
+  'MAINTENANCE': [
     'Mr. Karthik (Maintenance Engineer)',
     'Mr. Rajesh (Electrical Lead)',
+    'Mr. Balaji (Tooling Specialist)',
+  ],
+  'PED': [
+    'Mr. Vignesh (Process Engineer)',
+    'Mr. Anand (NPI Lead)',
+    'Mr. Dinesh (Tooling & Fixtures)',
+  ],
+  'MATERIALS': [
+    'Mr. Arjun (Packaging Supervisor)',
+    'Mr. Ramesh (Material Planning)',
+    'Mr. Sathish (Inventory Lead)',
+  ],
+  'MARKETING': [
+    'Mr. Praveen (Customer Quality Liaison)',
+    'Ms. Priya (Order Fulfillment)',
   ],
 };
 
@@ -60,16 +64,15 @@ const CreateRequest = () => {
   };
 
   const [formData, setFormData] = useState({
-    requestId: 'PA-001',
+    requestId: '',
     date: getTodayDate(),
-    shift: '',
-    priority: '',
-    issueType: '',
+    product: '',
+    model: '',
     processOperation: '',
-    quantity: '1,500',
-    unit: '',
-    stage: '',
-    line: 'Line A - Main Chassis Assembly',
+    shift: '',
+    issueType: '',
+    priority: '',
+    issueObservation: '',
     department: '',
     executor: '',
     comments: '',
@@ -233,8 +236,8 @@ const CreateRequest = () => {
                   Product *
                 </label>
                 <select
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                  value={formData.product}
+                  onChange={(e) => setFormData({ ...formData, product: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                 >
                   <option value="">Select</option>
@@ -250,8 +253,8 @@ const CreateRequest = () => {
                   Model *
                 </label>
                 <select
-                  value={formData.stage}
-                  onChange={(e) => setFormData({ ...formData, stage: e.target.value })}
+                  value={formData.model}
+                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                 >
                   <option value="">Select</option>
@@ -339,8 +342,8 @@ const CreateRequest = () => {
               </label>
               <textarea
                 rows={3}
-                value={formData.comments}
-                onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
+                value={formData.issueObservation}
+                onChange={(e) => setFormData({ ...formData, issueObservation: e.target.value })}
                 className="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
               />
             </div>
