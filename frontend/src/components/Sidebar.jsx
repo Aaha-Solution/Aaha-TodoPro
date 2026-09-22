@@ -7,7 +7,6 @@ import {
   Bell,
   User,
   LogOut,
-  ChevronRight,
   X,
   Users
 } from 'lucide-react';
@@ -98,23 +97,17 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
             </div>
           </div>
 
-          {/* Active System Pill Card */}
-          <div 
-            onClick={() => navigate('/system-selection')}
-            className="mb-6 p-3 rounded-2xl bg-[#101728] border border-slate-800/90 hover:border-slate-700 transition flex items-center justify-between cursor-pointer group"
-          >
-            <div>
-              <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400 block font-mono">
-                ACTIVE SYSTEM
+          {/* Active System Static Label */}
+          <div className="mb-6 p-3 rounded-2xl bg-[#101728] border border-slate-800/90 select-none">
+            <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400 block font-mono">
+              ACTIVE SYSTEM
+            </span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className={`w-2 h-2 rounded-full ${isIhlr ? 'bg-amber-500' : 'bg-blue-500'} animate-pulse`}></span>
+              <span className="text-xs font-bold text-white">
+                {isIhlr ? 'In-House Line Rejection' : 'Process Audit Observation'}
               </span>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className={`w-2 h-2 rounded-full ${isIhlr ? 'bg-amber-500' : 'bg-blue-500'} animate-pulse`}></span>
-                <span className={`text-xs font-bold text-white transition ${isIhlr ? 'group-hover:text-amber-400' : 'group-hover:text-blue-400'}`}>
-                  {isIhlr ? 'In-House Line Rejection' : 'Process Audit Observation'}
-                </span>
-              </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-500 group-hover:translate-x-0.5 transition" />
           </div>
 
           {/* Navigation Links */}

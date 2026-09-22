@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, ChevronDown } from 'lucide-react';
+import { Menu, ArrowLeft } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Notification from './Notification';
@@ -33,22 +33,15 @@ const Header = ({ toggleSidebar }) => {
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Module Pill Dropdown */}
-        <div 
+        {/* Back to System Selection Button */}
+        <button
           onClick={() => navigate('/system-selection')}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 text-slate-800 text-xs font-semibold cursor-pointer transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-semibold cursor-pointer transition border border-slate-200/70 shadow-2xs"
+          title="Back to System Selection"
         >
-          <span className={`w-2 h-2 rounded-full ${isIhlr ? 'bg-amber-500' : 'bg-blue-600'}`}></span>
-          <span>
-            Module:{' '}
-            <strong className="font-bold text-slate-900">
-              {isIhlr ? 'In-House Line Rejection (IHLR)' : 'Process Audit Observation'}
-            </strong>
-          </span>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-500 ml-0.5" />
-        </div>
-
-       
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back</span>
+        </button>
       </div>
 
       {/* Right User & Stopper Controls */}
