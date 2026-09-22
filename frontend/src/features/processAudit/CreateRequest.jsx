@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  FileText, 
-  UserCheck, 
-  Paperclip, 
-  MessageSquare, 
-  UploadCloud, 
-  Trash2, 
-  Send, 
+import {
+  FileText,
+  UserCheck,
+  Paperclip,
+  MessageSquare,
+  UploadCloud,
+  Trash2,
+  Send,
   Check,
   Calendar,
   X
@@ -16,11 +16,19 @@ import {
 const CreateRequest = () => {
   const navigate = useNavigate();
 
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [formData, setFormData] = useState({
     requestId: 'REQ-1006',
-    date: '2026-09-17',
+    date: getTodayDate(),
     shift: 'Morning (06:00 - 14:30)',
-    priority: 'High',
+    priority: 'New',
     quantity: '1,500',
     unit: 'Units',
     stage: 'Assembly',
@@ -29,14 +37,7 @@ const CreateRequest = () => {
     comments: 'Target completion by end of shift. Calibrate digital micrometer prior to starting assembly batch #1006.',
   });
 
-  const [attachments, setAttachments] = useState([
-    {
-      name: 'Technical_Spec_Sheet_RevB.pdf',
-      size: '1.4 MB',
-      date: 'Uploaded Today',
-      type: 'PDF'
-    }
-  ]);
+  const [attachments, setAttachments] = useState([]);
 
   const removeAttachment = (index) => {
     setAttachments(attachments.filter((_, i) => i !== index));
@@ -71,14 +72,14 @@ const CreateRequest = () => {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Create Production Request
           </h1>
-        
+
         </div>
 
-       
+
       </div>
 
-    
-     
+
+
 
       {/* Form Container */}
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -99,7 +100,7 @@ const CreateRequest = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Request ID (Auto-Generated)
+                  ISSUE NO (Auto-Generated)
                 </label>
                 <input
                   type="text"
@@ -112,19 +113,88 @@ const CreateRequest = () => {
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Date *
+                  Escalation Date *
                 </label>
                 <div className="relative">
                   <input
                     type="date"
                     required
-                    value={formData.date}
+                    value={formData.date || ''}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="w-full px-3.5  py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-medium text-slate-500 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500  cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   />
                 </div>
               </div>
 
+
+
+
+
+
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Product *
+                </label>
+                <select
+                  value={formData.unit}
+                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                >
+                  <option>Units</option>
+                  <option>Kg</option>
+                  <option>Batches</option>
+                  <option>Sets</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Model *
+                </label>
+                <select
+                  value={formData.stage}
+                  onChange={(e) => setFormData({ ...formData, stage: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                >
+                  <option>Assembly</option>
+                  <option>Inspection</option>
+                  <option>Packaging</option>
+                  <option>Raw Material</option>
+                  <option>Production</option>
+                </select>
+              </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            </div>
+
+            {/* Row 2 */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Production Quantity *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.quantity}
+                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+              </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Shift *
@@ -150,61 +220,15 @@ const CreateRequest = () => {
                   onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                 >
+                  <option>Repeated</option>
+                  <option>New</option>
                   <option>High</option>
                   <option>Medium</option>
                   <option>Low</option>
                   <option>Critical (Hot Lot)</option>
                 </select>
               </div>
-            </div>
 
-            {/* Row 2 */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Production Quantity *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Production Unit *
-                </label>
-                <select
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-                >
-                  <option>Units</option>
-                  <option>Kg</option>
-                  <option>Batches</option>
-                  <option>Sets</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Stage *
-                </label>
-                <select
-                  value={formData.stage}
-                  onChange={(e) => setFormData({ ...formData, stage: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-                >
-                  <option>Assembly</option>
-                  <option>Inspection</option>
-                  <option>Packaging</option>
-                  <option>Raw Material</option>
-                  <option>Production</option>
-                </select>
-              </div>
             </div>
 
             {/* Row 3 */}

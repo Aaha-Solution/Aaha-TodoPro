@@ -8,16 +8,12 @@ import {
   ShieldCheck, 
   Check, 
   X, 
-  AlertOctagon,
   Eye,
   FileText
 } from 'lucide-react';
-import { useDispatch } from 'react-redux';
-import { openStopperModal } from '../../redux/slices/stopperSlice';
 
 const ProcessAuditDashboard = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const [selectedRequest, setSelectedRequest] = useState(null);
 
   const kpis = [
@@ -282,21 +278,10 @@ const ProcessAuditDashboard = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-              <button
-                onClick={() => {
-                  setSelectedRequest(null);
-                  dispatch(openStopperModal());
-                }}
-                className="px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold border border-red-200 flex items-center gap-1.5 transition"
-              >
-                <AlertOctagon className="w-4 h-4" />
-                Trigger Line Stopper
-              </button>
-
+            <div className="flex items-center justify-end pt-4 border-t border-slate-100">
               <button
                 onClick={() => setSelectedRequest(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
               >
                 Close
               </button>

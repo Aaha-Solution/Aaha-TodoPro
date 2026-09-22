@@ -5,18 +5,13 @@ import {
   RotateCcw,
   Eye,
   X,
-  AlertOctagon,
   CheckCircle2,
   Clock,
   Layers,
   FileText
 } from 'lucide-react';
-import { useDispatch } from 'react-redux';
-import { openStopperModal } from '../../redux/slices/stopperSlice';
 
 const MyRequests = () => {
-  const dispatch = useDispatch();
-
   const [search, setSearch] = useState('');
   const [selectedShift, setSelectedShift] = useState('All Shifts');
   const [selectedStage, setSelectedStage] = useState('All Stages');
@@ -342,18 +337,7 @@ const MyRequests = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-              <button
-                onClick={() => {
-                  setActiveModalRequest(null);
-                  dispatch(openStopperModal());
-                }}
-                className="px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold border border-red-200 flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <AlertOctagon className="w-4 h-4" />
-                <span>Halt with Line Stopper</span>
-              </button>
-
+            <div className="flex items-center justify-end pt-4 border-t border-slate-100">
               <button
                 onClick={() => setActiveModalRequest(null)}
                 className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
