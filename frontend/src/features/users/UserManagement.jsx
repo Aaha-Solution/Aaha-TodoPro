@@ -18,7 +18,6 @@ import {
   Building2,
   Mail,
   Lock,
-  ArrowRightLeft,
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -225,8 +224,8 @@ const UserManagement = () => {
       )}
 
       {/* Top Global Header */}
-      <header className="w-full bg-white border-b border-slate-200/90 px-4 sm:px-8 py-3 sticky top-0 z-30 shadow-2xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      <header className="w-full bg-white border-b border-slate-200/90 px-4 sm:px-8 lg:px-10 py-3 sticky top-0 z-30 shadow-2xs">
+        <div className="w-full flex items-center justify-between gap-4">
           {/* Left: Brand & Return Navigation */}
           <div className="flex items-center gap-4">
             <button
@@ -275,7 +274,7 @@ const UserManagement = () => {
       </header>
 
       {/* Main Workspace Body */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <main className="flex-1 w-full px-4 sm:px-8 lg:px-10 py-8 space-y-6">
         {/* Page Title & Breadcrumbs */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -435,6 +434,7 @@ const UserManagement = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th className="py-3.5 px-4 text-center w-16">SL NO</th>
                   <th className="py-3.5 px-6">USER &amp; DETAILS</th>
                   <th className="py-3.5 px-4">EMPLOYEE ID</th>
                   <th className="py-3.5 px-4">ROLE</th>
@@ -446,18 +446,23 @@ const UserManagement = () => {
               <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                       <p className="font-semibold text-slate-600">No personnel found</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">Try refining your search terms or filters.</p>
                     </td>
                   </tr>
                 ) : (
-                  filteredUsers.map((u) => {
+                  filteredUsers.map((u, index) => {
                     const isCurrent = currentAuthUser?.email?.toLowerCase() === u.email?.toLowerCase();
 
                     return (
                       <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
+                        {/* SL NO */}
+                        <td className="py-4 px-4 text-center font-mono font-semibold text-slate-500">
+                          {index + 1}
+                        </td>
+
                         {/* User Column */}
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
@@ -518,16 +523,6 @@ const UserManagement = () => {
                         {/* Actions */}
                         <td className="py-4 px-6 text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            {/* Switch active login for role simulation */}
-                            <button
-                              onClick={() => handleSwitchActiveUser(u)}
-                              className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:text-blue-700 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg transition shadow-2xs cursor-pointer"
-                              title="Simulate session as this user"
-                            >
-                              <span className="hidden sm:inline">Switch</span>
-                              <ArrowRightLeft className="w-3 h-3 sm:hidden" />
-                            </button>
-
                             {/* Edit User */}
                             <button
                               onClick={() => handleOpenEditModal(u)}
