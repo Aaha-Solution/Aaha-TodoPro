@@ -17,6 +17,7 @@ import UserManagement from '../features/users/UserManagement';
 import ProcessAuditDashboard from '../features/processAudit/Dashboard';
 import CreateRequest from '../features/processAudit/CreateRequest';
 import MyRequests from '../features/processAudit/MyRequests';
+import ProcessAuditApprovals from '../features/processAudit/Approvals';
 import ProcessAuditNotifications from '../features/processAudit/Notifications';
 import EditUser from '../features/processAudit/users/EditUser';
 import UserDetails from '../features/processAudit/users/UserDetails';
@@ -25,6 +26,7 @@ import UserDetails from '../features/processAudit/users/UserDetails';
 import IhlrDashboard from '../features/ihlr/Dashboard';
 import IhlrCreateRequest from '../features/ihlr/CreateRequest';
 import IhlrMyRequests from '../features/ihlr/MyRequests';
+import IhlrApprovals from '../features/ihlr/Approvals';
 import IhlrNotifications from '../features/ihlr/Notifications';
 import IhlrProfile from '../features/ihlr/Profile';
 
@@ -56,6 +58,7 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<ProcessAuditDashboard />} />
           <Route path="create-request" element={<CreateRequest />} />
           <Route path="my-requests" element={<MyRequests />} />
+          <Route path="approvals" element={<ProcessAuditApprovals />} />
           <Route path="notifications" element={<ProcessAuditNotifications />} />
           <Route path="profile" element={<UserDetails />} />
           <Route path="users" element={<UserManagement />} />
@@ -70,6 +73,7 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<IhlrDashboard />} />
           <Route path="create-request" element={<IhlrCreateRequest />} />
           <Route path="my-requests" element={<IhlrMyRequests />} />
+          <Route path="approvals" element={<IhlrApprovals />} />
           <Route path="notifications" element={<IhlrNotifications />} />
           <Route path="profile" element={<IhlrProfile />} />
           <Route path="users" element={<UserManagement />} />
