@@ -71,81 +71,14 @@ const CreateRequest = () => {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Create Production Request
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Define production batch requirements, set target lines, and assign the executor.
-          </p>
+        
         </div>
 
-        <button
-          type="button"
-          onClick={() => navigate('/process-audit/dashboard')}
-          className="px-4 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition shadow-2xs cursor-pointer"
-        >
-          Cancel
-        </button>
+       
       </div>
 
-      {/* Stepper: WORKFLOW LIFECYCLE TARGET */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-2xs">
-        <div className="flex items-center justify-between mb-6">
-          <span className="text-[11px] font-extrabold uppercase tracking-widest text-slate-500 font-mono">
-            WORKFLOW LIFECYCLE TARGET
-          </span>
-          <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[11px] font-bold border border-blue-100">
-            + New Draft
-          </span>
-        </div>
-
-        {/* 5-step horizontal tracker */}
-        <div className="relative flex items-center justify-between max-w-3xl mx-auto px-4">
-          <div className="absolute left-10 right-10 top-4 h-0.5 bg-slate-200 -z-0" />
-
-          {/* Step 1 */}
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs ring-4 ring-blue-100 shadow-sm">
-              1
-            </div>
-            <span className="text-xs font-bold text-slate-900 mt-2">Create</span>
-            <span className="text-[10px] text-slate-400">Planning</span>
-          </div>
-
-          {/* Step 2 */}
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="w-8 h-8 rounded-full bg-white border-2 border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs">
-              2
-            </div>
-            <span className="text-xs font-medium text-slate-600 mt-2">Execute</span>
-            <span className="text-[10px] text-slate-400">Floor Lead</span>
-          </div>
-
-          {/* Step 3 */}
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="w-8 h-8 rounded-full bg-white border-2 border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs">
-              3
-            </div>
-            <span className="text-xs font-medium text-slate-600 mt-2">Approval 1</span>
-            <span className="text-[10px] text-slate-400">Prod Mgr</span>
-          </div>
-
-          {/* Step 4 */}
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="w-8 h-8 rounded-full bg-white border-2 border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs">
-              4
-            </div>
-            <span className="text-xs font-medium text-slate-600 mt-2">Approval 2</span>
-            <span className="text-[10px] text-slate-400">Plant Head</span>
-          </div>
-
-          {/* Step 5 */}
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="w-8 h-8 rounded-full bg-white border-2 border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs">
-              5
-            </div>
-            <span className="text-xs font-medium text-slate-600 mt-2">Completed</span>
-            <span className="text-[10px] text-slate-400">ERP Sync</span>
-          </div>
-        </div>
-      </div>
+    
+     
 
       {/* Form Container */}
       <form onSubmit={handleSubmit} className="space-y-6">

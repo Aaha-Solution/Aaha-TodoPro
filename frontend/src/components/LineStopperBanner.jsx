@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useLocation } from 'react-router-dom';
 import { AlertOctagon, CheckCircle2, ChevronRight, ShieldAlert, X } from 'lucide-react';
 import { clearStopper } from '../redux/slices/stopperSlice';
 import { useAuth } from '../hooks/useAuth';
 
 const LineStopperBanner = () => {
+  const location = useLocation();
   const { stoppers, activeStopperCount } = useSelector((state) => state.stopper);
   const activeStoppers = stoppers.filter((s) => s.status === 'ACTIVE');
   const [selectedStopper, setSelectedStopper] = useState(null);
@@ -12,7 +14,7 @@ const LineStopperBanner = () => {
   const { user } = useAuth();
   const dispatch = useDispatch();
 
-  if (activeStopperCount === 0) return null;
+  if (activeStopperCount === 0 || location.pathname.includes('/create-request')) return null;
 
   const current = activeStoppers[0];
 
