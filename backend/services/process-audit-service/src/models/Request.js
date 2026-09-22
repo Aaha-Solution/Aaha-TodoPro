@@ -30,6 +30,19 @@ const ensureTable = async () => {
       }
     }
 
+    // Ensure created_by and created_by_id columns exist in MySQL without default value
+    if (!colNames.includes('created_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN created_by VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('created_by_id')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN created_by_id INT NULL`).catch(() => {});
+    }
+
+    // Drop any existing defaults on MySQL columns
+    await pool.query(`ALTER TABLE process_audit_requests MODIFY issue_type VARCHAR(50) NULL`).catch(() => {});
+    await pool.query(`ALTER TABLE process_audit_requests MODIFY priority VARCHAR(50) NULL`).catch(() => {});
+    await pool.query(`ALTER TABLE process_audit_requests MODIFY created_by VARCHAR(100) NULL`).catch(() => {});
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS process_audit_requests (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -39,14 +52,16 @@ const ensureTable = async () => {
         model VARCHAR(100) NOT NULL,
         process_operation VARCHAR(100) NOT NULL,
         shift VARCHAR(50) NOT NULL,
-        issue_type VARCHAR(50) DEFAULT 'New',
-        priority VARCHAR(50) DEFAULT 'Medium',
+        issue_type VARCHAR(50),
+        priority VARCHAR(50),
         issue_observation TEXT,
         attachments JSON,
         department VARCHAR(100) NOT NULL,
         executor VARCHAR(100) NOT NULL,
         comments TEXT,
         status VARCHAR(50) DEFAULT 'Pending Execution',
+        created_by VARCHAR(100),
+        created_by_id INT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
@@ -83,14 +98,16 @@ export const ProcessAuditRequest = {
     const model = data.model || data.stage || 'Standard';
     const process_operation = data.process_operation || data.processOperation || data.line || 'General';
     const shift = data.shift || 'General';
-    const issue_type = data.issue_type || data.issueType || 'New';
-    const priority = data.priority || 'Medium';
+    const issue_type = data.issue_type !== undefined ? data.issue_type : (data.issueType !== undefined ? data.issueType : null);
+    const priority = data.priority !== undefined ? data.priority : null;
     const issue_observation = data.issue_observation || data.issueObservation || '';
     const attachments = JSON.stringify(data.attachments || []);
     const department = data.department || 'PRODUCTION';
     const executor = data.executor || 'Plant Lead';
     const comments = data.comments || '';
     const status = data.status || 'Pending Execution';
+    const created_by = data.created_by || data.createdBy || data.creator_name || data.creator || null;
+    const created_by_id = data.created_by_id || data.createdById || data.userId || null;
 
     // issue_no can be passed from frontend or match the auto-increment id
     let issue_no = data.issue_no || data.requestId || '';
@@ -98,8 +115,8 @@ export const ProcessAuditRequest = {
     // Notice: id is omitted from the INSERT query so MySQL's AUTO_INCREMENT automatically assigns 1, 2, 3...
     const query = `
       INSERT INTO process_audit_requests 
-      (issue_no, escalation_date, product, model, process_operation, shift, issue_type, priority, issue_observation, attachments, department, executor, comments, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (issue_no, escalation_date, product, model, process_operation, shift, issue_type, priority, issue_observation, attachments, department, executor, comments, status, created_by, created_by_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const [result] = await pool.query(query, [
@@ -116,7 +133,9 @@ export const ProcessAuditRequest = {
       department,
       executor,
       comments,
-      status
+      status,
+      created_by,
+      created_by_id
     ]);
 
     const insertedId = result.insertId;

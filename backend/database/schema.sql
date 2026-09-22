@@ -24,14 +24,16 @@ CREATE TABLE IF NOT EXISTS process_audit_requests (
   model VARCHAR(100) NOT NULL,
   process_operation VARCHAR(100) NOT NULL,
   shift VARCHAR(50) NOT NULL,
-  issue_type VARCHAR(50) DEFAULT 'New',
-  priority VARCHAR(50) DEFAULT 'Medium',
+  issue_type VARCHAR(50),
+  priority VARCHAR(50),
   issue_observation TEXT,
   attachments JSON,
   department VARCHAR(100) NOT NULL,
   executor VARCHAR(100) NOT NULL,
   comments TEXT,
   status VARCHAR(50) DEFAULT 'Pending Execution',
+  created_by VARCHAR(100),
+  created_by_id INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

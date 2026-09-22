@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
@@ -8,7 +9,6 @@ import {
   UploadCloud,
   Trash2,
   Send,
-  Check,
   Calendar,
   X,
   Eye,
@@ -19,6 +19,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
+import { useAuth } from '../../hooks/useAuth';
 
 const DEPARTMENT_EXECUTORS = {
   'MAINTENANCE': [
@@ -70,6 +71,7 @@ const EXECUTORS_MAP = Array.isArray(DEPARTMENT_EXECUTORS)
 
 const CreateRequest = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const getTodayDate = () => {
     const today = new Date();
@@ -166,26 +168,36 @@ const CreateRequest = () => {
         const isPdf = ext === 'PDF';
         const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
         const isPpt = ['PPT', 'PPTX', 'PPSX'].includes(ext);
+
+        let previewUrl = '';
+        if (isImage || isPdf) {
+          try {
+            previewUrl = URL.createObjectURL(file);
+          } catch {
+            previewUrl = '';
+          }
+        }
+
         return {
-          file, // Keep raw File instance for backend upload
           name: file.name,
-          size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-          date: 'Just now',
+          size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
           type: ext,
+          date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+          file,
+          url: previewUrl,
           isImage,
           isPdf,
           isExcel,
           isPpt,
-          url: URL.createObjectURL(file),
         };
       });
+
       setAttachments((prev) => [...prev, ...newAttachments]);
     }
   };
 
   const handleFileUpload = (e) => {
     processFiles(e.target.files);
-    e.target.value = '';
   };
 
   const handleDrop = (e) => {
@@ -197,19 +209,19 @@ const CreateRequest = () => {
     e.preventDefault();
 
     if (!formData.product) {
-      alert('Please select a Product');
+      alert('Please select a Product in Section 1');
       return;
     }
     if (!formData.model) {
-      alert('Please select a Model');
+      alert('Please select a Model in Section 1');
       return;
     }
     if (!formData.processOperation) {
-      alert('Please select a Process / Operation');
+      alert('Please select a Process / Operation in Section 1');
       return;
     }
     if (!formData.shift) {
-      alert('Please select a Shift');
+      alert('Please select a Shift in Section 1');
       return;
     }
     if (!formData.department) {
@@ -254,6 +266,15 @@ const CreateRequest = () => {
       ? formData.requestId
       : `PA-${formData.requestId || '1'}`;
 
+    const creatorName = user?.name || user?.email || (() => {
+      try {
+        const u = localStorage.getItem('todo_user');
+        return u ? JSON.parse(u)?.name || JSON.parse(u)?.email : '';
+      } catch {
+        return '';
+      }
+    })();
+
     const payload = {
       issue_no: formattedIssueNo,
       escalation_date: formData.date,
@@ -261,13 +282,15 @@ const CreateRequest = () => {
       model: formData.model,
       process_operation: formData.processOperation,
       shift: formData.shift,
-      issue_type: formData.issueType || 'New',
-      priority: formData.priority || 'Medium',
+      issue_type: formData.issueType || '',
+      priority: formData.priority || '',
       issue_observation: formData.issueObservation,
       department: formData.department,
       executor: formData.executor,
       comments: formData.comments,
       attachments: finalAttachments,
+      created_by: creatorName,
+      created_by_id: user?.id || null,
     };
 
     try {
@@ -285,22 +308,41 @@ const CreateRequest = () => {
     }
   };
 
+  const currentCreator = user?.name || user?.email || (() => {
+    try {
+      const u = localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.name || JSON.parse(u)?.email : '';
+    } catch {
+      return '';
+    }
+  })();
+
   return (
     <div className="space-y-6 w-full pb-12">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Create Production Request
           </h1>
-
+          <p className="text-xs text-slate-500 mt-1">
+            Initiate a manufacturing process audit and assign operational execution.
+          </p>
         </div>
 
-
+        {/* Creator Info Pill */}
+        {currentCreator && (
+          <div className="flex items-center gap-2.5 px-3.5 py-2 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
+              {currentCreator.charAt(0).toUpperCase()}
+            </div>
+            <div className="text-left text-xs leading-tight">
+              <span className="text-[10px] text-slate-400 block font-semibold uppercase">Created By</span>
+              <span className="font-bold text-slate-800">{currentCreator}</span>
+            </div>
+          </div>
+        )}
       </div>
-
-
-
 
       {/* Form Container */}
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -346,12 +388,6 @@ const CreateRequest = () => {
                   />
                 </div>
               </div>
-
-
-
-
-
-
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -691,9 +727,9 @@ const CreateRequest = () => {
       {previewAttachment && (() => {
         const meta = getFileMeta(previewAttachment);
         const IconComponent = meta.icon;
-        return (
+        return createPortal(
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-150"
             onClick={() => setPreviewAttachment(null)}
           >
             <div
@@ -712,7 +748,7 @@ const CreateRequest = () => {
                       {previewAttachment.name}
                     </h3>
                     <p className="text-[11px] text-slate-400">
-                      {meta.typeName} • {previewAttachment.size} • {previewAttachment.date}
+                      {meta.typeName} {previewAttachment.size ? `• ${previewAttachment.size}` : ''}
                     </p>
                   </div>
                 </div>
@@ -798,7 +834,8 @@ const CreateRequest = () => {
                 )}
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
     </div>

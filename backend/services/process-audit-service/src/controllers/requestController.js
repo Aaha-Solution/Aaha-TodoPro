@@ -75,6 +75,8 @@ export const createRequest = async (req, res) => {
     }
 
     requestData.attachments = parsedAttachments;
+    requestData.created_by = requestData.created_by || req.user?.name || req.user?.email || null;
+    requestData.created_by_id = requestData.created_by_id || req.user?.id || null;
 
     const created = await ProcessAuditRequest.create(requestData);
     return successResponse(res, created, 'Production request created', 201);

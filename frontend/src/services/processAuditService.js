@@ -4,28 +4,20 @@ export const processAuditService = {
   getDashboardStats: async () => {
     try {
       const res = await api.get('/process-audit/dashboard');
-      return res.data;
-    } catch {
-      return {
-        totalRequests: 42,
-        pendingAudits: 8,
-        completedAudits: 31,
-        openCapa: 3,
-        auditPerformance: 94.2,
-      };
+      return res.data?.data || res.data || {};
+    } catch (err) {
+      console.error('Failed to fetch dashboard metrics:', err);
+      return {};
     }
   },
 
   getRequests: async (params) => {
     try {
       const res = await api.get('/process-audit/requests', { params });
-      return res.data;
-    } catch {
-      return [
-        { id: 'PA-2026-001', department: 'Stator Winding', auditor: 'Ramesh K', date: '2026-09-15', status: 'Pending Review', score: '88%' },
-        { id: 'PA-2026-002', department: 'Rotor Die Casting', auditor: 'Anand M', date: '2026-09-16', status: 'Approved', score: '96%' },
-        { id: 'PA-2026-003', department: 'Assembly Line 2', auditor: 'Priya S', date: '2026-09-17', status: 'In Progress', score: 'Ongoing' },
-      ];
+      return res.data?.data || res.data || [];
+    } catch (err) {
+      console.error('Failed to fetch requests from DB:', err);
+      return [];
     }
   },
 
