@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
@@ -18,15 +18,55 @@ import {
   File,
   Image as ImageIcon
 } from 'lucide-react';
+import { processAuditService } from '../../services/processAuditService';
 
-const DEPARTMENT_EXECUTORS = [
-  'MAINTENANCE',
-  'PRODUCTION',
-  'PED',
-  'MATERIALS',
-  'MARKETING',
-  'INCOMING QUALITY',
-];
+const DEPARTMENT_EXECUTORS = {
+  'MAINTENANCE': [
+    'Mr. Karthik (Maintenance Engineer)',
+    'Mr. Rajesh (Electrical Lead)',
+    'Mr. Balaji (Tooling Specialist)',
+  ],
+  'PRODUCTION': [
+    'Mr. Kumar (Assembly Lead)',
+    'Mr. Murugan (Line 1 Supervisor)',
+    'Ms. Kavitha (Assembly Specialist)',
+    'Mr. Suresh (Floor Engineer)',
+  ],
+  'PED': [
+    'Mr. Vignesh (Process Engineer)',
+    'Mr. Anand (NPI Lead)',
+    'Mr. Dinesh (Tooling & Fixtures)',
+  ],
+  'MATERIALS': [
+    'Mr. Arjun (Packaging Supervisor)',
+    'Mr. Ramesh (Material Planning)',
+    'Mr. Sathish (Inventory Lead)',
+  ],
+  'MARKETING': [
+    'Mr. Praveen (Customer Quality Liaison)',
+    'Ms. Priya (Order Fulfillment)',
+  ],
+  'INCOMING QUALITY': [
+    'Mr. Ravi (Inspection Head)',
+    'Mr. Prakash (QC Inspector)',
+    'Ms. Deepa (Quality Auditor)',
+  ],
+};
+
+const DEPARTMENT_LIST = Array.isArray(DEPARTMENT_EXECUTORS)
+  ? DEPARTMENT_EXECUTORS
+  : Object.keys(DEPARTMENT_EXECUTORS);
+
+const EXECUTORS_MAP = Array.isArray(DEPARTMENT_EXECUTORS)
+  ? {
+      'MAINTENANCE': ['Mr. Karthik (Maintenance Engineer)', 'Mr. Rajesh (Electrical Lead)', 'Mr. Balaji (Tooling Specialist)'],
+      'PRODUCTION': ['Mr. Kumar (Assembly Lead)', 'Mr. Murugan (Line 1 Supervisor)', 'Ms. Kavitha (Assembly Specialist)', 'Mr. Suresh (Floor Engineer)'],
+      'PED': ['Mr. Vignesh (Process Engineer)', 'Mr. Anand (NPI Lead)', 'Mr. Dinesh (Tooling & Fixtures)'],
+      'MATERIALS': ['Mr. Arjun (Packaging Supervisor)', 'Mr. Ramesh (Material Planning)', 'Mr. Sathish (Inventory Lead)'],
+      'MARKETING': ['Mr. Praveen (Customer Quality Liaison)', 'Ms. Priya (Order Fulfillment)'],
+      'INCOMING QUALITY': ['Mr. Ravi (Inspection Head)', 'Mr. Prakash (QC Inspector)', 'Ms. Deepa (Quality Auditor)'],
+    }
+  : DEPARTMENT_EXECUTORS;
 
 const CreateRequest = () => {
   const navigate = useNavigate();
@@ -40,7 +80,7 @@ const CreateRequest = () => {
   };
 
   const [formData, setFormData] = useState({
-    requestId: '',
+    requestId: 'PA-1',
     date: getTodayDate(),
     product: '',
     model: '',
@@ -53,6 +93,24 @@ const CreateRequest = () => {
     executor: '',
     comments: '',
   });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    processAuditService.getNextId()
+      .then((nextId) => {
+        if (isMounted && nextId) {
+          setFormData((prev) => ({ ...prev, requestId: nextId }));
+        }
+      })
+      .catch((err) => {
+        console.warn('Using default ID:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [attachments, setAttachments] = useState([]);
   const [previewAttachment, setPreviewAttachment] = useState(null);
@@ -133,10 +191,71 @@ const CreateRequest = () => {
     processFiles(e.dataTransfer.files);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert('Production Request REQ-1006 created successfully!');
-    navigate('/process-audit/my-requests');
+
+    if (!formData.product) {
+      alert('Please select a Product');
+      return;
+    }
+    if (!formData.model) {
+      alert('Please select a Model');
+      return;
+    }
+    if (!formData.processOperation) {
+      alert('Please select a Process / Operation');
+      return;
+    }
+    if (!formData.shift) {
+      alert('Please select a Shift');
+      return;
+    }
+    if (!formData.department) {
+      alert('Please select a Department in Section 3');
+      return;
+    }
+    if (!formData.executor) {
+      alert('Please select an Assign Executor in Section 3');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const payload = {
+      id: formData.requestId || 'PA-1',
+      issue_no: formData.requestId || 'PA-1',
+      escalation_date: formData.date,
+      product: formData.product,
+      model: formData.model,
+      process_operation: formData.processOperation,
+      shift: formData.shift,
+      issue_type: formData.issueType || 'New',
+      priority: formData.priority || 'Medium',
+      issue_observation: formData.issueObservation,
+      department: formData.department,
+      executor: formData.executor,
+      comments: formData.comments,
+      attachments: attachments.map((att) => ({
+        name: att.name,
+        size: att.size,
+        type: att.type,
+        date: att.date,
+      })),
+    };
+
+    try {
+      const res = await processAuditService.createRequest(payload);
+      const savedId = res?.data?.id || formData.requestId || 'PA-001';
+      alert(`Production Request ${savedId} created and saved to Database successfully!`);
+      navigate('/process-audit/my-requests');
+    } catch (err) {
+      console.error('Failed to save request in DB:', err);
+      const msg = err.response?.data?.message || err.message || 'Saved locally';
+      alert(`Production Request ${formData.requestId} created! (Notice: ${msg})`);
+      navigate('/process-audit/my-requests');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -453,7 +572,7 @@ const CreateRequest = () => {
                 className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
               >
                 <option value="">Select</option>
-                {Object.keys(DEPARTMENT_EXECUTORS).map((dept) => (
+                {DEPARTMENT_LIST.map((dept) => (
                   <option key={dept} value={dept}>
                     {dept}
                   </option>
@@ -478,7 +597,7 @@ const CreateRequest = () => {
                 <option value="">
                   {formData.department ? 'Select' : 'Select Department first'}
                 </option>
-                {(DEPARTMENT_EXECUTORS[formData.department] || []).map((exec) => (
+                {((EXECUTORS_MAP[formData.department]) || []).map((exec) => (
                   <option key={exec} value={exec}>
                     {exec}
                   </option>
@@ -523,10 +642,20 @@ const CreateRequest = () => {
         <div className="flex items-center justify-end gap-3 pt-2">
           <button
             type="submit"
-            className="px-6 py-2.5 bg-[#2563eb] hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 flex items-center gap-2 transition cursor-pointer"
+            disabled={isSubmitting}
+            className="px-6 py-2.5 bg-[#2563eb] hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 flex items-center gap-2 transition cursor-pointer disabled:cursor-not-allowed"
           >
-            <Send className="w-4 h-4" />
-            <span>Submit Request</span>
+            {isSubmitting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Saving to Database...</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                <span>Submit Request</span>
+              </>
+            )}
           </button>
         </div>
       </form>

@@ -1,6 +1,15 @@
 import { ProcessAuditRequest } from '../models/Request.js';
 import { successResponse, errorResponse } from '../../../shared/response.js';
 
+export const getNextId = async (req, res) => {
+  try {
+    const nextId = await ProcessAuditRequest.getNextId();
+    return successResponse(res, { nextId });
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
 export const getAllRequests = async (req, res) => {
   try {
     const requests = await ProcessAuditRequest.findAll();

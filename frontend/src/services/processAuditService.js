@@ -29,6 +29,15 @@ export const processAuditService = {
     }
   },
 
+  getNextId: async () => {
+    try {
+      const res = await api.get('/process-audit/requests/next-id');
+      return res.data?.data?.nextId || res.data?.nextId || 'PA-1';
+    } catch {
+      return 'PA-1';
+    }
+  },
+
   createRequest: async (data) => {
     const res = await api.post('/process-audit/requests', data);
     return res.data;

@@ -17,18 +17,21 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Process Audit Production Requests
 CREATE TABLE IF NOT EXISTS process_audit_requests (
-  id VARCHAR(30) PRIMARY KEY,
-  batch_date DATE NOT NULL,
+  id VARCHAR(50) PRIMARY KEY,
+  issue_no VARCHAR(50) NOT NULL,
+  escalation_date DATE NOT NULL,
+  product VARCHAR(100) NOT NULL,
+  model VARCHAR(100) NOT NULL,
+  process_operation VARCHAR(100) NOT NULL,
   shift VARCHAR(50) NOT NULL,
-  priority VARCHAR(20) DEFAULT 'High',
-  quantity VARCHAR(50) NOT NULL,
-  unit VARCHAR(20) DEFAULT 'Units',
-  stage VARCHAR(50) NOT NULL,
-  line VARCHAR(100) NOT NULL,
-  creator VARCHAR(100) NOT NULL,
+  issue_type VARCHAR(50) DEFAULT 'New',
+  priority VARCHAR(50) DEFAULT 'Medium',
+  issue_observation TEXT,
+  attachments JSON,
+  department VARCHAR(100) NOT NULL,
   executor VARCHAR(100) NOT NULL,
-  status VARCHAR(50) DEFAULT 'Pending ',
   comments TEXT,
+  status VARCHAR(50) DEFAULT 'Pending Execution',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
