@@ -19,7 +19,7 @@ export const User = {
   },
 
   create: async (userData) => {
-    const { name, email, password = 'PlantUser@123', role = 'CREATOR', department = 'Production Planning', status = 'ACTIVE' } = userData;
+    const { name, email, password = 'PlantUser@123', role = 'user', department = 'Production Planning', status = 'ACTIVE' } = userData;
     const bcrypt = (await import('bcryptjs')).default;
     const hashedPassword = bcrypt.hashSync(password, 10);
     const [result] = await pool.query(

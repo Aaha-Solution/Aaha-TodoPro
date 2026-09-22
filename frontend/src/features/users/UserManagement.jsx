@@ -13,9 +13,6 @@ import {
   Edit2,
   Trash2,
   X,
-  FileCheck2,
-  AlertCircle,
-  Wrench,
   ChevronDown,
   Check,
   Building2,
@@ -49,12 +46,6 @@ const ROLES = [
   'user'
 ];
 
-const SYSTEMS_CONFIG = [
-  { id: 'processAudit', name: 'Process Audit Observation', short: 'Audit', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  { id: 'ihlr', name: 'IHLR (Line Rejection)', short: 'IHLR', color: 'bg-red-50 text-red-700 border-red-200' },
-  { id: 'tryOutStatus', name: 'Try Out Status', short: 'Try Out', color: 'bg-purple-50 text-purple-700 border-purple-200' },
-];
-
 const UserManagement = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -65,7 +56,6 @@ const UserManagement = () => {
   const [search, setSearch] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [selectedRole, setSelectedRole] = useState('ALL');
-  const [selectedSystemFilter, setSelectedSystemFilter] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -201,23 +191,7 @@ const UserManagement = () => {
     showToast(`Switched active session to: ${targetUser.name} (${targetUser.role})`);
   };
 
-  const toggleSystemSelection = (systemId, isEditing = false) => {
-    if (isEditing) {
-      const current = editingUser.systems || [];
-      const updated = current.includes(systemId)
-        ? current.filter((s) => s !== systemId)
-        : [...current, systemId];
-      setEditingUser({ ...editingUser, systems: updated });
-    } else {
-      const current = formData.systems || [];
-      const updated = current.includes(systemId)
-        ? current.filter((s) => s !== systemId)
-        : [...current, systemId];
-      setFormData({ ...formData, systems: updated });
-    }
-  };
-
-  // Filter logic
+  // Filter logic - users are common for all tabs
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
       u.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -226,21 +200,19 @@ const UserManagement = () => {
 
     const matchesDept = selectedDept === 'ALL' || u.department === selectedDept;
     const matchesRole = selectedRole === 'ALL' || (u.role && u.role.toLowerCase() === selectedRole.toLowerCase());
-    const matchesStatus = selectedStatus === 'ALL' || u.status === selectedStatus;
+    const matchesStatus =
+      selectedStatus === 'ALL' ||
+      (selectedStatus === 'Active' && (u.status === 'Active' || u.status === 'ACTIVE')) ||
+      (selectedStatus === 'Inactive' && (u.status === 'Inactive' || u.status === 'INACTIVE'));
 
-    const userSystems = u.systems || ['processAudit'];
-    const matchesSystem =
-      selectedSystemFilter === 'ALL' || userSystems.includes(selectedSystemFilter);
-
-    return matchesSearch && matchesDept && matchesRole && matchesStatus && matchesSystem;
+    return matchesSearch && matchesDept && matchesRole && matchesStatus;
   });
 
-  // KPI Metrics
+  // KPI Metrics - Unified for all tabs
   const totalCount = users.length;
-  const activeCount = users.filter((u) => u.status === 'Active').length;
-  const processAuditAccessCount = users.filter((u) => (u.systems || ['processAudit']).includes('processAudit')).length;
-  const ihlrAccessCount = users.filter((u) => (u.systems || []).includes('ihlr')).length;
-  const tryOutAccessCount = users.filter((u) => (u.systems || []).includes('tryOutStatus')).length;
+  const activeCount = users.filter((u) => u.status === 'Active' || u.status === 'ACTIVE').length;
+  const adminCount = users.filter((u) => (u.role || '').toLowerCase() === 'admin').length;
+  const standardUserCount = users.filter((u) => (u.role || '').toLowerCase() === 'user').length;
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 antialiased flex flex-col justify-between font-sans">
@@ -294,7 +266,7 @@ const UserManagement = () => {
                 {currentAuthUser?.name?.charAt(0).toUpperCase() || 'A'}
               </div>
               <div className="text-left hidden md:block leading-tight">
-                <span className="block text-xs font-bold text-slate-900">{currentAuthUser?.name || 'iyyu'}</span>
+                <span className="block text-xs font-bold text-slate-900">{currentAuthUser?.name || 'Admin'}</span>
                 <span className="block text-[10px] text-blue-600 font-semibold">Super Admin • Full Control</span>
               </div>
             </div>
@@ -318,7 +290,7 @@ const UserManagement = () => {
               Enterprise User Management
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Common centralized administration for all manufacturing systems: Process Audit Observation, IHLR, and Try Out Status.
+              Common centralized administration across all manufacturing portals with unified access to all tabs.
             </p>
           </div>
 
@@ -330,15 +302,15 @@ const UserManagement = () => {
           </div>
         </div>
 
-        {/* KPI Metrics Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        {/* KPI Metrics Strip - Common across all tabs */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Users</span>
               <Users className="w-4 h-4 text-slate-400" />
             </div>
             <p className="text-2xl font-extrabold text-slate-900">{totalCount}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Across all plants</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Common to all portals</p>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
@@ -352,29 +324,20 @@ const UserManagement = () => {
 
           <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Process Audit</span>
-              <FileCheck2 className="w-4 h-4 text-blue-600" />
+              <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">Admin Users</span>
+              <Shield className="w-4 h-4 text-indigo-600" />
             </div>
-            <p className="text-2xl font-extrabold text-blue-700">{processAuditAccessCount}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Authorized users</p>
+            <p className="text-2xl font-extrabold text-indigo-700">{adminCount}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Full administrative access</p>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold text-red-700 uppercase tracking-wider">IHLR Line</span>
-              <AlertCircle className="w-4 h-4 text-red-600" />
+              <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Standard Users</span>
+              <Users className="w-4 h-4 text-blue-600" />
             </div>
-            <p className="text-2xl font-extrabold text-red-700">{ihlrAccessCount}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Authorized users</p>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs col-span-2 sm:col-span-1">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider">Try Out Status</span>
-              <Wrench className="w-4 h-4 text-purple-600" />
-            </div>
-            <p className="text-2xl font-extrabold text-purple-700">{tryOutAccessCount}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Authorized users</p>
+            <p className="text-2xl font-extrabold text-blue-700">{standardUserCount}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Universal tabs access</p>
           </div>
         </div>
 
@@ -382,7 +345,7 @@ const UserManagement = () => {
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
             {/* Search */}
-            <div className="md:col-span-4 relative">
+            <div className="md:col-span-5 relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
               <input
                 type="text"
@@ -394,7 +357,7 @@ const UserManagement = () => {
             </div>
 
             {/* Department Filter */}
-            <div className="md:col-span-2">
+            <div className="md:col-span-3">
               <select
                 value={selectedDept}
                 onChange={(e) => setSelectedDept(e.target.value)}
@@ -421,20 +384,6 @@ const UserManagement = () => {
               </select>
             </div>
 
-            {/* System Filter */}
-            <div className="md:col-span-2">
-              <select
-                value={selectedSystemFilter}
-                onChange={(e) => setSelectedSystemFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-              >
-                <option value="ALL">All Systems</option>
-                <option value="processAudit">Process Audit</option>
-                <option value="ihlr">IHLR</option>
-                <option value="tryOutStatus">Try Out Status</option>
-              </select>
-            </div>
-
             {/* Status Filter & Reset */}
             <div className="md:col-span-2 flex items-center gap-2">
               <select
@@ -447,16 +396,15 @@ const UserManagement = () => {
                 <option value="Inactive">Inactive</option>
               </select>
 
-              {(search || selectedDept !== 'ALL' || selectedRole !== 'ALL' || selectedSystemFilter !== 'ALL' || selectedStatus !== 'ALL') && (
+              {(search || selectedDept !== 'ALL' || selectedRole !== 'ALL' || selectedStatus !== 'ALL') && (
                 <button
                   onClick={() => {
                     setSearch('');
                     setSelectedDept('ALL');
                     setSelectedRole('ALL');
-                    setSelectedSystemFilter('ALL');
                     setSelectedStatus('ALL');
                   }}
-                  className="px-2.5 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                  className="px-2.5 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
                   title="Reset all filters"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -491,7 +439,6 @@ const UserManagement = () => {
                   <th className="py-3.5 px-4">EMPLOYEE ID</th>
                   <th className="py-3.5 px-4">ROLE</th>
                   <th className="py-3.5 px-4">DEPARTMENT</th>
-                  <th className="py-3.5 px-4">SYSTEM ACCESS</th>
                   <th className="py-3.5 px-4">STATUS</th>
                   <th className="py-3.5 px-6 text-right">ACTIONS</th>
                 </tr>
@@ -499,7 +446,7 @@ const UserManagement = () => {
               <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <td colSpan={6} className="py-12 text-center text-slate-400">
                       <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                       <p className="font-semibold text-slate-600">No personnel found</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">Try refining your search terms or filters.</p>
@@ -508,7 +455,6 @@ const UserManagement = () => {
                 ) : (
                   filteredUsers.map((u) => {
                     const isCurrent = currentAuthUser?.email?.toLowerCase() === u.email?.toLowerCase();
-                    const userSystems = u.systems || ['processAudit'];
 
                     return (
                       <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
@@ -540,13 +486,9 @@ const UserManagement = () => {
                         {/* Role */}
                         <td className="py-4 px-4">
                           <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap ${
-                            u.role?.includes('ADMIN')
+                            u.role?.toLowerCase() === 'admin'
                               ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                              : u.role?.includes('Approver')
-                              ? 'bg-amber-50 text-amber-800 border-amber-200'
-                              : u.role?.includes('Quality')
-                              ? 'bg-blue-50 text-blue-700 border-blue-200'
-                              : 'bg-slate-100 text-slate-700 border-slate-200'
+                              : 'bg-blue-50 text-blue-700 border-blue-200'
                           }`}>
                             {u.role}
                           </span>
@@ -557,37 +499,18 @@ const UserManagement = () => {
                           {u.department}
                         </td>
 
-                        {/* System Access Pills */}
-                        <td className="py-4 px-4">
-                          <div className="flex flex-wrap gap-1 max-w-xs">
-                            {SYSTEMS_CONFIG.map((sys) => {
-                              const hasAccess = userSystems.includes(sys.id);
-                              if (!hasAccess) return null;
-                              return (
-                                <span
-                                  key={sys.id}
-                                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${sys.color}`}
-                                  title={sys.name}
-                                >
-                                  {sys.short}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </td>
-
                         {/* Status Toggle */}
                         <td className="py-4 px-4">
                           <button
                             onClick={() => handleToggleStatus(u)}
                             className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition cursor-pointer ${
-                              u.status === 'Active'
+                              u.status === 'Active' || u.status === 'ACTIVE'
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                 : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
                             }`}
                             title="Click to toggle status"
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full ${u.status === 'Active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full ${u.status === 'Active' || u.status === 'ACTIVE' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
                             <span>{u.status || 'Active'}</span>
                           </button>
                         </td>
@@ -741,32 +664,6 @@ const UserManagement = () => {
                 </div>
               </div>
 
-              {/* Module Access Checkboxes */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Assigned Operational Systems Access
-                </label>
-                <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
-                  {SYSTEMS_CONFIG.map((sys) => {
-                    const isChecked = formData.systems?.includes(sys.id);
-                    return (
-                      <label
-                        key={sys.id}
-                        className="flex items-center gap-2.5 text-xs text-slate-700 font-medium cursor-pointer select-none"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleSystemSelection(sys.id, false)}
-                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-                        />
-                        <span>{sys.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
               {/* Initial Password & Status */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -899,32 +796,6 @@ const UserManagement = () => {
                       <option key={dept} value={dept}>{dept}</option>
                     ))}
                   </select>
-                </div>
-              </div>
-
-              {/* Module Access Checkboxes */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Assigned Operational Systems Access
-                </label>
-                <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
-                  {SYSTEMS_CONFIG.map((sys) => {
-                    const isChecked = editingUser.systems?.includes(sys.id);
-                    return (
-                      <label
-                        key={sys.id}
-                        className="flex items-center gap-2.5 text-xs text-slate-700 font-medium cursor-pointer select-none"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleSystemSelection(sys.id, true)}
-                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-                        />
-                        <span>{sys.name}</span>
-                      </label>
-                    );
-                  })}
                 </div>
               </div>
 
