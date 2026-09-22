@@ -12,9 +12,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  ArrowRight,
-  Shield,
-  ChevronDown
+  ArrowRight
 } from 'lucide-react';
 
 export const Login = () => {
@@ -22,7 +20,6 @@ export const Login = () => {
   const { login } = useAuthContext();
   const [email, setEmail] = useState(() => localStorage.getItem('todo_remembered_email') || 'admin@gmail.com');
   const [password, setPassword] = useState('admin@123');
-  const [role, setRole] = useState('admin');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('todo_remember_me') === 'true');
   const [isLoading, setIsLoading] = useState(false);
@@ -58,8 +55,7 @@ export const Login = () => {
       // Authenticate against backend
       const res = await authService.login({
         email: normalizedEmail,
-        password,
-        role
+        password
       });
 
       const user = res.data?.user || res.user;
@@ -201,27 +197,6 @@ export const Login = () => {
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
-                </div>
-              </div>
-
-              {/* Role */}
-              <div className="space-y-[8px]">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider" htmlFor="role">
-                  Role
-                </label>
-                <div className="relative flex items-center">
-                  <select
-                    id="role"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    disabled={isLoading}
-                    className="w-full bg-[#f8fafc] border border-slate-200 focus:border-violet-600 focus:ring-4 focus:ring-violet-600/10 rounded-[12px] py-[12px] pl-[44px] pr-[40px] text-slate-800 outline-none transition-all text-[14px] appearance-none cursor-pointer"
-                  >
-                    <option value="admin">admin</option>
-                    <option value="user">user</option>
-                  </select>
-                  <Shield className="absolute left-[16px] text-slate-400 pointer-events-none" size={18} />
-                  <ChevronDown className="absolute right-[16px] text-slate-400 pointer-events-none" size={16} />
                 </div>
               </div>
 

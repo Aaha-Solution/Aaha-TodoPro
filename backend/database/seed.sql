@@ -1,10 +1,11 @@
 -- Seed data for India Nippon Electricals Limited Todo
 USE inel_todo;
 
--- Users Table Seed (Only Admin user)
+-- Users Table Seed
 DELETE FROM users;
 INSERT INTO users (id, name, email, password, role, department, status) VALUES
-(1, 'Admin', 'admin@gmail.com', '$2a$10$eKddPnYXFMug3mqTwNdkHeoi6hy2DJ3SwaI1TodOnWMHjyTajPuiu', 'ADMIN', 'Management', 'ACTIVE')
+(1, 'Admin', 'admin@gmail.com', '$2a$10$eKddPnYXFMug3mqTwNdkHeoi6hy2DJ3SwaI1TodOnWMHjyTajPuiu', 'ADMIN', 'Management', 'ACTIVE'),
+(2, 'iyyu', 'iyyu@gmail.com', '$2a$10$l2B52WTglCm4T8WphVzBiO1JEMdOB32J1uqkf/6pQEujglIpdZZWC', 'ADMIN', 'Quality Assurance', 'ACTIVE')
 ON DUPLICATE KEY UPDATE name=VALUES(name), password=VALUES(password), role=VALUES(role);
 
 INSERT INTO process_audit_requests (id, batch_date, shift, priority, quantity, unit, stage, line, creator, executor, status, comments) VALUES

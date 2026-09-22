@@ -5,7 +5,7 @@ import { User } from '../models/User.js';
 
 export const login = async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password } = req.body;
     if (!email || !password) {
       return errorResponse(res, 'Email and password are required', 400);
     }
@@ -25,15 +25,7 @@ export const login = async (req, res) => {
       return errorResponse(res, 'Your account is deactivated. Please contact administrator.', 403);
     }
 
-    // If logging in as admin, check admin permissions
-    if (role && role.toLowerCase() === 'admin') {
-      const userRole = (user.role || '').toLowerCase();
-      if (!userRole.includes('admin')) {
-        return errorResponse(res, 'This account does not have Admin privileges', 403);
-      }
-    }
-
-    // Safe user object without password
+    // Safe user object without password (role comes directly from database)
     const safeUser = {
       id: user.id,
       name: user.name,
