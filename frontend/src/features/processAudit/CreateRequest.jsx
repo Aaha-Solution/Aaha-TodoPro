@@ -16,27 +16,9 @@ import {
 const CreateRequest = () => {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    requestId: 'REQ-1006',
-    date: '2026-09-17',
-    shift: 'Morning (06:00 - 14:30)',
-    priority: 'High',
-    quantity: '1,500',
-    unit: 'Units',
-    stage: 'Assembly',
-    line: 'Line A - Main Chassis Assembly',
-    executor: 'Mr. Kumar (Assembly Lead)',
-    comments: 'Target completion by end of shift. Calibrate digital micrometer prior to starting assembly batch #1006.',
-  });
+  const [formData, setFormData] = useState({});
 
-  const [attachments, setAttachments] = useState([
-    {
-      name: 'Technical_Spec_Sheet_RevB.pdf',
-      size: '1.4 MB',
-      date: 'Uploaded Today',
-      type: 'PDF'
-    }
-  ]);
+  const [attachments, setAttachments] = useState([]);
 
   const removeAttachment = (index) => {
     setAttachments(attachments.filter((_, i) => i !== index));
