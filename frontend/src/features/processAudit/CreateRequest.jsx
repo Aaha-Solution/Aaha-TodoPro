@@ -25,7 +25,7 @@ const CreateRequest = () => {
   };
 
   const [formData, setFormData] = useState({
-    requestId: 'REQ-1006',
+    requestId: 'PA-001',
     date: getTodayDate(),
     shift: 'Morning (06:00 - 14:30)',
     priority: 'New',
@@ -33,29 +33,37 @@ const CreateRequest = () => {
     unit: 'Units',
     stage: 'Assembly',
     line: 'Line A - Main Chassis Assembly',
-    executor: 'Mr. Kumar (Assembly Lead)',
-    comments: 'Target completion by end of shift. Calibrate digital micrometer prior to starting assembly batch #1006.',
+    executor: 'Select Executor',
+    comments: '',
   });
 
   const [attachments, setAttachments] = useState([]);
 
   const removeAttachment = (index) => {
-    setAttachments(attachments.filter((_, i) => i !== index));
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const processFiles = (fileList) => {
+    const files = Array.from(fileList || []);
+    if (files.length > 0) {
+      const newAttachments = files.map((file) => ({
+        name: file.name,
+        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        date: 'Just now',
+        type: file.name.split('.').pop()?.toUpperCase() || 'FILE',
+      }));
+      setAttachments((prev) => [...prev, ...newAttachments]);
+    }
   };
 
   const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setAttachments([
-        ...attachments,
-        {
-          name: file.name,
-          size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-          date: 'Just now',
-          type: file.name.split('.').pop()?.toUpperCase() || 'FILE',
-        },
-      ]);
-    }
+    processFiles(e.target.files);
+    e.target.value = '';
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    processFiles(e.dataTransfer.files);
   };
 
   const handleSubmit = (e) => {
@@ -121,7 +129,7 @@ const CreateRequest = () => {
                     required
                     value={formData.date || ''}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3.5  py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-medium text-slate-500 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500  cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                    className="w-full px-3.5  py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-500 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500  cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   />
                 </div>
               </div>
@@ -182,10 +190,10 @@ const CreateRequest = () => {
             </div>
 
             {/* Row 2 */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Production Quantity *
+                  Process / Operation*
                 </label>
                 <input
                   type="text"
@@ -220,75 +228,50 @@ const CreateRequest = () => {
                   onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                 >
-                  <option>Repeated</option>
-                  <option>New</option>
+
                   <option>High</option>
                   <option>Medium</option>
                   <option>Low</option>
-                  <option>Critical (Hot Lot)</option>
+                  <option>Critical</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Issue Type
+                </label>
+                <select
+                  value={formData.priority}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                >
+                  <option>Repeated</option>
+                  <option>New</option>
 
+                </select>
+              </div>
             </div>
 
             {/* Row 3 */}
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Production Line *
+                Issue / Observation
               </label>
-              <select
-                value={formData.line}
-                onChange={(e) => setFormData({ ...formData, line: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-              >
-                <option>Line A - Main Chassis Assembly</option>
-                <option>Line B - CNC Milling</option>
-                <option>Line C - Optical Inspection</option>
-                <option>Line D - High Speed Pack</option>
-                <option>Raw Material Intake Silo 3</option>
-              </select>
+              <textarea
+                rows={3}
+                value={formData.comments}
+                onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
+                className="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+              />
             </div>
           </div>
         </div>
 
-        {/* Section 2: Assign Executor */}
-        <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
-          <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
-            <UserCheck className="w-5 h-5 text-slate-700 mt-0.5" />
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">2. Assign Executor</h2>
-              <p className="text-xs text-slate-500">
-                Designate the technician or supervisor accountable for running this batch.
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Select Executor *
-            </label>
-            <select
-              value={formData.executor}
-              onChange={(e) => setFormData({ ...formData, executor: e.target.value })}
-              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-            >
-              <option>Mr. Kumar (Assembly Lead)</option>
-              <option>Mr. Ravi (Inspection Head)</option>
-              <option>Mr. Arjun (Packaging Supervisor)</option>
-              <option>Mr. Suresh (Floor Engineer)</option>
-            </select>
-            <span className="text-[11px] text-slate-400 mt-1.5 block">
-              An automated dispatch and in-app alert will notify the executor upon submission.
-            </span>
-          </div>
-        </div>
-
-        {/* Section 3: Attachments & Technical Drawings */}
+        {/* Section 2: Attachments & Technical Drawings */}
         <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
           <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
             <Paperclip className="w-5 h-5 text-slate-700 mt-0.5" />
             <div>
-              <h2 className="text-sm font-bold text-slate-900">3. Attachments & Technical Drawings</h2>
+              <h2 className="text-sm font-bold text-slate-900">2. Attachments & Technical Drawings</h2>
               <p className="text-xs text-slate-500">
                 Upload spec sheets, CAD revisions, BOM documents, or torque tolerance blueprints.
               </p>
@@ -296,8 +279,17 @@ const CreateRequest = () => {
           </div>
 
           {/* Drag & Drop Upload Zone */}
-          <label className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer bg-slate-50/50 hover:bg-slate-50 transition-colors">
-            <input type="file" onChange={handleFileUpload} className="hidden" />
+          <label
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleDrop}
+            className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer bg-slate-50/50 hover:bg-slate-50 transition-colors"
+          >
+            <input
+              type="file"
+              multiple
+              onChange={handleFileUpload}
+              className="hidden"
+            />
             <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
               <UploadCloud className="w-5 h-5" />
             </div>
@@ -305,7 +297,7 @@ const CreateRequest = () => {
               Drag & drop files here or <span className="text-blue-600 underline">browse</span>
             </p>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Supports PDF, PNG, JPG, DOCX (Max 25MB per file)
+              Supports PDF, PNG, JPG, DOCX (Max 25MB per file) • Select multiple files
             </p>
           </label>
 
@@ -342,12 +334,47 @@ const CreateRequest = () => {
           )}
         </div>
 
+
+        {/* Section 3: Assign Executor */}
+        <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
+          <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
+            <UserCheck className="w-5 h-5 text-slate-700 mt-0.5" />
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">3. Assign Executor</h2>
+              <p className="text-xs text-slate-500">
+                Designate the technician or supervisor accountable for running this batch.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Select Executor *
+            </label>
+            <select
+              value={formData.executor}
+              onChange={(e) => setFormData({ ...formData, executor: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+            >
+              <option>Mr. Kumar (Assembly Lead)</option>
+              <option>Mr. Ravi (Inspection Head)</option>
+              <option>Mr. Arjun (Packaging Supervisor)</option>
+              <option>Mr. Suresh (Floor Engineer)</option>
+            </select>
+            <span className="text-[11px] text-slate-400 mt-1.5 block">
+              An automated dispatch and in-app alert will notify the executor upon submission.
+            </span>
+          </div>
+        </div>
+
+
+
         {/* Section 4: Production Notes & Comments */}
         <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
           <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
             <MessageSquare className="w-5 h-5 text-slate-700 mt-0.5" />
             <div>
-              <h2 className="text-sm font-bold text-slate-900">4. Production Notes & Comments</h2>
+              <h2 className="text-sm font-bold text-slate-900">4.  Comments</h2>
               <p className="text-xs text-slate-500">
                 Provide specific handling precautions, tooling notes, or safety instructions.
               </p>
