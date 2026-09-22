@@ -5,23 +5,9 @@ export const authService = {
     try {
       const response = await api.post('/auth/login', credentials);
       return response.data;
-    } catch {
-      // Offline / mock fallback for demonstration if backend is not actively running
-      if (credentials.email) {
-        return {
-          success: true,
-          token: 'mock-jwt-token-todo',
-          user: {
-            id: 1,
-            name: 'iyyu',
-            email: credentials.email || 'iyyu@inel.co.in',
-            role: 'SUPER_ADMIN',
-            department: 'Quality Assurance',
-            permissions: ['ALL']
-          }
-        };
-      }
-      throw new Error('Invalid credentials');
+    } catch (error) {
+      const msg = error.response?.data?.message || error.message || 'Login failed';
+      throw new Error(msg);
     }
   },
 

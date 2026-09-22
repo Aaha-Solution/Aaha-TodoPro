@@ -45,13 +45,8 @@ const DEPARTMENTS = [
 ];
 
 const ROLES = [
-  'SUPER_ADMIN',
-  'Request Creator',
-  'Line Execution Lead',
-  'Quality & Inspection Lead',
-  'Machining Specialist',
-  'Approver 1 (Production Manager)',
-  'Approver 2 (Plant Head / Director)'
+  'admin',
+  'user'
 ];
 
 const SYSTEMS_CONFIG = [
@@ -83,7 +78,7 @@ const UserManagement = () => {
     employeeId: '',
     name: '',
     email: '',
-    role: 'Request Creator',
+    role: 'admin',
     department: 'Production Planning',
     status: 'Active',
     systems: ['processAudit', 'ihlr', 'tryOutStatus'],
@@ -117,7 +112,7 @@ const UserManagement = () => {
     setFormData({
       name: '',
       email: '',
-      role: 'CREATOR',
+      role: 'admin',
       department: 'Production Planning',
       status: 'ACTIVE',
       systems: ['processAudit', 'ihlr', 'tryOutStatus'],
@@ -230,7 +225,7 @@ const UserManagement = () => {
       String(u.id)?.toLowerCase().includes(search.toLowerCase());
 
     const matchesDept = selectedDept === 'ALL' || u.department === selectedDept;
-    const matchesRole = selectedRole === 'ALL' || u.role === selectedRole;
+    const matchesRole = selectedRole === 'ALL' || (u.role && u.role.toLowerCase() === selectedRole.toLowerCase());
     const matchesStatus = selectedStatus === 'ALL' || u.status === selectedStatus;
 
     const userSystems = u.systems || ['processAudit'];

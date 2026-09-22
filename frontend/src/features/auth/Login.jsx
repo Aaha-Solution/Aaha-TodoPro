@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../context/AuthContext';
+import { authService } from '../../services/authService';
 import bgImage from '../../assets/background-image.JPG';
 import nipponLogo from '../../assets/Nippon Logo.png';
 import {
@@ -11,7 +12,9 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  ArrowRight
+  ArrowRight,
+  Shield,
+  ChevronDown
 } from 'lucide-react';
 
 export const Login = () => {
@@ -19,6 +22,7 @@ export const Login = () => {
   const { login } = useAuthContext();
   const [email, setEmail] = useState(() => localStorage.getItem('todo_remembered_email') || 'admin@gmail.com');
   const [password, setPassword] = useState('admin@123');
+  const [role, setRole] = useState('admin');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('todo_remember_me') === 'true');
   const [isLoading, setIsLoading] = useState(false);
@@ -51,16 +55,17 @@ export const Login = () => {
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      // Set auth tokens and user for Todo system
-      const token = 'todo_jwt_token_sample_2026';
-      const defaultUser = {
-        id: 1,
-        name: 'iyyu',
+      // Authenticate against backend
+      const res = await authService.login({
         email: normalizedEmail,
-        role: 'CREATOR',
-        department: 'Production Planning'
-      };
-      login(defaultUser, token);
+        password,
+        role
+      });
+
+      const user = res.data?.user || res.user;
+      const token = res.data?.token || res.token || 'todo_jwt_token_sample_2026';
+
+      login(user, token);
       localStorage.setItem('todo_token', token);
       localStorage.setItem('4m_todo_token', token);
 
@@ -72,12 +77,12 @@ export const Login = () => {
         localStorage.removeItem('todo_remember_me');
       }
 
-      setSuccessMsg('Welcome back! Authenticating as Request Creator...');
+      setSuccessMsg(`Welcome back, ${user.name || 'Admin'}!`);
       setIsLoading(false);
 
       setTimeout(() => {
         navigate('/system-selection');
-      }, 500);
+      }, 400);
 
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.message || 'Server error. Please make sure the backend is running.';
@@ -196,6 +201,27 @@ export const Login = () => {
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
+                </div>
+              </div>
+
+              {/* Role */}
+              <div className="space-y-[8px]">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider" htmlFor="role">
+                  Role
+                </label>
+                <div className="relative flex items-center">
+                  <select
+                    id="role"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    disabled={isLoading}
+                    className="w-full bg-[#f8fafc] border border-slate-200 focus:border-violet-600 focus:ring-4 focus:ring-violet-600/10 rounded-[12px] py-[12px] pl-[44px] pr-[40px] text-slate-800 outline-none transition-all text-[14px] appearance-none cursor-pointer"
+                  >
+                    <option value="admin">admin</option>
+                    <option value="user">user</option>
+                  </select>
+                  <Shield className="absolute left-[16px] text-slate-400 pointer-events-none" size={18} />
+                  <ChevronDown className="absolute right-[16px] text-slate-400 pointer-events-none" size={16} />
                 </div>
               </div>
 
