@@ -19,38 +19,14 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 
-const DEPARTMENT_EXECUTORS = {
-  'PRODUCTION': [
-    'Mr. Kumar (Assembly Lead)',
-    'Mr. Murugan (Line 1 Supervisor)',
-    'Ms. Kavitha (Assembly Specialist)',
-    'Mr. Suresh (Floor Engineer)',
-  ],
-  'INCOMING QUALITY': [
-    'Mr. Ravi (Inspection Head)',
-    'Mr. Prakash (QC Inspector)',
-    'Ms. Deepa (Quality Auditor)',
-  ],
-  'MAINTENANCE': [
-    'Mr. Karthik (Maintenance Engineer)',
-    'Mr. Rajesh (Electrical Lead)',
-    'Mr. Balaji (Tooling Specialist)',
-  ],
-  'PED': [
-    'Mr. Vignesh (Process Engineer)',
-    'Mr. Anand (NPI Lead)',
-    'Mr. Dinesh (Tooling & Fixtures)',
-  ],
-  'MATERIALS': [
-    'Mr. Arjun (Packaging Supervisor)',
-    'Mr. Ramesh (Material Planning)',
-    'Mr. Sathish (Inventory Lead)',
-  ],
-  'MARKETING': [
-    'Mr. Praveen (Customer Quality Liaison)',
-    'Ms. Priya (Order Fulfillment)',
-  ],
-};
+const DEPARTMENT_EXECUTORS = [
+  'MAINTENANCE',
+  'PRODUCTION',
+  'PED',
+  'MATERIALS',
+  'MARKETING',
+  'INCOMING QUALITY',
+];
 
 const CreateRequest = () => {
   const navigate = useNavigate();
@@ -495,8 +471,8 @@ const CreateRequest = () => {
                 value={formData.executor}
                 onChange={(e) => setFormData({ ...formData, executor: e.target.value })}
                 className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium transition ${formData.department
-                    ? 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
-                    : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                  ? 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
+                  : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
               >
                 <option value="">
@@ -642,10 +618,10 @@ const CreateRequest = () => {
                           href={previewAttachment.url}
                           download={previewAttachment.name}
                           className={`inline-flex items-center gap-2 px-4 py-2.5 text-white text-xs font-semibold rounded-xl shadow-xs transition ${previewAttachment.isExcel
-                              ? 'bg-emerald-600 hover:bg-emerald-700'
-                              : previewAttachment.isPpt
-                                ? 'bg-orange-600 hover:bg-orange-700'
-                                : 'bg-blue-600 hover:bg-blue-700'
+                            ? 'bg-emerald-600 hover:bg-emerald-700'
+                            : previewAttachment.isPpt
+                              ? 'bg-orange-600 hover:bg-orange-700'
+                              : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                         >
                           <Download className="w-4 h-4" />
