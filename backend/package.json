@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node gateway/src/server.js",
     "dev": "concurrently -k -n \"GATEWAY,AUTH,PROCESS-AUDIT,IHLR,TRYOUT,STOPPER\" -c \"cyan.bold,magenta.bold,blue.bold,green.bold,yellow.bold,red.bold\" \"nodemon gateway/src/server.js\" \"nodemon services/auth-service/src/server.js\" \"nodemon services/process-audit-service/src/server.js\" \"nodemon services/ihlr-service/src/server.js\" \"nodemon services/tryout-service/src/server.js\" \"nodemon services/stopper-service/src/server.js\"",
+    "dev:pa": "concurrently -k -n \"GATEWAY,AUTH,PROCESS-AUDIT\" -c \"cyan.bold,magenta.bold,blue.bold\" \"nodemon gateway/src/server.js\" \"nodemon services/auth-service/src/server.js\" \"nodemon services/process-audit-service/src/server.js\"",
     "dev:gateway": "nodemon gateway/src/server.js",
     "dev:auth": "nodemon services/auth-service/src/server.js",
     "dev:process-audit": "nodemon services/process-audit-service/src/server.js",
