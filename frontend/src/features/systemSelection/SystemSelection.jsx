@@ -6,7 +6,9 @@ import {
   Wrench, 
   ArrowRight, 
   LogOut, 
-  Info
+  Info,
+  UserPlus,
+  Users
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -104,8 +106,36 @@ const SystemSelection = () => {
         </div>
 
         {/* Right User Bar */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3 sm:gap-4">
+          {/* Admin User Management / Add User Feature */}
+          <button
+            onClick={() => navigate('/users?action=new')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-all shadow-2xs cursor-pointer group"
+            title="Add new user or manage roles"
+          >
+            <UserPlus className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+            <span>Add User</span>
+            <span className="hidden sm:inline-block text-[9px] font-extrabold bg-blue-600 text-white px-1.5 py-0.2 rounded uppercase tracking-wider">
+              Admin
+            </span>
+          </button>
+
+          <button
+            onClick={() => navigate('/users')}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-all shadow-2xs cursor-pointer"
+            title="Enterprise User Directory"
+          >
+            <Users className="w-3.5 h-3.5 text-slate-500" />
+            <span>Users</span>
+          </button>
+
+          <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+
+          <div 
+            onClick={() => navigate('/users')}
+            className="flex items-center gap-2.5 cursor-pointer hover:opacity-85 transition"
+            title="Manage user directory"
+          >
             <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
               {currentUserName.charAt(0).toUpperCase()}
             </div>
@@ -114,7 +144,7 @@ const SystemSelection = () => {
                 Logged in as <span className="font-bold text-slate-900">{currentUserName}</span>
               </div>
               <div className="text-[10px] text-slate-400 font-medium">
-                Request Creator • Production Planning
+                Admin • Production Planning
               </div>
             </div>
           </div>

@@ -1,13 +1,10 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  users: [
-    { id: 1, name: 'iyyu', email: 'iyyu@inel.co.in', role: 'SUPER_ADMIN', department: 'Quality', status: 'Active' },
-    { id: 2, name: 'Ramesh Kumar', email: 'ramesh@inel.co.in', role: 'AUDITOR', department: 'Operations', status: 'Active' },
-    { id: 3, name: 'Kavitha R', email: 'kavitha@inel.co.in', role: 'ENGINEER', department: 'Maintenance', status: 'Active' },
-  ],
+  users: [],
   selectedUser: null,
   loading: false,
+  error: null
 };
 
 export const userSlice = createSlice({
@@ -15,25 +12,43 @@ export const userSlice = createSlice({
   initialState,
   reducers: {
     setUsers: (state, action) => {
-      state.users = action.payload;
+      state.users = action.payload || [];
     },
     setSelectedUser: (state, action) => {
       state.selectedUser = action.payload;
     },
     addUser: (state, action) => {
-      state.users.push(action.payload);
+      state.users = [action.payload, ...state.users.filter((u) => u.id !== action.payload.id)];
     },
     updateUser: (state, action) => {
-      const index = state.users.findIndex(u => u.id === action.payload.id);
+      const index = state.users.findIndex((u) => String(u.id) === String(action.payload.id));
       if (index !== -1) {
-        state.users[index] = action.payload;
+        state.users[index] = { ...state.users[index], ...action.payload };
       }
     },
     deleteUser: (state, action) => {
-      state.users = state.users.filter(u => u.id !== action.payload);
+      state.users = state.users.filter((u) => String(u.id) !== String(action.payload));
     },
+    toggleUserStatus: (state, action) => {
+      const user = state.users.find((u) => String(u.id) === String(action.payload));
+      if (user) {
+        user.status = user.status === 'Active' || user.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      }
+    },
+    setLoading: (state, action) => {
+      state.loading = action.payload;
+    }
   },
 });
 
-export const { setUsers, setSelectedUser, addUser, updateUser, deleteUser } = userSlice.actions;
+export const {
+  setUsers,
+  setSelectedUser,
+  addUser,
+  updateUser,
+  deleteUser,
+  toggleUserStatus,
+  setLoading
+} = userSlice.actions;
+
 export default userSlice.reducer;

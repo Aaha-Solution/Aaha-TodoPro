@@ -17,8 +17,8 @@ import {
 export const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuthContext();
-  const [email, setEmail] = useState(() => localStorage.getItem('todo_remembered_email') || 'iyyu@gmail.com');
-  const [password, setPassword] = useState('Admin@123');
+  const [email, setEmail] = useState(() => localStorage.getItem('todo_remembered_email') || 'admin@gmail.com');
+  const [password, setPassword] = useState('admin@123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('todo_remember_me') === 'true');
   const [isLoading, setIsLoading] = useState(false);

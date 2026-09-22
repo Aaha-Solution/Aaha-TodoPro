@@ -1,11 +1,11 @@
 -- Seed data for India Nippon Electricals Limited Todo
 USE inel_todo;
 
+-- Users Table Seed (Only Admin user)
+DELETE FROM users;
 INSERT INTO users (id, name, email, password, role, department, status) VALUES
-(1, 'iyyu', 'iyyu@gmail.com', '$2a$10$e8wY8h1s5hW8o3kYvT23uOXeYJ6R7z8h.qP1Y9aZ4b1m2n3o4p5q', 'CREATOR', 'Production Planning', 'ACTIVE'),
-(2, 'Mr. Kumar', 'kumar@inel.co.in', '$2a$10$e8wY8h1s5hW8o3kYvT23uOXeYJ6R7z8h.qP1Y9aZ4b1m2n3o4p5q', 'FLOOR_LEAD', 'Assembly Line A', 'ACTIVE'),
-(3, 'Mr. Ravi', 'ravi@inel.co.in', '$2a$10$e8wY8h1s5hW8o3kYvT23uOXeYJ6R7z8h.qP1Y9aZ4b1m2n3o4p5q', 'AUDITOR', 'Optical Inspection', 'ACTIVE')
-ON DUPLICATE KEY UPDATE name=VALUES(name);
+(1, 'Admin', 'admin@gmail.com', '$2a$10$eKddPnYXFMug3mqTwNdkHeoi6hy2DJ3SwaI1TodOnWMHjyTajPuiu', 'ADMIN', 'Management', 'ACTIVE')
+ON DUPLICATE KEY UPDATE name=VALUES(name), password=VALUES(password), role=VALUES(role);
 
 INSERT INTO process_audit_requests (id, batch_date, shift, priority, quantity, unit, stage, line, creator, executor, status, comments) VALUES
 ('REQ-1001', '2026-09-03', 'Morning', 'High', '1,250', 'Units', 'Assembly', 'Line A - Main Chassis Assembly', 'iyyu', 'Mr. Kumar', 'Pending Execution', 'Target completion by end of shift.'),

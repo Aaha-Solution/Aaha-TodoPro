@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, ChevronDown, Bell, AlertOctagon } from 'lucide-react';
+import { Menu, ChevronDown, Bell, AlertOctagon, UserPlus, Users } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useDispatch, useSelector } from 'react-redux';
@@ -53,7 +53,26 @@ const Header = ({ toggleSidebar }) => {
       </div>
 
       {/* Right User & Stopper Controls */}
-      <div className="flex items-center gap-3 sm:gap-5">
+      <div className="flex items-center gap-2 sm:gap-4">
+        {/* Common Enterprise User Management / Add User Button */}
+        <button
+          onClick={() => navigate('/users?action=new')}
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition shadow-2xs cursor-pointer"
+          title="Add New Enterprise User"
+        >
+          <UserPlus className="w-3.5 h-3.5 text-blue-600" />
+          <span>Add User</span>
+        </button>
+
+        <button
+          onClick={() => navigate('/users')}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 border border-slate-200/60 rounded-xl transition shadow-2xs cursor-pointer"
+          title="Enterprise User Directory"
+        >
+          <Users className="w-3.5 h-3.5 text-slate-600" />
+          <span className="hidden md:inline">Users</span>
+        </button>
+
         {/* Emergency Line Stopper Pill */}
         <button
           onClick={() => dispatch(openStopperModal())}
@@ -80,8 +99,9 @@ const Header = ({ toggleSidebar }) => {
 
         {/* User Info Avatar */}
         <div 
-          onClick={() => navigate('/process-audit/profile')}
+          onClick={() => navigate('/users')}
           className="flex items-center gap-2.5 cursor-pointer select-none"
+          title="Manage Users & Profile"
         >
           <div className="w-8 h-8 rounded-full bg-[#2563eb] text-white flex items-center justify-center font-bold text-xs shadow-sm">
             {user?.name ? user.name.charAt(0).toUpperCase() : 'I'}

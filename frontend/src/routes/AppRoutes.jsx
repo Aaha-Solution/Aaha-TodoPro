@@ -10,13 +10,14 @@ import Login from '../features/auth/Login';
 import ForgotPassword from '../features/auth/ForgotPassword';
 import SystemSelection from '../features/systemSelection/SystemSelection';
 
+// Common User & Access Management Feature
+import UserManagement from '../features/users/UserManagement';
+
 // Process Audit Observation Feature
 import ProcessAuditDashboard from '../features/processAudit/Dashboard';
 import CreateRequest from '../features/processAudit/CreateRequest';
 import MyRequests from '../features/processAudit/MyRequests';
 import ProcessAuditNotifications from '../features/processAudit/Notifications';
-import ProcessAuditUsers from '../features/processAudit/users/Users';
-import CreateUser from '../features/processAudit/users/CreateUser';
 import EditUser from '../features/processAudit/users/EditUser';
 import UserDetails from '../features/processAudit/users/UserDetails';
 
@@ -38,6 +39,10 @@ const AppRoutes = () => {
         <Route path="/system-selection" element={<SystemSelection />} />
         <Route path="/dashboard" element={<Navigate to="/process-audit/dashboard" replace />} />
 
+        {/* Common Project-Wide User Management & Admin Add User */}
+        <Route path="/users" element={<UserManagement />} />
+        <Route path="/admin/users" element={<UserManagement />} />
+
         {/* Process Audit Observation Module Workspace */}
         <Route path="/process-audit" element={<DashboardLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
@@ -46,8 +51,8 @@ const AppRoutes = () => {
           <Route path="my-requests" element={<MyRequests />} />
           <Route path="notifications" element={<ProcessAuditNotifications />} />
           <Route path="profile" element={<UserDetails />} />
-          <Route path="users" element={<ProcessAuditUsers />} />
-          <Route path="users/create" element={<CreateUser />} />
+          <Route path="users" element={<UserManagement />} />
+          <Route path="users/create" element={<Navigate to="/users?action=new" replace />} />
           <Route path="users/edit/:id" element={<EditUser />} />
           <Route path="users/:id" element={<UserDetails />} />
         </Route>

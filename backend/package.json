@@ -1,18 +1,27 @@
 {
   "name": "inel-todo-backend",
   "version": "1.0.0",
-  "description": "India Nippon Electricals Limited - Todo Backend API",
-  "main": "src/server.js",
+  "description": "India Nippon Electricals Limited - Todo Microservices Backend",
+  "main": "gateway/src/server.js",
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "start": "node gateway/src/server.js",
+    "dev": "concurrently -k -n \"GATEWAY,AUTH,PROCESS-AUDIT,IHLR,TRYOUT,STOPPER\" -c \"cyan.bold,magenta.bold,blue.bold,green.bold,yellow.bold,red.bold\" \"nodemon gateway/src/server.js\" \"nodemon services/auth-service/src/server.js\" \"nodemon services/process-audit-service/src/server.js\" \"nodemon services/ihlr-service/src/server.js\" \"nodemon services/tryout-service/src/server.js\" \"nodemon services/stopper-service/src/server.js\"",
+    "dev:gateway": "nodemon gateway/src/server.js",
+    "dev:auth": "nodemon services/auth-service/src/server.js",
+    "dev:process-audit": "nodemon services/process-audit-service/src/server.js",
+    "dev:ihlr": "nodemon services/ihlr-service/src/server.js",
+    "dev:tryout": "nodemon services/tryout-service/src/server.js",
+    "dev:stopper": "nodemon services/stopper-service/src/server.js",
+    "dev:legacy": "nodemon src/legacyServer.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "concurrently": "^10.0.5",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "http-proxy-middleware": "^4.2.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.11.3"

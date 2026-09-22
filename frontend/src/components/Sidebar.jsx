@@ -9,7 +9,8 @@ import {
   LogOut,
   ChevronRight,
   X,
-  AlertOctagon
+  AlertOctagon,
+  Users
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useDispatch, useSelector } from 'react-redux';
@@ -30,6 +31,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
     { name: 'Dashboard', path: '/process-audit/dashboard', icon: LayoutDashboard },
     { name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true },
     { name: 'My Requests', path: '/process-audit/my-requests', icon: Layers },
+    { name: 'User Management', path: '/users', icon: Users },
     { name: 'Notifications', path: '/process-audit/notifications', icon: Bell },
     { name: 'Profile', path: '/process-audit/profile', icon: User },
   ];
