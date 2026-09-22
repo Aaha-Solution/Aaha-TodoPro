@@ -32,6 +32,7 @@ const CreateRequest = () => {
     shift: 'Morning (06:00 - 14:30)',
     priority: 'Select',
     issueType: 'Select',
+    processOperation: 'Assembly & Sub-Assembly',
     quantity: '1,500',
     unit: 'Units',
     stage: 'Assembly',
