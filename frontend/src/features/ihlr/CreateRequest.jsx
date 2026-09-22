@@ -7,8 +7,6 @@ import {
   Calendar, 
   Layers, 
   ShieldAlert, 
-  Wrench, 
-  CheckCircle2, 
   Trash2, 
   ArrowLeft,
   Image as ImageIcon
@@ -31,27 +29,16 @@ const IhlrCreateRequest = () => {
     actual_qty: 1,
     four_m: 'MAN',
     resp: 'PROD',
-    action: '',
-    target_date: '',
-    remarks: '',
     status: 'OPEN'
   });
 
   const [qaWhyWhy, setQaWhyWhy] = useState(['', '', '', '', '']);
-  const [prodWhyWhy, setProdWhyWhy] = useState(['', '', '', '', '']);
   const [defectImage, setDefectImage] = useState('');
-  const [evidenceName, setEvidenceName] = useState('');
 
   const handleQaWhyChange = (index, value) => {
     const updated = [...qaWhyWhy];
     updated[index] = value;
     setQaWhyWhy(updated);
-  };
-
-  const handleProdWhyChange = (index, value) => {
-    const updated = [...prodWhyWhy];
-    updated[index] = value;
-    setProdWhyWhy(updated);
   };
 
   const handleImageUpload = (e) => {
@@ -62,13 +49,6 @@ const IhlrCreateRequest = () => {
         setDefectImage(reader.result);
       };
       reader.readAsDataURL(file);
-    }
-  };
-
-  const handleEvidenceUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setEvidenceName(file.name);
     }
   };
 
@@ -84,9 +64,7 @@ const IhlrCreateRequest = () => {
       await ihlrService.createRequest({
         ...formData,
         qa_why_why: qaWhyWhy,
-        prod_why_why: prodWhyWhy,
-        defect_image: defectImage,
-        evidence_attachment: evidenceName || 'Attachment_Evidence.pdf'
+        defect_image: defectImage
       });
       alert('IHLR Analysis Report submitted successfully!');
       navigate('/ihlr/my-requests');
@@ -365,121 +343,7 @@ const IhlrCreateRequest = () => {
           </div>
         </div>
 
-        {/* Section 3: CLOSER Section (Production Occurrence & Countermeasures) */}
-        <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs space-y-4">
-          <div className="flex items-start gap-3 pb-4 border-b border-slate-100">
-            <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
-              <Wrench className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                3. Occurrence Cause &amp; Closer (Orange Phase - Production Team)
-              </h2>
-              <p className="text-xs text-slate-500">
-                Production occurrence 5-Why, corrective containment countermeasures, and target closure date.
-              </p>
-            </div>
-          </div>
 
-          {/* Production 5-Why */}
-          <div className="space-y-3">
-            <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-              Occurrence Cause Why-Why (Production Team)
-            </label>
-            {prodWhyWhy.map((val, idx) => (
-              <div key={idx} className="flex items-center gap-3">
-                <span className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 font-mono font-bold text-xs flex items-center justify-center shrink-0">
-                  W{idx + 1}
-                </span>
-                <input
-                  type="text"
-                  placeholder={`Production Why #${idx + 1} occurrence cause...`}
-                  value={val}
-                  onChange={(e) => handleProdWhyChange(idx, e.target.value)}
-                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
-                />
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 text-xs">
-            {/* Action Taken */}
-            <div className="md:col-span-2">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Corrective Countermeasure Action Taken *
-              </label>
-              <textarea
-                rows={3}
-                placeholder="Describe specific engineering/floor containment action executed..."
-                value={formData.action}
-                onChange={(e) => setFormData({ ...formData, action: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-              />
-            </div>
-
-            {/* Target Date */}
-            <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Target Completion Date
-              </label>
-              <input
-                type="date"
-                value={formData.target_date}
-                onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-              />
-            </div>
-
-            {/* Evidence Attachment */}
-            <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Evidence Attachment (PPT / JPEG / EXCEL / PDF)
-              </label>
-              <label className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition">
-                <span className="truncate text-slate-700">
-                  {evidenceName || 'Attach verification file...'}
-                </span>
-                <UploadCloud className="w-4 h-4 text-slate-400 shrink-0" />
-                <input 
-                  type="file" 
-                  accept=".pdf,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png" 
-                  onChange={handleEvidenceUpload} 
-                  className="hidden" 
-                />
-              </label>
-            </div>
-
-            {/* Remarks */}
-            <div className="md:col-span-2">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Operational Remarks
-              </label>
-              <input
-                type="text"
-                placeholder="Optional audit notes or containment observation..."
-                value={formData.remarks}
-                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-              />
-            </div>
-
-            {/* Initial Status */}
-            <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Initial Report Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-              >
-                <option value="OPEN">OPEN (Containment Required)</option>
-                <option value="IN_PROGRESS">IN PROGRESS (Why-Why Analysis Underway)</option>
-                <option value="CLOSED">CLOSED (Resolved &amp; Verified)</option>
-              </select>
-            </div>
-          </div>
-        </div>
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 pt-2">
