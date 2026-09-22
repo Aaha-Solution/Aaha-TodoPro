@@ -12,10 +12,11 @@ const DashboardLayout = () => {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
-      <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-      <div className="flex flex-1">
-        <Sidebar isOpen={sidebarOpen} closeSidebar={() => setSidebarOpen(false)} />
-        <main className="flex-1 lg:ml-64 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full transition-all">
+      <Sidebar isOpen={sidebarOpen} closeSidebar={() => setSidebarOpen(false)} />
+      
+      <div className="flex-1 flex flex-col lg:pl-64 transition-all">
+        <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 w-full transition-all">
           {/* Global Line Stopper Alert Banner (hidden on Create Production Request) */}
           {!isCreateRequest && <LineStopperBanner />}
           <Outlet />

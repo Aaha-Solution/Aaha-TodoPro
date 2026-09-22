@@ -46,10 +46,7 @@ const Header = ({ toggleSidebar }) => {
           <ChevronDown className="w-3.5 h-3.5 text-slate-500 ml-0.5" />
         </div>
 
-        {/* Subtitle Breadcrumb matching screenshots */}
-        <span className="text-xs font-semibold text-slate-500 hidden md:block">
-          {pageTitle}
-        </span>
+       
       </div>
 
       {/* Right User & Stopper Controls */}

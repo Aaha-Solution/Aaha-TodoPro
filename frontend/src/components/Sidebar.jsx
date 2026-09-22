@@ -136,20 +136,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
             })}
           </nav>
 
-          {/* Emergency Line Stopper Quick Button */}
-          <div className="my-4 pt-4 border-t border-slate-800/80">
-            <button
-              onClick={() => dispatch(openStopperModal())}
-              className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
-                activeStopperCount > 0
-                  ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse'
-                  : 'bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/40'
-              }`}
-            >
-              <AlertOctagon className="w-4 h-4" />
-              <span>{activeStopperCount > 0 ? `Stopper Active (${activeStopperCount})` : 'Line Stopper'}</span>
-            </button>
-          </div>
+         
         </div>
 
         {/* Bottom Actions: Notifications & Logout */}
