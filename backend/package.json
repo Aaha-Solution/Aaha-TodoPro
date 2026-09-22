@@ -12,8 +12,7 @@
     "dev:process-audit": "nodemon services/process-audit-service/src/server.js",
     "dev:ihlr": "nodemon services/ihlr-service/src/server.js",
     "dev:tryout": "nodemon services/tryout-service/src/server.js",
-    "dev:stopper": "nodemon services/stopper-service/src/server.js",
-    "dev:legacy": "nodemon src/legacyServer.js"
+    "dev:stopper": "nodemon services/stopper-service/src/server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
