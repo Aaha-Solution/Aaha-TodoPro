@@ -15,7 +15,7 @@ import {
   Download,
   FileSpreadsheet,
   Presentation,
-  File,
+  File as FileIcon,
   Image as ImageIcon
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
@@ -152,7 +152,7 @@ const CreateRequest = () => {
     }
     return {
       badgeBg: 'bg-slate-50 text-slate-700 border-slate-200',
-      icon: File,
+      icon: FileIcon,
       typeName: 'Document',
     };
   };
@@ -167,6 +167,7 @@ const CreateRequest = () => {
         const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
         const isPpt = ['PPT', 'PPTX', 'PPSX'].includes(ext);
         return {
+          file, // Keep raw File instance for backend upload
           name: file.name,
           size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
           date: 'Just now',
@@ -222,6 +223,33 @@ const CreateRequest = () => {
 
     setIsSubmitting(true);
 
+    // Upload physical attachment files to backend uploads/attachments folder
+    let uploadedFilesMeta = [];
+    const filesToUpload = attachments
+      .filter((att) => att.file && (typeof window !== 'undefined' && window.File ? att.file instanceof window.File : true))
+      .map((att) => att.file);
+
+    if (filesToUpload.length > 0) {
+      try {
+        uploadedFilesMeta = await processAuditService.uploadAttachments(filesToUpload);
+      } catch (uploadErr) {
+        console.warn('Attachments upload notice:', uploadErr);
+      }
+    }
+
+    const finalAttachments = attachments.map((att) => {
+      const match = uploadedFilesMeta.find((u) => u.name === att.name);
+      return {
+        name: att.name,
+        size: att.size,
+        type: att.type,
+        date: att.date,
+        path: match?.path || `uploads/attachments/${att.name}`,
+        url: match?.url || att.url || '',
+        filename: match?.filename || '',
+      };
+    });
+
     const formattedIssueNo = String(formData.requestId || '').startsWith('PA-')
       ? formData.requestId
       : `PA-${formData.requestId || '1'}`;
@@ -239,12 +267,7 @@ const CreateRequest = () => {
       department: formData.department,
       executor: formData.executor,
       comments: formData.comments,
-      attachments: attachments.map((att) => ({
-        name: att.name,
-        size: att.size,
-        type: att.type,
-        date: att.date,
-      })),
+      attachments: finalAttachments,
     };
 
     try {

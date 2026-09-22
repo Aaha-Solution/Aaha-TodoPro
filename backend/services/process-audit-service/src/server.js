@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import requestRoutes from './routes/requestRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
@@ -18,6 +19,14 @@ const PORT = process.env.PORT || 5002;
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static uploads folder (e.g. uploaded documents, technical drawings, images)
+const uploadsDir = path.resolve(__dirname, '../uploads');
+if (!fs.existsSync(path.join(uploadsDir, 'attachments'))) {
+  fs.mkdirSync(path.join(uploadsDir, 'attachments'), { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
+app.use('/api/process-audit/uploads', express.static(uploadsDir));
 
 // Health Check
 app.get('/health', (req, res) => {
