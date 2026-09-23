@@ -12,10 +12,19 @@ import {
   FileText,
   ShieldAlert,
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  Download,
+  FileSpreadsheet,
+  Check,
+  Paperclip
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { ihlrService } from '../../services/ihlrService';
+import { IhlrAttachmentThumbnail, parseAttachments } from './IhlrAttachmentView';
 import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
+import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 
 const IhlrApprovals = () => {
   const [requests, setRequests] = useState([]);
@@ -23,6 +32,11 @@ const IhlrApprovals = () => {
   const [search, setSearch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [activeModalRequest, setActiveModalRequest] = useState(null);
+  const [selectedPreviewAttachment, setSelectedPreviewAttachment] = useState(null);
+
+  // Export State
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFormat, setExportFormat] = useState('excel'); // 'excel' | 'pdf'
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -54,14 +68,136 @@ const IhlrApprovals = () => {
 
   const filtered = requests.filter((r) => {
     const matchesSearch =
-      r.req_no.toLowerCase().includes(search.toLowerCase()) ||
-      r.problem.toLowerCase().includes(search.toLowerCase()) ||
-      r.model.toLowerCase().includes(search.toLowerCase()) ||
+      (r.req_no || '').toLowerCase().includes(search.toLowerCase()) ||
+      (r.problem || '').toLowerCase().includes(search.toLowerCase()) ||
+      (r.model || '').toLowerCase().includes(search.toLowerCase()) ||
       (r.received_from || '').toLowerCase().includes(search.toLowerCase()) ||
       (r.analysis_done_by || '').toLowerCase().includes(search.toLowerCase());
     const matchesStatus = selectedStatus === 'All' || r.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
+
+  // Export to Excel (.xlsx)
+  const handleExportExcel = () => {
+    try {
+      const exportData = filtered.map((r, index) => ({
+        'SL NO': index + 1,
+        'REQ NO': String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
+        'DATE': r.batch_date ? r.batch_date.split('T')[0] : '—',
+        'SHIFT': String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`,
+        'PROBLEM': r.problem || '—',
+        'MODEL': r.model || '—',
+        'DETECTED AT': r.problem_detected_at || '—',
+        'RECEIVED FROM': r.received_from || '—',
+        'ANALYSIS BY': r.analysis_done_by || '—',
+        '4M': r.four_m || '—',
+        'RESPONSIBILITY': r.resp || '—',
+        'RESPONSIBLE PERSON': r.resp_person || '—',
+        'OCCURRENCE CAUSE (WHY 1)': r.prod_why_why?.[0] || '—',
+        'ACTION TAKEN': r.action || '—',
+        'TARGET DATE': r.target_date || '—',
+        'STATUS': r.status || 'OPEN'
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      worksheet['!cols'] = [
+        { wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 12 },
+        { wch: 25 }, { wch: 15 }, { wch: 16 }, { wch: 16 },
+        { wch: 18 }, { wch: 12 }, { wch: 16 }, { wch: 20 },
+        { wch: 28 }, { wch: 30 }, { wch: 14 }, { wch: 14 }
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'IHLR Approvals Queue');
+      const today = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(workbook, `IHLR_Approvals_Queue_${today}.xlsx`);
+      setShowExportModal(false);
+    } catch (err) {
+      console.error('Failed to export approvals to Excel:', err);
+      alert('Failed to export to Excel: ' + err.message);
+    }
+  };
+
+  // Export to PDF (.pdf)
+  const handleExportPdf = () => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'pt',
+        format: 'a4'
+      });
+
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Top Title and Company Branding
+      doc.setFontSize(16);
+      doc.setTextColor(30, 41, 59);
+      doc.text('INDIA NIPPON ELECTRICALS LIMITED', 40, 36);
+
+      doc.setFontSize(11);
+      doc.setTextColor(217, 119, 6); // amber-600
+      doc.text('IHLR Sign-off & Closure Approvals Queue', 40, 52);
+
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Generated: ${today} | Total Queue Records: ${filtered.length} | Status Filter: ${selectedStatus}`, 40, 68);
+
+      const tableHeaders = [
+        ['SL', 'REQ NO', 'DATE / SHIFT', 'PROBLEM', 'MODEL', 'DETECTED AT', 'FROM', 'ANALYSIS BY', '4M', 'RESP', 'STATUS']
+      ];
+
+      const tableRows = filtered.map((r, idx) => [
+        idx + 1,
+        String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
+        `${r.batch_date ? r.batch_date.split('T')[0] : '—'}\n${String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}`,
+        r.problem || '—',
+        r.model || '—',
+        r.problem_detected_at || '—',
+        r.received_from || '—',
+        r.analysis_done_by || '—',
+        r.four_m || '—',
+        `${r.resp || '—'}${r.resp_person ? `\n(${r.resp_person})` : ''}`,
+        r.status || 'OPEN'
+      ]);
+
+      autoTable(doc, {
+        head: tableHeaders,
+        body: tableRows,
+        startY: 80,
+        theme: 'grid',
+        styles: { fontSize: 8.5, cellPadding: 4, valign: 'middle', overflow: 'linebreak' },
+        headStyles: { fillColor: [180, 83, 9], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        columnStyles: {
+          0: { cellWidth: 30, halign: 'center' },
+          1: { cellWidth: 65, fontStyle: 'bold', halign: 'center' },
+          2: { cellWidth: 75 },
+          3: { cellWidth: 120 },
+          4: { cellWidth: 60 },
+          5: { cellWidth: 75 },
+          6: { cellWidth: 70 },
+          7: { cellWidth: 75 },
+          8: { cellWidth: 50, halign: 'center' },
+          9: { cellWidth: 80 },
+          10: { cellWidth: 55, halign: 'center', fontStyle: 'bold' }
+        },
+        alternateRowStyles: { fillColor: [254, 252, 232] }
+      });
+
+      doc.save(`IHLR_Approvals_Queue_${today}.pdf`);
+      setShowExportModal(false);
+    } catch (err) {
+      console.error('Failed to export approvals to PDF:', err);
+      alert('Failed to export to PDF: ' + err.message);
+    }
+  };
+
+  const handleDownload = () => {
+    if (exportFormat === 'excel') {
+      handleExportExcel();
+    } else {
+      handleExportPdf();
+    }
+  };
 
   const openCount = requests.filter((r) => r.status === 'OPEN').length;
   const inProgressCount = requests.filter((r) => r.status === 'IN_PROGRESS').length;
@@ -162,16 +298,25 @@ const IhlrApprovals = () => {
               {filtered.length} Reports
             </span>
           </div>
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-2xs hover:shadow-xs transition transform active:scale-95 cursor-pointer"
+            id="approvals-export-btn"
+          >
+            <Download className="w-3.5 h-3.5 text-amber-600" />
+            <span>Export View</span>
+          </button>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[900px]">
+          <table className="w-full text-left border-collapse min-w-[950px]">
             <thead>
               <tr className="bg-[#f8fafc] border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 <th className="py-3 px-4">REQ NO</th>
                 <th className="py-3 px-4">DATE / SHIFT</th>
                 <th className="py-3 px-4">PROBLEM &amp; MODEL</th>
                 <th className="py-3 px-4">DETECTED / FROM</th>
+                <th className="py-3 px-2 text-center w-14">DEFECT</th>
                 <th className="py-3 px-3">4M / RESP</th>
                 <th className="py-3 px-4">STATUS</th>
                 <th className="py-3 px-4 text-right">SIGN-OFF ACTIONS</th>
@@ -180,13 +325,13 @@ const IhlrApprovals = () => {
             <tbody className="divide-y divide-slate-100 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     Loading approval queue...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     <ClipboardCheck className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600">No reports found matching criteria</p>
                   </td>
@@ -198,8 +343,10 @@ const IhlrApprovals = () => {
                       {String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`}
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="font-semibold text-slate-900">{r.batch_date}</div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="font-semibold text-slate-900">
+                        {r.batch_date ? r.batch_date.split('T')[0] : '—'}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono">
                         {String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}
                       </div>
                     </td>
@@ -210,6 +357,22 @@ const IhlrApprovals = () => {
                     <td className="py-3.5 px-4">
                       <div className="font-medium text-slate-800">{r.problem_detected_at}</div>
                       <div className="text-[11px] text-slate-400">{r.received_from}</div>
+                    </td>
+                    {/* Defect Attachment Thumbnail (PDF, Excel, Word, JPG) */}
+                    <td className="py-3.5 px-2 text-center">
+                      <div className="flex items-center justify-center">
+                        <IhlrAttachmentThumbnail
+                          rawAttachment={r.defect_image}
+                          onClick={() => {
+                            const atts = parseAttachments(r.defect_image);
+                            if (atts.length > 0) {
+                              setSelectedPreviewAttachment(atts[0]);
+                            } else {
+                              setActiveModalRequest(r);
+                            }
+                          }}
+                        />
+                      </div>
                     </td>
                     <td className="py-3.5 px-3 whitespace-nowrap">
                       <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 font-bold font-mono text-[10px] border border-amber-200 mr-1">
@@ -281,6 +444,152 @@ const IhlrApprovals = () => {
         request={activeModalRequest}
         onClose={() => setActiveModalRequest(null)}
       />
+
+      {/* Standalone Attachment Preview Modal (Works for Excel, PDF, Word, Images) */}
+      <IhlrAttachmentPreviewModal
+        isOpen={Boolean(selectedPreviewAttachment)}
+        attachment={selectedPreviewAttachment}
+        onClose={() => setSelectedPreviewAttachment(null)}
+      />
+
+      {/* Export Format Selection Modal */}
+      {showExportModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          style={{ zIndex: 99999 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowExportModal(false);
+          }}
+        >
+          <div 
+            className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 p-6 space-y-5 animate-in zoom-in-95 duration-200 relative"
+            style={{ zIndex: 100000 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-amber-50 text-amber-700 border border-amber-200">
+                  <Download className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+                    Export Approval Queue
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Choose download format for approvals view
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scope Summary Pill */}
+            <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+              <span className="text-slate-500 font-medium">Approval Queue Scope</span>
+              <span className="font-extrabold text-amber-700 font-mono">
+                {filtered.length} Reports
+              </span>
+            </div>
+
+            {/* Selection Options */}
+            <div className="space-y-3">
+              {/* Option 1: Excel (.xlsx) */}
+              <div
+                onClick={() => setExportFormat('excel')}
+                className={`flex items-start gap-3.5 p-4 rounded-2xl border-2 transition cursor-pointer ${
+                  exportFormat === 'excel'
+                    ? 'border-emerald-500 bg-emerald-50/40 shadow-xs'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
+                  <FileSpreadsheet className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-slate-900 text-sm">
+                      Excel Spreadsheet (.xlsx)
+                    </span>
+                    {exportFormat === 'excel' ? (
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-600 text-white shadow-xs">
+                        <Check className="w-3 h-3 stroke-[3]" />
+                      </span>
+                    ) : (
+                      <span className="w-5 h-5 rounded-full border border-slate-300" />
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Full structured workbook with separate columns for incident details, 4M categorization, and containment actions.
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 2: PDF (.pdf) */}
+              <div
+                onClick={() => setExportFormat('pdf')}
+                className={`flex items-start gap-3.5 p-4 rounded-2xl border-2 transition cursor-pointer ${
+                  exportFormat === 'pdf'
+                    ? 'border-rose-500 bg-rose-50/40 shadow-xs'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="p-2.5 rounded-xl bg-rose-100 text-rose-700 shrink-0">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-slate-900 text-sm">
+                      PDF Document (.pdf)
+                    </span>
+                    {exportFormat === 'pdf' ? (
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-rose-600 text-white shadow-xs">
+                        <Check className="w-3 h-3 stroke-[3]" />
+                      </span>
+                    ) : (
+                      <span className="w-5 h-5 rounded-full border border-slate-300" />
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Official landscape document formatted with India Nippon Electricals Limited branding, tables, and page numbers.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowExportModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDownload}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-xs font-bold transition shadow-md active:scale-95 cursor-pointer ${
+                  exportFormat === 'excel'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                    : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
+                }`}
+              >
+                <Download className="w-4 h-4" />
+                <span>
+                  Download {exportFormat === 'excel' ? 'Excel (.xlsx)' : 'PDF (.pdf)'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
