@@ -198,7 +198,9 @@ const IhlrApprovals = () => {
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="font-semibold text-slate-900">{r.batch_date}</div>
-                      <div className="text-[11px] text-slate-400">Shift {r.shift}</div>
+                      <div className="text-[11px] text-slate-400">
+                        {String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}
+                      </div>
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-slate-900">{r.problem}</div>

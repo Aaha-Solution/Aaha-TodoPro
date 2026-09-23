@@ -162,9 +162,9 @@ const IhlrMyRequests = () => {
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
             >
               <option value="All">All Shifts</option>
-              <option value="I">Shift I (Morning)</option>
-              <option value="II">Shift II (Evening)</option>
-              <option value="III">Shift III (Night)</option>
+              <option value="Shift 1">Shift 1</option>
+              <option value="Shift 2">Shift 2</option>
+              <option value="Shift 3">Shift 3</option>
             </select>
           </div>
 
@@ -278,7 +278,9 @@ const IhlrMyRequests = () => {
                     {/* Date / Shift */}
                     <td className="py-3.5 px-3 whitespace-nowrap">
                       <div className="font-semibold text-slate-900">{r.batch_date}</div>
-                      <span className="text-[10px] font-bold text-slate-400 font-mono">Shift {r.shift}</span>
+                      <span className="text-[10px] font-bold text-slate-400 font-mono">
+                        {String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}
+                      </span>
                     </td>
 
                     {/* Problem */}

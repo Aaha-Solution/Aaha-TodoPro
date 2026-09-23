@@ -15,6 +15,12 @@ export const DEPARTMENTS = [
   'INCOMING QUALITY'
 ];
 
+export const SHIFTS = [
+  'Shift 1',
+  'Shift 2',
+  'Shift 3'
+];
+
 export const SYSTEMS = [
   {
     id: "processAudit",

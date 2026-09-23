@@ -73,7 +73,15 @@ export const getIhlrRequests = async (req, res) => {
     }
 
     if (shift && shift !== 'All') {
-      requests = requests.filter(r => r.shift === shift);
+      const s = String(shift).trim().toLowerCase();
+      requests = requests.filter(r => {
+        const reqShift = String(r.shift || '').trim().toLowerCase();
+        return reqShift === s ||
+          reqShift.replace('shift', '').trim() === s.replace('shift', '').trim() ||
+          (s.includes('1') && (reqShift === '1' || reqShift === 'i' || reqShift === 'shift 1' || reqShift === 'shift i')) ||
+          (s.includes('2') && (reqShift === '2' || reqShift === 'ii' || reqShift === 'shift 2' || reqShift === 'shift ii')) ||
+          (s.includes('3') && (reqShift === '3' || reqShift === 'iii' || reqShift === 'shift 3' || reqShift === 'shift iii'));
+      });
     }
 
     if (fourM && fourM !== 'All') {
