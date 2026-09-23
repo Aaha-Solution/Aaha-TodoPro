@@ -11,6 +11,22 @@ import {
   X
 } from 'lucide-react';
 
+export const resolveAttachmentUrl = (rawUrl) => {
+  if (!rawUrl) return '';
+  const trimmed = String(rawUrl).trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+  const clean = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  if (clean.startsWith('/api')) {
+    return `http://localhost:5000${clean}`;
+  }
+  if (clean.startsWith('/uploads')) {
+    return `http://localhost:5000/api/ihlr${clean}`;
+  }
+  return `http://localhost:5000/api/ihlr/${clean.replace(/^\//, '')}`;
+};
+
 export const normalizeAttachment = (item) => {
   if (!item) return null;
   if (typeof item === 'string') {
@@ -26,7 +42,7 @@ export const normalizeAttachment = (item) => {
 
     return {
       name: filename,
-      url: trimmed,
+      url: resolveAttachmentUrl(trimmed),
       size: '',
       type: ext,
       isImage,
@@ -39,15 +55,16 @@ export const normalizeAttachment = (item) => {
   if (typeof item === 'object') {
     const name = item.name || item.filename || (item.url ? item.url.split('/').pop() : 'attachment');
     const ext = (item.type || name.split('.').pop() || 'FILE').toUpperCase();
-    const url = item.url || '';
-    const isImage = item.isImage !== undefined ? item.isImage : (['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || url.startsWith('data:image'));
-    const isPdf = item.isPdf !== undefined ? item.isPdf : (ext === 'PDF' || url.toLowerCase().endsWith('.pdf'));
-    const isExcel = item.isExcel !== undefined ? item.isExcel : (['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext) || url.toLowerCase().endsWith('.xlsx') || url.toLowerCase().endsWith('.csv') || url.toLowerCase().endsWith('.xls'));
-    const isWord = item.isWord !== undefined ? item.isWord : (['DOC', 'DOCX'].includes(ext) || url.toLowerCase().endsWith('.docx') || url.toLowerCase().endsWith('.doc'));
+    const rawUrl = item.url || '';
+    const resolvedUrl = resolveAttachmentUrl(rawUrl);
+    const isImage = item.isImage !== undefined ? item.isImage : (['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || rawUrl.startsWith('data:image'));
+    const isPdf = item.isPdf !== undefined ? item.isPdf : (ext === 'PDF' || rawUrl.toLowerCase().endsWith('.pdf'));
+    const isExcel = item.isExcel !== undefined ? item.isExcel : (['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext) || rawUrl.toLowerCase().endsWith('.xlsx') || rawUrl.toLowerCase().endsWith('.csv') || rawUrl.toLowerCase().endsWith('.xls'));
+    const isWord = item.isWord !== undefined ? item.isWord : (['DOC', 'DOCX'].includes(ext) || rawUrl.toLowerCase().endsWith('.docx') || rawUrl.toLowerCase().endsWith('.doc'));
 
     return {
       name,
-      url,
+      url: resolvedUrl,
       size: item.size || '',
       type: ext,
       isImage,
@@ -220,7 +237,7 @@ export const IhlrAttachmentThumbnail = ({ rawAttachment, onClick }) => {
  * Pill-style Attachment Chips matching the user's requested layout:
  * [ 📎 Filename.ext  ✕ ]
  */
-export const IhlrAttachmentChips = ({ attachments = [], onRemove, readOnly = false }) => {
+export const IhlrAttachmentChips = ({ attachments = [], onRemove, onPreview, readOnly = false }) => {
   if (!attachments || attachments.length === 0) return null;
 
   return (
@@ -236,7 +253,7 @@ export const IhlrAttachmentChips = ({ attachments = [], onRemove, readOnly = fal
             <span
               className="truncate max-w-[170px] sm:max-w-[220px] cursor-pointer hover:text-blue-600 select-none"
               title={`${att.name} ${att.size ? `(${att.size})` : ''} - Click to preview`}
-              onClick={() => att.url && window.open(att.url, '_blank')}
+              onClick={() => onPreview ? onPreview(att) : null}
             >
               {att.name || 'Attachment'}
             </span>

@@ -15,7 +15,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
-import { IhlrAttachmentPreviewCard } from './IhlrAttachmentView';
+import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 
 const IhlrApprovals = () => {
   const [requests, setRequests] = useState([]);
@@ -275,98 +275,12 @@ const IhlrApprovals = () => {
         </div>
       </div>
 
-      {/* Detail Modal */}
-      {activeModalRequest && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">
-                  IHLR Report Review: {String(activeModalRequest.req_no).startsWith('IHLR-') ? activeModalRequest.req_no : `#${activeModalRequest.req_no}`}
-                </h3>
-                <p className="text-xs text-slate-500">{activeModalRequest.model} - {activeModalRequest.problem}</p>
-              </div>
-              <button
-                onClick={() => setActiveModalRequest(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <div>
-                  <span className="text-slate-400 block font-semibold text-[10px] uppercase">Incident Date &amp; Shift</span>
-                  <span className="font-bold text-slate-800">{activeModalRequest.batch_date} (Shift {activeModalRequest.shift})</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block font-semibold text-[10px] uppercase">Rejected Qty</span>
-                  <span className="font-bold text-slate-800 font-mono">{activeModalRequest.actual_qty}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block font-semibold text-[10px] uppercase">Detected Stage</span>
-                  <span className="font-bold text-slate-800">{activeModalRequest.problem_detected_at}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block font-semibold text-[10px] uppercase">Received Line</span>
-                  <span className="font-bold text-slate-800">{activeModalRequest.received_from}</span>
-                </div>
-              </div>
-
-              {/* Defect Attachment Preview (Images, PDF, Word, Excel) */}
-              {activeModalRequest.defect_image && (
-                <div>
-                  <span className="text-slate-500 block font-bold mb-1 uppercase text-[10px]">
-                    Defect Attachment &amp; Technical Evidence
-                  </span>
-                  <IhlrAttachmentPreviewCard rawAttachment={activeModalRequest.defect_image} />
-                </div>
-              )}
-
-              {/* QA 5-Why */}
-              <div>
-                <span className="text-slate-500 block font-bold mb-1 uppercase text-[10px]">QA Team Why-Why Analysis</span>
-                <div className="space-y-1.5 p-3 rounded-xl bg-amber-50/50 border border-amber-200/60">
-                  {(activeModalRequest.qa_why_why || []).map((w, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <span className="font-mono font-bold text-rose-600 shrink-0">W{idx + 1}:</span>
-                      <span className="text-slate-800 font-medium">{w || '—'}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Countermeasure Action */}
-              {activeModalRequest.action && (
-                <div>
-                  <span className="text-slate-500 block font-bold mb-1 uppercase text-[10px]">Floor Containment Action</span>
-                  <p className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-800">
-                    {activeModalRequest.action}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-              {activeModalRequest.status !== 'CLOSED' && (
-                <button
-                  onClick={() => handleSignOff(activeModalRequest.id, 'CLOSED')}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 shadow-md shadow-emerald-600/20 transition cursor-pointer"
-                >
-                  Authorize Closure
-                </button>
-              )}
-              <button
-                onClick={() => setActiveModalRequest(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 font-semibold text-xs hover:bg-slate-50 transition cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Detail Modal (Matching Screenshots 1 & 2) */}
+      <IhlrRequestDetailsModal
+        isOpen={Boolean(activeModalRequest)}
+        request={activeModalRequest}
+        onClose={() => setActiveModalRequest(null)}
+      />
     </div>
   );
 };

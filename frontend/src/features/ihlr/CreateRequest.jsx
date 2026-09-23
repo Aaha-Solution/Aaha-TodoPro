@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
 import { getFileMeta, parseAttachment, parseAttachments, IhlrAttachmentChips } from './IhlrAttachmentView';
+import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 
 
 const IhlrCreateRequest = () => {
@@ -27,6 +28,7 @@ const IhlrCreateRequest = () => {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [dbUsers, setDbUsers] = useState([]);
   const [attachments, setAttachments] = useState([]);
+  const [previewAttachment, setPreviewAttachment] = useState(null);
 
   const [formData, setFormData] = useState({
     req_no: 'IHLR-1',
@@ -499,7 +501,7 @@ const IhlrCreateRequest = () => {
                     <span
                       className="truncate max-w-[170px] sm:max-w-[240px] cursor-pointer hover:text-blue-600 select-none"
                       title={`${att.name} ${att.size ? `(${att.size})` : ''} - Click to preview`}
-                      onClick={() => att.url && window.open(att.url, '_blank')}
+                      onClick={() => setPreviewAttachment(att)}
                     >
                       {att.name}
                     </span>
@@ -525,7 +527,7 @@ const IhlrCreateRequest = () => {
                     <div
                       key={`img-prev-${i}`}
                       className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-2xs group cursor-pointer"
-                      onClick={() => imgAtt.url && window.open(imgAtt.url, '_blank')}
+                      onClick={() => setPreviewAttachment(imgAtt)}
                       title={`Preview: ${imgAtt.name}`}
                     >
                       <img src={imgAtt.url} alt={imgAtt.name} className="w-full h-full object-cover" />
@@ -594,6 +596,13 @@ const IhlrCreateRequest = () => {
           </button>
         </div>
       </form>
+
+      {/* Dedicated In-Page Preview Modal (Never opens in new tab) */}
+      <IhlrAttachmentPreviewModal
+        isOpen={Boolean(previewAttachment)}
+        attachment={previewAttachment}
+        onClose={() => setPreviewAttachment(null)}
+      />
     </div>
   );
 };

@@ -18,7 +18,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
-import { IhlrAttachmentPreviewCard } from './IhlrAttachmentView';
+import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 
 const IhlrDashboard = () => {
   const navigate = useNavigate();
@@ -310,150 +310,16 @@ const IhlrDashboard = () => {
         </div>
       </div>
 
-      {/* Quick Inspection Modal */}
-      {selectedRequest && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-xs z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs font-mono px-1 text-center">
-                  {String(selectedRequest.req_no).startsWith('IHLR-') ? selectedRequest.req_no : `#${selectedRequest.req_no}`}
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    IHLR Analysis: {selectedRequest.model}
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Defect: <span className="font-semibold text-slate-800">{selectedRequest.problem}</span> • Date: {selectedRequest.batch_date}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedRequest(null)}
-                className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6 space-y-6">
-              {/* Top Summary Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs">
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">SHIFT</span>
-                  <span className="font-bold text-slate-900 font-mono">Shift {selectedRequest.shift}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">DETECTED AT</span>
-                  <span className="font-bold text-slate-900">{selectedRequest.problem_detected_at}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">RECEIVED FROM</span>
-                  <span className="font-bold text-slate-900 font-mono">{selectedRequest.received_from}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">ANALYSIS BY</span>
-                  <span className="font-bold text-slate-900">{selectedRequest.analysis_done_by}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">RESPONSIBILITY</span>
-                  <span className="font-bold text-slate-900 font-mono">{selectedRequest.resp}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">ASSIGNED USER</span>
-                  <span className="font-bold text-blue-600 truncate block" title={selectedRequest.resp_person || '—'}>{selectedRequest.resp_person || '—'}</span>
-                </div>
-              </div>
-
-              {/* Defect Attachment Preview (Images, PDF, Word, Excel) */}
-              {selectedRequest.defect_image && (
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                    Defect Attachment &amp; Technical Evidence
-                  </span>
-                  <IhlrAttachmentPreviewCard rawAttachment={selectedRequest.defect_image} />
-                </div>
-              )}
-
-              {/* QA 5-Why vs Production 5-Why Side-by-Side */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* QA Why-Why */}
-                <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200/80 space-y-3">
-                  <div className="flex items-center gap-2 pb-2 border-b border-amber-200/60">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                      QA Problem Cause (Why-Why)
-                    </h4>
-                  </div>
-                  <div className="space-y-2 text-xs">
-                    {(selectedRequest.qa_why_why || []).map((w, idx) => (
-                      w ? (
-                        <div key={idx} className="flex items-start gap-2">
-                          <span className="font-mono font-bold text-amber-700 shrink-0">W{idx + 1}:</span>
-                          <span className="text-slate-800">{w}</span>
-                        </div>
-                      ) : null
-                    ))}
-                  </div>
-                </div>
-
-                {/* Production Occurrence Why-Why */}
-                <div className="p-4 rounded-2xl bg-blue-50/40 border border-blue-200/80 space-y-3">
-                  <div className="flex items-center gap-2 pb-2 border-b border-blue-200/60">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                      Production Occurrence Cause
-                    </h4>
-                  </div>
-                  <div className="space-y-2 text-xs">
-                    {(selectedRequest.prod_why_why || []).map((w, idx) => (
-                      w ? (
-                        <div key={idx} className="flex items-start gap-2">
-                          <span className="font-mono font-bold text-blue-700 shrink-0">W{idx + 1}:</span>
-                          <span className="text-slate-800">{w}</span>
-                        </div>
-                      ) : null
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Taken & Closer Details */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                  Corrective Countermeasure &amp; Remarks
-                </h4>
-                <div className="text-xs text-slate-800 leading-relaxed">
-                  <span className="font-bold text-slate-900">Action: </span>
-                  {selectedRequest.action || 'No action recorded yet.'}
-                </div>
-                {selectedRequest.remarks && (
-                  <div className="text-xs text-slate-600 leading-relaxed border-t border-slate-200/60 pt-2">
-                    <span className="font-bold text-slate-900">Remarks: </span>
-                    {selectedRequest.remarks}
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-200/60">
-                  <span>Target Date: <strong className="text-slate-800">{selectedRequest.target_date || 'N/A'}</strong></span>
-                  <span>Status: {getStatusBadge(selectedRequest.status)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-5 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50/50">
-              <button
-                onClick={() => setSelectedRequest(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Inspection Modal (Matching Screenshots 1 & 2) */}
+      <IhlrRequestDetailsModal
+        isOpen={Boolean(selectedRequest)}
+        request={selectedRequest}
+        onClose={() => setSelectedRequest(null)}
+        onEditMode={() => {
+          setSelectedRequest(null);
+          navigate('/ihlr/my-requests');
+        }}
+      />
     </div>
   );
 };
