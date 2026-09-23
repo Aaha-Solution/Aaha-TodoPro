@@ -48,8 +48,19 @@ const ProcessAuditDashboard = () => {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
+      const params = {};
+      if (!isAdmin) {
+        if (isIncomingQuality) {
+          if (user?.name) params.created_by = user.name;
+          if (user?.id) params.created_by_id = user.id;
+        } else {
+          if (user?.name) params.executor = user.name;
+        }
+        params.role = user?.role;
+      }
+
       const [reqsData, statsData] = await Promise.allSettled([
-        processAuditService.getRequests(),
+        processAuditService.getRequests(params),
         processAuditService.getDashboardStats()
       ]);
 
@@ -248,6 +259,30 @@ const ProcessAuditDashboard = () => {
 
   const modalAttachments = selectedRequest ? getAttachmentsList(selectedRequest.attachments) : [];
 
+  const matchExactToken = (fieldVal, userName) => {
+    if (!fieldVal || !userName) return false;
+    const f = fieldVal.trim().toLowerCase();
+    const u = userName.trim().toLowerCase();
+    if (f === u) return true;
+    const tokens = f.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(Boolean);
+    return tokens.includes(u);
+  };
+
+  const userRequests = requests.filter((r) => {
+    if (isAdmin) return true;
+    const myName = (user?.name || '').trim().toLowerCase();
+    const myId = user?.id;
+    const creator = (r.created_by || r.creator || '').trim().toLowerCase();
+    const creatorId = r.created_by_id;
+    const exec = (r.executor || '').trim().toLowerCase();
+
+    if (isIncomingQuality) {
+      return (myId && creatorId && Number(myId) === Number(creatorId)) || matchExactToken(creator, myName);
+    } else {
+      return matchExactToken(exec, myName);
+    }
+  });
+
   return (
     <div className="space-y-7 pb-12">
       {/* Top Header Row */}
@@ -342,10 +377,10 @@ const ProcessAuditDashboard = () => {
               <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
               Loading production requests from database...
             </div>
-          ) : requests.length === 0 ? (
+          ) : userRequests.length === 0 ? (
             <div className="py-16 text-center text-slate-400 text-xs">
               <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-              <p className="font-semibold text-slate-600 mb-1">No production requests found in database</p>
+              <p className="font-semibold text-slate-600 mb-1">No production requests found for your account</p>
               {canCreate && (
                 <>
                   <p className="text-slate-400 mb-4">Click below to create your first production audit request.</p>
@@ -373,7 +408,7 @@ const ProcessAuditDashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {requests.slice(0, 10).map((req) => {
+                {userRequests.slice(0, 10).map((req) => {
                   const reqId = req.issue_no || (req.id ? `PA-${req.id}` : 'PA-1');
                   const dateStr = formatDate(req.escalation_date || req.created_at);
                   const prodStr = req.product || '-';

@@ -14,7 +14,23 @@ export const getNextId = async (req, res) => {
 
 export const getAllRequests = async (req, res) => {
   try {
-    const requests = await ProcessAuditRequest.findAll();
+    const { created_by, created_by_id, executor, user, role } = req.query;
+
+    const userRole = (role || req.user?.role || '').trim().toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN';
+
+    const filters = {};
+    if (!isAdmin) {
+      if (created_by) filters.created_by = created_by;
+      if (created_by_id) filters.created_by_id = created_by_id;
+      if (executor) filters.executor = executor;
+      if (user) {
+        filters.user = user;
+        filters.user_id = req.query.user_id || req.user?.id;
+      }
+    }
+
+    const requests = await ProcessAuditRequest.findAll(filters);
     return successResponse(res, requests);
   } catch (err) {
     return errorResponse(res, err.message);
@@ -101,6 +117,20 @@ export const createRequest = async (req, res) => {
 
     const created = await ProcessAuditRequest.create(requestData);
     return successResponse(res, created, 'Production request created', 201);
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
+export const updateRequestStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, rejectionReason } = req.body;
+    if (!status) {
+      return errorResponse(res, 'Status is required', 400);
+    }
+    const updated = await ProcessAuditRequest.updateStatus(id, status, rejectionReason);
+    return successResponse(res, updated, `Request status updated to ${status}`);
   } catch (err) {
     return errorResponse(res, err.message);
   }

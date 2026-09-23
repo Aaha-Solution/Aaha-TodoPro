@@ -50,7 +50,13 @@ const MyRequests = () => {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const data = await processAuditService.getRequests();
+      const params = {};
+      if (!isAdmin) {
+        if (user?.name) params.created_by = user.name;
+        if (user?.id) params.created_by_id = user.id;
+        params.role = user?.role;
+      }
+      const data = await processAuditService.getRequests(params);
       setRequests(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load requests from DB:', err);
@@ -168,7 +174,34 @@ const MyRequests = () => {
     setSelectedStatus('All Statuses');
   };
 
+  const matchesCreatorUser = (creatorName, creatorId, uId, uName, uEmail) => {
+    if (uId && creatorId && Number(uId) === Number(creatorId)) return true;
+    if (!creatorName) return false;
+    const c = creatorName.trim().toLowerCase();
+    const name = (uName || '').trim().toLowerCase();
+    const email = (uEmail || '').trim().toLowerCase();
+
+    if (name && c === name) return true;
+    if (email && c === email) return true;
+
+    const tokens = c.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(Boolean);
+    if (name && tokens.includes(name)) return true;
+    return false;
+  };
+
   const filteredRequests = requests.filter((req) => {
+    // Only show requests created by this user unless Admin
+    if (!isAdmin) {
+      const isMine = matchesCreatorUser(
+        req.created_by || req.creator,
+        req.created_by_id,
+        user?.id,
+        user?.name,
+        user?.email
+      );
+      if (!isMine) return false;
+    }
+
     const reqId = String(req.issue_no || (req.id ? `PA-${req.id}` : '')).toLowerCase();
     const line = String(req.process_operation || req.line || '').toLowerCase();
     const executor = String(req.executor || '').toLowerCase();

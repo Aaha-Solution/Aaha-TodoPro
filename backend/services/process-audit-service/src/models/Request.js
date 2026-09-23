@@ -80,14 +80,57 @@ const ensureTable = async () => {
 ensureTable();
 
 export const ProcessAuditRequest = {
-  findAll: async () => {
+  findAll: async (filters = {}) => {
     if (!pool) throw new Error('Database connection pool is not available');
-    const [rows] = await pool.query(`
+    let query = `
       SELECT r.*, COALESCE(NULLIF(TRIM(r.created_by), ''), u.name, u.email) AS created_by
       FROM process_audit_requests r
       LEFT JOIN users u ON r.created_by_id = u.id
-      ORDER BY r.id DESC
-    `);
+    `;
+    const conditions = [];
+    const params = [];
+
+    // Filter by creator
+    if (filters.created_by_id && filters.created_by) {
+      conditions.push(`(r.created_by_id = ? OR LOWER(r.created_by) = LOWER(?))`);
+      params.push(filters.created_by_id, filters.created_by);
+    } else if (filters.created_by_id) {
+      conditions.push(`r.created_by_id = ?`);
+      params.push(filters.created_by_id);
+    } else if (filters.created_by) {
+      conditions.push(`LOWER(r.created_by) = LOWER(?)`);
+      params.push(filters.created_by);
+    }
+
+    // Filter by executor (exact match or full-word boundary)
+    if (filters.executor) {
+      conditions.push(`(LOWER(TRIM(r.executor)) = LOWER(TRIM(?)) OR LOWER(r.executor) REGEXP CONCAT('(^|[^a-zA-Z0-9])', ?, '([^a-zA-Z0-9]|$)'))`);
+      params.push(filters.executor, filters.executor);
+    }
+
+    // Filter by general user (either creator OR executor)
+    if (filters.user) {
+      conditions.push(`(
+        r.created_by_id = ? 
+        OR LOWER(TRIM(r.created_by)) = LOWER(TRIM(?)) 
+        OR LOWER(TRIM(r.executor)) = LOWER(TRIM(?))
+        OR LOWER(r.executor) REGEXP CONCAT('(^|[^a-zA-Z0-9])', ?, '([^a-zA-Z0-9]|$)')
+      )`);
+      params.push(
+        filters.user_id || 0,
+        filters.user,
+        filters.user,
+        filters.user
+      );
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ` + conditions.join(' AND ');
+    }
+
+    query += ` ORDER BY r.id DESC`;
+
+    const [rows] = await pool.query(query, params);
     return rows;
   },
 
@@ -159,5 +202,32 @@ export const ProcessAuditRequest = {
 
     const [rows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ?', [insertedId]);
     return rows[0] || { id: insertedId, issue_no: issue_no || `PA-${insertedId}`, ...data };
+  },
+
+  updateStatus: async (id, status, rejectionReason = null) => {
+    if (!pool) throw new Error('Database connection pool is not available');
+    const numericId = parseInt(String(id).replace(/\D/g, ''), 10) || id;
+
+    // Check if rejection_reason column exists
+    const [cols] = await pool.query(`SHOW COLUMNS FROM process_audit_requests`).catch(() => [[]]);
+    const colNames = cols.map((c) => c.Field);
+    if (!colNames.includes('rejection_reason')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN rejection_reason TEXT NULL`).catch(() => {});
+    }
+
+    if (rejectionReason !== null && rejectionReason !== undefined) {
+      await pool.query(
+        `UPDATE process_audit_requests SET status = ?, rejection_reason = ? WHERE id = ? OR issue_no = ?`,
+        [status, rejectionReason, numericId, String(id)]
+      );
+    } else {
+      await pool.query(
+        `UPDATE process_audit_requests SET status = ? WHERE id = ? OR issue_no = ?`,
+        [status, numericId, String(id)]
+      );
+    }
+
+    const [rows] = await pool.query(`SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?`, [numericId, String(id)]);
+    return rows[0];
   }
 };

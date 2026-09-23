@@ -58,5 +58,10 @@ export const processAuditService = {
       console.error('Failed to fetch users from DB:', err);
       return [];
     }
+  },
+
+  updateRequestStatus: async (id, status, rejectionReason = null) => {
+    const res = await api.put(`/process-audit/requests/${id}/status`, { status, rejectionReason });
+    return res.data?.data || res.data;
   }
 };
