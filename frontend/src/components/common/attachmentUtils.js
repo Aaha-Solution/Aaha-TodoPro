@@ -58,6 +58,14 @@ export const getFileMeta = (type = '', name = '') => {
       iconName: 'FileText'
     };
   }
+  if (['PPT', 'PPTX'].includes(ext)) {
+    return {
+      typeLabel: 'PPT',
+      badgeBg: 'bg-amber-100 text-amber-700 border-amber-200',
+      pillColor: 'bg-amber-600',
+      iconName: 'FileText'
+    };
+  }
   return {
     typeLabel: ext || 'FILE',
     badgeBg: 'bg-slate-100 text-slate-700 border-slate-200',
@@ -88,6 +96,10 @@ export const normalizeAttachment = (item) => {
       ['DOC', 'DOCX'].includes(ext) ||
       cleanUrl.toLowerCase().endsWith('.docx') ||
       cleanUrl.toLowerCase().endsWith('.doc');
+    const isPpt =
+      ['PPT', 'PPTX'].includes(ext) ||
+      cleanUrl.toLowerCase().endsWith('.pptx') ||
+      cleanUrl.toLowerCase().endsWith('.ppt');
 
     return {
       name: filename,
@@ -97,7 +109,8 @@ export const normalizeAttachment = (item) => {
       isImage,
       isPdf,
       isExcel,
-      isWord
+      isWord,
+      isPpt
     };
   }
 
@@ -124,6 +137,12 @@ export const normalizeAttachment = (item) => {
         : ['DOC', 'DOCX'].includes(ext) ||
           rawUrl.toLowerCase().endsWith('.docx') ||
           rawUrl.toLowerCase().endsWith('.doc');
+    const isPpt =
+      item.isPpt !== undefined
+        ? item.isPpt
+        : ['PPT', 'PPTX'].includes(ext) ||
+          rawUrl.toLowerCase().endsWith('.pptx') ||
+          rawUrl.toLowerCase().endsWith('.ppt');
 
     return {
       name,
@@ -133,7 +152,8 @@ export const normalizeAttachment = (item) => {
       isImage,
       isPdf,
       isExcel,
-      isWord
+      isWord,
+      isPpt
     };
   }
 
