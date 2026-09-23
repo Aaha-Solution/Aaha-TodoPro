@@ -294,6 +294,18 @@ export const ProcessAuditRequest = {
     if (!colNames.includes('approved_at')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN approved_at TIMESTAMP NULL`).catch(() => {});
     }
+    if (!colNames.includes('creator_remark')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN creator_remark TEXT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('closed_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN closed_by VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('closed_by_id')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN closed_by_id INT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('closed_at')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN closed_at TIMESTAMP NULL`).catch(() => {});
+    }
 
     let rejectionReason = null;
     let rootCause = null;
@@ -302,6 +314,7 @@ export const ProcessAuditRequest = {
     let standardizationDetails = null;
     let targetDate = null;
     let actionTakenBy = null;
+    let creatorRemark = null;
 
     if (typeof details === 'string') {
       rejectionReason = details;
@@ -313,6 +326,7 @@ export const ProcessAuditRequest = {
       standardizationDetails = details.standardization_details !== undefined ? details.standardization_details : (details.standardizationDetails !== undefined ? details.standardizationDetails : null);
       targetDate = details.target_date !== undefined ? details.target_date : (details.targetDate !== undefined ? details.targetDate : null);
       actionTakenBy = details.action_taken_by !== undefined ? details.action_taken_by : (details.actionTakenBy !== undefined ? details.actionTakenBy : null);
+      creatorRemark = details.creator_remark !== undefined ? details.creator_remark : (details.creatorRemark !== undefined ? details.creatorRemark : (details.remark !== undefined ? details.remark : null));
     }
 
     const updates = ['status = ?'];
@@ -346,6 +360,23 @@ export const ProcessAuditRequest = {
       updates.push('action_taken_by = ?');
       params.push(actionTakenBy);
       updates.push('action_taken_at = NOW()');
+    }
+    if (creatorRemark !== null) {
+      updates.push('creator_remark = ?');
+      params.push(creatorRemark);
+    }
+
+    const isClosed = status.toLowerCase().includes('close');
+    if (isClosed) {
+      const closedBy = details.closed_by || details.closedBy || actionTakenBy || 'Request Creator';
+      const closedById = details.closed_by_id || details.closedById || null;
+      updates.push('closed_by = ?');
+      params.push(closedBy);
+      if (closedById !== null) {
+        updates.push('closed_by_id = ?');
+        params.push(closedById);
+      }
+      updates.push('closed_at = NOW()');
     }
 
     const isApproved = status.toLowerCase().includes('approved');

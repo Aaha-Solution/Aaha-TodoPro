@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Download,
   Search,
@@ -14,7 +14,12 @@ import {
   Presentation,
   File as FileIcon,
   Image as ImageIcon,
-  ShieldAlert
+  ShieldAlert,
+  CheckCircle2,
+  CheckCheck,
+  RotateCcw,
+  MessageSquare,
+  ChevronDown
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
@@ -37,6 +42,9 @@ const MyRequests = () => {
   const isIncomingQuality = currentDept.toUpperCase() === 'INCOMING QUALITY';
   const canTrack = isIncomingQuality || isAdmin;
 
+  const [searchParams] = useSearchParams();
+  const queryRequestId = searchParams.get('requestId') || searchParams.get('id');
+
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -46,6 +54,18 @@ const MyRequests = () => {
   const [selectedStatus, setSelectedStatus] = useState('All Statuses');
   const [activeModalRequest, setActiveModalRequest] = useState(null);
   const [previewAttachment, setPreviewAttachment] = useState(null);
+
+  const [creatorRemark, setCreatorRemark] = useState('');
+  const [selectedClosureStatus, setSelectedClosureStatus] = useState('Closed');
+  const [actionLoading, setActionLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeModalRequest) {
+      setCreatorRemark(activeModalRequest.creator_remark || '');
+      const s = (activeModalRequest.status || '').toLowerCase();
+      setSelectedClosureStatus(s.includes('open') ? 'Open' : 'Closed');
+    }
+  }, [activeModalRequest?.id]);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -69,6 +89,59 @@ const MyRequests = () => {
     fetchRequests();
   }, []);
 
+  // Deep-linking from notification or URL query (?requestId=14)
+  useEffect(() => {
+    if (queryRequestId && requests.length > 0) {
+      const match = requests.find(
+        (r) =>
+          String(r.id) === String(queryRequestId) ||
+          String(r.issue_no || '').toLowerCase() === String(queryRequestId).toLowerCase()
+      );
+      if (match) {
+        setActiveModalRequest(match);
+      }
+    }
+  }, [queryRequestId, requests]);
+
+  const handleUpdateClosureStatus = async (targetStatus) => {
+    if (!activeModalRequest) return;
+    const reqId = activeModalRequest.id;
+    const newStatus = targetStatus || selectedClosureStatus || 'Closed';
+
+    try {
+      setActionLoading(true);
+      const payload = {
+        creator_remark: creatorRemark.trim(),
+        closed_by: user?.name || user?.email || 'Request Creator',
+        closed_by_id: user?.id || null,
+      };
+
+      const updated = await processAuditService.updateRequestStatus(reqId, newStatus, payload);
+      window.dispatchEvent(new Event('refreshNotifications'));
+
+      const merged = {
+        ...activeModalRequest,
+        ...updated,
+        status: newStatus,
+        creator_remark: creatorRemark.trim(),
+        closed_by: newStatus.toLowerCase().includes('close') ? (user?.name || 'Request Creator') : activeModalRequest.closed_by,
+        closed_at: newStatus.toLowerCase().includes('close') ? new Date().toISOString() : activeModalRequest.closed_at,
+      };
+
+      setRequests((prev) =>
+        prev.map((r) => (r.id === reqId || r.issue_no === reqId ? merged : r))
+      );
+      setActiveModalRequest(merged);
+
+      alert(`Audit Request ${merged.issue_no || reqId} has been successfully marked as ${newStatus}!`);
+    } catch (err) {
+      console.error('Failed to update closure status:', err);
+      alert('Failed to update status in database: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const formatDate = (dateVal) => {
     if (!dateVal) return '-';
     const d = new Date(dateVal);
@@ -78,10 +151,22 @@ const MyRequests = () => {
 
   const getStatusMeta = (status) => {
     const s = (status || '').toLowerCase();
+    if (s.includes('close')) {
+      return {
+        statusColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        dotColor: 'bg-emerald-600',
+      };
+    }
     if (s.includes('approved') && !s.includes('partially') && !s.includes('pending')) {
       return {
         statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
         dotColor: 'bg-emerald-500',
+      };
+    }
+    if (s === 'open' || s.includes('reopen') || s.includes('further')) {
+      return {
+        statusColor: 'bg-sky-50 text-sky-700 border-sky-200/80',
+        dotColor: 'bg-sky-500',
       };
     }
     if (s.includes('reject')) {
@@ -247,9 +332,15 @@ const MyRequests = () => {
       selectedExecutor === 'All Executors' ||
       String(req.executor || '').toLowerCase().includes(selectedExecutor.toLowerCase());
 
+    const s = String(req.status || '').toLowerCase();
     const matchesStatus =
       selectedStatus === 'All Statuses' ||
-      String(req.status || '').toLowerCase() === selectedStatus.toLowerCase();
+      (selectedStatus === 'Closed' && s.includes('close')) ||
+      (selectedStatus === 'Open' && (s === 'open' || s.includes('open') || s.includes('reopen'))) ||
+      (selectedStatus === 'Approved' && s.includes('approved') && !s.includes('partially') && !s.includes('pending')) ||
+      (selectedStatus === 'Pending Execution' && (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject')))) ||
+      (selectedStatus === 'Rejected' && s.includes('reject')) ||
+      s === selectedStatus.toLowerCase();
 
     return matchesSearch && matchesShift && matchesStage && matchesExecutor && matchesStatus;
   });
@@ -508,12 +599,12 @@ const MyRequests = () => {
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
             >
-              <option>All Statuses</option>
-              <option>Pending Execution</option>
-              <option>Pending Approval</option>
-              <option>Partially Approved</option>
-              <option>Approved</option>
-              <option>Rejected</option>
+              <option value="All Statuses">All Statuses</option>
+              <option value="Pending Execution">Pending Execution</option>
+              <option value="Approved">Approved</option>
+              <option value="Closed">Closed</option>
+              <option value="Open">Open</option>
+              <option value="Rejected">Rejected</option>
             </select>
           </div>
         </div>
@@ -572,17 +663,40 @@ const MyRequests = () => {
                       <td className="py-4 px-4 text-slate-800 font-semibold align-middle whitespace-nowrap">{executorStr}</td>
                       <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${meta.statusColor}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${meta.dotColor}`}></span>
+                          {statusStr.toLowerCase().includes('close') ? (
+                            <CheckCheck className="w-3.5 h-3.5 text-emerald-700" />
+                          ) : statusStr.toLowerCase().includes('approved') ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <span className={`w-1.5 h-1.5 rounded-full ${meta.dotColor}`}></span>
+                          )}
                           <span>{statusStr}</span>
                         </span>
+                        {statusStr.toLowerCase().includes('close') && req.closed_by && (
+                          <div className="text-[10px] text-slate-500 mt-0.5">by <strong className="text-slate-700">{req.closed_by}</strong></div>
+                        )}
+                        {statusStr.toLowerCase().includes('approved') && !statusStr.toLowerCase().includes('close') && (req.approved_by || req.action_taken_by) && (
+                          <div className="text-[10px] text-slate-500 mt-0.5">by <strong className="text-slate-700">{req.approved_by || req.action_taken_by}</strong></div>
+                        )}
                       </td>
                       <td className="py-4 px-6 text-center align-middle whitespace-nowrap">
-                        <button
-                          onClick={() => setActiveModalRequest(req)}
-                          className="px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition shadow-2xs cursor-pointer"
-                        >
-                          View Details
-                        </button>
+                        {statusStr.toLowerCase().includes('approved') && !statusStr.toLowerCase().includes('close') ? (
+                          <button
+                            onClick={() => setActiveModalRequest(req)}
+                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5 mx-auto"
+                            title="Review resolution and complete auditor sign-off"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Review &amp; Close</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setActiveModalRequest(req)}
+                            className="px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition shadow-2xs cursor-pointer"
+                          >
+                            View Details
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -886,6 +1000,150 @@ const MyRequests = () => {
                   )}
                 </div>
               )}
+
+              {/* Creator Sign-off & Closure Review Section */}
+              <div className="p-5 bg-gradient-to-br from-slate-50 to-blue-50/20 rounded-2xl border border-slate-200/90 space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-slate-200 gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+                      <MessageSquare className="w-4 h-4 text-blue-600" />
+                      <span>Auditor Verification &amp; Final Sign-off</span>
+                    </h4>
+                  </div>
+                  {activeModalRequest.status && (
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border self-start sm:self-auto ${getStatusMeta(activeModalRequest.status).statusColor}`}>
+                      Current Status: {activeModalRequest.status}
+                    </span>
+                  )}
+                </div>
+
+                {/* If already closed */}
+                {activeModalRequest.status && activeModalRequest.status.toLowerCase().includes('close') ? (
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2.5 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl">
+                      <CheckCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-emerald-900 text-xs">
+                          This observation has been verified and marked as CLOSED
+                        </p>
+                        <p className="text-[11px] text-emerald-700 mt-0.5">
+                          {activeModalRequest.closed_by && `Closed by ${activeModalRequest.closed_by}`}
+                          {activeModalRequest.closed_at && ` on ${formatDate(activeModalRequest.closed_at)}`}.
+                        </p>
+                      </div>
+                    </div>
+
+                    {activeModalRequest.creator_remark && (
+                      <div className="p-3 bg-white rounded-xl border border-slate-200">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Auditor Closure Remark</span>
+                        <p className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
+                          {activeModalRequest.creator_remark}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3 border-t border-slate-200/80">
+                      <div className="w-full sm:w-60">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          Change Status
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={selectedClosureStatus}
+                            onChange={(e) => setSelectedClosureStatus(e.target.value)}
+                            className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer shadow-2xs appearance-none pr-8"
+                          >
+                            <option value="Closed">Close</option>
+                            <option value="Open">Open</option>
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateClosureStatus(selectedClosureStatus)}
+                        disabled={actionLoading}
+                        className={`px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 ${
+                          selectedClosureStatus === 'Open'
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                        }`}
+                        title="Update status"
+                      >
+                        {actionLoading ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : selectedClosureStatus === 'Open' ? (
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        ) : (
+                          <CheckCheck className="w-3.5 h-3.5" />
+                        )}
+                        <span>{selectedClosureStatus === 'Open' ? 'Reopen Request' : 'Save Status'}</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Form for adding remark and selecting Open / Close */
+                  <div className="space-y-3">
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Review the executor&apos;s corrective action report above. Enter your verification remarks and choose whether to <strong>Close</strong> the observation or keep it <strong>Open</strong> for monitoring.
+                    </p>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Auditor Verification Remark
+                      </label>
+                      <textarea
+                        value={creatorRemark}
+                        onChange={(e) => setCreatorRemark(e.target.value)}
+                        placeholder="Enter your verification observations, shopfloor checks, or reasons for closure / keeping open..."
+                        rows={3}
+                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none leading-relaxed"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3">
+                      <div className="w-full sm:w-60">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          Status
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={selectedClosureStatus}
+                            onChange={(e) => setSelectedClosureStatus(e.target.value)}
+                            className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer shadow-2xs appearance-none pr-8"
+                          >
+                            <option value="Closed">Close</option>
+                            <option value="Open">Open</option>
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateClosureStatus(selectedClosureStatus)}
+                        disabled={actionLoading}
+                        className={`px-6 py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 ${
+                          selectedClosureStatus === 'Closed'
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'
+                        }`}
+                      >
+                        {actionLoading ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : selectedClosureStatus === 'Closed' ? (
+                          <CheckCheck className="w-4 h-4" />
+                        ) : (
+                          <RotateCcw className="w-4 h-4" />
+                        )}
+                        <span>{selectedClosureStatus === 'Closed' ? 'Save as Closed' : 'Save as Open'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center justify-end pt-4 border-t border-slate-100">

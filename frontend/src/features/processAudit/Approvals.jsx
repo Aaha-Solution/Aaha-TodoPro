@@ -21,7 +21,9 @@ import {
   Calendar,
   Check,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  CheckCheck,
+  RotateCcw
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
@@ -293,9 +295,13 @@ const ProcessAuditApprovals = () => {
     const s = (r.status || 'Pending Execution').toLowerCase();
     let matchesStatus = true;
     if (selectedStatus === 'Pending Approval') {
-      matchesStatus = s.includes('pending');
+      matchesStatus = s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject'));
     } else if (selectedStatus === 'Approved') {
-      matchesStatus = s.includes('approved') && !s.includes('partially');
+      matchesStatus = s.includes('approved') && !s.includes('partially') && !s.includes('close');
+    } else if (selectedStatus === 'Closed') {
+      matchesStatus = s.includes('close');
+    } else if (selectedStatus === 'Open') {
+      matchesStatus = s === 'open' || s.includes('open') || s.includes('reopen');
     } else if (selectedStatus === 'Rejected') {
       matchesStatus = s.includes('reject');
     }
@@ -516,6 +522,8 @@ const ProcessAuditApprovals = () => {
               <option value="All">All Statuses</option>
               <option value="Pending Approval">Pending Approval / Execution</option>
               <option value="Approved">Approved</option>
+              <option value="Closed">Closed</option>
+              <option value="Open">Open</option>
               <option value="Rejected">Rejected</option>
             </select>
           </div>
@@ -574,9 +582,11 @@ const ProcessAuditApprovals = () => {
                     const statusStr = r.status || 'Pending Execution';
                     const isPending =
                       statusStr.toLowerCase().includes('pending') ||
-                      (!statusStr.toLowerCase().includes('approved') && !statusStr.toLowerCase().includes('reject'));
+                      (!statusStr.toLowerCase().includes('approved') && !statusStr.toLowerCase().includes('close') && !statusStr.toLowerCase().includes('open') && !statusStr.toLowerCase().includes('reject'));
                     const isApproved =
-                      statusStr.toLowerCase().includes('approved') && !statusStr.toLowerCase().includes('partially');
+                      statusStr.toLowerCase().includes('approved') && !statusStr.toLowerCase().includes('partially') && !statusStr.toLowerCase().includes('close');
+                    const isClosed = statusStr.toLowerCase().includes('close');
+                    const isOpen = statusStr.toLowerCase() === 'open' || statusStr.toLowerCase().includes('reopen');
                     const isRejected = statusStr.toLowerCase().includes('reject');
 
                     return (
@@ -605,6 +615,19 @@ const ProcessAuditApprovals = () => {
                               {statusStr}
                             </span>
                           )}
+                          {isClosed && (
+                            <div>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                <CheckCheck className="w-3.5 h-3.5 text-emerald-700" />
+                                Closed
+                              </span>
+                              {r.closed_by && (
+                                <div className="text-[10px] text-slate-500 mt-0.5">
+                                  by <strong className="text-slate-700">{r.closed_by}</strong>
+                                </div>
+                              )}
+                            </div>
+                          )}
                           {isApproved && (
                             <div>
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -617,6 +640,12 @@ const ProcessAuditApprovals = () => {
                                 </div>
                               )}
                             </div>
+                          )}
+                          {isOpen && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                              <RotateCcw className="w-3.5 h-3.5 text-sky-600" />
+                              Open
+                            </span>
                           )}
                           {isRejected && (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
@@ -1207,6 +1236,32 @@ const ProcessAuditApprovals = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Auditor Verification Remark if present */}
+                  {(activeModalRequest.creator_remark || (activeModalRequest.status || '').toLowerCase().includes('close')) && (
+                    <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200/80 space-y-2 mt-3">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-emerald-200/60">
+                        <div className="flex items-center gap-2">
+                          <CheckCheck className="w-4 h-4 text-emerald-700" />
+                          <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wide">
+                            Auditor Verification &amp; Final Sign-off
+                          </h4>
+                        </div>
+                        <span className="text-[11px] font-bold text-emerald-800">
+                          Status: {activeModalRequest.status}
+                          {activeModalRequest.closed_by && ` (Verified by ${activeModalRequest.closed_by})`}
+                        </span>
+                      </div>
+                      {activeModalRequest.creator_remark && (
+                        <div>
+                          <span className="text-[10px] font-bold uppercase text-emerald-900/70 block mb-0.5">Auditor Remark:</span>
+                          <p className="p-2.5 bg-white/90 rounded-xl border border-emerald-200/60 text-slate-800 text-xs whitespace-pre-wrap leading-relaxed">
+                            {activeModalRequest.creator_remark}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

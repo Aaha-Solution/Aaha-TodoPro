@@ -206,6 +206,9 @@ export const updateRequestStatus = async (req, res) => {
       approved_by_email: body.approved_by_email || body.approvedByEmail || req.user?.email || null,
       approved_by_role: body.approved_by_role || body.approvedByRole || req.user?.role || null,
       comments: body.comments || null,
+      creator_remark: body.creator_remark || body.creatorRemark || body.remark || null,
+      closed_by: body.closed_by || body.closedBy || req.user?.name || null,
+      closed_by_id: body.closed_by_id || body.closedById || req.user?.id || null,
     };
 
     const updated = await ProcessAuditRequest.updateStatus(id, status, details);
@@ -224,33 +227,95 @@ export const updateRequestStatus = async (req, res) => {
       }
     }
 
-    // Auto-create notification for request creator
-    if (updated && updated.created_by) {
-      try {
-        const issueNo = updated.issue_no || (updated.id ? `PA-${updated.id}` : 'PA-1');
-        const isApproved = status.toLowerCase().includes('approved');
-        const isRejected = status.toLowerCase().includes('reject');
-        const actionWord = isApproved ? 'Approved' : isRejected ? 'Rejected' : status;
-        const msg = isRejected && rejectionReason
-          ? `Your audit request #${issueNo} was rejected by ${updated.executor}. Reason: ${rejectionReason}`
-          : `Your audit request #${issueNo} was ${actionWord.toLowerCase()} by ${updated.executor}.`;
+    if (updated) {
+      const issueNo = updated.issue_no || (updated.id ? `PA-${updated.id}` : 'PA-1');
+      const lowerStatus = status.toLowerCase();
+      const isApproved = lowerStatus.includes('approved');
+      const isRejected = lowerStatus.includes('reject');
+      const isClosed = lowerStatus.includes('close');
+      const isOpen = lowerStatus === 'open';
 
-        await pool.query(
-          `INSERT INTO process_audit_notifications 
-           (user_name, user_id, request_id, issue_no, type, title, message, link) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, '/process-audit/my-requests')`,
-          [
-            updated.created_by.trim(),
-            updated.created_by_id || null,
-            updated.id,
-            issueNo,
-            isApproved ? 'request_approved' : 'request_rejected',
-            `Audit Request #${issueNo} ${actionWord}`,
-            msg
-          ]
-        );
-      } catch (notifErr) {
-        console.warn('Failed to insert creator notification:', notifErr.message);
+      // 1. When approved by executor: Notify Creator with direct deep-link to request
+      if (isApproved && updated.created_by) {
+        try {
+          const msg = `Your audit request #${issueNo} was approved by ${updated.executor}. Click to review corrective action, add your remark, and set status to Closed or Open.`;
+          await pool.query(
+            `INSERT INTO process_audit_notifications 
+             (user_name, user_id, request_id, issue_no, type, title, message, link) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              updated.created_by.trim(),
+              updated.created_by_id || null,
+              updated.id,
+              issueNo,
+              'request_approved',
+              `Audit Request #${issueNo} Approved — Review & Remark Required`,
+              msg,
+              `/process-audit/my-requests?requestId=${updated.id}`
+            ]
+          );
+        } catch (notifErr) {
+          console.warn('Failed to insert creator approval notification:', notifErr.message);
+        }
+      } else if (isRejected && updated.created_by) {
+        // When rejected by executor
+        try {
+          const msg = rejectionReason
+            ? `Your audit request #${issueNo} was rejected by ${updated.executor}. Reason: ${rejectionReason}`
+            : `Your audit request #${issueNo} was rejected by ${updated.executor}.`;
+          await pool.query(
+            `INSERT INTO process_audit_notifications 
+             (user_name, user_id, request_id, issue_no, type, title, message, link) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              updated.created_by.trim(),
+              updated.created_by_id || null,
+              updated.id,
+              issueNo,
+              'request_rejected',
+              `Audit Request #${issueNo} Rejected`,
+              msg,
+              `/process-audit/my-requests?requestId=${updated.id}`
+            ]
+          );
+        } catch (notifErr) {
+          console.warn('Failed to insert creator rejection notification:', notifErr.message);
+        }
+      }
+
+      // 2. When creator reviews and marks Closed or Open: Notify Executor & mark creator's notification as read
+      if ((isClosed || isOpen) && updated.executor) {
+        try {
+          // Mark creator's request_approved notification as read
+          await pool.query(
+            `UPDATE process_audit_notifications 
+             SET is_read = 1 
+             WHERE (request_id = ? OR issue_no = ?) AND type = 'request_approved'`,
+            [updated.id, updated.issue_no || id]
+          ).catch(() => {});
+
+          const remarkText = details.creator_remark ? ` Remark: "${details.creator_remark}"` : '';
+          const actionText = isClosed ? 'Verified & Closed' : 'Reviewed & Kept Open';
+          const msg = `Audit Request #${issueNo} has been marked as ${isClosed ? 'Closed' : 'Open'} by ${updated.created_by || 'Creator'}.${remarkText}`;
+
+          await pool.query(
+            `INSERT INTO process_audit_notifications 
+             (user_name, user_id, request_id, issue_no, type, title, message, link) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              updated.executor.trim(),
+              null,
+              updated.id,
+              issueNo,
+              isClosed ? 'request_closed' : 'request_reopened',
+              `Audit Request #${issueNo} ${actionText}`,
+              msg,
+              `/process-audit/approvals?requestId=${updated.id}`
+            ]
+          );
+        } catch (notifErr) {
+          console.warn('Failed to insert executor closure notification:', notifErr.message);
+        }
       }
     }
 
