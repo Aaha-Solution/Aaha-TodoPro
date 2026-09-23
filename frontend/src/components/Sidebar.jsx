@@ -18,8 +18,20 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const userDept = (user?.department || (() => {
+    try {
+      const u = localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.department : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
   const isIhlr = location.pathname.startsWith('/ihlr');
   const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPER_ADMIN';
+  const isIncomingQuality = userDept === 'INCOMING QUALITY';
+  const canCreateProcessAudit = isIncomingQuality || isAdmin;
+  const canTrackProcessAudit = isIncomingQuality || isAdmin;
 
   const handleLogout = () => {
     logout();
@@ -38,8 +50,8 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
       ]
     : [
         { name: 'Dashboard', path: '/process-audit/dashboard', icon: LayoutDashboard },
-        { name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true },
-        { name: 'My Requests', path: '/process-audit/my-requests', icon: Layers },
+        ...(canCreateProcessAudit ? [{ name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true }] : []),
+        ...(canTrackProcessAudit ? [{ name: 'My Requests', path: '/process-audit/my-requests', icon: Layers }] : []),
         { name: 'Approvals', path: '/process-audit/approvals', icon: ClipboardCheck },
         ...(isAdmin ? [{ name: 'User Management', path: '/process-audit/users', icon: Users }] : []),
         { name: 'Notifications', path: '/process-audit/notifications', icon: Bell },
@@ -97,7 +109,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
             </div>
             <div className="text-left flex-1 min-w-0">
               <p className="text-xs font-bold text-white truncate">{user?.name || 'iyyu'}</p>
-              <p className="text-[10px] text-slate-400">{isIhlr ? 'IHLR Quality Team' : 'Request Creator'}</p>
+              <p className="text-[10px] text-slate-400">{isIhlr ? 'IHLR Quality Team' : (userDept || 'Request Creator')}</p>
             </div>
           </div>
 

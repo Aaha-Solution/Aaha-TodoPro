@@ -21,9 +21,24 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
+import { useAuth } from '../../hooks/useAuth';
 
 const ProcessAuditDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const userDept = (user?.department || (() => {
+    try {
+      const u = localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.department : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPER_ADMIN';
+  const isIncomingQuality = userDept === 'INCOMING QUALITY';
+  const canCreate = isIncomingQuality || isAdmin;
+
   const [requests, setRequests] = useState([]);
   const [metrics, setMetrics] = useState({});
   const [loading, setLoading] = useState(true);
@@ -257,13 +272,15 @@ const ProcessAuditDashboard = () => {
             <span>Refresh</span>
           </button>
 
-          <button
-            onClick={() => navigate('/process-audit/create-request')}
-            className="px-5 py-2.5 bg-[#2563eb] hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Production Request</span>
-          </button>
+          {canCreate && (
+            <button
+              onClick={() => navigate('/process-audit/create-request')}
+              className="px-5 py-2.5 bg-[#2563eb] hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 transition cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Production Request</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -308,12 +325,14 @@ const ProcessAuditDashboard = () => {
               Live records from database with latest sequential audit history.
             </p>
           </div>
-          <button
-            onClick={() => navigate('/process-audit/my-requests')}
-            className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 shadow-2xs transition cursor-pointer"
-          >
-            View All Tracking
-          </button>
+          {canCreate && (
+            <button
+              onClick={() => navigate('/process-audit/my-requests')}
+              className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 shadow-2xs transition cursor-pointer"
+            >
+              View All Tracking
+            </button>
+          )}
         </div>
 
         {/* Requests Table */}
@@ -327,13 +346,17 @@ const ProcessAuditDashboard = () => {
             <div className="py-16 text-center text-slate-400 text-xs">
               <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
               <p className="font-semibold text-slate-600 mb-1">No production requests found in database</p>
-              <p className="text-slate-400 mb-4">Click below to create your first production audit request.</p>
-              <button
-                onClick={() => navigate('/process-audit/create-request')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition"
-              >
-                Create First Request
-              </button>
+              {canCreate && (
+                <>
+                  <p className="text-slate-400 mb-4">Click below to create your first production audit request.</p>
+                  <button
+                    onClick={() => navigate('/process-audit/create-request')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition"
+                  >
+                    Create First Request
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <table className="w-full text-left border-collapse">

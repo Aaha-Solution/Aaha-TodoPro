@@ -16,7 +16,8 @@ import {
   FileSpreadsheet,
   Presentation,
   File as FileIcon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ShieldAlert,
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
@@ -275,8 +276,36 @@ const CreateRequest = () => {
     processFiles(e.dataTransfer.files);
   };
 
+  const currentCreator = user?.name || user?.email || (() => {
+    try {
+      const u = localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.name || JSON.parse(u)?.email : '';
+    } catch {
+      return '';
+    }
+  })();
+
+  const currentDept = (user?.department || (() => {
+    try {
+      const u = localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.department : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim();
+
+  const userRole = (user?.role || '').trim().toUpperCase();
+  const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN';
+  const isIncomingQuality = currentDept.toUpperCase() === 'INCOMING QUALITY';
+  const canCreate = isIncomingQuality || isAdmin;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!canCreate) {
+      alert('Access Denied: Only personnel from the INCOMING QUALITY department are authorized to create Process Audit requests.');
+      return;
+    }
 
     if (!formData.product) {
       alert('Please select a Product in Section 1');
@@ -336,14 +365,7 @@ const CreateRequest = () => {
       ? formData.requestId
       : `PA-${formData.requestId || '1'}`;
 
-    const creatorName = user?.name || user?.email || (() => {
-      try {
-        const u = localStorage.getItem('todo_user');
-        return u ? JSON.parse(u)?.name || JSON.parse(u)?.email : '';
-      } catch {
-        return '';
-      }
-    })();
+    const creatorName = currentCreator;
 
     const payload = {
       issue_no: formattedIssueNo,
@@ -378,14 +400,63 @@ const CreateRequest = () => {
     }
   };
 
-  const currentCreator = user?.name || user?.email || (() => {
-    try {
-      const u = localStorage.getItem('todo_user');
-      return u ? JSON.parse(u)?.name || JSON.parse(u)?.email : '';
-    } catch {
-      return '';
-    }
-  })();
+  // If user is not from INCOMING QUALITY, display restricted authorization notice
+  if (!canCreate) {
+    return (
+      <div className="space-y-6 w-full pb-12">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Create Production Request
+            </h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Process Audit Observation • Departmental Access Control
+            </p>
+          </div>
+        </div>
+
+        <div className="max-w-2xl mx-auto my-8 bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/90 shadow-sm text-center">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-4">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">
+            Department Authorization Required
+          </h2>
+          <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+            In <strong>Process Audit Observation</strong>, only personnel from the{' '}
+            <span className="font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 inline-block my-1">
+              INCOMING QUALITY
+            </span>{' '}
+            department are authorized to create new production audit requests.
+          </p>
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/70 text-xs text-slate-600 mb-6 max-w-md mx-auto text-left space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Logged-in User:</span>
+              <strong className="text-slate-800">{currentCreator || 'Unknown'}</strong>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Your Department:</span>
+              <strong className="text-rose-600 font-semibold">{currentDept || 'Not Assigned / Other Department'}</strong>
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => navigate('/process-audit/dashboard')}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+            >
+              Go to Dashboard
+            </button>
+            <button
+              onClick={() => navigate('/process-audit/my-requests')}
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+            >
+              View My Requests
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 w-full pb-12">
@@ -407,7 +478,12 @@ const CreateRequest = () => {
               {currentCreator.charAt(0).toUpperCase()}
             </div>
             <div className="text-left text-xs leading-tight">
-              <span className="text-[10px] text-slate-400 block font-semibold uppercase">Created By</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-slate-400 font-semibold uppercase">Created By</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  {currentDept || 'INCOMING QUALITY'}
+                </span>
+              </div>
               <span className="font-bold text-slate-800">{currentCreator}</span>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import path from 'path';
+import pool from '../../../shared/db.js';
 import { ProcessAuditRequest } from '../models/Request.js';
 import { successResponse, errorResponse } from '../../../shared/response.js';
 
@@ -77,6 +78,26 @@ export const createRequest = async (req, res) => {
     requestData.attachments = parsedAttachments;
     requestData.created_by = requestData.created_by || req.user?.name || req.user?.email || null;
     requestData.created_by_id = requestData.created_by_id || req.user?.id || null;
+
+    // Verify department authorization: Only INCOMING QUALITY department (or Admin) can create requests
+    const creatorId = requestData.created_by_id || req.user?.id;
+    if (creatorId || requestData.created_by) {
+      const [uRows] = await pool.query(
+        'SELECT department, role FROM users WHERE id = ? OR LOWER(name) = LOWER(?) OR LOWER(email) = LOWER(?) LIMIT 1',
+        [creatorId || 0, requestData.created_by || '', requestData.created_by || '']
+      );
+      if (uRows.length > 0) {
+        const uDept = (uRows[0].department || '').trim().toUpperCase();
+        const uRole = (uRows[0].role || '').trim().toUpperCase();
+        if (uRole !== 'ADMIN' && uRole !== 'SUPER_ADMIN' && uRole !== 'SUPER ADMIN' && uDept !== 'INCOMING QUALITY') {
+          return errorResponse(
+            res,
+            'Access Denied: Only personnel from the INCOMING QUALITY department are authorized to create Process Audit requests.',
+            403
+          );
+        }
+      }
+    }
 
     const created = await ProcessAuditRequest.create(requestData);
     return successResponse(res, created, 'Production request created', 201);
