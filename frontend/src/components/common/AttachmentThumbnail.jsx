@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, FileSpreadsheet, Paperclip, Eye, Image as ImageIcon } from 'lucide-react';
+import { FileText, FileSpreadsheet, Paperclip, Image as ImageIcon } from 'lucide-react';
 import { parseAttachments, getFileMeta } from './attachmentUtils';
 
 /**
@@ -55,10 +55,6 @@ const AttachmentThumbnail = ({ rawAttachment, onClick }) => {
             +{count - 1}
           </span>
         )}
-      </div>
-
-      <div className="hidden sm:block opacity-0 group-hover:opacity-100 text-blue-600 transition">
-        <Eye className="w-3.5 h-3.5" />
       </div>
     </div>
   );
