@@ -152,6 +152,7 @@ const MyRequests = () => {
     const reqId = String(req.issue_no || (req.id ? `PA-${req.id}` : '')).toLowerCase();
     const line = String(req.process_operation || req.line || '').toLowerCase();
     const executor = String(req.executor || '').toLowerCase();
+    const creator = String(req.created_by || req.creator || '').toLowerCase();
     const stage = String(req.model || req.stage || '').toLowerCase();
     const product = String(req.product || '').toLowerCase();
     const dept = String(req.department || '').toLowerCase();
@@ -164,6 +165,7 @@ const MyRequests = () => {
       reqId.includes(q) ||
       line.includes(q) ||
       executor.includes(q) ||
+      creator.includes(q) ||
       stage.includes(q) ||
       product.includes(q) ||
       dept.includes(q) ||
@@ -196,10 +198,10 @@ const MyRequests = () => {
         const id = r.issue_no || `PA-${r.id}`;
         const date = formatDate(r.escalation_date || r.created_at);
         const shift = r.shift || '';
-        const prod = `${r.product || ''} ${r.model ? `(${r.model})` : ''}`.trim();
+        const prod = r.product || '';
         const stage = r.model || r.stage || '';
         const line = r.process_operation || r.line || '';
-        const creator = r.department || r.creator || 'Production';
+        const creator = r.created_by || r.creator || '-';
         const executor = r.executor || '';
         const status = r.status || 'Pending Execution';
         return `${id},${date},${shift},"${prod}",${stage},"${line}","${creator}","${executor}",${status}`;
@@ -384,9 +386,9 @@ const MyRequests = () => {
                   <th className="py-3.5 px-6">REQUEST ID</th>
                   <th className="py-3.5 px-4">DATE</th>
                   <th className="py-3.5 px-4">SHIFT</th>
-                  <th className="py-3.5 px-4">PRODUCTION</th>
-                  <th className="py-3.5 px-4">STAGE</th>
-                  <th className="py-3.5 px-4">LINE</th>
+                  <th className="py-3.5 px-4">PRODUCT</th>
+                  <th className="py-3.5 px-4">MODEL</th>
+                  <th className="py-3.5 px-4">PROCESS/OPERATION</th>
                   <th className="py-3.5 px-4">CREATOR</th>
                   <th className="py-3.5 px-4">EXECUTOR</th>
                   <th className="py-3.5 px-4">STATUS</th>
@@ -397,10 +399,10 @@ const MyRequests = () => {
                 {filteredRequests.map((req) => {
                   const reqId = req.issue_no || (req.id ? `PA-${req.id}` : 'PA-1');
                   const dateStr = formatDate(req.escalation_date || req.created_at);
-                  const prodStr = `${req.product || 'Standard'} ${req.model ? `(${req.model})` : ''}`.trim();
+                  const prodStr = req.product || '-';
                   const stageStr = req.model || req.stage || 'Standard';
                   const lineStr = req.process_operation || req.line || 'General';
-                  const creatorStr = req.department || req.creator || 'Production';
+                  const creatorStr = req.created_by || req.creator || '-';
                   const executorStr = req.executor || 'Assigned Lead';
                   const statusStr = req.status || 'Pending Execution';
                   const meta = getStatusMeta(statusStr);
@@ -413,7 +415,7 @@ const MyRequests = () => {
                       <td className="py-4 px-4 text-slate-800 font-semibold">{prodStr}</td>
                       <td className="py-4 px-4 text-slate-600">{stageStr}</td>
                       <td className="py-4 px-4 text-slate-700 font-medium">{lineStr}</td>
-                      <td className="py-4 px-4 text-slate-600">{creatorStr}</td>
+                      <td className="py-4 px-4 text-slate-700 font-medium">{creatorStr}</td>
                       <td className="py-4 px-4 text-slate-800 font-semibold">{executorStr}</td>
                       <td className="py-4 px-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${meta.statusColor}`}>

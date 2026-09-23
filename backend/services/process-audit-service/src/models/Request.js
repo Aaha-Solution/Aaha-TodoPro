@@ -66,6 +66,13 @@ const ensureTable = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
+    // Ensure existing rows without created_by get populated if created_by_id exists
+    await pool.query(`
+      UPDATE process_audit_requests r
+      JOIN users u ON r.created_by_id = u.id
+      SET r.created_by = COALESCE(u.name, u.email)
+      WHERE r.created_by IS NULL OR TRIM(r.created_by) = ''
+    `).catch(() => {});
   } catch (err) {
     console.warn('[process_audit_requests] Table structure sync notice:', err.message);
   }
@@ -75,7 +82,12 @@ ensureTable();
 export const ProcessAuditRequest = {
   findAll: async () => {
     if (!pool) throw new Error('Database connection pool is not available');
-    const [rows] = await pool.query('SELECT * FROM process_audit_requests ORDER BY id DESC');
+    const [rows] = await pool.query(`
+      SELECT r.*, COALESCE(NULLIF(TRIM(r.created_by), ''), u.name, u.email) AS created_by
+      FROM process_audit_requests r
+      LEFT JOIN users u ON r.created_by_id = u.id
+      ORDER BY r.id DESC
+    `);
     return rows;
   },
 

@@ -353,7 +353,7 @@ const ProcessAuditDashboard = () => {
                 {requests.slice(0, 10).map((req) => {
                   const reqId = req.issue_no || (req.id ? `PA-${req.id}` : 'PA-1');
                   const dateStr = formatDate(req.escalation_date || req.created_at);
-                  const prodStr = `${req.product || 'Standard'} ${req.model ? `(${req.model})` : ''}`.trim();
+                  const prodStr = req.product || '-';
                   const stageStr = req.model || req.stage || 'Standard';
                   const statusStr = req.status || 'Pending Execution';
                   const meta = getStatusMeta(statusStr);
