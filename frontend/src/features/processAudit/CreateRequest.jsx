@@ -388,6 +388,7 @@ const CreateRequest = () => {
     try {
       const res = await processAuditService.createRequest(payload);
       const savedId = res?.data?.issue_no || (res?.data?.id ? `PA-${res.data.id}` : formData.requestId);
+      window.dispatchEvent(new Event('refreshNotifications'));
       alert(`Production Request ${savedId} created and saved to Database successfully!`);
       navigate('/process-audit/my-requests');
     } catch (err) {

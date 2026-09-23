@@ -7,7 +7,7 @@ router.get('/next-id', getNextId);
 router.get('/', getAllRequests);
 router.post('/upload', upload.array('files', 15), uploadAttachments);
 router.post('/', upload.array('files', 15), createRequest);
-router.put('/:id/status', updateRequestStatus);
-router.patch('/:id/status', updateRequestStatus);
+router.put('/:id/status', upload.array('files', 15), updateRequestStatus);
+router.patch('/:id/status', upload.array('files', 15), updateRequestStatus);
 
 export default router;

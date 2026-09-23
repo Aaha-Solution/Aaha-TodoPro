@@ -60,8 +60,42 @@ export const processAuditService = {
     }
   },
 
-  updateRequestStatus: async (id, status, rejectionReason = null) => {
-    const res = await api.put(`/process-audit/requests/${id}/status`, { status, rejectionReason });
+  updateRequestStatus: async (id, status, details = {}) => {
+    let payload = { status };
+    if (typeof details === 'string') {
+      payload.rejectionReason = details;
+    } else if (typeof details === 'object' && details !== null) {
+      payload = { ...payload, ...details };
+    }
+    const res = await api.put(`/process-audit/requests/${id}/status`, payload);
     return res.data?.data || res.data;
+  },
+
+  getNotifications: async (params) => {
+    try {
+      const res = await api.get('/process-audit/notifications', { params });
+      return res.data?.data || res.data || [];
+    } catch (err) {
+      console.error('Failed to fetch notifications from DB:', err);
+      return [];
+    }
+  },
+
+  markNotificationAsRead: async (id) => {
+    try {
+      const res = await api.patch(`/process-audit/notifications/${id}/read`);
+      return res.data?.data || res.data;
+    } catch (err) {
+      console.error(`Failed to mark notification ${id} as read:`, err);
+    }
+  },
+
+  markAllNotificationsAsRead: async (user) => {
+    try {
+      const res = await api.patch('/process-audit/notifications/mark-all-read', { user });
+      return res.data?.data || res.data;
+    } catch (err) {
+      console.error('Failed to mark all notifications as read:', err);
+    }
   }
 };

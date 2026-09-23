@@ -598,6 +598,105 @@ const ProcessAuditDashboard = () => {
                   </div>
                 </div>
               )}
+
+              {/* Executor Resolution & Action Report if present */}
+              {(selectedRequest.root_cause ||
+                selectedRequest.corrective_action ||
+                selectedRequest.standardization_details ||
+                selectedRequest.target_date ||
+                (selectedRequest.action_attachments && selectedRequest.action_attachments !== '[]')) && (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/90 space-y-3.5">
+                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                        Executor Corrective Action &amp; Standardization Report
+                      </h4>
+                    </div>
+                    {selectedRequest.action_taken_by && (
+                      <span className="text-[10px] text-slate-500">
+                        Signed-off by: <strong className="text-slate-800">{selectedRequest.action_taken_by}</strong>
+                      </span>
+                    )}
+                  </div>
+
+                  {selectedRequest.root_cause && (
+                    <div>
+                      <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Root cause</span>
+                      <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                        {selectedRequest.root_cause}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedRequest.corrective_action && (
+                    <div>
+                      <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Corrective Action (by Resp. Team)</span>
+                      <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                        {selectedRequest.corrective_action}
+                      </p>
+                    </div>
+                  )}
+
+                  {(() => {
+                    const actionAtts = getAttachmentsList(selectedRequest.action_attachments);
+                    if (actionAtts.length === 0) return null;
+                    return (
+                      <div>
+                        <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1.5">Action Attachments ({actionAtts.length})</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {actionAtts.map((att, i) => {
+                            const meta = getFileMeta(att);
+                            const IconComponent = meta.icon;
+                            const fullUrl = getFullAttachmentUrl(att);
+                            return (
+                              <div key={i} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                <div className="flex items-center gap-2 min-w-0 pr-2">
+                                  <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 border ${meta.badgeBg}`}>
+                                    <IconComponent className="w-3.5 h-3.5" />
+                                  </div>
+                                  <span className="font-semibold text-slate-800 truncate text-[11px]" title={att.name}>{att.name}</span>
+                                </div>
+                                {fullUrl && (
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewAttachment({ ...att, url: fullUrl, isImage: meta.isImage, isPdf: meta.isPdf, isExcel: meta.isExcel, isPpt: meta.isPpt, type: att.type || meta.typeName })}
+                                      className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100"
+                                      title="Preview"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </button>
+                                    <a href={fullUrl} target="_blank" rel="noreferrer" download={att.name} className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100" title="Download">
+                                      <Download className="w-3.5 h-3.5" />
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {selectedRequest.standardization_details && (
+                    <div>
+                      <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Standardization details</span>
+                      <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                        {selectedRequest.standardization_details}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedRequest.target_date && (
+                    <div className="flex items-center gap-2 text-xs pt-1">
+                      <span className="text-[#003366] font-bold">Target Date:</span>
+                      <span className="font-semibold text-slate-800 font-mono">{formatDate(selectedRequest.target_date)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end pt-4 border-t border-slate-100">

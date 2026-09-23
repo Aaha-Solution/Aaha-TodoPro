@@ -12,9 +12,11 @@ import {
   Users
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useSelector } from 'react-redux';
 
 const Sidebar = ({ isOpen, closeSidebar }) => {
   const { user, logout } = useAuth();
+  const { unreadCount } = useSelector((state) => state.notification);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -148,7 +150,12 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
                   }
                 >
                   <Icon className="w-4 h-4" />
-                  <span>{item.isAction ? `+ ${item.name}` : item.name}</span>
+                  <span className="flex-1 text-left">{item.isAction ? `+ ${item.name}` : item.name}</span>
+                  {item.name === 'Notifications' && unreadCount > 0 && (
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded-full leading-none">
+                      {unreadCount}
+                    </span>
+                  )}
                 </NavLink>
               );
             })}
@@ -161,10 +168,17 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
         <div className="p-5 border-t border-slate-800/80 space-y-1">
           <NavLink
             to={isIhlr ? "/ihlr/notifications" : "/process-audit/notifications"}
-            className="flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-[#131b2e] hover:text-white transition"
+            className="flex items-center justify-between px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-[#131b2e] hover:text-white transition"
           >
-            <Bell className="w-4 h-4" />
-            <span>Notifications</span>
+            <div className="flex items-center gap-3">
+              <Bell className="w-4 h-4" />
+              <span>Notifications</span>
+            </div>
+            {unreadCount > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded-full leading-none">
+                {unreadCount}
+              </span>
+            )}
           </NavLink>
 
           <button

@@ -38,6 +38,29 @@ const ensureTable = async () => {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN created_by_id INT NULL`).catch(() => {});
     }
 
+    // Ensure executor resolution columns exist in MySQL
+    if (!colNames.includes('root_cause')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN root_cause TEXT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('corrective_action')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN corrective_action TEXT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('action_attachments')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN action_attachments JSON NULL`).catch(() => {});
+    }
+    if (!colNames.includes('standardization_details')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN standardization_details TEXT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('target_date')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN target_date VARCHAR(50) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('action_taken_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN action_taken_by VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('action_taken_at')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN action_taken_at TIMESTAMP NULL`).catch(() => {});
+    }
+
     // Drop any existing defaults on MySQL columns
     await pool.query(`ALTER TABLE process_audit_requests MODIFY issue_type VARCHAR(50) NULL`).catch(() => {});
     await pool.query(`ALTER TABLE process_audit_requests MODIFY priority VARCHAR(50) NULL`).catch(() => {});
@@ -60,6 +83,13 @@ const ensureTable = async () => {
         executor VARCHAR(100) NOT NULL,
         comments TEXT,
         status VARCHAR(50) DEFAULT 'Pending Execution',
+        root_cause TEXT,
+        corrective_action TEXT,
+        action_attachments JSON,
+        standardization_details TEXT,
+        target_date VARCHAR(50),
+        action_taken_by VARCHAR(100),
+        action_taken_at TIMESTAMP NULL,
         created_by VARCHAR(100),
         created_by_id INT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -204,28 +234,95 @@ export const ProcessAuditRequest = {
     return rows[0] || { id: insertedId, issue_no: issue_no || `PA-${insertedId}`, ...data };
   },
 
-  updateStatus: async (id, status, rejectionReason = null) => {
+  updateStatus: async (id, status, details = {}) => {
     if (!pool) throw new Error('Database connection pool is not available');
     const numericId = parseInt(String(id).replace(/\D/g, ''), 10) || id;
 
-    // Check if rejection_reason column exists
+    // Check if columns exist
     const [cols] = await pool.query(`SHOW COLUMNS FROM process_audit_requests`).catch(() => [[]]);
     const colNames = cols.map((c) => c.Field);
     if (!colNames.includes('rejection_reason')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN rejection_reason TEXT NULL`).catch(() => {});
     }
-
-    if (rejectionReason !== null && rejectionReason !== undefined) {
-      await pool.query(
-        `UPDATE process_audit_requests SET status = ?, rejection_reason = ? WHERE id = ? OR issue_no = ?`,
-        [status, rejectionReason, numericId, String(id)]
-      );
-    } else {
-      await pool.query(
-        `UPDATE process_audit_requests SET status = ? WHERE id = ? OR issue_no = ?`,
-        [status, numericId, String(id)]
-      );
+    if (!colNames.includes('root_cause')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN root_cause TEXT NULL`).catch(() => {});
     }
+    if (!colNames.includes('corrective_action')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN corrective_action TEXT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('action_attachments')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN action_attachments JSON NULL`).catch(() => {});
+    }
+    if (!colNames.includes('standardization_details')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN standardization_details TEXT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('target_date')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN target_date VARCHAR(50) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('action_taken_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN action_taken_by VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('action_taken_at')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN action_taken_at TIMESTAMP NULL`).catch(() => {});
+    }
+
+    let rejectionReason = null;
+    let rootCause = null;
+    let correctiveAction = null;
+    let actionAttachments = null;
+    let standardizationDetails = null;
+    let targetDate = null;
+    let actionTakenBy = null;
+
+    if (typeof details === 'string') {
+      rejectionReason = details;
+    } else if (typeof details === 'object' && details !== null) {
+      rejectionReason = details.rejectionReason !== undefined ? details.rejectionReason : (details.rejection_reason !== undefined ? details.rejection_reason : null);
+      rootCause = details.root_cause !== undefined ? details.root_cause : (details.rootCause !== undefined ? details.rootCause : null);
+      correctiveAction = details.corrective_action !== undefined ? details.corrective_action : (details.correctiveAction !== undefined ? details.correctiveAction : null);
+      actionAttachments = details.action_attachments !== undefined ? details.action_attachments : (details.actionAttachments !== undefined ? details.actionAttachments : null);
+      standardizationDetails = details.standardization_details !== undefined ? details.standardization_details : (details.standardizationDetails !== undefined ? details.standardizationDetails : null);
+      targetDate = details.target_date !== undefined ? details.target_date : (details.targetDate !== undefined ? details.targetDate : null);
+      actionTakenBy = details.action_taken_by !== undefined ? details.action_taken_by : (details.actionTakenBy !== undefined ? details.actionTakenBy : null);
+    }
+
+    const updates = ['status = ?'];
+    const params = [status];
+
+    if (rejectionReason !== null) {
+      updates.push('rejection_reason = ?');
+      params.push(rejectionReason);
+    }
+    if (rootCause !== null) {
+      updates.push('root_cause = ?');
+      params.push(rootCause);
+    }
+    if (correctiveAction !== null) {
+      updates.push('corrective_action = ?');
+      params.push(correctiveAction);
+    }
+    if (actionAttachments !== null) {
+      updates.push('action_attachments = ?');
+      params.push(typeof actionAttachments === 'string' ? actionAttachments : JSON.stringify(actionAttachments));
+    }
+    if (standardizationDetails !== null) {
+      updates.push('standardization_details = ?');
+      params.push(standardizationDetails);
+    }
+    if (targetDate !== null) {
+      updates.push('target_date = ?');
+      params.push(targetDate);
+    }
+    if (actionTakenBy !== null) {
+      updates.push('action_taken_by = ?');
+      params.push(actionTakenBy);
+      updates.push('action_taken_at = NOW()');
+    }
+
+    params.push(numericId, String(id));
+
+    const query = `UPDATE process_audit_requests SET ${updates.join(', ')} WHERE id = ? OR issue_no = ?`;
+    await pool.query(query, params);
 
     const [rows] = await pool.query(`SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?`, [numericId, String(id)]);
     return rows[0];

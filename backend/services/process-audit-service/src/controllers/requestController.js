@@ -116,6 +116,41 @@ export const createRequest = async (req, res) => {
     }
 
     const created = await ProcessAuditRequest.create(requestData);
+
+    // Auto-create in-app notification for assigned executor
+    if (created && created.executor) {
+      try {
+        const issueNo = created.issue_no || (created.id ? `PA-${created.id}` : 'PA-1');
+        const creator = created.created_by || 'Quality Auditor';
+        const dept = created.department || 'Production';
+        const stage = created.model || 'Standard';
+        const line = created.process_operation || 'General';
+
+        // Resolve executor user_id if available
+        const [execUserRows] = await pool.query(
+          'SELECT id FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1',
+          [created.executor.trim()]
+        ).catch(() => [[]]);
+        const execUserId = execUserRows?.[0]?.id || null;
+
+        await pool.query(
+          `INSERT INTO process_audit_notifications 
+           (user_name, user_id, request_id, issue_no, type, title, message, link) 
+           VALUES (?, ?, ?, ?, 'approval_required', ?, ?, '/process-audit/approvals')`,
+          [
+            created.executor.trim(),
+            execUserId,
+            created.id,
+            issueNo,
+            `New Audit Request Assigned for Sign-off: #${issueNo}`,
+            `Request #${issueNo} for ${dept} (${stage} - ${line}) has been assigned to you by ${creator}. Awaiting your review & sign-off.`
+          ]
+        );
+      } catch (notifErr) {
+        console.warn('Failed to insert executor notification:', notifErr.message);
+      }
+    }
+
     return successResponse(res, created, 'Production request created', 201);
   } catch (err) {
     return errorResponse(res, err.message);
@@ -125,11 +160,95 @@ export const createRequest = async (req, res) => {
 export const updateRequestStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, rejectionReason } = req.body;
+    const body = req.body || {};
+    const { status, rejectionReason } = body;
     if (!status) {
       return errorResponse(res, 'Status is required', 400);
     }
-    const updated = await ProcessAuditRequest.updateStatus(id, status, rejectionReason);
+
+    let parsedActionAttachments = body.action_attachments || body.actionAttachments || null;
+    if (typeof parsedActionAttachments === 'string') {
+      try {
+        parsedActionAttachments = JSON.parse(parsedActionAttachments);
+      } catch {
+        parsedActionAttachments = [];
+      }
+    }
+
+    // If files were uploaded simultaneously with this status update
+    if (req.files && req.files.length > 0) {
+      const uploadedFiles = req.files.map((file) => {
+        const ext = path.extname(file.originalname).replace('.', '').toUpperCase();
+        return {
+          name: file.originalname,
+          filename: file.filename,
+          path: `uploads/attachments/${file.filename}`,
+          url: `/api/process-audit/uploads/attachments/${file.filename}`,
+          size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+          type: ext,
+        };
+      });
+      parsedActionAttachments = Array.isArray(parsedActionAttachments)
+        ? [...parsedActionAttachments, ...uploadedFiles]
+        : uploadedFiles;
+    }
+
+    const details = {
+      rejectionReason: rejectionReason || body.rejection_reason || null,
+      root_cause: body.root_cause || body.rootCause || null,
+      corrective_action: body.corrective_action || body.correctiveAction || null,
+      action_attachments: parsedActionAttachments,
+      standardization_details: body.standardization_details || body.standardizationDetails || null,
+      target_date: body.target_date || body.targetDate || null,
+      action_taken_by: body.action_taken_by || body.actionTakenBy || req.user?.name || null,
+    };
+
+    const updated = await ProcessAuditRequest.updateStatus(id, status, details);
+
+    // Auto-mark the executor's approval notification as read once actioned
+    if (updated) {
+      try {
+        await pool.query(
+          `UPDATE process_audit_notifications 
+           SET is_read = 1 
+           WHERE (request_id = ? OR issue_no = ?) AND type = 'approval_required'`,
+          [updated.id, updated.issue_no || id]
+        );
+      } catch (notifErr) {
+        console.warn('Failed to update executor notification read status:', notifErr.message);
+      }
+    }
+
+    // Auto-create notification for request creator
+    if (updated && updated.created_by) {
+      try {
+        const issueNo = updated.issue_no || (updated.id ? `PA-${updated.id}` : 'PA-1');
+        const isApproved = status.toLowerCase().includes('approved');
+        const isRejected = status.toLowerCase().includes('reject');
+        const actionWord = isApproved ? 'Approved' : isRejected ? 'Rejected' : status;
+        const msg = isRejected && rejectionReason
+          ? `Your audit request #${issueNo} was rejected by ${updated.executor}. Reason: ${rejectionReason}`
+          : `Your audit request #${issueNo} was ${actionWord.toLowerCase()} by ${updated.executor}.`;
+
+        await pool.query(
+          `INSERT INTO process_audit_notifications 
+           (user_name, user_id, request_id, issue_no, type, title, message, link) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, '/process-audit/my-requests')`,
+          [
+            updated.created_by.trim(),
+            updated.created_by_id || null,
+            updated.id,
+            issueNo,
+            isApproved ? 'request_approved' : 'request_rejected',
+            `Audit Request #${issueNo} ${actionWord}`,
+            msg
+          ]
+        );
+      } catch (notifErr) {
+        console.warn('Failed to insert creator notification:', notifErr.message);
+      }
+    }
+
     return successResponse(res, updated, `Request status updated to ${status}`);
   } catch (err) {
     return errorResponse(res, err.message);

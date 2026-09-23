@@ -110,17 +110,27 @@ const MyRequests = () => {
 
   const getFullAttachmentUrl = (att) => {
     if (!att) return '';
-    const url = att.url || (att.path ? `/api/process-audit/${att.path}` : '');
+    let url = '';
+    if (typeof att === 'string') {
+      url = att;
+    } else {
+      url = att.url || (att.path ? `/api/process-audit/${att.path}` : '');
+    }
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
       return url;
     }
     const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
-    return `${apiBase}${url.startsWith('/') ? '' : '/'}${url}`;
+    const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+    if (cleanUrl.startsWith('/uploads/')) {
+      return `${apiBase}/api/process-audit${cleanUrl}`;
+    }
+    return `${apiBase}${cleanUrl}`;
   };
 
   const getFileMeta = (file) => {
-    const ext = ((file?.type || file?.name?.split('.').pop()) || '').toUpperCase();
+    const fileName = typeof file === 'string' ? file : (file?.name || file?.filename || file?.path || '');
+    const ext = (file?.type || fileName.split('.').pop() || '').toUpperCase();
     const isImage = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'].includes(ext);
     const isPdf = ext === 'PDF';
     const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
@@ -271,16 +281,49 @@ const MyRequests = () => {
   // Parse attachments safely for modal
   const getAttachmentsList = (attData) => {
     if (!attData) return [];
-    if (Array.isArray(attData)) return attData;
-    if (typeof attData === 'string') {
-      try {
-        const parsed = JSON.parse(attData);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
+    let list = [];
+    if (Array.isArray(attData)) {
+      list = attData;
+    } else if (typeof attData === 'string') {
+      const trimmed = attData.trim();
+      if (!trimmed || trimmed === '[]' || trimmed === 'null' || trimmed === '""') {
         return [];
       }
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          list = Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          list = [];
+        }
+      } else if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          list = [parsed];
+        } catch {
+          list = [];
+        }
+      } else {
+        list = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    } else if (typeof attData === 'object') {
+      list = [attData];
     }
-    return [];
+
+    return list.map((item) => {
+      if (typeof item === 'string') {
+        const rawName = item.split('/').pop().split('\\').pop();
+        return {
+          name: rawName || 'Attachment',
+          path: item.startsWith('uploads/') ? item : `uploads/attachments/${item}`,
+          url: `/api/process-audit/${item.startsWith('uploads/') ? item : `uploads/attachments/${item}`}`,
+        };
+      }
+      return {
+        ...item,
+        name: item.name || item.filename || (item.path ? item.path.split('/').pop().split('\\').pop() : 'Attachment'),
+      };
+    });
   };
 
   const modalAttachments = activeModalRequest ? getAttachmentsList(activeModalRequest.attachments) : [];
@@ -553,7 +596,7 @@ const MyRequests = () => {
       {/* Details Modal */}
       {activeModalRequest && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-3xl max-w-4xl lg:max-w-5xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
@@ -633,16 +676,29 @@ const MyRequests = () => {
                 </div>
               )}
 
-              {/* Attachments Section with Click-to-Preview */}
-              {modalAttachments.length > 0 && (
-                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
-                  <div className="flex items-center justify-between mb-2.5">
-                    <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
-                      Attached Technical Drawings & Documents ({modalAttachments.length})
+              {/* Creator Attachments Section (Always Visible) */}
+              <div className="p-4 bg-gradient-to-r from-blue-50/60 via-slate-50 to-indigo-50/40 rounded-2xl border border-blue-200/80 shadow-2xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <Paperclip className="w-4 h-4 text-blue-600" />
+                    <span className="text-slate-900 font-extrabold uppercase text-[11px] tracking-wider">
+                      Creator Attachments &amp; Incident Evidence
                     </span>
-                    <span className="text-[10px] text-blue-600 font-medium">Click any file to preview</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      modalAttachments.length > 0
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      {modalAttachments.length > 0 ? `${modalAttachments.length} file${modalAttachments.length > 1 ? 's' : ''}` : '0 files attached'}
+                    </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Audit Creator: <strong className="text-blue-700">{activeModalRequest.created_by || 'Quality Auditor'}</strong>
+                  </span>
+                </div>
+
+                {modalAttachments.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
                     {modalAttachments.map((rawAtt, i) => {
                       const fullUrl = getFullAttachmentUrl(rawAtt);
                       const meta = getFileMeta(rawAtt);
@@ -710,6 +766,119 @@ const MyRequests = () => {
                       );
                     })}
                   </div>
+                ) : (
+                  <div className="p-3 bg-white/80 rounded-xl border border-dashed border-slate-200 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
+                      <Paperclip className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-600">
+                        No technical drawings or evidence files were attached by creator ({activeModalRequest.created_by || 'Quality Auditor'})
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Any incident photos or documents uploaded during observation creation will appear here for review.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Executor Resolution & Action Report if present */}
+              {(activeModalRequest.root_cause ||
+                activeModalRequest.corrective_action ||
+                activeModalRequest.standardization_details ||
+                activeModalRequest.target_date ||
+                (activeModalRequest.action_attachments && activeModalRequest.action_attachments !== '[]')) && (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/90 space-y-3.5">
+                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                        Executor Corrective Action &amp; Standardization Report
+                      </h4>
+                    </div>
+                    {activeModalRequest.action_taken_by && (
+                      <span className="text-[10px] text-slate-500">
+                        Signed-off by: <strong className="text-slate-800">{activeModalRequest.action_taken_by}</strong>
+                      </span>
+                    )}
+                  </div>
+
+                  {activeModalRequest.root_cause && (
+                    <div>
+                      <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Root cause</span>
+                      <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                        {activeModalRequest.root_cause}
+                      </p>
+                    </div>
+                  )}
+
+                  {activeModalRequest.corrective_action && (
+                    <div>
+                      <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Corrective Action (by Resp. Team)</span>
+                      <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                        {activeModalRequest.corrective_action}
+                      </p>
+                    </div>
+                  )}
+
+                  {(() => {
+                    const actionAtts = getAttachmentsList(activeModalRequest.action_attachments);
+                    if (actionAtts.length === 0) return null;
+                    return (
+                      <div>
+                        <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1.5">Action Attachments ({actionAtts.length})</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {actionAtts.map((att, i) => {
+                            const meta = getFileMeta(att);
+                            const IconComponent = meta.icon;
+                            const fullUrl = getFullAttachmentUrl(att);
+                            return (
+                              <div key={i} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                <div className="flex items-center gap-2 min-w-0 pr-2">
+                                  <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 border ${meta.badgeBg}`}>
+                                    <IconComponent className="w-3.5 h-3.5" />
+                                  </div>
+                                  <span className="font-semibold text-slate-800 truncate text-[11px]" title={att.name}>{att.name}</span>
+                                </div>
+                                {fullUrl && (
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewAttachment({ ...att, url: fullUrl, isImage: meta.isImage, isPdf: meta.isPdf, isExcel: meta.isExcel, isPpt: meta.isPpt, type: att.type || meta.typeName })}
+                                      className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100"
+                                      title="Preview"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </button>
+                                    <a href={fullUrl} target="_blank" rel="noreferrer" download={att.name} className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100" title="Download">
+                                      <Download className="w-3.5 h-3.5" />
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {activeModalRequest.standardization_details && (
+                    <div>
+                      <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Standardization details</span>
+                      <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                        {activeModalRequest.standardization_details}
+                      </p>
+                    </div>
+                  )}
+
+                  {activeModalRequest.target_date && (
+                    <div className="flex items-center gap-2 text-xs pt-1">
+                      <span className="text-[#003366] font-bold">Target Date:</span>
+                      <span className="font-semibold text-slate-800 font-mono">{formatDate(activeModalRequest.target_date)}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
