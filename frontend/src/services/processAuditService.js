@@ -36,11 +36,7 @@ export const processAuditService = {
     for (const file of fileList) {
       formData.append('files', file);
     }
-    const res = await api.post('/process-audit/requests/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const res = await api.post('/process-audit/requests/upload', formData);
     return res.data?.data?.files || res.data?.files || [];
   },
 

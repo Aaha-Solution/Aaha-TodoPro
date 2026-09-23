@@ -54,6 +54,7 @@ const MyRequests = () => {
   const [selectedStatus, setSelectedStatus] = useState('All Statuses');
   const [activeModalRequest, setActiveModalRequest] = useState(null);
   const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [previewImageError, setPreviewImageError] = useState(false);
 
   const [creatorRemark, setCreatorRemark] = useState('');
   const [selectedClosureStatus, setSelectedClosureStatus] = useState('Closed');
@@ -195,17 +196,47 @@ const MyRequests = () => {
 
   const getFullAttachmentUrl = (att) => {
     if (!att) return '';
+    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+
+    // Numeric ID lookup directly
+    if (typeof att === 'number' || (typeof att === 'string' && /^\d+$/.test(att.trim()))) {
+      return `${apiBase}/api/process-audit/attachments/${String(att).trim()}`;
+    }
+
+    if (typeof att === 'object' && att.id) {
+      return `${apiBase}/api/process-audit/attachments/${att.id}`;
+    }
+
     let url = '';
     if (typeof att === 'string') {
       url = att;
     } else {
-      url = att.url || (att.path ? `/api/process-audit/${att.path}` : '');
+      // Prioritize persistent backend URLs over stale browser blob URLs
+      if (att.url && !att.url.startsWith('blob:')) {
+        url = att.url;
+      } else if (att.path && !att.path.startsWith('blob:')) {
+        url = att.path;
+      } else if (att.filename) {
+        url = `/api/process-audit/attachments/${encodeURIComponent(att.filename)}`;
+      } else if (att.name) {
+        url = `/api/process-audit/attachments/${encodeURIComponent(att.name)}`;
+      }
     }
+
     if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
     }
-    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+
+    // If still a dead blob: URL, resolve through database endpoint using filename/name
+    if (url.startsWith('blob:')) {
+      const fallbackName = typeof att === 'object' ? (att.filename || att.name) : '';
+      if (fallbackName) {
+        return `${apiBase}/api/process-audit/attachments/${encodeURIComponent(fallbackName)}`;
+      }
+      return url;
+    }
+
     const cleanUrl = url.startsWith('/') ? url : `/${url}`;
     if (cleanUrl.startsWith('/uploads/')) {
       return `${apiBase}/api/process-audit${cleanUrl}`;
@@ -402,17 +433,38 @@ const MyRequests = () => {
     }
 
     return list.map((item) => {
-      if (typeof item === 'string') {
-        const rawName = item.split('/').pop().split('\\').pop();
+      if (typeof item === 'number' || (typeof item === 'string' && /^\d+$/.test(item.trim()))) {
+        const id = String(item).trim();
         return {
-          name: rawName || 'Attachment',
-          path: item.startsWith('uploads/') ? item : `uploads/attachments/${item}`,
-          url: `/api/process-audit/${item.startsWith('uploads/') ? item : `uploads/attachments/${item}`}`,
+          id,
+          name: `Attachment #${id}`,
+          url: `/api/process-audit/attachments/${id}`,
+          path: `/api/process-audit/attachments/${id}`,
         };
       }
+      if (typeof item === 'string') {
+        const trimmed = item.trim();
+        const rawName = trimmed.split('/').pop().split('\\').pop();
+        if (trimmed.startsWith('/api/process-audit/attachments/') || trimmed.startsWith('attachments/')) {
+          const id = trimmed.split('/').pop();
+          return {
+            id,
+            name: rawName || `Attachment #${id}`,
+            url: `/api/process-audit/attachments/${id}`,
+            path: `/api/process-audit/attachments/${id}`,
+          };
+        }
+        return {
+          name: rawName || 'Attachment',
+          path: trimmed.startsWith('uploads/') ? trimmed : `uploads/attachments/${trimmed}`,
+          url: trimmed.startsWith('/api/') ? trimmed : `/api/process-audit/${trimmed.startsWith('uploads/') ? trimmed : `uploads/attachments/${trimmed}`}`,
+        };
+      }
+      const itemUrl = item.url || (item.id ? `/api/process-audit/attachments/${item.id}` : (item.path ? (item.path.startsWith('/api/') ? item.path : `/api/process-audit/${item.path}`) : ''));
       return {
         ...item,
         name: item.name || item.filename || (item.path ? item.path.split('/').pop().split('\\').pop() : 'Attachment'),
+        url: itemUrl,
       };
     });
   };
@@ -482,10 +534,12 @@ const MyRequests = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Request Tracking
+            {isAdmin ? 'All Requests' : 'My Requests'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Live database records with dynamic search, stage, executor, and shift filtering.
+            {isAdmin
+              ? 'Complete organization-wide audit observation records across all departments.'
+              : 'Live database records with dynamic search, stage, executor, and shift filtering.'}
           </p>
         </div>
 
@@ -1213,10 +1267,11 @@ const MyRequests = () => {
 
               {/* Modal Content Preview */}
               <div className="flex-1 overflow-auto p-4 my-2 flex items-center justify-center min-h-[300px] bg-slate-50/70 rounded-2xl border border-slate-100">
-                {previewAttachment.isImage && previewAttachment.url ? (
+                {previewAttachment.isImage && previewAttachment.url && !previewImageError ? (
                   <img
                     src={previewAttachment.url}
                     alt={previewAttachment.name}
+                    onError={() => setPreviewImageError(true)}
                     className="max-h-[65vh] w-auto max-w-full object-contain rounded-xl shadow-xs"
                   />
                 ) : previewAttachment.isPdf && previewAttachment.url ? (

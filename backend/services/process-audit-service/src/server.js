@@ -9,6 +9,9 @@ import requestRoutes from './routes/requestRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import approvalRoutes from './routes/approvalRoutes.js';
+import attachmentRoutes from './routes/attachmentRoutes.js';
+import { getAttachment, downloadAttachment } from './controllers/attachmentController.js';
+import { ensureAttachmentTable, migrateDiskFilesIfAny } from './models/Attachment.js';
 import { errorHandler } from '../../../shared/errorMiddleware.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -21,11 +24,17 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static uploads folder (e.g. uploaded documents, technical drawings, images)
+// Initialize attachment database table and migrate any past disk files into MySQL
+ensureAttachmentTable().then(() => migrateDiskFilesIfAny()).catch(err => {
+  console.warn('[Process Audit Service] Attachment init warning:', err.message);
+});
+
+// Stream legacy disk paths directly from MySQL binary table as fallback
+app.get('/api/process-audit/uploads/attachments/:filename(*)', getAttachment);
+app.get('/uploads/attachments/:filename(*)', getAttachment);
+
+// Static uploads folder fallback (if any other static assets exist)
 const uploadsDir = path.resolve(__dirname, '../uploads');
-if (!fs.existsSync(path.join(uploadsDir, 'attachments'))) {
-  fs.mkdirSync(path.join(uploadsDir, 'attachments'), { recursive: true });
-}
 app.use('/uploads', express.static(uploadsDir));
 app.use('/api/process-audit/uploads', express.static(uploadsDir));
 
@@ -41,6 +50,7 @@ app.get('/api/health', (req, res) => {
 const mountRoutes = (prefix = '') => {
   app.use(`${prefix}/dashboard`, dashboardRoutes);
   app.use(`${prefix}/requests`, requestRoutes);
+  app.use(`${prefix}/attachments`, attachmentRoutes);
   app.use(`${prefix}/notifications`, notificationRoutes);
   app.use(`${prefix}/users`, userRoutes);
   app.use(`${prefix}/approvals`, approvalRoutes);

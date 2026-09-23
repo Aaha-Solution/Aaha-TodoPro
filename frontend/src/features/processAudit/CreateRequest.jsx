@@ -349,15 +349,17 @@ const CreateRequest = () => {
     }
 
     const finalAttachments = attachments.map((att) => {
-      const match = uploadedFilesMeta.find((u) => u.name === att.name);
+      const match = uploadedFilesMeta.find((u) => u.name === att.name || u.filename === att.name);
+      const dbUrl = match?.url || (match?.id ? `/api/process-audit/attachments/${match.id}` : `/api/process-audit/attachments/${encodeURIComponent(att.name)}`);
       return {
+        id: match?.id || null,
         name: att.name,
-        size: att.size,
-        type: att.type,
+        size: match?.size || att.size,
+        type: match?.type || att.type,
         date: att.date,
-        path: match?.path || `uploads/attachments/${att.name}`,
-        url: match?.url || att.url || '',
-        filename: match?.filename || '',
+        path: match?.path || dbUrl,
+        url: dbUrl,
+        filename: match?.filename || att.name,
       };
     });
 
@@ -451,7 +453,7 @@ const CreateRequest = () => {
               onClick={() => navigate('/process-audit/my-requests')}
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
             >
-              View My Requests
+              {isAdmin ? 'View All Requests' : 'View My Requests'}
             </button>
           </div>
         </div>

@@ -135,13 +135,52 @@ const ProcessAuditDashboard = () => {
 
   const getFullAttachmentUrl = (att) => {
     if (!att) return '';
-    const url = att.url || (att.path ? `/api/process-audit/${att.path}` : '');
+    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+
+    // Numeric ID lookup directly
+    if (typeof att === 'number' || (typeof att === 'string' && /^\d+$/.test(att.trim()))) {
+      return `${apiBase}/api/process-audit/attachments/${String(att).trim()}`;
+    }
+
+    if (typeof att === 'object' && att.id) {
+      return `${apiBase}/api/process-audit/attachments/${att.id}`;
+    }
+
+    let url = '';
+    if (typeof att === 'string') {
+      url = att;
+    } else {
+      // Prioritize persistent backend URLs over stale browser blob URLs
+      if (att.url && !att.url.startsWith('blob:')) {
+        url = att.url;
+      } else if (att.path && !att.path.startsWith('blob:')) {
+        url = att.path;
+      } else if (att.filename) {
+        url = `/api/process-audit/attachments/${encodeURIComponent(att.filename)}`;
+      } else if (att.name) {
+        url = `/api/process-audit/attachments/${encodeURIComponent(att.name)}`;
+      }
+    }
+
     if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
     }
-    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
-    return `${apiBase}${url.startsWith('/') ? '' : '/'}${url}`;
+
+    // If still a dead blob: URL, resolve through database endpoint using filename/name
+    if (url.startsWith('blob:')) {
+      const fallbackName = typeof att === 'object' ? (att.filename || att.name) : '';
+      if (fallbackName) {
+        return `${apiBase}/api/process-audit/attachments/${encodeURIComponent(fallbackName)}`;
+      }
+      return url;
+    }
+
+    const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+    if (cleanUrl.startsWith('/uploads/')) {
+      return `${apiBase}/api/process-audit${cleanUrl}`;
+    }
+    return `${apiBase}${cleanUrl}`;
   };
 
   const getFileMeta = (file) => {
@@ -245,16 +284,70 @@ const ProcessAuditDashboard = () => {
 
   const getAttachmentsList = (attData) => {
     if (!attData) return [];
-    if (Array.isArray(attData)) return attData;
-    if (typeof attData === 'string') {
-      try {
-        const parsed = JSON.parse(attData);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
+    let list = [];
+    if (Array.isArray(attData)) {
+      list = attData;
+    } else if (typeof attData === 'string') {
+      const trimmed = attData.trim();
+      if (!trimmed || trimmed === '[]' || trimmed === 'null' || trimmed === '""') {
         return [];
       }
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          list = Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          list = [];
+        }
+      } else if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          list = [parsed];
+        } catch {
+          list = [];
+        }
+      } else {
+        list = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    } else if (typeof attData === 'object') {
+      list = [attData];
     }
-    return [];
+
+    return list.map((item) => {
+      if (typeof item === 'number' || (typeof item === 'string' && /^\d+$/.test(item.trim()))) {
+        const id = String(item).trim();
+        return {
+          id,
+          name: `Attachment #${id}`,
+          url: `/api/process-audit/attachments/${id}`,
+          path: `/api/process-audit/attachments/${id}`,
+        };
+      }
+      if (typeof item === 'string') {
+        const trimmed = item.trim();
+        const rawName = trimmed.split('/').pop().split('\\').pop();
+        if (trimmed.startsWith('/api/process-audit/attachments/') || trimmed.startsWith('attachments/')) {
+          const id = trimmed.split('/').pop();
+          return {
+            id,
+            name: rawName || `Attachment #${id}`,
+            url: `/api/process-audit/attachments/${id}`,
+            path: `/api/process-audit/attachments/${id}`,
+          };
+        }
+        return {
+          name: rawName || 'Attachment',
+          path: trimmed.startsWith('uploads/') ? trimmed : `uploads/attachments/${trimmed}`,
+          url: trimmed.startsWith('/api/') ? trimmed : `/api/process-audit/${trimmed.startsWith('uploads/') ? trimmed : `uploads/attachments/${trimmed}`}`,
+        };
+      }
+      const itemUrl = item.url || (item.id ? `/api/process-audit/attachments/${item.id}` : (item.path ? (item.path.startsWith('/api/') ? item.path : `/api/process-audit/${item.path}`) : ''));
+      return {
+        ...item,
+        name: item.name || item.filename || (item.path ? item.path.split('/').pop().split('\\').pop() : 'Attachment'),
+        url: itemUrl,
+      };
+    });
   };
 
   const modalAttachments = selectedRequest ? getAttachmentsList(selectedRequest.attachments) : [];

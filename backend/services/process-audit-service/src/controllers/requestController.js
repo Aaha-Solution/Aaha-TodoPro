@@ -1,6 +1,7 @@
 import path from 'path';
 import pool from '../../../shared/db.js';
 import { ProcessAuditRequest } from '../models/Request.js';
+import Attachment from '../models/Attachment.js';
 import { successResponse, errorResponse } from '../../../shared/response.js';
 
 export const getNextId = async (req, res) => {
@@ -40,17 +41,11 @@ export const getAllRequests = async (req, res) => {
 export const uploadAttachments = async (req, res) => {
   try {
     const files = req.files || [];
-    const formatted = files.map((file) => {
-      const ext = path.extname(file.originalname).replace('.', '').toUpperCase();
-      return {
-        name: file.originalname,
-        filename: file.filename,
-        path: `uploads/attachments/${file.filename}`,
-        url: `/api/process-audit/uploads/attachments/${file.filename}`,
-        size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-        type: ext,
-      };
-    });
+    const formatted = [];
+    for (const file of files) {
+      const saved = await Attachment.saveAttachment(file);
+      formatted.push(saved);
+    }
     return successResponse(res, { files: formatted }, 'Files uploaded successfully');
   } catch (err) {
     return errorResponse(res, err.message);
@@ -77,17 +72,11 @@ export const createRequest = async (req, res) => {
 
     // If files were uploaded simultaneously in this multipart request
     if (req.files && req.files.length > 0) {
-      const uploadedFiles = req.files.map((file) => {
-        const ext = path.extname(file.originalname).replace('.', '').toUpperCase();
-        return {
-          name: file.originalname,
-          filename: file.filename,
-          path: `uploads/attachments/${file.filename}`,
-          url: `/api/process-audit/uploads/attachments/${file.filename}`,
-          size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-          type: ext,
-        };
-      });
+      const uploadedFiles = [];
+      for (const file of req.files) {
+        const saved = await Attachment.saveAttachment(file);
+        uploadedFiles.push(saved);
+      }
       parsedAttachments = [...parsedAttachments, ...uploadedFiles];
     }
 
@@ -177,17 +166,11 @@ export const updateRequestStatus = async (req, res) => {
 
     // If files were uploaded simultaneously with this status update
     if (req.files && req.files.length > 0) {
-      const uploadedFiles = req.files.map((file) => {
-        const ext = path.extname(file.originalname).replace('.', '').toUpperCase();
-        return {
-          name: file.originalname,
-          filename: file.filename,
-          path: `uploads/attachments/${file.filename}`,
-          url: `/api/process-audit/uploads/attachments/${file.filename}`,
-          size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-          type: ext,
-        };
-      });
+      const uploadedFiles = [];
+      for (const file of req.files) {
+        const saved = await Attachment.saveAttachment(file);
+        uploadedFiles.push(saved);
+      }
       parsedActionAttachments = Array.isArray(parsedActionAttachments)
         ? [...parsedActionAttachments, ...uploadedFiles]
         : uploadedFiles;

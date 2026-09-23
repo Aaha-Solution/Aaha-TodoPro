@@ -39,6 +39,7 @@ const ProcessAuditApprovals = () => {
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [activeModalRequest, setActiveModalRequest] = useState(null);
   const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [previewImageError, setPreviewImageError] = useState(false);
 
   // 5 Executor Response Inputs
   const [rootCause, setRootCause] = useState('');
@@ -91,6 +92,11 @@ const ProcessAuditApprovals = () => {
     setFormErrors({});
     setIsRejecting(false);
     setRejectReasonInput('');
+  };
+
+  const handleOpenPreview = (att) => {
+    setPreviewImageError(false);
+    setPreviewAttachment(att);
   };
 
   const handleActionFileChange = (e) => {
@@ -349,34 +355,85 @@ const ProcessAuditApprovals = () => {
     }
 
     return list.map((item) => {
-      if (typeof item === 'string') {
-        const rawName = item.split('/').pop().split('\\').pop();
+      if (typeof item === 'number' || (typeof item === 'string' && /^\d+$/.test(item.trim()))) {
+        const id = String(item).trim();
         return {
-          name: rawName || 'Attachment',
-          path: item.startsWith('uploads/') ? item : `uploads/attachments/${item}`,
-          url: `/api/process-audit/${item.startsWith('uploads/') ? item : `uploads/attachments/${item}`}`,
+          id,
+          name: `Attachment #${id}`,
+          url: `/api/process-audit/attachments/${id}`,
+          path: `/api/process-audit/attachments/${id}`,
         };
       }
+      if (typeof item === 'string') {
+        const trimmed = item.trim();
+        const rawName = trimmed.split('/').pop().split('\\').pop();
+        if (trimmed.startsWith('/api/process-audit/attachments/') || trimmed.startsWith('attachments/')) {
+          const id = trimmed.split('/').pop();
+          return {
+            id,
+            name: rawName || `Attachment #${id}`,
+            url: `/api/process-audit/attachments/${id}`,
+            path: `/api/process-audit/attachments/${id}`,
+          };
+        }
+        return {
+          name: rawName || 'Attachment',
+          path: trimmed.startsWith('uploads/') ? trimmed : `uploads/attachments/${trimmed}`,
+          url: trimmed.startsWith('/api/') ? trimmed : `/api/process-audit/${trimmed.startsWith('uploads/') ? trimmed : `uploads/attachments/${trimmed}`}`,
+        };
+      }
+      const itemUrl = item.url || (item.id ? `/api/process-audit/attachments/${item.id}` : (item.path ? (item.path.startsWith('/api/') ? item.path : `/api/process-audit/${item.path}`) : ''));
       return {
         ...item,
         name: item.name || item.filename || (item.path ? item.path.split('/').pop().split('\\').pop() : 'Attachment'),
+        url: itemUrl,
       };
     });
   };
 
   const getFullAttachmentUrl = (att) => {
     if (!att) return '';
+    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+
+    // Numeric ID lookup directly
+    if (typeof att === 'number' || (typeof att === 'string' && /^\d+$/.test(att.trim()))) {
+      return `${apiBase}/api/process-audit/attachments/${String(att).trim()}`;
+    }
+
+    if (typeof att === 'object' && att.id) {
+      return `${apiBase}/api/process-audit/attachments/${att.id}`;
+    }
+
     let url = '';
     if (typeof att === 'string') {
       url = att;
     } else {
-      url = att.url || (att.path ? `/api/process-audit/${att.path}` : '');
+      // Prioritize persistent backend URLs over stale browser blob URLs
+      if (att.url && !att.url.startsWith('blob:')) {
+        url = att.url;
+      } else if (att.path && !att.path.startsWith('blob:')) {
+        url = att.path;
+      } else if (att.filename) {
+        url = `/api/process-audit/attachments/${encodeURIComponent(att.filename)}`;
+      } else if (att.name) {
+        url = `/api/process-audit/attachments/${encodeURIComponent(att.name)}`;
+      }
     }
+
     if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
     }
-    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+
+    // If still a dead blob: URL, resolve through database endpoint using filename/name
+    if (url.startsWith('blob:')) {
+      const fallbackName = typeof att === 'object' ? (att.filename || att.name) : '';
+      if (fallbackName) {
+        return `${apiBase}/api/process-audit/attachments/${encodeURIComponent(fallbackName)}`;
+      }
+      return url;
+    }
+
     const cleanUrl = url.startsWith('/') ? url : `/${url}`;
     if (cleanUrl.startsWith('/uploads/')) {
       return `${apiBase}/api/process-audit${cleanUrl}`;
@@ -445,7 +502,7 @@ const ProcessAuditApprovals = () => {
             <span>Sign-off Portal</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Audit Approvals &amp; Sign-offs
+            {isAdmin ? 'All Approvals & Sign-offs' : 'Audit Approvals & Sign-offs'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Review production floor audits, verify quality compliance, and issue management sign-offs.
@@ -818,7 +875,7 @@ const ProcessAuditApprovals = () => {
                           <div className="flex items-start gap-2.5 min-w-0 mb-2">
                             {meta.isImage && fullUrl ? (
                               <div
-                                onClick={() => setPreviewAttachment({ ...rawAtt, url: fullUrl, isImage: true, type: 'Image' })}
+                                onClick={() => handleOpenPreview({ ...rawAtt, url: fullUrl, isImage: true, type: 'Image' })}
                                 className="w-12 h-12 rounded-lg border border-slate-200 overflow-hidden shrink-0 bg-slate-100 cursor-pointer relative group/thumb"
                                 title="Click to preview image"
                               >
@@ -855,7 +912,7 @@ const ProcessAuditApprovals = () => {
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => setPreviewAttachment({
+                                  onClick={() => handleOpenPreview({
                                     ...rawAtt,
                                     url: fullUrl,
                                     isImage: meta.isImage,
@@ -1350,10 +1407,11 @@ const ProcessAuditApprovals = () => {
               </div>
             </div>
             <div className="flex-1 overflow-auto p-4 flex items-center justify-center min-h-[350px] bg-slate-50 rounded-2xl my-2">
-              {previewAttachment.isImage && previewAttachment.url ? (
+              {previewAttachment.isImage && previewAttachment.url && !previewImageError ? (
                 <img
                   src={previewAttachment.url}
                   alt={previewAttachment.name}
+                  onError={() => setPreviewImageError(true)}
                   className="max-h-[65vh] w-auto max-w-full object-contain rounded-xl shadow-xs"
                 />
               ) : previewAttachment.isPdf && previewAttachment.url ? (
@@ -1363,10 +1421,28 @@ const ProcessAuditApprovals = () => {
                   className="w-full h-[65vh] rounded-xl border border-slate-200"
                 />
               ) : (
-                <div className="text-center py-10">
-                  <FileText className="w-12 h-12 text-slate-400 mx-auto mb-2" />
-                  <p className="font-bold text-sm text-slate-700">{previewAttachment.name}</p>
-                  <p className="text-xs text-slate-400 mt-1">This document format can be downloaded or opened directly.</p>
+                <div className="text-center py-10 max-w-md mx-auto">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto mb-3">
+                    <AlertTriangle className="w-8 h-8" />
+                  </div>
+                  <h4 className="font-bold text-sm text-slate-800">{previewAttachment.name}</h4>
+                  <p className="text-xs text-slate-500 mt-1 mb-4 leading-relaxed">
+                    {previewImageError
+                      ? 'The binary image could not be loaded directly in the previewer. It was attached before database binary storage was configured, or the file reference needs to be re-uploaded.'
+                      : 'This file format can be downloaded or opened directly.'}
+                  </p>
+                  {previewAttachment.url && (
+                    <a
+                      href={previewAttachment.url}
+                      download={previewAttachment.name}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#003366] hover:bg-[#00254d] text-white text-xs font-semibold rounded-xl shadow-xs transition"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download / Open File
+                    </a>
+                  )}
                 </div>
               )}
             </div>
