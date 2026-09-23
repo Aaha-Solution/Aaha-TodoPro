@@ -383,16 +383,16 @@ const MyRequests = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3.5 px-6">REQUEST ID</th>
-                  <th className="py-3.5 px-4">DATE</th>
-                  <th className="py-3.5 px-4">SHIFT</th>
-                  <th className="py-3.5 px-4">PRODUCT</th>
-                  <th className="py-3.5 px-4">MODEL</th>
-                  <th className="py-3.5 px-4">PROCESS/OPERATION</th>
-                  <th className="py-3.5 px-4">CREATOR</th>
-                  <th className="py-3.5 px-4">EXECUTOR</th>
-                  <th className="py-3.5 px-4">STATUS</th>
-                  <th className="py-3.5 px-6 text-center">ACTION</th>
+                  <th className="py-3.5 px-6 whitespace-nowrap align-middle">REQUEST ID</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">Escalation Date </th>
+                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">SHIFT</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">PRODUCT</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">MODEL</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">PROCESS/OPERATION</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">CREATOR</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">EXECUTOR</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap align-middle text-center">STATUS</th>
+                  <th className="py-3.5 px-6 whitespace-nowrap align-middle text-center">ACTION</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -409,21 +409,21 @@ const MyRequests = () => {
 
                   return (
                     <tr key={req.id} className="hover:bg-slate-50/70 transition">
-                      <td className="py-4 px-6 font-bold text-blue-600">{reqId}</td>
-                      <td className="py-4 px-4 text-slate-600 font-medium">{dateStr}</td>
-                      <td className="py-4 px-4 text-slate-600 font-medium">{req.shift}</td>
-                      <td className="py-4 px-4 text-slate-800 font-semibold">{prodStr}</td>
-                      <td className="py-4 px-4 text-slate-600">{stageStr}</td>
-                      <td className="py-4 px-4 text-slate-700 font-medium">{lineStr}</td>
-                      <td className="py-4 px-4 text-slate-700 font-medium">{creatorStr}</td>
-                      <td className="py-4 px-4 text-slate-800 font-semibold">{executorStr}</td>
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-6 font-bold text-blue-600 align-middle whitespace-nowrap">{reqId}</td>
+                      <td className="py-4 px-4 text-slate-600 font-medium align-middle whitespace-nowrap">{dateStr}</td>
+                      <td className="py-4 px-4 text-slate-600 font-medium align-middle whitespace-nowrap">{req.shift}</td>
+                      <td className="py-4 px-4 text-slate-800 font-semibold align-middle whitespace-nowrap">{prodStr}</td>
+                      <td className="py-4 px-4 text-slate-600 align-middle whitespace-nowrap">{stageStr}</td>
+                      <td className="py-4 px-4 text-slate-700 font-medium align-middle whitespace-nowrap">{lineStr}</td>
+                      <td className="py-4 px-4 text-slate-700 font-medium align-middle whitespace-nowrap">{creatorStr}</td>
+                      <td className="py-4 px-4 text-slate-800 font-semibold align-middle whitespace-nowrap">{executorStr}</td>
+                      <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${meta.statusColor}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${meta.dotColor}`}></span>
                           <span>{statusStr}</span>
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-center">
+                      <td className="py-4 px-6 text-center align-middle whitespace-nowrap">
                         <button
                           onClick={() => setActiveModalRequest(req)}
                           className="px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition shadow-2xs cursor-pointer"

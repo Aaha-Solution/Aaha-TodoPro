@@ -339,14 +339,14 @@ const ProcessAuditDashboard = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3.5 px-6">REQUEST ID</th>
-                  <th className="py-3.5 px-6">DATE</th>
-                  <th className="py-3.5 px-6">SHIFT</th>
-                  <th className="py-3.5 px-6">PRODUCTION</th>
-                  <th className="py-3.5 px-6">STAGE</th>
-                  <th className="py-3.5 px-6">STATUS</th>
-                  <th className="py-3.5 px-6">CREATED DATE</th>
-                  <th className="py-3.5 px-6 text-center">ACTION</th>
+                  <th className="py-3.5 px-6 whitespace-nowrap align-middle">REQUEST ID</th>
+                  <th className="py-3.5 px-6 whitespace-nowrap align-middle">Escalation Date </th>
+                  <th className="py-3.5 px-6 whitespace-nowrap align-middle">SHIFT</th>
+                  <th className="py-3.5 px-6 whitespace-nowrap align-middle">PRODUCT</th>
+                  <th className="py-3.5 px-6 whitespace-nowrap align-middle">MODEL</th>
+                  <th className="py-3.5 px-6 whitespace-nowrap align-middle text-center">STATUS</th>
+                  <th className="py-3.5 px-6 whitespace-nowrap align-middle">CREATED DATE</th>
+                  <th className="py-3.5 px-6 whitespace-nowrap align-middle text-center">ACTION</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -357,23 +357,23 @@ const ProcessAuditDashboard = () => {
                   const stageStr = req.model || req.stage || 'Standard';
                   const statusStr = req.status || 'Pending Execution';
                   const meta = getStatusMeta(statusStr);
-                  const createdDateStr = formatDateTime(req.created_at);
+                  const createdDateStr = formatDate(req.created_at);
 
                   return (
                     <tr key={req.id} className="hover:bg-slate-50/70 transition">
-                      <td className="py-4 px-6 font-bold text-blue-600">{reqId}</td>
-                      <td className="py-4 px-6 text-slate-600 font-medium">{dateStr}</td>
-                      <td className="py-4 px-6 text-slate-600 font-medium">{req.shift}</td>
-                      <td className="py-4 px-6 text-slate-800 font-semibold">{prodStr}</td>
-                      <td className="py-4 px-6 text-slate-600">{stageStr}</td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 font-bold text-blue-600 align-middle whitespace-nowrap">{reqId}</td>
+                      <td className="py-4 px-6 text-slate-600 font-medium align-middle whitespace-nowrap">{dateStr}</td>
+                      <td className="py-4 px-6 text-slate-600 font-medium align-middle whitespace-nowrap">{req.shift}</td>
+                      <td className="py-4 px-6 text-slate-800 font-semibold align-middle whitespace-nowrap">{prodStr}</td>
+                      <td className="py-4 px-6 text-slate-600 align-middle whitespace-nowrap">{stageStr}</td>
+                      <td className="py-4 px-6 text-center align-middle whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${meta.statusColor}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${meta.dotColor}`}></span>
                           <span>{statusStr}</span>
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-slate-500 text-[11px] font-mono">{createdDateStr}</td>
-                      <td className="py-4 px-6 text-center">
+                      <td className="py-4 px-6 text-slate-600 font-medium align-middle whitespace-nowrap">{createdDateStr}</td>
+                      <td className="py-4 px-6 text-center align-middle whitespace-nowrap">
                         <button
                           onClick={() => setSelectedRequest(req)}
                           className="px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition shadow-2xs cursor-pointer"
