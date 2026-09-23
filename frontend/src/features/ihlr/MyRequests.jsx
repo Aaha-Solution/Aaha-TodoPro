@@ -506,17 +506,7 @@ const IhlrMyRequests = () => {
                     {/* Defect Attachment Thumbnail */}
                     <td className="py-3.5 px-2 text-center">
                       <div className="flex items-center justify-center">
-                        <IhlrAttachmentThumbnail
-                          rawAttachment={r.defect_image}
-                          onClick={() => {
-                            const atts = parseAttachments(r.defect_image);
-                            if (atts.length > 0) {
-                              setSelectedPreviewAttachment(atts[0]);
-                            } else {
-                              setActiveModalRequest(r);
-                            }
-                          }}
-                        />
+                        <IhlrAttachmentThumbnail rawAttachment={r.defect_image} />
                       </div>
                     </td>
 

@@ -411,17 +411,7 @@ const IhlrDashboard = () => {
                     {/* Defect Attachment Thumbnail (PDF, Excel, Word, JPG) */}
                     <td className="py-4 px-2 text-center">
                       <div className="flex items-center justify-center">
-                        <IhlrAttachmentThumbnail
-                          rawAttachment={req.defect_image}
-                          onClick={() => {
-                            const atts = parseAttachments(req.defect_image);
-                            if (atts.length > 0) {
-                              setSelectedPreviewAttachment(atts[0]);
-                            } else {
-                              setSelectedRequest(req);
-                            }
-                          }}
-                        />
+                        <IhlrAttachmentThumbnail rawAttachment={req.defect_image} />
                       </div>
                     </td>
 

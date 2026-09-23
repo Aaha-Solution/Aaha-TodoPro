@@ -18,9 +18,15 @@ const AttachmentThumbnail = ({ rawAttachment, onClick }) => {
 
   return (
     <div
-      onClick={onClick}
-      className="inline-flex items-center gap-1.5 p-1 rounded-xl hover:bg-slate-100 transition cursor-pointer select-none group relative"
-      title={`${count} attached file${count > 1 ? 's' : ''}: ${attachments.map((a) => a.name).join(', ')} (Click to inspect)`}
+      onClick={onClick || undefined}
+      className={`inline-flex items-center gap-1.5 p-1 rounded-xl transition select-none group relative ${
+        onClick ? 'hover:bg-slate-100 cursor-pointer' : 'cursor-default pointer-events-none'
+      }`}
+      title={
+        onClick
+          ? `${count} attached file${count > 1 ? 's' : ''}: ${attachments.map((a) => a.name).join(', ')} (Click to inspect)`
+          : `${count} attached file${count > 1 ? 's' : ''}: ${attachments.map((a) => a.name).join(', ')}`
+      }
     >
       <div className="relative">
         {first.isImage && first.url ? (
@@ -28,7 +34,7 @@ const AttachmentThumbnail = ({ rawAttachment, onClick }) => {
             <img
               src={first.url}
               alt={first.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition"
+              className={`w-full h-full object-cover transition ${onClick ? 'group-hover:scale-105' : ''}`}
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
               }}
