@@ -17,7 +17,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
-import { getFileMeta, parseAttachment, parseAttachments, IhlrAttachmentChips } from './IhlrAttachmentView';
+import { getFileMeta, parseAttachments } from './IhlrAttachmentView';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 
 
