@@ -49,15 +49,14 @@ export const processAuditService = {
     return res.data;
   },
 
-  getUsers: async () => {
+  getUsers: async (department) => {
     try {
-      const res = await api.get('/process-audit/users');
-      return res.data;
-    } catch {
-      return [
-        { id: 1, name: 'iyyu', email: 'iyyu@inel.co.in', role: 'Super Admin', dept: 'Quality' },
-        { id: 2, name: 'Ramesh K', email: 'ramesh@inel.co.in', role: 'Auditor', dept: 'Operations' },
-      ];
+      const params = department ? { department } : {};
+      const res = await api.get('/process-audit/users', { params });
+      return res.data?.data || res.data || [];
+    } catch (err) {
+      console.error('Failed to fetch users from DB:', err);
+      return [];
     }
   }
 };

@@ -97,6 +97,76 @@ const CreateRequest = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dbUsers, setDbUsers] = useState([]);
+  const [deptUsers, setDeptUsers] = useState([]);
+  const [loadingExecutors, setLoadingExecutors] = useState(false);
+
+  // Fetch all users from DB on mount
+  useEffect(() => {
+    let isMounted = true;
+    processAuditService.getUsers()
+      .then((users) => {
+        if (isMounted && Array.isArray(users)) {
+          setDbUsers(users);
+        }
+      })
+      .catch((err) => console.error('Failed to load DB users:', err));
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Fetch executors from DB whenever department changes
+  useEffect(() => {
+    if (!formData.department) {
+      setDeptUsers([]);
+      return;
+    }
+    let isMounted = true;
+    setLoadingExecutors(true);
+    processAuditService.getUsers(formData.department)
+      .then((users) => {
+        if (isMounted) {
+          if (Array.isArray(users) && users.length > 0) {
+            setDeptUsers(users);
+          } else {
+            // Fallback filter on dbUsers by case-insensitive department
+            const matched = dbUsers.filter(
+              (u) => (u.department || u.dept || '').trim().toLowerCase() === formData.department.trim().toLowerCase()
+            );
+            setDeptUsers(matched);
+          }
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch executors for department from DB:', err);
+        if (isMounted) {
+          const matched = dbUsers.filter(
+            (u) => (u.department || u.dept || '').trim().toLowerCase() === formData.department.trim().toLowerCase()
+          );
+          setDeptUsers(matched);
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoadingExecutors(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [formData.department, dbUsers]);
+
+  const departmentList = Array.from(
+    new Set([
+      'PRODUCTION',
+      'MAINTENANCE',
+      'PED',
+      'MATERIALS',
+      'MARKETING',
+      'INCOMING QUALITY',
+      ...dbUsers.map((u) => (u.department || u.dept || '').trim()).filter(Boolean),
+    ])
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -635,7 +705,7 @@ const CreateRequest = () => {
                 className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
               >
                 <option value="">Select</option>
-                {DEPARTMENT_LIST.map((dept) => (
+                {departmentList.map((dept) => (
                   <option key={dept} value={dept}>
                     {dept}
                   </option>
@@ -649,7 +719,7 @@ const CreateRequest = () => {
               </label>
               <select
                 required
-                disabled={!formData.department}
+                disabled={!formData.department || loadingExecutors}
                 value={formData.executor}
                 onChange={(e) => setFormData({ ...formData, executor: e.target.value })}
                 className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium transition ${formData.department
@@ -658,13 +728,30 @@ const CreateRequest = () => {
                   }`}
               >
                 <option value="">
-                  {formData.department ? 'Select' : 'Select Department first'}
+                  {!formData.department
+                    ? 'Select Department first'
+                    : loadingExecutors
+                      ? 'Loading executors from DB...'
+                      : deptUsers.length === 0
+                        ? 'No users found in database for this department'
+                        : 'Select'}
                 </option>
-                {((EXECUTORS_MAP[formData.department]) || []).map((exec) => (
-                  <option key={exec} value={exec}>
-                    {exec}
-                  </option>
-                ))}
+                {deptUsers.length > 0 ? (
+                  deptUsers.map((u) => {
+                    const displayLabel = `${u.name}${u.role && u.role.toLowerCase() !== 'user' ? ` (${u.role})` : ''}`;
+                    return (
+                      <option key={u.id} value={u.name}>
+                        {displayLabel}
+                      </option>
+                    );
+                  })
+                ) : (
+                  (DEPARTMENT_EXECUTORS[formData.department] || []).map((exec) => (
+                    <option key={exec} value={exec}>
+                      {exec}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>
