@@ -15,6 +15,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
+import { IhlrAttachmentPreviewCard } from './IhlrAttachmentView';
 
 const IhlrApprovals = () => {
   const [requests, setRequests] = useState([]);
@@ -313,13 +314,13 @@ const IhlrApprovals = () => {
                 </div>
               </div>
 
-              {/* Defect Image Preview */}
+              {/* Defect Attachment Preview (Images, PDF, Word, Excel) */}
               {activeModalRequest.defect_image && (
                 <div>
-                  <span className="text-slate-500 block font-bold mb-1 uppercase text-[10px]">Defect Photo Evidence</span>
-                  <div className="h-40 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
-                    <img src={activeModalRequest.defect_image} alt="Defect" className="h-full object-contain" />
-                  </div>
+                  <span className="text-slate-500 block font-bold mb-1 uppercase text-[10px]">
+                    Defect Attachment &amp; Technical Evidence
+                  </span>
+                  <IhlrAttachmentPreviewCard rawAttachment={activeModalRequest.defect_image} />
                 </div>
               )}
 

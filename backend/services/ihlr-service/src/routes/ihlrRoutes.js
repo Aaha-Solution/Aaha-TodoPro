@@ -7,10 +7,15 @@ import {
   updateIhlrRequest,
   deleteIhlrRequest,
   getIhlrNotifications,
-  getNextReqNo
+  getNextReqNo,
+  uploadAttachments
 } from '../controllers/ihlrController.js';
+import { upload } from '../middleware/upload.js';
 
 const router = Router();
+
+// File Uploads (Images, PDF, Word, Excel)
+router.post('/upload', upload.array('files', 30), uploadAttachments);
 
 // Next Request Number
 router.get('/next-req-no', getNextReqNo);

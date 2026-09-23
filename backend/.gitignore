@@ -19,6 +19,7 @@ yarn-error.log*
 # Uploads & Temporary files
 uploads/*
 !uploads/.gitkeep
+**/uploads/
 temp/
 tmp/
 

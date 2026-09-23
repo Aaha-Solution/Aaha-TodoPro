@@ -95,6 +95,29 @@ export const ihlrService = {
     }
   },
 
+  uploadAttachments: async (files) => {
+    try {
+      const data = new FormData();
+      Array.from(files).forEach((f) => data.append('files', f));
+      const res = await api.post('/ihlr/upload', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data?.data?.files || res.data?.files || [];
+    } catch (err) {
+      console.error('Failed to upload files:', err);
+      return Array.from(files).map((f) => {
+        const ext = f.name.split('.').pop()?.toUpperCase() || 'FILE';
+        return {
+          name: f.name,
+          filename: f.name,
+          url: URL.createObjectURL(f),
+          size: `${(f.size / (1024 * 1024)).toFixed(2)} MB`,
+          type: ext,
+        };
+      });
+    }
+  },
+
   createRequest: async (formData) => {
     try {
       const res = await api.post('/ihlr/requests', formData);

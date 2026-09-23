@@ -1,3 +1,4 @@
+import path from 'path';
 import { successResponse, errorResponse } from '../../../shared/response.js';
 import { IhlrRequest } from '../models/IhlrRequest.js';
 
@@ -234,4 +235,24 @@ export const getIhlrNotifications = (req, res) => {
     }
   ];
   return successResponse(res, notifications, 'IHLR notifications retrieved');
+};
+
+export const uploadAttachments = async (req, res) => {
+  try {
+    const files = req.files || [];
+    const formatted = files.map((file) => {
+      const ext = path.extname(file.originalname).replace('.', '').toUpperCase();
+      return {
+        name: file.originalname,
+        filename: file.filename,
+        path: `uploads/attachments/${file.filename}`,
+        url: `/api/ihlr/uploads/attachments/${file.filename}`,
+        size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        type: ext,
+      };
+    });
+    return successResponse(res, { files: formatted }, 'Files uploaded successfully');
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
 };

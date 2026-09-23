@@ -18,6 +18,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
+import { IhlrAttachmentPreviewCard } from './IhlrAttachmentView';
 
 const IhlrDashboard = () => {
   const navigate = useNavigate();
@@ -366,19 +367,13 @@ const IhlrDashboard = () => {
                 </div>
               </div>
 
-              {/* Defect Image Preview if available */}
+              {/* Defect Attachment Preview (Images, PDF, Word, Excel) */}
               {selectedRequest.defect_image && (
                 <div className="space-y-2">
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                    Defect Photographic Evidence
+                    Defect Attachment &amp; Technical Evidence
                   </span>
-                  <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 max-h-64 flex items-center justify-center">
-                    <img 
-                      src={selectedRequest.defect_image} 
-                      alt="Defect Evidence" 
-                      className="w-full h-full object-cover max-h-64"
-                    />
-                  </div>
+                  <IhlrAttachmentPreviewCard rawAttachment={selectedRequest.defect_image} />
                 </div>
               )}
 

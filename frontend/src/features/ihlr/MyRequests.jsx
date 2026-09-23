@@ -19,6 +19,7 @@ import {
   Paperclip
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
+import { IhlrAttachmentThumbnail, IhlrAttachmentPreviewCard } from './IhlrAttachmentView';
 
 const IhlrMyRequests = () => {
   const navigate = useNavigate();
@@ -308,19 +309,14 @@ const IhlrMyRequests = () => {
                       {r.analysis_done_by}
                     </td>
 
-                    {/* Defect Image Thumbnail */}
+                    {/* Defect Attachment Thumbnail */}
                     <td className="py-3.5 px-2 text-center">
-                      {r.defect_image ? (
-                        <div 
+                      <div className="flex items-center justify-center">
+                        <IhlrAttachmentThumbnail
+                          rawAttachment={r.defect_image}
                           onClick={() => setActiveModalRequest(r)}
-                          className="w-8 h-8 rounded-lg overflow-hidden border border-slate-200 cursor-pointer hover:opacity-80 transition inline-block"
-                          title="Click to view full image"
-                        >
-                          <img src={r.defect_image} alt="Defect" className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <span className="text-slate-300 text-[10px]">—</span>
-                      )}
+                        />
+                      </div>
                     </td>
 
                     {/* 4M & Resp */}
@@ -444,19 +440,13 @@ const IhlrMyRequests = () => {
                 </div>
               </div>
 
-              {/* Defect Photo & Evidence */}
+              {/* Defect Photo & Evidence (Images, PDF, Word, Excel) */}
               {activeModalRequest.defect_image && (
                 <div className="space-y-2">
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                    Defect Photographic Evidence
+                    Defect Attachment &amp; Technical Evidence
                   </span>
-                  <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 max-h-72 flex items-center justify-center">
-                    <img
-                      src={activeModalRequest.defect_image}
-                      alt="Defect"
-                      className="w-full h-full object-contain max-h-72"
-                    />
-                  </div>
+                  <IhlrAttachmentPreviewCard rawAttachment={activeModalRequest.defect_image} />
                 </div>
               )}
 
