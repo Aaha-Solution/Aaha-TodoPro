@@ -194,7 +194,7 @@ const IhlrApprovals = () => {
                 filtered.map((r) => (
                   <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3.5 px-4 font-mono font-bold text-blue-600 whitespace-nowrap">
-                      #{r.req_no}
+                      {String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`}
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="font-semibold text-slate-900">{r.batch_date}</div>
@@ -279,7 +279,7 @@ const IhlrApprovals = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
                 <h3 className="text-base font-bold text-slate-900">
-                  IHLR Report Review: #{activeModalRequest.req_no}
+                  IHLR Report Review: {String(activeModalRequest.req_no).startsWith('IHLR-') ? activeModalRequest.req_no : `#${activeModalRequest.req_no}`}
                 </h3>
                 <p className="text-xs text-slate-500">{activeModalRequest.model} - {activeModalRequest.problem}</p>
               </div>

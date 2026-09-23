@@ -249,7 +249,7 @@ const IhlrDashboard = () => {
 
                     {/* Req NO */}
                     <td className="py-4 px-4 font-mono font-bold text-blue-600">
-                      #{req.req_no}
+                      {String(req.req_no).startsWith('IHLR-') ? req.req_no : `#${req.req_no}`}
                     </td>
 
                     {/* Date / Shift */}
@@ -278,8 +278,11 @@ const IhlrDashboard = () => {
                     </td>
 
                     {/* Responsibility */}
-                    <td className="py-4 px-4 font-bold text-slate-700 font-mono">
-                      {req.resp || 'PROD'}
+                    <td className="py-4 px-4 font-mono">
+                      <div className="font-bold text-slate-800 text-xs">{req.resp || '-'}</div>
+                      {req.resp_person && (
+                        <div className="text-[10px] text-blue-600 font-semibold truncate max-w-[120px]" title={req.resp_person}>{req.resp_person}</div>
+                      )}
                     </td>
 
                     {/* Status */}
@@ -313,8 +316,8 @@ const IhlrDashboard = () => {
             {/* Modal Header */}
             <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-xs z-10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black">
-                  #{selectedRequest.req_no}
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs font-mono px-1 text-center">
+                  {String(selectedRequest.req_no).startsWith('IHLR-') ? selectedRequest.req_no : `#${selectedRequest.req_no}`}
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
@@ -336,7 +339,7 @@ const IhlrDashboard = () => {
             {/* Modal Content */}
             <div className="p-6 space-y-6">
               {/* Top Summary Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs">
                 <div>
                   <span className="text-slate-400 block text-[10px] font-bold uppercase">SHIFT</span>
                   <span className="font-bold text-slate-900 font-mono">Shift {selectedRequest.shift}</span>
@@ -352,6 +355,14 @@ const IhlrDashboard = () => {
                 <div>
                   <span className="text-slate-400 block text-[10px] font-bold uppercase">ANALYSIS BY</span>
                   <span className="font-bold text-slate-900">{selectedRequest.analysis_done_by}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">RESPONSIBILITY</span>
+                  <span className="font-bold text-slate-900 font-mono">{selectedRequest.resp}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">ASSIGNED USER</span>
+                  <span className="font-bold text-blue-600 truncate block" title={selectedRequest.resp_person || '—'}>{selectedRequest.resp_person || '—'}</span>
                 </div>
               </div>
 

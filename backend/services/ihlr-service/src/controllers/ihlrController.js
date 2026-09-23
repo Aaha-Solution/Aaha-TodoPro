@@ -2,74 +2,27 @@ import { successResponse, errorResponse } from '../../../shared/response.js';
 import { IhlrRequest } from '../models/IhlrRequest.js';
 
 // In-memory fallback if DB is not reachable
-let fallbackRequests = [
-  {
-    id: 1,
-    req_no: '1',
-    batch_date: '2026-09-01',
-    shift: 'I',
-    problem: 'Low voltage',
-    model: 'OLS LONG ARM',
-    problem_detected_at: 'Final Testing',
-    received_from: 'D3/LINE',
-    analysis_done_by: 'GURU',
-    defect_image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop&q=60',
-    qa_why_why: ['Low voltage', 'Sensor improper soldering', 'Skipped visual inspection', '', ''],
-    actual_qty: 1,
-    four_m: 'MAN',
-    resp: 'PROD',
-    prod_why_why: ['Operator fatigue during shift end', 'Illumination level below 300 Lux at station', '', '', ''],
-    action: 'Provide supplementary station LED lighting & retrain solder visual inspection check',
-    evidence_attachment: 'IHLR_Action_Evid_001.pdf',
-    target_date: '2026-09-15',
-    remarks: 'Critical customer delivery batch containment completed',
-    status: 'OPEN'
-  },
-  {
-    id: 2,
-    req_no: '2',
-    batch_date: '2026-09-02',
-    shift: 'II',
-    problem: 'Flash / Burr excess on housing',
-    model: 'CDI CAP HOUSING',
-    problem_detected_at: 'Visual Inspection',
-    received_from: 'MOLDING-02',
-    analysis_done_by: 'iyyu',
-    defect_image: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=500&auto=format&fit=crop&q=60',
-    qa_why_why: ['Burr on mating collar', 'Tool parting line wear', 'Exceeded shot life limit without polishing', '', ''],
-    actual_qty: 5,
-    four_m: 'MACHINE',
-    resp: 'MAINT',
-    prod_why_why: ['Core pin hydraulic drift', 'Seals degraded', '', '', ''],
-    action: 'Replaced hydraulic cylinder seals and repolished tool parting line edges',
-    evidence_attachment: 'Tooling_Inspection_Report.pdf',
-    target_date: '2026-09-18',
-    remarks: 'Tooling PM cycle updated from 50k to 35k shots',
-    status: 'IN_PROGRESS'
-  },
-  {
-    id: 3,
-    req_no: '3',
-    batch_date: '2026-09-03',
-    shift: 'I',
-    problem: 'Resistance out of specification (High)',
-    model: 'STATOR COIL 35W',
-    problem_detected_at: 'Electrical Testing',
-    received_from: 'WINDING-01',
-    analysis_done_by: 'GURU',
-    defect_image: 'https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?w=500&auto=format&fit=crop&q=60',
-    qa_why_why: ['Resistance > 1.8 Ohms', 'Tensioner wire stretching during winding', 'Brake pad worn out', '', ''],
-    actual_qty: 3,
-    four_m: 'METHOD',
-    resp: 'PROD',
-    prod_why_why: ['Tension gauge calibration overdue', '', '', '', ''],
-    action: 'Recalibrated digital tensioner and replaced mechanical friction felt pad',
-    evidence_attachment: 'Calibration_Cert_Sept26.pdf',
-    target_date: '2026-09-10',
-    remarks: 'First piece sample verified and approved by Quality Lead',
-    status: 'CLOSED'
+let fallbackRequests = [];
+
+export const getNextReqNo = async (req, res) => {
+  try {
+    let nextReqNo = await IhlrRequest.getNextReqNo();
+    if (!nextReqNo) {
+      let max = 0;
+      for (const r of fallbackRequests) {
+        const match = String(r.req_no || '').match(/(\d+)/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > max) max = num;
+        }
+      }
+      nextReqNo = `IHLR-${max + 1}`;
+    }
+    return successResponse(res, { nextReqNo }, 'Next Request Number calculated');
+  } catch (error) {
+    return errorResponse(res, error.message, 500);
   }
-];
+};
 
 export const getDashboardStats = async (req, res) => {
   try {
@@ -165,21 +118,34 @@ export const createIhlrRequest = async (req, res) => {
     let created = await IhlrRequest.create(data);
     if (!created) {
       const newId = fallbackRequests.length > 0 ? Math.max(...fallbackRequests.map(r => r.id)) + 1 : 1;
+      let calculatedReqNo = data.req_no;
+      if (!calculatedReqNo) {
+        let max = 0;
+        for (const r of fallbackRequests) {
+          const match = String(r.req_no || '').match(/(\d+)/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > max) max = num;
+          }
+        }
+        calculatedReqNo = `IHLR-${max + 1}`;
+      }
       created = {
         id: newId,
-        req_no: data.req_no || String(newId),
+        req_no: calculatedReqNo,
         batch_date: data.batch_date || new Date().toISOString().split('T')[0],
         shift: data.shift || 'I',
         problem: data.problem,
         model: data.model,
-        problem_detected_at: data.problem_detected_at || 'Final Testing',
-        received_from: data.received_from || 'Assembly Line',
-        analysis_done_by: data.analysis_done_by || 'QC Lead',
+        problem_detected_at: data.problem_detected_at || '',
+        received_from: data.received_from || '',
+        analysis_done_by: data.analysis_done_by || '',
         defect_image: data.defect_image || '',
         qa_why_why: data.qa_why_why || [],
-        actual_qty: Number(data.actual_qty) || 1,
+        actual_qty: data.actual_qty ? Number(data.actual_qty) : 1,
         four_m: data.four_m || 'MAN',
-        resp: data.resp || 'PROD',
+        resp: data.resp || 'PRODUCTION',
+        resp_person: data.resp_person || '',
         prod_why_why: data.prod_why_why || [],
         action: data.action || '',
         evidence_attachment: data.evidence_attachment || '',

@@ -36,10 +36,30 @@ export const IhlrRequest = {
     return null;
   },
 
+  getNextReqNo: async () => {
+    try {
+      if (pool) {
+        const [rows] = await pool.query('SELECT req_no, id FROM ihlr_requests');
+        let max = 0;
+        for (const r of rows) {
+          const match = String(r.req_no || '').match(/(\d+)/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > max) max = num;
+          }
+        }
+        return `IHLR-${max + 1}`;
+      }
+    } catch (err) {
+      console.warn('[IHLR Model] getNextReqNo DB Query failed:', err.message);
+    }
+    return null;
+  },
+
   create: async (data) => {
     try {
       if (pool) {
-        const {
+        let {
           req_no,
           batch_date,
           shift = 'I',
@@ -52,7 +72,8 @@ export const IhlrRequest = {
           qa_why_why = [],
           actual_qty = 1,
           four_m = 'MAN',
-          resp = 'PROD',
+          resp = 'PRODUCTION',
+          resp_person = '',
           prod_why_why = [],
           action = '',
           evidence_attachment = '',
@@ -61,15 +82,19 @@ export const IhlrRequest = {
           status = 'OPEN'
         } = data;
 
+        if (!req_no) {
+          req_no = (await IhlrRequest.getNextReqNo()) || 'IHLR-1';
+        }
+
         const [result] = await pool.query(
           `INSERT INTO ihlr_requests (
             req_no, batch_date, shift, problem, model, problem_detected_at, 
             received_from, analysis_done_by, defect_image, qa_why_why, 
-            actual_qty, four_m, resp, prod_why_why, action, 
+            actual_qty, four_m, resp, resp_person, prod_why_why, action, 
             evidence_attachment, target_date, remarks, status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            req_no || `IHLR-${Date.now().toString().slice(-4)}`,
+            req_no,
             batch_date || new Date().toISOString().split('T')[0],
             shift,
             problem,
@@ -82,6 +107,7 @@ export const IhlrRequest = {
             actual_qty,
             four_m,
             resp,
+            resp_person,
             JSON.stringify(prod_why_why),
             action,
             evidence_attachment,
@@ -116,7 +142,7 @@ export const IhlrRequest = {
         const allowed = [
           'req_no', 'batch_date', 'shift', 'problem', 'model', 
           'problem_detected_at', 'received_from', 'analysis_done_by', 
-          'defect_image', 'actual_qty', 'four_m', 'resp', 
+          'defect_image', 'actual_qty', 'four_m', 'resp', 'resp_person',
           'action', 'evidence_attachment', 'target_date', 'remarks', 'status'
         ];
 

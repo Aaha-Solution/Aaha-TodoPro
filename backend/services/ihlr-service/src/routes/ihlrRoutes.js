@@ -6,10 +6,14 @@ import {
   createIhlrRequest,
   updateIhlrRequest,
   deleteIhlrRequest,
-  getIhlrNotifications
+  getIhlrNotifications,
+  getNextReqNo
 } from '../controllers/ihlrController.js';
 
 const router = Router();
+
+// Next Request Number
+router.get('/next-req-no', getNextReqNo);
 
 // Dashboard & KPI
 router.get('/dashboard', getDashboardStats);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
@@ -13,27 +13,101 @@ import {
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
 
+const DEPARTMENT_PERSONNEL = {
+  'MAINTENANCE': [
+    'Mr. Karthik (Maintenance Engineer)',
+    'Mr. Rajesh (Electrical Lead)',
+    'Mr. Balaji (Tooling Specialist)',
+  ],
+  'PRODUCTION': [
+    'Mr. Kumar (Assembly Lead)',
+    'Mr. Murugan (Line 1 Supervisor)',
+    'Ms. Kavitha (Assembly Specialist)',
+    'Mr. Suresh (Floor Engineer)',
+  ],
+  'PED': [
+    'Mr. Vignesh (Process Engineer)',
+    'Mr. Anand (NPI Lead)',
+    'Mr. Dinesh (Tooling & Fixtures)',
+  ],
+  'MATERIALS': [
+    'Mr. Arjun (Packaging Supervisor)',
+    'Mr. Ramesh (Material Planning)',
+    'Mr. Sathish (Inventory Lead)',
+  ],
+  'MARKETING': [
+    'Mr. Praveen (Customer Quality Liaison)',
+    'Ms. Priya (Order Fulfillment)',
+  ],
+  'INCOMING QUALITY': [
+    'Mr. Ravi (Inspection Head)',
+    'Mr. Prakash (QC Inspector)',
+    'Ms. Deepa (Quality Auditor)',
+  ],
+};
+
 const IhlrCreateRequest = () => {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const [dbUsers, setDbUsers] = useState([]);
 
   const [formData, setFormData] = useState({
-    req_no: `IHLR-${Math.floor(100 + Math.random() * 900)}`,
-    batch_date: new Date().toISOString().split('T')[0],
-    shift: 'I',
+    req_no: 'IHLR-1',
+    batch_date: '',
+    shift: '',
     problem: '',
     model: '',
-    problem_detected_at: 'Final Testing',
-    received_from: 'D3/LINE',
-    analysis_done_by: 'GURU',
-    actual_qty: 1,
-    four_m: 'MAN',
-    resp: 'PROD',
+    problem_detected_at: '',
+    received_from: '',
+    analysis_done_by: '',
+    actual_qty: '',
+    four_m: '',
+    resp: '',
+    resp_person: '',
     status: 'OPEN'
   });
 
   const [qaWhyWhy, setQaWhyWhy] = useState(['', '', '', '', '']);
   const [defectImage, setDefectImage] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+    ihlrService.getNextReqNo()
+      .then((nextReqNo) => {
+        if (isMounted && nextReqNo) {
+          setFormData((prev) => ({ ...prev, req_no: nextReqNo }));
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch next req_no:', err);
+      });
+
+    ihlrService.getUsers()
+      .then((users) => {
+        if (isMounted && Array.isArray(users)) {
+          setDbUsers(users);
+        }
+      })
+      .catch((err) => console.warn('Could not fetch DB users:', err));
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const getDepartmentUsers = (dept) => {
+    if (!dept) return [];
+    const preset = DEPARTMENT_PERSONNEL[dept] || [];
+    const matchedDb = dbUsers
+      .filter((u) => {
+        const uDept = (u.department || '').trim().toUpperCase();
+        const targetDept = dept.trim().toUpperCase();
+        return uDept === targetDept || (targetDept === 'INCOMING QUALITY' && uDept.includes('QUALITY'));
+      })
+      .map((u) => `${u.name} (${u.role || 'Staff'})`);
+
+    return Array.from(new Set([...matchedDb, ...preset]));
+  };
 
   const handleQaWhyChange = (index, value) => {
     const updated = [...qaWhyWhy];
@@ -58,11 +132,29 @@ const IhlrCreateRequest = () => {
       alert('Please fill in the Problem Description and Model.');
       return;
     }
+    if (!formData.shift) {
+      alert('Please select a Shift.');
+      return;
+    }
+    if (!formData.four_m) {
+      alert('Please select a 4M Category.');
+      return;
+    }
+    if (!formData.resp) {
+      alert('Please select a Responsibility department.');
+      return;
+    }
+    if (!formData.resp_person) {
+      alert('Please select a User Name (Responsible Person) based on the department.');
+      return;
+    }
 
     setSubmitting(true);
     try {
       await ihlrService.createRequest({
         ...formData,
+        batch_date: formData.batch_date || new Date().toISOString().split('T')[0],
+        actual_qty: formData.actual_qty ? Number(formData.actual_qty) : 1,
         qa_why_why: qaWhyWhy,
         defect_image: defectImage
       });
@@ -117,13 +209,13 @@ const IhlrCreateRequest = () => {
             {/* Req No */}
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Req No *
+                Req No (Auto-Generated) *
               </label>
               <input
                 type="text"
+                readOnly
                 value={formData.req_no}
-                onChange={(e) => setFormData({ ...formData, req_no: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl font-mono font-bold text-slate-700 focus:outline-none cursor-not-allowed select-none"
                 required
               />
             </div>
@@ -137,7 +229,7 @@ const IhlrCreateRequest = () => {
                 type="date"
                 value={formData.batch_date}
                 onChange={(e) => setFormData({ ...formData, batch_date: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium cursor-pointer"
                 required
               />
             </div>
@@ -151,7 +243,9 @@ const IhlrCreateRequest = () => {
                 value={formData.shift}
                 onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium"
+                required
               >
+                <option value="">Select Shift</option>
                 <option value="I">Shift I (Morning)</option>
                 <option value="II">Shift II (Evening)</option>
                 <option value="III">Shift III (Night)</option>
@@ -238,6 +332,7 @@ const IhlrCreateRequest = () => {
               <input
                 type="number"
                 min="1"
+                placeholder="e.g. 1"
                 value={formData.actual_qty}
                 onChange={(e) => setFormData({ ...formData, actual_qty: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-mono"
@@ -253,7 +348,9 @@ const IhlrCreateRequest = () => {
                 value={formData.four_m}
                 onChange={(e) => setFormData({ ...formData, four_m: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold"
+                required
               >
+                <option value="">Select 4M Category</option>
                 <option value="MAN">MAN</option>
                 <option value="MACHINE">MACHINE</option>
                 <option value="METHOD">METHOD</option>
@@ -261,21 +358,51 @@ const IhlrCreateRequest = () => {
               </select>
             </div>
 
-            {/* Responsibility */}
+            {/* Responsibility (Department) */}
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
                 Responsibility (Resp) *
               </label>
               <select
                 value={formData.resp}
-                onChange={(e) => setFormData({ ...formData, resp: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold"
+                onChange={(e) => setFormData({ ...formData, resp: e.target.value, resp_person: '' })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold cursor-pointer"
+                required
               >
-                <option value="PROD">PROD (Production)</option>
-                <option value="QA">QA (Quality Assurance)</option>
-                <option value="MAINT">MAINT (Maintenance)</option>
-                <option value="ENG">ENG (Engineering)</option>
-                <option value="STORE">STORE (Logistics)</option>
+                <option value="">Select Responsibility</option>
+                <option value="MAINTENANCE">MAINTENANCE</option>
+                <option value="PRODUCTION">PRODUCTION</option>
+                <option value="PED">PED</option>
+                <option value="MATERIALS">MATERIALS</option>
+                <option value="MARKETING">MARKETING</option>
+                <option value="INCOMING QUALITY">INCOMING QUALITY</option>
+              </select>
+            </div>
+
+            {/* Responsible Person / User Name based on Department */}
+            <div>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
+                User Name (Based on Dep) *
+              </label>
+              <select
+                value={formData.resp_person}
+                disabled={!formData.resp}
+                onChange={(e) => setFormData({ ...formData, resp_person: e.target.value })}
+                className={`w-full px-3 py-2 border rounded-xl font-medium outline-none transition ${
+                  formData.resp
+                    ? 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
+                    : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+                required
+              >
+                <option value="">
+                  {formData.resp ? 'Select User Name' : 'Select Department First'}
+                </option>
+                {getDepartmentUsers(formData.resp).map((uname) => (
+                  <option key={uname} value={uname}>
+                    {uname}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

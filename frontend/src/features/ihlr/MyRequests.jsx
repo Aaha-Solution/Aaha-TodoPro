@@ -272,7 +272,7 @@ const IhlrMyRequests = () => {
 
                     {/* Req NO */}
                     <td className="py-3.5 px-3 font-mono font-bold text-blue-600 whitespace-nowrap">
-                      #{r.req_no}
+                      {String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`}
                     </td>
 
                     {/* Date / Shift */}
@@ -326,9 +326,14 @@ const IhlrMyRequests = () => {
                       <div className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold font-mono bg-amber-50 text-amber-800 border border-amber-200 mb-0.5">
                         {r.four_m || 'MAN'}
                       </div>
-                      <div className="text-[10px] font-bold text-slate-500 font-mono">
-                        {r.resp || 'PROD'}
+                      <div className="text-[10px] font-bold text-slate-600 font-mono">
+                        {r.resp || '-'}
                       </div>
+                      {r.resp_person && (
+                        <div className="text-[9px] text-blue-600 font-semibold truncate max-w-[110px]" title={r.resp_person}>
+                          {r.resp_person}
+                        </div>
+                      )}
                     </td>
 
                     {/* Occurrence Cause (First Why) */}
@@ -392,8 +397,8 @@ const IhlrMyRequests = () => {
             {/* Modal Header */}
             <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-xs z-10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black">
-                  #{activeModalRequest.req_no}
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs font-mono px-1 text-center">
+                  {String(activeModalRequest.req_no).startsWith('IHLR-') ? activeModalRequest.req_no : `#${activeModalRequest.req_no}`}
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
@@ -423,6 +428,9 @@ const IhlrMyRequests = () => {
                 <div>
                   <span className="text-slate-400 block text-[10px] font-bold uppercase">RESPONSIBILITY</span>
                   <span className="font-bold text-slate-900 font-mono">{activeModalRequest.resp}</span>
+                  {activeModalRequest.resp_person && (
+                    <span className="block text-[11px] font-medium text-blue-600 mt-0.5">{activeModalRequest.resp_person}</span>
+                  )}
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px] font-bold uppercase">DETECTED AT</span>
@@ -554,7 +562,7 @@ const IhlrMyRequests = () => {
           <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900">
-                Update Report #{editingCloser.req_no}
+                Update Report {String(editingCloser.req_no).startsWith('IHLR-') ? editingCloser.req_no : `#${editingCloser.req_no}`}
               </h3>
               <button
                 onClick={() => setEditingCloser(null)}
