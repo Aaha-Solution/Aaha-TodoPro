@@ -60,6 +60,16 @@ export const processAuditService = {
     }
   },
 
+  getApprovals: async (params) => {
+    try {
+      const res = await api.get('/process-audit/approvals', { params });
+      return res.data?.data || res.data || [];
+    } catch (err) {
+      console.error('Failed to fetch approvals from DB:', err);
+      return [];
+    }
+  },
+
   updateRequestStatus: async (id, status, details = {}) => {
     let payload = { status };
     if (typeof details === 'string') {

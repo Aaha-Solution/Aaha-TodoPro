@@ -200,7 +200,12 @@ export const updateRequestStatus = async (req, res) => {
       action_attachments: parsedActionAttachments,
       standardization_details: body.standardization_details || body.standardizationDetails || null,
       target_date: body.target_date || body.targetDate || null,
-      action_taken_by: body.action_taken_by || body.actionTakenBy || req.user?.name || null,
+      action_taken_by: body.action_taken_by || body.actionTakenBy || body.approved_by || body.approvedBy || req.user?.name || null,
+      approved_by: body.approved_by || body.approvedBy || body.action_taken_by || body.actionTakenBy || req.user?.name || null,
+      approved_by_id: body.approved_by_id || body.approvedById || req.user?.id || null,
+      approved_by_email: body.approved_by_email || body.approvedByEmail || req.user?.email || null,
+      approved_by_role: body.approved_by_role || body.approvedByRole || req.user?.role || null,
+      comments: body.comments || null,
     };
 
     const updated = await ProcessAuditRequest.updateStatus(id, status, details);

@@ -8,6 +8,7 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import requestRoutes from './routes/requestRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import approvalRoutes from './routes/approvalRoutes.js';
 import { errorHandler } from '../../../shared/errorMiddleware.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -42,6 +43,7 @@ const mountRoutes = (prefix = '') => {
   app.use(`${prefix}/requests`, requestRoutes);
   app.use(`${prefix}/notifications`, notificationRoutes);
   app.use(`${prefix}/users`, userRoutes);
+  app.use(`${prefix}/approvals`, approvalRoutes);
 };
 
 mountRoutes('/api/process-audit');

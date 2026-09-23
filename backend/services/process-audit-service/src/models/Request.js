@@ -1,4 +1,5 @@
 import pool from '../../../shared/db.js';
+import { Approval } from './Approval.js';
 
 // Auto-ensure table structure matches the actual form fields with INT AUTO_INCREMENT primary key
 const ensureTable = async () => {
@@ -60,6 +61,18 @@ const ensureTable = async () => {
     if (!colNames.includes('action_taken_at')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN action_taken_at TIMESTAMP NULL`).catch(() => {});
     }
+    if (!colNames.includes('approved_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN approved_by VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('approved_by_id')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN approved_by_id INT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('approved_by_email')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN approved_by_email VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('approved_at')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN approved_at TIMESTAMP NULL`).catch(() => {});
+    }
 
     // Drop any existing defaults on MySQL columns
     await pool.query(`ALTER TABLE process_audit_requests MODIFY issue_type VARCHAR(50) NULL`).catch(() => {});
@@ -90,6 +103,10 @@ const ensureTable = async () => {
         target_date VARCHAR(50),
         action_taken_by VARCHAR(100),
         action_taken_at TIMESTAMP NULL,
+        approved_by VARCHAR(100),
+        approved_by_id INT NULL,
+        approved_by_email VARCHAR(100),
+        approved_at TIMESTAMP NULL,
         created_by VARCHAR(100),
         created_by_id INT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -265,6 +282,18 @@ export const ProcessAuditRequest = {
     if (!colNames.includes('action_taken_at')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN action_taken_at TIMESTAMP NULL`).catch(() => {});
     }
+    if (!colNames.includes('approved_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN approved_by VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('approved_by_id')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN approved_by_id INT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('approved_by_email')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN approved_by_email VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('approved_at')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN approved_at TIMESTAMP NULL`).catch(() => {});
+    }
 
     let rejectionReason = null;
     let rootCause = null;
@@ -319,12 +348,58 @@ export const ProcessAuditRequest = {
       updates.push('action_taken_at = NOW()');
     }
 
+    const isApproved = status.toLowerCase().includes('approved');
+    if (isApproved) {
+      const approvedBy = details.approved_by || details.approvedBy || actionTakenBy || 'Assigned Executor';
+      const approvedById = details.approved_by_id || details.approvedById || null;
+      const approvedByEmail = details.approved_by_email || details.approvedByEmail || null;
+
+      updates.push('approved_by = ?');
+      params.push(approvedBy);
+      if (approvedById !== null) {
+        updates.push('approved_by_id = ?');
+        params.push(approvedById);
+      }
+      if (approvedByEmail !== null) {
+        updates.push('approved_by_email = ?');
+        params.push(approvedByEmail);
+      }
+      updates.push('approved_at = NOW()');
+    }
+
     params.push(numericId, String(id));
 
     const query = `UPDATE process_audit_requests SET ${updates.join(', ')} WHERE id = ? OR issue_no = ?`;
     await pool.query(query, params);
 
     const [rows] = await pool.query(`SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?`, [numericId, String(id)]);
-    return rows[0];
+    const updatedRow = rows[0];
+
+    // If status is Approved, save into the separate process_audit_approvals table
+    if (updatedRow && isApproved) {
+      try {
+        await Approval.createApproval({
+          request_id: updatedRow.id,
+          issue_no: updatedRow.issue_no || (updatedRow.id ? `PA-${updatedRow.id}` : String(id)),
+          approved_by: updatedRow.approved_by || details.approved_by || details.approvedBy || actionTakenBy || updatedRow.executor || 'Assigned Executor',
+          approved_by_id: details.approved_by_id || details.approvedById || null,
+          approved_by_email: details.approved_by_email || details.approvedByEmail || null,
+          approved_by_role: details.approved_by_role || details.approvedByRole || null,
+          department: updatedRow.department,
+          executor: updatedRow.executor,
+          root_cause: updatedRow.root_cause,
+          corrective_action: updatedRow.corrective_action,
+          action_attachments: updatedRow.action_attachments,
+          standardization_details: updatedRow.standardization_details,
+          target_date: updatedRow.target_date,
+          status: 'Approved',
+          comments: details.comments || null,
+        });
+      } catch (apprErr) {
+        console.warn('Failed to insert into separate process_audit_approvals table:', apprErr.message);
+      }
+    }
+
+    return updatedRow;
   }
 };

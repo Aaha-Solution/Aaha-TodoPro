@@ -163,7 +163,11 @@ const ProcessAuditApprovals = () => {
         action_attachments: finalActionAttachments,
         standardization_details: standardizationDetails.trim(),
         target_date: targetDate,
-        action_taken_by: user?.name || 'Assigned Executor',
+        action_taken_by: user?.name || user?.email || 'Assigned Executor',
+        approved_by: user?.name || user?.email || 'Assigned Executor',
+        approved_by_id: user?.id || null,
+        approved_by_email: user?.email || null,
+        approved_by_role: user?.role || null,
       };
 
       const updated = await processAuditService.updateRequestStatus(id, 'Approved', details);
@@ -602,10 +606,17 @@ const ProcessAuditApprovals = () => {
                             </span>
                           )}
                           {isApproved && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              Approved
-                            </span>
+                            <div>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Approved
+                              </span>
+                              {(r.approved_by || r.action_taken_by) && (
+                                <div className="text-[10px] text-slate-500 mt-0.5">
+                                  by <strong className="text-slate-700">{r.approved_by || r.action_taken_by}</strong>
+                                </div>
+                              )}
+                            </div>
                           )}
                           {isRejected && (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
@@ -1119,9 +1130,14 @@ const ProcessAuditApprovals = () => {
                         Executor Corrective Action &amp; Resolution Report
                       </h4>
                     </div>
-                    {activeModalRequest.action_taken_by && (
+                    {(activeModalRequest.approved_by || activeModalRequest.action_taken_by) && (
                       <span className="text-[11px] text-slate-500">
-                        Signed-off by: <strong className="text-slate-800 font-semibold">{activeModalRequest.action_taken_by}</strong>
+                        Approved by: <strong className="text-emerald-700 font-bold">{activeModalRequest.approved_by || activeModalRequest.action_taken_by}</strong>
+                        {activeModalRequest.approved_at && (
+                          <span className="ml-1 text-slate-400 font-mono text-[10px]">
+                            ({formatDate(activeModalRequest.approved_at)})
+                          </span>
+                        )}
                       </span>
                     )}
                   </div>

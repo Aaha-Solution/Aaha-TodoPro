@@ -811,7 +811,7 @@ const CreateRequest = () => {
                       ? 'Loading executors from DB...'
                       : deptUsers.length === 0
                         ? 'No users found in database for this department'
-                        : 'Select'}
+                        : 'Select Executor'}
                 </option>
                 {deptUsers.length > 0 ? (
                   deptUsers.map((u) => {

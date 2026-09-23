@@ -797,9 +797,14 @@ const MyRequests = () => {
                         Executor Corrective Action &amp; Standardization Report
                       </h4>
                     </div>
-                    {activeModalRequest.action_taken_by && (
+                    {(activeModalRequest.approved_by || activeModalRequest.action_taken_by) && (
                       <span className="text-[10px] text-slate-500">
-                        Signed-off by: <strong className="text-slate-800">{activeModalRequest.action_taken_by}</strong>
+                        Approved by: <strong className="text-emerald-700 font-bold">{activeModalRequest.approved_by || activeModalRequest.action_taken_by}</strong>
+                        {activeModalRequest.approved_at && (
+                          <span className="ml-1 text-slate-400 font-mono text-[9px]">
+                            ({formatDate(activeModalRequest.approved_at)})
+                          </span>
+                        )}
                       </span>
                     )}
                   </div>
