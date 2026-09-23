@@ -82,3 +82,17 @@ CREATE TABLE IF NOT EXISTS ihlr_requests (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- IHLR Binary File Attachments Storage
+CREATE TABLE IF NOT EXISTS ihlr_attachments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  request_id INT NULL,
+  filename VARCHAR(255) NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  file_size BIGINT NOT NULL,
+  file_data LONGBLOB NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_req (request_id),
+  INDEX idx_fn (filename)
+);
+

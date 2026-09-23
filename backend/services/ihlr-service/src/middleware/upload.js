@@ -12,21 +12,8 @@ if (!fs.existsSync(ATTACHMENTS_DIR)) {
   fs.mkdirSync(ATTACHMENTS_DIR, { recursive: true });
 }
 
-// Multer disk storage engine
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    if (!fs.existsSync(ATTACHMENTS_DIR)) {
-      fs.mkdirSync(ATTACHMENTS_DIR, { recursive: true });
-    }
-    cb(null, ATTACHMENTS_DIR);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const cleanBase = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e6);
-    cb(null, `${cleanBase}-${uniqueSuffix}${ext}`);
-  },
-});
+// Multer memory storage engine for direct binary database (LONGBLOB) uploads
+const storage = multer.memoryStorage();
 
 export const upload = multer({
   storage,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Eye, 
   X, 
@@ -10,6 +10,7 @@ import {
   Clock, 
   AlertCircle,
   ShieldCheck,
+  ShieldAlert,
   Calendar,
   Layers,
   Wrench,
@@ -23,6 +24,7 @@ import autoTable from 'jspdf-autotable';
 import { parseAttachments, getFileMeta } from './IhlrAttachmentView';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
+import AttachmentChipList from '../../components/common/AttachmentChipList';
 
 /**
  * Meaningful IHLR (In-House Line Rejection) Inspection & Analysis Report Modal:
@@ -34,13 +36,23 @@ import ExportSelectionModal from '../../components/common/ExportSelectionModal';
  * - Section 5: Containment Countermeasure & Target Closure
  */
 const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
+  const [activeTab, setActiveTab] = useState('incident'); // 'incident' | 'closer'
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFormat, setExportFormat] = useState('excel'); // 'excel' | 'pdf'
 
+  useEffect(() => {
+    setActiveTab('incident');
+  }, [request?.id]);
+
   if (!isOpen || !request) return null;
 
+  const isClosed =
+    (request.status || '').toUpperCase() === 'CLOSED' ||
+    (request.status || '').toUpperCase() === 'APPROVED';
+
   const attachments = parseAttachments(request.defect_image);
+  const evidenceAttachments = parseAttachments(request.evidence_attachment);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
@@ -342,10 +354,180 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
             </button>
           </div>
 
-          {/* Modal Body: Single Unified Scrollable IHLR Report */}
+          {/* Tab Navigation: Shown when request is Closed */}
+          {isClosed && (
+            <div className="flex items-center gap-3 px-6 pt-2 border-b border-slate-200 bg-slate-50/80 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveTab('incident')}
+                className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'incident'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Folder className="w-4 h-4" />
+                <span>Incident &amp; Rejection Details</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('closer')}
+                className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'closer'
+                    ? 'border-emerald-600 text-emerald-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Closer Details</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Closed
+                </span>
+              </button>
+            </div>
+          )}
+
+          {/* Modal Body: Single Unified Scrollable IHLR Report or Closer View */}
           <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
-            {/* 📁 1. GENERAL INFORMATION & DEFECT PARAMETERS */}
-            <div className="space-y-3">
+            {isClosed && activeTab === 'closer' ? (
+              /* TAB 2: CLOSER DETAILS (FIELDS FROM IMAGE 1) */
+              <div className="space-y-6 animate-in fade-in duration-150">
+                {/* 1. Quick Summary Bar */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200/90 flex flex-wrap items-center justify-between gap-4 text-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shadow-2xs">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-slate-900 text-sm">
+                          {request.req_no || `IHLR-${request.id}`}
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          INCIDENT CLOSED
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Model: <strong className="text-slate-800">{request.model || '—'}</strong> | Detected At:{' '}
+                        <strong className="text-slate-800">{request.problem_detected_at || '—'}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-[11px] font-medium text-slate-600">
+                    <div>
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Date</span>
+                      <span className="font-mono font-bold text-slate-800">{formatDate(request.target_date) || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Responsibility</span>
+                      <span className="font-bold text-slate-800">
+                        {request.resp || 'Production'}{request.resp_person ? ` (${request.resp_person})` : ''}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Occurrence Cause (Production Team - 5-Why) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
+                      <ShieldAlert className="w-4 h-4" />
+                      <span>Occurrence Cause (Production Team - 5-Why Analysis)</span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-mono">W1 to W5 Breakdown</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2.5 text-xs">
+                    {['W1', 'W2', 'W3', 'W4', 'W5'].map((wLabel, idx) => {
+                      const val = request.prod_why_why?.[idx];
+                      return (
+                        <div key={idx} className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                          <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                            {wLabel}:
+                          </span>
+                          <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
+                            {val || <span className="text-slate-400 italic">No entry recorded</span>}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Action (Words) */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
+                    <Wrench className="w-4 h-4" />
+                    <span>Action Taken / Containment Action</span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                    {request.action || <span className="text-slate-400 italic">No corrective action recorded.</span>}
+                  </div>
+                </div>
+
+                {/* 4. Evidence Attachment (Format: PPT, JPEG, EXCEL & PDF) */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
+                      <Paperclip className="w-4 h-4" />
+                      <span>Evidence Attachments</span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
+                  </div>
+
+                  {evidenceAttachments && evidenceAttachments.length > 0 ? (
+                    <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
+                      <AttachmentChipList
+                        attachments={evidenceAttachments}
+                        onPreview={(att) => setPreviewAttachment(att)}
+                        readonly={true}
+                      />
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
+                      No closer evidence attachments uploaded.
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Target Date & Remarks (Image 1: REMARKS Word) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      TARGET DATE
+                    </span>
+                    <span className="font-mono font-bold text-slate-900 text-sm">
+                      {formatDate(request.target_date) || '—'}
+                    </span>
+                  </div>
+
+                  <div className="sm:col-span-2 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      REMARKS
+                    </span>
+                    <div className="text-slate-800 leading-relaxed font-medium">
+                      {request.remarks || <span className="text-slate-400 italic">No remarks provided.</span>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. Requestor Status & Sign-off Details */}
+                <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/90 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span className="font-bold text-emerald-900">Incident Fully Validated &amp; Closed</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-[11px] text-slate-600 font-medium">
+                    <span>4M: <strong className="text-amber-800 font-mono">{request.four_m || 'MAN'}</strong></span>
+                    <span>Resp: <strong className="text-blue-700 font-mono">{request.resp || 'PRODUCTION'}</strong></span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* 📁 1. GENERAL INFORMATION & DEFECT PARAMETERS */}
+                <div className="space-y-3">
               <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
                 <Folder className="w-4 h-4" />
                 <span>1. INCIDENT &amp; LINE DEFECT DETAILS</span>
@@ -603,15 +785,25 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                 </div>
               </div>
             </div>
-          </div>
+          </>
+        )}
+      </div>
 
           {/* Modal Footer */}
           <div className="p-4 sm:p-5 border-t border-slate-100 bg-white flex items-center justify-between shrink-0">
             <div>
-              {attachments.length > 0 && (
-                <span className="text-xs text-slate-400 font-medium">
-                  {attachments.length} attachment{attachments.length > 1 ? 's' : ''} available
-                </span>
+              {isClosed && activeTab === 'closer' ? (
+                evidenceAttachments.length > 0 && (
+                  <span className="text-xs text-slate-400 font-medium">
+                    {evidenceAttachments.length} closer evidence attachment{evidenceAttachments.length > 1 ? 's' : ''} available
+                  </span>
+                )
+              ) : (
+                attachments.length > 0 && (
+                  <span className="text-xs text-slate-400 font-medium">
+                    {attachments.length} attachment{attachments.length > 1 ? 's' : ''} available
+                  </span>
+                )
               )}
             </div>
 

@@ -192,34 +192,9 @@ export const ihlrService = {
   getNotifications: async () => {
     try {
       const res = await api.get('/ihlr/notifications');
-      return res.data?.data || res.data;
+      return res.data?.data || res.data || [];
     } catch {
-      return [
-        {
-          id: 1,
-          title: 'New IHLR Report Logged',
-          message: 'Req #1 (Model: OLS LONG ARM) reported by GURU at Final Testing with defect "Low voltage".',
-          date: '01 Sep 2026, 14:20',
-          status: 'OPEN',
-          read: false
-        },
-        {
-          id: 2,
-          title: 'Occurrence Cause Updated',
-          message: 'Production Team added corrective countermeasure for Req #2 (CDI CAP HOUSING). Target Date: 18 Sep 2026.',
-          date: '02 Sep 2026, 11:45',
-          status: 'IN_PROGRESS',
-          read: false
-        },
-        {
-          id: 3,
-          title: 'IHLR Case Closed',
-          message: 'Req #3 (STATOR COIL 35W) verified and closed by Quality Head after tensioner recalibration.',
-          date: '03 Sep 2026, 16:10',
-          status: 'CLOSED',
-          read: true
-        }
-      ];
+      return [];
     }
   }
 };

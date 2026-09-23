@@ -8,14 +8,20 @@ import {
   deleteIhlrRequest,
   getIhlrNotifications,
   getNextReqNo,
-  uploadAttachments
+  uploadAttachments,
+  getBinaryAttachment,
+  getBinaryAttachmentByFilename
 } from '../controllers/ihlrController.js';
 import { upload } from '../middleware/upload.js';
 
 const router = Router();
 
-// File Uploads (Images, PDF, Word, Excel)
+// File Uploads (Binary Database Storage in MySQL LONGBLOB)
 router.post('/upload', upload.array('files', 30), uploadAttachments);
+
+// Stream Binary File from MySQL Database
+router.get('/attachments/binary/:id', getBinaryAttachment);
+router.get('/attachments/binary/file/:filename', getBinaryAttachmentByFilename);
 
 // Next Request Number
 router.get('/next-req-no', getNextReqNo);
