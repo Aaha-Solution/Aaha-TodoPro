@@ -12,12 +12,12 @@ import {
   getBinaryAttachment,
   getBinaryAttachmentByFilename
 } from '../controllers/ihlrController.js';
-import { upload } from '../middleware/upload.js';
+import { uploadMemory } from '../../../shared/binaryStorage.js';
 
 const router = Router();
 
-// File Uploads (Binary Database Storage in MySQL LONGBLOB)
-router.post('/upload', upload.array('files', 30), uploadAttachments);
+// File Uploads (Binary Database Storage in MySQL LONGBLOB via Shared Module)
+router.post('/upload', uploadMemory.array('files', 30), uploadAttachments);
 
 // Stream Binary File from MySQL Database
 router.get('/attachments/binary/:id', getBinaryAttachment);

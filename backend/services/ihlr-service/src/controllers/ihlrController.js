@@ -1,7 +1,7 @@
 import path from 'path';
 import { successResponse, errorResponse } from '../../../shared/response.js';
 import { IhlrRequest } from '../models/IhlrRequest.js';
-import { IhlrAttachment } from '../models/IhlrAttachment.js';
+import { saveBinaryFiles, streamBinaryFile } from '../../../shared/binaryStorage.js';
 
 // In-memory fallback if DB is not reachable
 let fallbackRequests = [];
@@ -243,35 +243,11 @@ export const getIhlrNotifications = async (req, res) => {
 
 export const uploadAttachments = async (req, res) => {
   try {
-    const files = req.files || [];
-    const savedFiles = [];
-
-    for (const file of files) {
-      const ext = path.extname(file.originalname).replace('.', '').toUpperCase();
-      const cleanBase = path.basename(file.originalname, path.extname(file.originalname)).replace(/[^a-zA-Z0-9_-]/g, '_');
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e6);
-      const uniqueFilename = `${cleanBase}-${uniqueSuffix}.${ext.toLowerCase()}`;
-
-      // Insert binary buffer directly into MySQL LONGBLOB
-      const saved = await IhlrAttachment.create({
-        filename: uniqueFilename,
-        original_name: file.originalname,
-        mime_type: file.mimetype || 'application/octet-stream',
-        file_size: file.size,
-        file_data: file.buffer,
-        request_id: req.body.request_id || null
-      });
-
-      savedFiles.push({
-        id: saved.id,
-        name: file.originalname,
-        filename: uniqueFilename,
-        path: `attachments/binary/${saved.id}`,
-        url: `/api/ihlr/attachments/binary/${saved.id}`,
-        size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-        type: ext,
-      });
-    }
+    const savedFiles = await saveBinaryFiles(req.files || [], {
+      module_name: 'IHLR',
+      ref_id: req.body.request_id || null,
+      urlPrefix: '/api/ihlr/attachments/binary'
+    });
 
     return successResponse(res, { files: savedFiles }, 'Files uploaded and stored in database successfully');
   } catch (err) {
@@ -281,60 +257,7 @@ export const uploadAttachments = async (req, res) => {
 };
 
 /**
- * Stream binary attachment directly from MySQL database by numeric ID or filename
+ * Stream binary attachment directly from database (shared binary storage handler)
  */
-export const getBinaryAttachment = async (req, res) => {
-  try {
-    const { id } = req.params;
-    let attachment = await IhlrAttachment.getById(id);
-
-    if (!attachment) {
-      attachment = await IhlrAttachment.getByFilename(id);
-    }
-
-    if (!attachment || !attachment.file_data) {
-      return res.status(404).send('Attachment not found in database');
-    }
-
-    // Set binary response headers
-    res.setHeader('Content-Type', attachment.mime_type || 'application/octet-stream');
-    res.setHeader('Content-Length', attachment.file_size || attachment.file_data.length);
-    res.setHeader(
-      'Content-Disposition',
-      `inline; filename="${encodeURIComponent(attachment.original_name || attachment.filename)}"`
-    );
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24h
-
-    return res.end(attachment.file_data);
-  } catch (err) {
-    console.error('Failed to stream binary attachment from DB:', err);
-    return res.status(500).send('Error streaming binary attachment: ' + err.message);
-  }
-};
-
-/**
- * Stream binary attachment by unique filename
- */
-export const getBinaryAttachmentByFilename = async (req, res) => {
-  try {
-    const { filename } = req.params;
-    const attachment = await IhlrAttachment.getByFilename(filename);
-
-    if (!attachment || !attachment.file_data) {
-      return res.status(404).send('Attachment not found in database');
-    }
-
-    res.setHeader('Content-Type', attachment.mime_type || 'application/octet-stream');
-    res.setHeader('Content-Length', attachment.file_size || attachment.file_data.length);
-    res.setHeader(
-      'Content-Disposition',
-      `inline; filename="${encodeURIComponent(attachment.original_name || attachment.filename)}"`
-    );
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-
-    return res.end(attachment.file_data);
-  } catch (err) {
-    console.error('Failed to stream binary attachment by filename from DB:', err);
-    return res.status(500).send('Error streaming binary attachment: ' + err.message);
-  }
-};
+export const getBinaryAttachment = streamBinaryFile;
+export const getBinaryAttachmentByFilename = streamBinaryFile;
