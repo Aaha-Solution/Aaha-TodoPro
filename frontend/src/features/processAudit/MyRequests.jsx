@@ -33,7 +33,7 @@ const MyRequests = () => {
   })() || '').trim();
 
   const userRole = (user?.role || '').trim().toUpperCase();
-  const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN';
+  const isAdmin = userRole === 'ADMIN';
   const isIncomingQuality = currentDept.toUpperCase() === 'INCOMING QUALITY';
   const canTrack = isIncomingQuality || isAdmin;
 

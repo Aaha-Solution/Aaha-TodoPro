@@ -4,47 +4,12 @@ import {
   FileText, 
   UploadCloud, 
   Send, 
-  Calendar, 
-  Layers, 
   ShieldAlert, 
   Trash2, 
-  ArrowLeft,
-  Image as ImageIcon
+  ArrowLeft
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
 
-const DEPARTMENT_PERSONNEL = {
-  'MAINTENANCE': [
-    'Mr. Karthik (Maintenance Engineer)',
-    'Mr. Rajesh (Electrical Lead)',
-    'Mr. Balaji (Tooling Specialist)',
-  ],
-  'PRODUCTION': [
-    'Mr. Kumar (Assembly Lead)',
-    'Mr. Murugan (Line 1 Supervisor)',
-    'Ms. Kavitha (Assembly Specialist)',
-    'Mr. Suresh (Floor Engineer)',
-  ],
-  'PED': [
-    'Mr. Vignesh (Process Engineer)',
-    'Mr. Anand (NPI Lead)',
-    'Mr. Dinesh (Tooling & Fixtures)',
-  ],
-  'MATERIALS': [
-    'Mr. Arjun (Packaging Supervisor)',
-    'Mr. Ramesh (Material Planning)',
-    'Mr. Sathish (Inventory Lead)',
-  ],
-  'MARKETING': [
-    'Mr. Praveen (Customer Quality Liaison)',
-    'Ms. Priya (Order Fulfillment)',
-  ],
-  'INCOMING QUALITY': [
-    'Mr. Ravi (Inspection Head)',
-    'Mr. Prakash (QC Inspector)',
-    'Ms. Deepa (Quality Auditor)',
-  ],
-};
 
 const IhlrCreateRequest = () => {
   const navigate = useNavigate();
@@ -97,16 +62,11 @@ const IhlrCreateRequest = () => {
 
   const getDepartmentUsers = (dept) => {
     if (!dept) return [];
-    const preset = DEPARTMENT_PERSONNEL[dept] || [];
-    const matchedDb = dbUsers
-      .filter((u) => {
-        const uDept = (u.department || '').trim().toUpperCase();
-        const targetDept = dept.trim().toUpperCase();
-        return uDept === targetDept || (targetDept === 'INCOMING QUALITY' && uDept.includes('QUALITY'));
-      })
-      .map((u) => `${u.name} (${u.role || 'Staff'})`);
-
-    return Array.from(new Set([...matchedDb, ...preset]));
+    const targetDept = dept.trim().toUpperCase();
+    return dbUsers.filter((u) => {
+      const uDept = (u.department || '').trim().toUpperCase();
+      return uDept === targetDept;
+    });
   };
 
   const handleQaWhyChange = (index, value) => {
@@ -340,7 +300,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* 4M Category */}
-            <div>
+            <div className="sm:col-span-2 lg:col-span-2">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
                 4M Category *
               </label>
@@ -359,7 +319,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Responsibility (Department) */}
-            <div>
+            <div className="sm:col-span-1 lg:col-span-2">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
                 Responsibility (Resp) *
               </label>
@@ -380,7 +340,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Responsible Person / User Name based on Department */}
-            <div>
+            <div className="sm:col-span-1 lg:col-span-2">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
                 User Name (Based on Dep) *
               </label>
@@ -396,11 +356,15 @@ const IhlrCreateRequest = () => {
                 required
               >
                 <option value="">
-                  {formData.resp ? 'Select User Name' : 'Select Department First'}
+                  {!formData.resp
+                    ? 'Select Department First'
+                    : getDepartmentUsers(formData.resp).length === 0
+                      ? 'No DB users found for this department'
+                      : 'Select User Name'}
                 </option>
-                {getDepartmentUsers(formData.resp).map((uname) => (
-                  <option key={uname} value={uname}>
-                    {uname}
+                {getDepartmentUsers(formData.resp).map((u) => (
+                  <option key={u.id} value={u.name}>
+                    {u.name}
                   </option>
                 ))}
               </select>

@@ -35,7 +35,7 @@ const ProcessAuditDashboard = () => {
     }
   })() || '').trim().toUpperCase();
 
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPER_ADMIN';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
   const isIncomingQuality = userDept === 'INCOMING QUALITY';
   const canCreate = isIncomingQuality || isAdmin;
 

@@ -32,8 +32,8 @@ import { userService } from '../../services/userService';
 import { DEPARTMENTS } from '../../utils/constants';
 
 const ROLES = [
-  'admin',
-  'user'
+  'ADMIN',
+  'USER'
 ];
 
 const UserManagement = () => {
@@ -60,7 +60,7 @@ const UserManagement = () => {
     employeeId: '',
     name: '',
     email: '',
-    role: 'admin',
+    role: 'USER',
     department: 'PRODUCTION',
     status: 'Active',
     systems: ['processAudit', 'ihlr', 'tryOutStatus'],
@@ -95,7 +95,7 @@ const UserManagement = () => {
       employeeId: '',
       name: '',
       email: '',
-      role: 'admin',
+      role: 'USER',
       department: 'PRODUCTION',
       status: 'ACTIVE',
       systems: ['processAudit', 'ihlr', 'tryOutStatus'],
@@ -212,7 +212,7 @@ const UserManagement = () => {
   const activeCount = users.filter((u) => u.status === 'Active' || u.status === 'ACTIVE').length;
   const adminCount = users.filter((u) => (u.role || '').toLowerCase() === 'admin').length;
   const standardUserCount = users.filter((u) => (u.role || '').toLowerCase() === 'user').length;
-  const isAdmin = currentAuthUser?.role?.toUpperCase() === 'ADMIN' || currentAuthUser?.role?.toUpperCase() === 'SUPER_ADMIN';
+  const isAdmin = currentAuthUser?.role?.toUpperCase() === 'ADMIN';
 
   if (!isAdmin) {
     return (
@@ -748,7 +748,7 @@ const UserManagement = () => {
                     Operational Role *
                   </label>
                   <select
-                    value={editingUser.role}
+                    value={editingUser.role ? editingUser.role.toUpperCase() : 'USER'}
                     onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                   >

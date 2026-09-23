@@ -74,7 +74,7 @@ const SystemSelection = () => {
   ];
 
   const currentUserName = user?.name || 'Admin';
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPER_ADMIN';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col justify-between text-slate-800 antialiased">

@@ -27,11 +27,12 @@ export const User = {
 
   create: async (userData) => {
     if (!pool) throw new Error('Database connection pool is not available');
-    const { name, email, password = 'PlantUser@123', role = 'user', department = 'PRODUCTION', status = 'ACTIVE' } = userData;
+    const { name, email, password = 'PlantUser@123', role = 'USER', department = 'PRODUCTION', status = 'ACTIVE' } = userData;
+    const normalizedRole = (role && role.toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
     const hashedPassword = bcrypt.hashSync(password, 10);
     const [result] = await pool.query(
       'INSERT INTO users (name, email, password, role, department, status) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, email, hashedPassword, role, department, status.toUpperCase()]
+      [name, email, hashedPassword, normalizedRole, department, status.toUpperCase()]
     );
     const [rows] = await pool.query(
       'SELECT id, name, email, role, department, status, created_at FROM users WHERE id = ?',
@@ -43,9 +44,10 @@ export const User = {
   update: async (id, updates) => {
     if (!pool) throw new Error('Database connection pool is not available');
     const { name, role, department, status } = updates;
+    const normalizedRole = (role && role.toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
     await pool.query(
       'UPDATE users SET name = ?, role = ?, department = ?, status = ? WHERE id = ?',
-      [name, role, department, status ? status.toUpperCase() : 'ACTIVE', id]
+      [name, normalizedRole, department, status ? status.toUpperCase() : 'ACTIVE', id]
     );
     const [rows] = await pool.query(
       'SELECT id, name, email, role, department, status, updated_at FROM users WHERE id = ?',

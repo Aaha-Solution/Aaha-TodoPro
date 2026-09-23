@@ -28,7 +28,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 const ProcessAuditApprovals = () => {
   const { user } = useAuth();
-  const isAdmin = (user?.role || '').toUpperCase() === 'ADMIN' || (user?.role || '').toUpperCase() === 'SUPER_ADMIN';
+  const isAdmin = (user?.role || '').toUpperCase() === 'ADMIN';
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);

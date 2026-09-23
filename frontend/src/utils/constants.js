@@ -2,13 +2,8 @@ export const APP_NAME = "Todo";
 export const COMPANY_NAME = "India Nippon Electricals Limited";
 
 export const ROLES = {
-  SUPER_ADMIN: "SUPER_ADMIN",
   ADMIN: "ADMIN",
-  AUDITOR: "AUDITOR",
-  AUDITEE: "AUDITEE",
-  OPERATOR: "OPERATOR",
-  ENGINEER: "ENGINEER",
-  VIEWER: "VIEWER",
+  USER: "USER",
 };
 
 export const DEPARTMENTS = [

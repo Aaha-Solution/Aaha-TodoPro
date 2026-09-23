@@ -22,7 +22,7 @@ const Header = ({ toggleSidebar }) => {
     pageTitle = 'User Profile & Team Management';
   }
 
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPER_ADMIN';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
 
   return (
     <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-8 flex items-center justify-between shadow-2xs">

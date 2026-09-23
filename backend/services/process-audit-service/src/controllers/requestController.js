@@ -17,7 +17,7 @@ export const getAllRequests = async (req, res) => {
     const { created_by, created_by_id, executor, user, role } = req.query;
 
     const userRole = (role || req.user?.role || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN';
+    const isAdmin = userRole === 'ADMIN';
 
     const filters = {};
     if (!isAdmin) {
@@ -105,7 +105,7 @@ export const createRequest = async (req, res) => {
       if (uRows.length > 0) {
         const uDept = (uRows[0].department || '').trim().toUpperCase();
         const uRole = (uRows[0].role || '').trim().toUpperCase();
-        if (uRole !== 'ADMIN' && uRole !== 'SUPER_ADMIN' && uRole !== 'SUPER ADMIN' && uDept !== 'INCOMING QUALITY') {
+        if (uRole !== 'ADMIN' && uDept !== 'INCOMING QUALITY') {
           return errorResponse(
             res,
             'Access Denied: Only personnel from the INCOMING QUALITY department are authorized to create Process Audit requests.',

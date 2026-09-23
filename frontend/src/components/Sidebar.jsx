@@ -30,7 +30,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   })() || '').trim().toUpperCase();
 
   const isIhlr = location.pathname.startsWith('/ihlr');
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPER_ADMIN';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
   const isIncomingQuality = userDept === 'INCOMING QUALITY';
   const canCreateProcessAudit = isIncomingQuality || isAdmin;
   const canTrackProcessAudit = isIncomingQuality || isAdmin;

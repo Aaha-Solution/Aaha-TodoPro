@@ -29,13 +29,15 @@ export const createUser = async (req, res) => {
       return errorResponse(res, 'Name and Email are required', 400);
     }
 
+    const normalizedRole = (role && role.toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
+
     const newUser = await User.create({
       name,
       email,
       password: password || 'PlantUser@123',
-      role: role || 'CREATOR',
+      role: normalizedRole,
       department: department || 'PRODUCTION',
-      status: status || 'ACTIVE',
+      status: status ? status.toUpperCase() : 'ACTIVE',
       systems: systems || ['processAudit'],
       employeeId
     });
