@@ -11,7 +11,6 @@ Built with React, Vite, Tailwind CSS, Redux Toolkit, and React Router.
   - **Request Tracking**: Dynamic filterable table with CSV export.
   - **User Profile & Team Management**: Active profile cards and multi-role user directory with switch persona capability.
   - **Notification Center**: Real-time activity alerts and request direct actions.
-  - **Line Stopper System**: Shopfloor emergency halt and quality clearance workflow.
 
 ## Running Locally
 ```bash

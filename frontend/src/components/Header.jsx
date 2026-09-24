@@ -46,7 +46,7 @@ const Header = ({ toggleSidebar }) => {
         </button>
       </div>
 
-      {/* Right User & Stopper Controls */}
+      {/* Right User Controls */}
       <div className="flex items-center gap-2 sm:gap-4">
         {/* Notification Bell */}
         <Notification />

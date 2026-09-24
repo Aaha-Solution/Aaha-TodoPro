@@ -5,7 +5,6 @@ import ihlrReducer from './slices/ihlrSlice';
 import tryOutReducer from './slices/tryOutSlice';
 import userReducer from './slices/userSlice';
 import notificationReducer from './slices/notificationSlice';
-import stopperReducer from './slices/stopperSlice';
 
 export const store = configureStore({
   reducer: {
@@ -15,7 +14,6 @@ export const store = configureStore({
     tryOut: tryOutReducer,
     user: userReducer,
     notification: notificationReducer,
-    stopper: stopperReducer,
   },
 });
 

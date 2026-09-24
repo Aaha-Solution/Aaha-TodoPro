@@ -13,8 +13,7 @@ backend/
 │   ├── auth-service/               # Tab: Auth & Enterprise Users Directory (Port 5001)
 │   ├── process-audit-service/      # Tab: Process Audit Observation (Port 5002)
 │   ├── ihlr-service/               # Tab: In-House Line Rejection / Scrap / RCA (Port 5003)
-│   ├── tryout-service/             # Tab: Try Out Status / Tool & Die Trials (Port 5004)
-│   └── stopper-service/            # System: Emergency Line Stopper & Andon (Port 5005)
+│   └── tryout-service/             # Tab: Try Out Status / Tool & Die Trials (Port 5004)
 ├── shared/                         # Shared utilities (DB pool, JWT, responses, error handler)
 ├── database/                       # SQL schemas and seed migrations
 └── package.json                    # Root workspace orchestrator
@@ -29,7 +28,6 @@ backend/
 | **Developer 2 (Process Audit)** | `services/process-audit-service/` | `5002` | `/api/process-audit/dashboard`, `/requests`, `/notifications` |
 | **Developer 3 (IHLR)** | `services/ihlr-service/` | `5003` | `/api/ihlr/dashboard`, `/line-rejections`, `/scrap` |
 | **Developer 4 (Try Out Status)** | `services/tryout-service/` | `5004` | `/api/tryout-status/dashboard`, `/trials` |
-| **Developer 5 (Line Stopper)** | `services/stopper-service/` | `5005` | `/api/line-stoppers/active`, `/trigger`, `/clear` |
 
 ---
 
@@ -75,13 +73,6 @@ npm run dev
 ```
 *(Or from root backend: `npm run dev:auth`)*
 
-#### Developer for Line Stopper:
-```bash
-cd services/stopper-service
-npm run dev
-```
-*(Or from root backend: `npm run dev:stopper`)*
-
 ---
 
 ## 🌐 Frontend Compatibility (Zero Configuration Changes Required)
@@ -92,7 +83,6 @@ Frontend developers do not need to change any API URLs:
 - `/api/process-audit/*` &rarr; routed to `http://localhost:5002`
 - `/api/ihlr/*` &rarr; routed to `http://localhost:5003`
 - `/api/tryout-status/*` &rarr; routed to `http://localhost:5004`
-- `/api/line-stoppers/*` &rarr; routed to `http://localhost:5005`
 
 If an individual microservice is restarting or not running, the Gateway returns a graceful JSON `503 Service Unavailable` explaining which microservice is offline, preventing frontend crash loops.
 

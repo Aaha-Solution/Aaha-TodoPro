@@ -38,22 +38,6 @@ CREATE TABLE IF NOT EXISTS process_audit_requests (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Line Stoppers (Andon Quality Halts)
-CREATE TABLE IF NOT EXISTS line_stoppers (
-  id VARCHAR(30) PRIMARY KEY,
-  line VARCHAR(100) NOT NULL,
-  part_number VARCHAR(100) NOT NULL,
-  category VARCHAR(50) NOT NULL,
-  severity VARCHAR(30) DEFAULT 'CRITICAL',
-  reason TEXT NOT NULL,
-  containment TEXT NOT NULL,
-  status ENUM('ACTIVE', 'RESOLVED') DEFAULT 'ACTIVE',
-  triggered_by VARCHAR(100) NOT NULL,
-  triggered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  cleared_by VARCHAR(100),
-  clearance_remarks TEXT,
-  cleared_at TIMESTAMP NULL
-);
 
 -- IHLR (In-House Line Rejection) Analysis Reports
 CREATE TABLE IF NOT EXISTS ihlr_requests (

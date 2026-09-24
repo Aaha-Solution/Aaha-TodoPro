@@ -25,7 +25,6 @@ app.get('/api/health', (req, res) => {
       processAudit: process.env.PROCESS_AUDIT_SERVICE_URL || 'http://localhost:5002',
       ihlr: process.env.IHLR_SERVICE_URL || 'http://localhost:5003',
       tryoutStatus: process.env.TRYOUT_SERVICE_URL || 'http://localhost:5004',
-      lineStoppers: process.env.STOPPER_SERVICE_URL || 'http://localhost:5005',
     }
   });
 });
@@ -46,7 +45,6 @@ const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:5001';
 const processAuditServiceUrl = process.env.PROCESS_AUDIT_SERVICE_URL || 'http://localhost:5002';
 const ihlrServiceUrl = process.env.IHLR_SERVICE_URL || 'http://localhost:5003';
 const tryoutServiceUrl = process.env.TRYOUT_SERVICE_URL || 'http://localhost:5004';
-const stopperServiceUrl = process.env.STOPPER_SERVICE_URL || 'http://localhost:5005';
 
 // 1. Auth & User Management Service (:5001)
 app.use(
@@ -96,18 +94,6 @@ app.use(
   })
 );
 
-// 5. Line Stopper Service (:5005)
-app.use(
-  createProxyMiddleware({
-    target: stopperServiceUrl,
-    changeOrigin: true,
-    pathFilter: '/api/line-stoppers',
-    on: {
-      error: proxyErrorHandler('Line Stopper Service (Port 5005)'),
-    },
-  })
-);
-
 // Fallback 404
 app.use((req, res) => {
   res.status(404).json({
@@ -124,7 +110,6 @@ app.listen(PORT, () => {
   console.log(` -> /api/process-audit => ${processAuditServiceUrl}`);
   console.log(` -> /api/ihlr          => ${ihlrServiceUrl}`);
   console.log(` -> /api/tryout-status => ${tryoutServiceUrl}`);
-  console.log(` -> /api/line-stoppers => ${stopperServiceUrl}`);
 });
 
 export default app;
