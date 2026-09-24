@@ -29,10 +29,8 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   })() || '').trim().toUpperCase();
 
   const isIhlr = location.pathname.startsWith('/ihlr');
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
   const isIncomingQuality = userDept === 'INCOMING QUALITY';
-  const canCreateProcessAudit = isIncomingQuality || isAdmin;
-  const canTrackProcessAudit = isIncomingQuality || isAdmin;
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
 
   const handleLogout = () => {
     logout();
@@ -42,7 +40,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   const navItems = isIhlr
     ? [
         { name: 'Dashboard', path: '/ihlr/dashboard', icon: LayoutDashboard },
-        { name: 'Create Request', path: '/ihlr/create-request', icon: Plus, isAction: true },
+        ...(isAdmin ? [{ name: 'Create Request', path: '/ihlr/create-request', icon: Plus, isAction: true }] : []),
         { name: isAdmin ? 'All Requests' : 'My Requests', path: '/ihlr/my-requests', icon: Layers },
         { name: isAdmin ? 'All Approvals' : 'Approvals', path: '/ihlr/approvals', icon: ClipboardCheck },
         ...(isAdmin ? [{ name: 'User Management', path: '/ihlr/users', icon: Users }] : []),
@@ -50,8 +48,8 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
       ]
     : [
         { name: 'Dashboard', path: '/process-audit/dashboard', icon: LayoutDashboard },
-        ...(canCreateProcessAudit ? [{ name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true }] : []),
-        ...(canTrackProcessAudit ? [{ name: isAdmin ? 'All Requests' : 'My Requests', path: '/process-audit/my-requests', icon: Layers }] : []),
+        ...(isAdmin ? [{ name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true }] : []),
+        { name: isAdmin ? 'All Requests' : 'My Requests', path: '/process-audit/my-requests', icon: Layers },
         { name: isAdmin ? 'All Approvals' : 'Approvals', path: '/process-audit/approvals', icon: ClipboardCheck },
         ...(isAdmin ? [{ name: 'User Management', path: '/process-audit/users', icon: Users }] : []),
         { name: 'Notifications', path: '/process-audit/notifications', icon: Bell },

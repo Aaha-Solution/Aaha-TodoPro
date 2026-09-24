@@ -230,7 +230,17 @@ const UserManagement = () => {
   const activeCount = users.filter((u) => u.status === 'Active' || u.status === 'ACTIVE').length;
   const adminCount = users.filter((u) => (u.role || '').toLowerCase() === 'admin').length;
   const standardUserCount = users.filter((u) => (u.role || '').toLowerCase() === 'user').length;
-  const isAdmin = currentAuthUser?.role?.toUpperCase() === 'ADMIN';
+  const userDept = (currentAuthUser?.department || (() => {
+    try {
+      const u = localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.department : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
+  const isIncomingQuality = userDept === 'INCOMING QUALITY';
+  const isAdmin = currentAuthUser?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
 
   if (!isAdmin) {
     return (

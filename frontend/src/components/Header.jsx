@@ -22,7 +22,17 @@ const Header = ({ toggleSidebar }) => {
     pageTitle = 'User Profile & Team Management';
   }
 
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+  const userDept = (user?.department || (() => {
+    try {
+      const u = localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.department : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
+  const isIncomingQuality = userDept === 'INCOMING QUALITY';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
 
   return (
     <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-8 flex items-center justify-between shadow-2xs">

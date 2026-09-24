@@ -18,9 +18,26 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
+import { useAuth } from '../../hooks/useAuth';
 
 const IhlrCreateRequest = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const userDept = (user?.department || (() => {
+    try {
+      const u = localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.department : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
+  const userRole = (user?.role || '').trim().toUpperCase();
+  const isIncomingQuality = userDept === 'INCOMING QUALITY';
+  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
+  const canCreate = isIncomingQuality || isAdmin;
+
   const [submitting, setSubmitting] = useState(false);
   const [dbUsers, setDbUsers] = useState([]);
   const [attachments, setAttachments] = useState([]);
@@ -182,6 +199,10 @@ const IhlrCreateRequest = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canCreate) {
+      alert('Access Denied: Only Administrators from the INCOMING QUALITY department are authorized to create IHLR requests.');
+      return;
+    }
     if (!formData.problem || !formData.model) {
       alert('Please fill in the Problem Description and Model.');
       return;
@@ -254,6 +275,36 @@ const IhlrCreateRequest = () => {
       setSubmitting(false);
     }
   };
+
+  if (!canCreate) {
+    return (
+      <div className="space-y-6 w-full pb-16">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 sm:p-12 text-center max-w-xl mx-auto my-12">
+          <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-100 shadow-sm">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Incoming Quality Authorization Required</h2>
+          <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+            In this system, only Administrators from the <span className="font-semibold text-gray-800">INCOMING QUALITY</span> department have privileges to create new IHLR defect analysis requests.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => navigate('/ihlr/dashboard')}
+              className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-xl transition cursor-pointer"
+            >
+              Go to Dashboard
+            </button>
+            <button
+              onClick={() => navigate('/ihlr/my-requests')}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition cursor-pointer"
+            >
+              View Requests
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 w-full pb-16">

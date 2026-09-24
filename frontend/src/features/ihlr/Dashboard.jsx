@@ -29,9 +29,26 @@ import { IhlrAttachmentThumbnail, parseAttachments } from './IhlrAttachmentView'
 import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
+import { useAuth } from '../../hooks/useAuth';
 
 const IhlrDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const userDept = (user?.department || (() => {
+    try {
+      const u = localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.department : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
+  const userRole = (user?.role || '').trim().toUpperCase();
+  const isIncomingQuality = userDept === 'INCOMING QUALITY';
+  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
+  const canCreate = isIncomingQuality || isAdmin;
+
   const [stats, setStats] = useState({
     total: 0,
     open: 0,
@@ -255,13 +272,15 @@ const IhlrDashboard = () => {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
 
-          <button
-            onClick={() => navigate('/ihlr/create-request')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create IHLR Request</span>
-          </button>
+          {canCreate && (
+            <button
+              onClick={() => navigate('/ihlr/create-request')}
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create IHLR Request</span>
+            </button>
+          )}
         </div>
       </div>
 

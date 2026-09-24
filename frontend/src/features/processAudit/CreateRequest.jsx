@@ -295,8 +295,8 @@ const CreateRequest = () => {
   })() || '').trim();
 
   const userRole = (user?.role || '').trim().toUpperCase();
-  const isAdmin = userRole === 'ADMIN';
   const isIncomingQuality = currentDept.toUpperCase() === 'INCOMING QUALITY';
+  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
   const canCreate = isIncomingQuality || isAdmin;
 
   const handleSubmit = async (e) => {
