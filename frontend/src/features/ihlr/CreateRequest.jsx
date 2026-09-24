@@ -259,6 +259,14 @@ const IhlrCreateRequest = () => {
         };
       });
 
+      const creatorName = user?.name || user?.email || 'Incoming Quality Admin';
+      const creatorEmail = user?.email || '';
+      const creatorId = user?.id || null;
+
+      const selectedPersonUser = dbUsers.find(
+        (u) => (u.name || '').trim().toLowerCase() === (formData.resp_person || '').trim().toLowerCase()
+      );
+
       await ihlrService.createRequest({
         ...formData,
         batch_date: formData.batch_date || new Date().toISOString().split('T')[0],
@@ -266,8 +274,13 @@ const IhlrCreateRequest = () => {
         qa_why_why: qaWhyWhy,
         defect_image: finalAttachments.length > 0 ? JSON.stringify(finalAttachments) : '',
         attachments: finalAttachments,
+        created_by: creatorName,
+        created_by_id: creatorId,
+        created_by_email: creatorEmail,
+        resp_person_email: selectedPersonUser?.email || '',
       });
-      alert('IHLR Analysis Report submitted successfully!');
+      window.dispatchEvent(new Event('refreshNotifications'));
+      alert(`IHLR Analysis Report ${formData.req_no} submitted successfully!\n\n✓ In-App notifications sent to both ${creatorName} and ${formData.resp_person}.\n✓ Email notifications triggered to both parties.`);
       navigate('/ihlr/my-requests');
     } catch (err) {
       alert('Failed to submit IHLR Report: ' + err.message);
@@ -538,7 +551,7 @@ const IhlrCreateRequest = () => {
                   {!formData.resp
                     ? 'Select Department First'
                     : getDepartmentUsers(formData.resp).length === 0
-                      ? 'No DB users found for this department'
+                      ? 'Users not found for this department'
                       : 'Select User Name'}
                 </option>
                 {getDepartmentUsers(formData.resp).map((u) => (

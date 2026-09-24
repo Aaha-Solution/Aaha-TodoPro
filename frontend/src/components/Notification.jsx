@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Bell, CheckCheck } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { setNotifications, markAsRead, markAllAsRead } from '../redux/slices/notificationSlice';
 import { processAuditService } from '../services/processAuditService';
+import { ihlrService } from '../services/ihlrService';
 import { useAuth } from '../hooks/useAuth';
 
 const Notification = () => {
@@ -12,15 +13,26 @@ const Notification = () => {
   const dispatch = useDispatch();
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+
+  const isIhlr = location.pathname.startsWith('/ihlr');
 
   const fetchLiveNotifications = async () => {
     try {
-      const data = await processAuditService.getNotifications({
+      const params = {
         user: user?.name,
         user_id: user?.id,
         role: user?.role,
-      });
+      };
+
+      let data = [];
+      if (isIhlr) {
+        data = await ihlrService.getNotifications(params);
+      } else {
+        data = await processAuditService.getNotifications(params);
+      }
+
       if (Array.isArray(data)) {
         dispatch(setNotifications(data));
       }
@@ -43,7 +55,7 @@ const Notification = () => {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('refreshNotifications', handleRefresh);
     };
-  }, [user?.name, user?.id, user?.role]);
+  }, [user?.name, user?.id, user?.role, isIhlr]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -57,17 +69,23 @@ const Notification = () => {
 
   const handleItemClick = (item) => {
     if (!item.read) {
-      processAuditService.markNotificationAsRead(item.id);
+      if (isIhlr) {
+        ihlrService.markNotificationAsRead(item.id);
+      } else {
+        processAuditService.markNotificationAsRead(item.id);
+      }
       dispatch(markAsRead(item.id));
     }
     setOpen(false);
-    if (item.link) {
-      navigate(item.link);
-    }
+    navigate(item.link || (isIhlr ? '/ihlr/my-requests' : '/process-audit/approvals'));
   };
 
   const handleMarkAllRead = () => {
-    processAuditService.markAllNotificationsAsRead(user?.name);
+    if (isIhlr) {
+      ihlrService.markAllNotificationsAsRead(user?.name);
+    } else {
+      processAuditService.markAllNotificationsAsRead(user?.name);
+    }
     dispatch(markAllAsRead());
   };
 
@@ -90,7 +108,9 @@ const Notification = () => {
         <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
           <div className="px-4 pb-2.5 flex items-center justify-between border-b border-slate-100">
             <div>
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Notifications</h4>
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                {isIhlr ? 'IHLR Alerts' : 'Notifications'}
+              </h4>
               <p className="text-[11px] text-slate-500">{unreadCount} unread message{unreadCount === 1 ? '' : 's'}</p>
             </div>
             {unreadCount > 0 && (
@@ -135,7 +155,7 @@ const Notification = () => {
             <button
               onClick={() => {
                 setOpen(false);
-                navigate('/process-audit/notifications');
+                navigate(isIhlr ? '/ihlr/notifications' : '/process-audit/notifications');
               }}
               className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
             >

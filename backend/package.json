@@ -13,7 +13,8 @@
     "dev:auth": "nodemon services/auth-service/src/server.js",
     "dev:process-audit": "nodemon services/process-audit-service/src/server.js",
     "dev:ihlr": "nodemon services/ihlr-service/src/server.js",
-    "dev:tryout": "nodemon services/tryout-service/src/server.js"
+    "dev:tryout": "nodemon services/tryout-service/src/server.js",
+    "db:reset": "node database/resetDb.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -24,7 +25,8 @@
     "http-proxy-middleware": "^4.2.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
-    "mysql2": "^3.11.3"
+    "mysql2": "^3.11.3",
+    "nodemailer": "^10.0.10"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"

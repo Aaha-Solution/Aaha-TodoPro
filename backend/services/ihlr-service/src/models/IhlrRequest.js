@@ -79,7 +79,11 @@ export const IhlrRequest = {
           evidence_attachment = '',
           target_date = null,
           remarks = '',
-          status = 'OPEN'
+          status = 'OPEN',
+          created_by = '',
+          created_by_id = null,
+          created_by_email = '',
+          resp_person_email = ''
         } = data;
 
         if (!req_no) {
@@ -91,8 +95,9 @@ export const IhlrRequest = {
             req_no, batch_date, shift, problem, model, problem_detected_at, 
             received_from, analysis_done_by, defect_image, qa_why_why, 
             actual_qty, four_m, resp, resp_person, prod_why_why, action, 
-            evidence_attachment, target_date, remarks, status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            evidence_attachment, target_date, remarks, status,
+            created_by, created_by_id, created_by_email, resp_person_email
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             req_no,
             batch_date || new Date().toISOString().split('T')[0],
@@ -113,7 +118,11 @@ export const IhlrRequest = {
             evidence_attachment,
             target_date || null,
             remarks,
-            status
+            status,
+            created_by || null,
+            created_by_id || null,
+            created_by_email || null,
+            resp_person_email || null
           ]
         );
 

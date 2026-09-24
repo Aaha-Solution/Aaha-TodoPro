@@ -189,12 +189,30 @@ export const ihlrService = {
     }
   },
 
-  getNotifications: async () => {
+  getNotifications: async (params = {}) => {
     try {
-      const res = await api.get('/ihlr/notifications');
+      const res = await api.get('/ihlr/notifications', { params });
       return res.data?.data || res.data || [];
     } catch {
       return [];
+    }
+  },
+
+  markNotificationAsRead: async (id) => {
+    try {
+      const res = await api.patch(`/ihlr/notifications/${id}/read`);
+      return res.data?.data || res.data;
+    } catch {
+      return null;
+    }
+  },
+
+  markAllNotificationsAsRead: async (user = '') => {
+    try {
+      const res = await api.patch('/ihlr/notifications/mark-all-read', { user });
+      return res.data?.data || res.data;
+    } catch {
+      return null;
     }
   }
 };

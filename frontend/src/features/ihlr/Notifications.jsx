@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
-  SlidersHorizontal,
   Check,
   CheckCheck,
   Clock,
@@ -16,29 +15,55 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
+import { useAuth } from '../../hooks/useAuth';
 
 const IhlrNotifications = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('ALL'); // 'ALL' | 'UNREAD'
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [selectedDept, setSelectedDept] = useState('ALL');
-  const [selectedStatus, setSelectedStatus] = useState('ALL');
 
   // Load notifications from API & sync with actual IHLR requests
   const loadFeed = async () => {
     setLoading(true);
     try {
       const [apiNotifs, requests] = await Promise.all([
-        ihlrService.getNotifications().catch(() => []),
+        ihlrService.getNotifications({
+          user: user?.name,
+          user_id: user?.id,
+          role: user?.role,
+        }).catch(() => []),
         ihlrService.getRequests().catch(() => []),
       ]);
 
       const streamList = [];
 
-      // If requests exist in IHLR database, construct authentic IHLR activity stream events
+      // 1. Process specific targeted in-app notifications (both raised person confirmations & assigned person action-required alerts)
+      if (Array.isArray(apiNotifs) && apiNotifs.length > 0) {
+        apiNotifs.forEach((n) => {
+          streamList.push({
+            id: `notif-${n.id}`,
+            notifId: n.id,
+            rawId: n.rawId,
+            reqNo: n.reqNo || (n.requestId ? `#${n.requestId}` : '#IHLR'),
+            badgeLabel: n.badgeLabel || (n.type === 'submission_confirmed' ? 'REPORT LOGGED' : 'ACTION REQUIRED'),
+            accentColor: n.accentColor || (n.type === 'submission_confirmed' ? 'blue' : 'amber'),
+            department: n.department || 'QUALITY',
+            title: n.title,
+            message: n.message,
+            timeDisplay: n.date || 'Recent Today',
+            subCategory: 'LINE DEFECT REPORT',
+            footerFlag: n.footerFlag || (n.type === 'submission_confirmed' ? 'SYSTEM_LOGS' : 'ACTION_REQUIRED'),
+            read: Boolean(n.read),
+            type: n.type || 'info',
+            link: n.link || '/ihlr/my-requests',
+          });
+        });
+      }
+
+      // 2. Also incorporate requests history from DB if not already represented
       if (Array.isArray(requests) && requests.length > 0) {
         requests.forEach((r, idx) => {
           const reqNo = String(r.req_no || '').startsWith('IHLR-') ? r.req_no : `IHLR-${r.req_no || idx + 1}`;
@@ -58,85 +83,61 @@ const IhlrNotifications = () => {
             formattedDate = String(r.batch_date);
           }
 
-          if (isClosed) {
-            streamList.push({
-              id: `req-closed-${r.id || idx}`,
-              rawId: r.id,
-              reqNo: `#${reqNo}`,
-              badgeLabel: 'CONTAINMENT APPROVED',
-              accentColor: 'emerald',
-              department: dept,
-              title: `Defect Containment & Closure Approved – ${reqNo}`,
-              message: `Rejection incident ${reqNo} (Model: ${r.model || 'OLS LONG ARM'}, Defect: "${r.problem || 'Quality variance'}") has been verified. 5-Why root cause countermeasure confirmed by ${r.analysis_done_by || 'Quality Assurance'}. Status: Closed.`,
-              timeDisplay: formattedDate,
-              subCategory: fourM,
-              footerFlag: 'SYSTEM_LOGS',
-              read: true,
-              type: 'closed',
-            });
-          } else if (isInProgress) {
-            streamList.push({
-              id: `req-progress-${r.id || idx}`,
-              rawId: r.id,
-              reqNo: `#${reqNo}`,
-              badgeLabel: 'COUNTERMEASURE REQUIRED',
-              accentColor: 'amber',
-              department: dept,
-              title: `Occurrence Countermeasure in Progress – ${reqNo}`,
-              message: `Line rejection report ${reqNo} ("${r.problem || 'Defect under investigation'}"). Assigned responsible person ${r.resp_person || 'Supervisor'} (${dept}) is executing containment and 5-Why countermeasure actions. Target Date: ${r.target_date ? String(r.target_date).split('T')[0] : 'TBD'}.`,
-              timeDisplay: formattedDate,
-              subCategory: fourM,
-              footerFlag: 'ACTION_REQUIRED',
-              read: false,
-              type: 'in_progress',
-            });
-          } else {
-            // OPEN
-            streamList.push({
-              id: `req-open-${r.id || idx}`,
-              rawId: r.id,
-              reqNo: `#${reqNo}`,
-              badgeLabel: 'NEW LINE REJECTION',
-              accentColor: 'blue',
-              department: dept,
-              title: `New Defect Incident Logged – ${reqNo}`,
-              message: `Incident ${reqNo} detected at ${r.problem_detected_at || 'Assembly Line'} for Model ${r.model || 'OLS LONG ARM'} (Rejected Qty: ${r.actual_qty || 1} units). Quality team initiated 5-Why problem root cause isolation. Awaiting containment response.`,
-              timeDisplay: formattedDate,
-              subCategory: fourM,
-              footerFlag: 'ACTION_REQUIRED',
-              read: false,
-              type: 'open',
-            });
+          const alreadyExists = streamList.some((s) => s.reqNo === `#${reqNo}`);
+          if (!alreadyExists) {
+            if (isClosed) {
+              streamList.push({
+                id: `req-closed-${r.id || idx}`,
+                rawId: r.id,
+                reqNo: `#${reqNo}`,
+                badgeLabel: 'CONTAINMENT APPROVED',
+                accentColor: 'emerald',
+                department: dept,
+                title: `Defect Containment & Closure Approved – ${reqNo}`,
+                message: `Rejection incident ${reqNo} (Model: ${r.model || 'OLS LONG ARM'}, Defect: "${r.problem || 'Quality variance'}") has been verified. 5-Why root cause countermeasure confirmed by ${r.analysis_done_by || 'Quality Assurance'}. Status: Closed.`,
+                timeDisplay: formattedDate,
+                subCategory: fourM,
+                footerFlag: 'SYSTEM_LOGS',
+                read: true,
+                type: 'closed',
+              });
+            } else if (isInProgress) {
+              streamList.push({
+                id: `req-progress-${r.id || idx}`,
+                rawId: r.id,
+                reqNo: `#${reqNo}`,
+                badgeLabel: 'COUNTERMEASURE REQUIRED',
+                accentColor: 'amber',
+                department: dept,
+                title: `Occurrence Countermeasure in Progress – ${reqNo}`,
+                message: `Line rejection report ${reqNo} ("${r.problem || 'Defect under investigation'}"). Assigned responsible person ${r.resp_person || 'Supervisor'} (${dept}) is executing containment and 5-Why countermeasure actions. Target Date: ${r.target_date ? String(r.target_date).split('T')[0] : 'TBD'}.`,
+                timeDisplay: formattedDate,
+                subCategory: fourM,
+                footerFlag: 'ACTION_REQUIRED',
+                read: false,
+                type: 'in_progress',
+              });
+            } else {
+              streamList.push({
+                id: `req-open-${r.id || idx}`,
+                rawId: r.id,
+                reqNo: `#${reqNo}`,
+                badgeLabel: 'NEW LINE REJECTION',
+                accentColor: 'blue',
+                department: dept,
+                title: `New Defect Incident Logged – ${reqNo}`,
+                message: `Incident ${reqNo} detected at ${r.problem_detected_at || 'Assembly Line'} for Model ${r.model || 'OLS LONG ARM'} (Rejected Qty: ${r.actual_qty || 1} units). Assigned to ${r.resp_person || 'Supervisor'} (${dept}). Quality team initiated 5-Why problem root cause isolation.`,
+                timeDisplay: formattedDate,
+                subCategory: fourM,
+                footerFlag: 'ACTION_REQUIRED',
+                read: false,
+                type: 'open',
+              });
+            }
           }
         });
       }
 
-      // If backend returned notifications, merge them
-      if (Array.isArray(apiNotifs) && apiNotifs.length > 0) {
-        apiNotifs.forEach((n, idx) => {
-          if (!streamList.some((s) => s.id === n.id || s.rawId === n.id)) {
-            const isClosed = n.status === 'CLOSED';
-            const isInProgress = n.status === 'IN_PROGRESS';
-            streamList.push({
-              id: `api-notif-${n.id || idx}`,
-              rawId: n.id,
-              reqNo: n.requestId ? `#${n.requestId}` : '#IHLR-ALERT',
-              badgeLabel: isClosed ? 'CONTAINMENT APPROVED' : isInProgress ? 'COUNTERMEASURE REQUIRED' : 'NEW LINE REJECTION',
-              accentColor: isClosed ? 'emerald' : isInProgress ? 'amber' : 'blue',
-              department: n.department || 'QUALITY',
-              title: n.title || 'IHLR Line Rejection Alert',
-              message: n.message,
-              timeDisplay: n.date || 'Recent Today',
-              subCategory: 'LINE DEFECT REPORT',
-              footerFlag: isClosed ? 'SYSTEM_LOGS' : 'ACTION_REQUIRED',
-              read: Boolean(n.read),
-              type: n.status?.toLowerCase() || 'info',
-            });
-          }
-        });
-      }
-
-      // Set the dynamic stream populated ONLY from database records (no static mock data)
       setNotifications(streamList);
     } catch (err) {
       console.error('Failed to load IHLR notifications:', err);
@@ -147,18 +148,34 @@ const IhlrNotifications = () => {
 
   useEffect(() => {
     loadFeed();
-  }, []);
+    const handleRefresh = () => loadFeed();
+    window.addEventListener('refreshNotifications', handleRefresh);
+    window.addEventListener('focus', handleRefresh);
+    return () => {
+      window.removeEventListener('refreshNotifications', handleRefresh);
+      window.removeEventListener('focus', handleRefresh);
+    };
+  }, [user?.name, user?.id, user?.role]);
 
   // Mark all read
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    await ihlrService.markAllNotificationsAsRead(user?.name).catch(() => {});
   };
 
   // Toggle individual read / unread
-  const toggleRead = (id) => {
+  const toggleRead = async (targetId) => {
+    const item = notifications.find((n) => n.id === targetId);
+    if (!item) return;
+    const nextRead = !item.read;
+
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: !n.read } : n))
+      prev.map((n) => (n.id === targetId ? { ...n, read: nextRead } : n))
     );
+
+    if (item.notifId && nextRead) {
+      await ihlrService.markNotificationAsRead(item.notifId).catch(() => {});
+    }
   };
 
   // Counts
@@ -170,16 +187,6 @@ const IhlrNotifications = () => {
     return notifications.filter((item) => {
       // Tab filter
       if (activeTab === 'UNREAD' && item.read) return false;
-
-      // Department filter
-      if (selectedDept !== 'ALL' && item.department !== selectedDept) return false;
-
-      // Status filter
-      if (selectedStatus !== 'ALL') {
-        if (selectedStatus === 'CLOSED' && item.accentColor !== 'emerald') return false;
-        if (selectedStatus === 'IN_PROGRESS' && item.accentColor !== 'amber') return false;
-        if (selectedStatus === 'OPEN' && item.accentColor !== 'blue' && item.accentColor !== 'rose') return false;
-      }
 
       // Search term
       if (searchTerm.trim()) {
@@ -194,12 +201,7 @@ const IhlrNotifications = () => {
 
       return true;
     });
-  }, [notifications, activeTab, selectedDept, selectedStatus, searchTerm]);
-
-  const departmentList = useMemo(() => {
-    const set = new Set(notifications.map((n) => n.department).filter(Boolean));
-    return Array.from(set);
-  }, [notifications]);
+  }, [notifications, activeTab, searchTerm]);
 
   return (
     <div className="space-y-5 w-full pb-16">
@@ -210,9 +212,9 @@ const IhlrNotifications = () => {
         </h1>
       </div>
 
-      {/* 2. Unified Toolbar (Search, Filters, Mark All Read) */}
+      {/* 2. Unified Toolbar (Search & Mark All Read) */}
       <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Left Side: Search + Filter Dropdown */}
+        {/* Left Side: Search */}
         <div className="flex flex-1 items-center gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -231,85 +233,6 @@ const IhlrNotifications = () => {
               >
                 <X className="w-3.5 h-3.5" />
               </button>
-            )}
-          </div>
-
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-semibold shadow-2xs transition cursor-pointer ${
-                selectedDept !== 'ALL' || selectedStatus !== 'ALL'
-                  ? 'border-blue-300 bg-blue-50 text-blue-700'
-                  : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
-              <span>Filters</span>
-              {(selectedDept !== 'ALL' || selectedStatus !== 'ALL') && (
-                <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
-              )}
-            </button>
-
-            {/* Filter Dropdown Popover */}
-            {showFilterDropdown && (
-              <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 rounded-2xl p-4 shadow-xl z-30 space-y-3.5 animate-in fade-in zoom-in-95 duration-100">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-xs font-bold text-slate-900">Filter Alerts</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedDept('ALL');
-                      setSelectedStatus('ALL');
-                    }}
-                    className="text-[10px] text-blue-600 hover:underline font-semibold cursor-pointer"
-                  >
-                    Reset
-                  </button>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Department
-                  </label>
-                  <select
-                    value={selectedDept}
-                    onChange={(e) => setSelectedDept(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                  >
-                    <option value="ALL">All Departments</option>
-                    {departmentList.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Status
-                  </label>
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                  >
-                    <option value="ALL">All Statuses</option>
-                    <option value="OPEN">Open Incidents</option>
-                    <option value="IN_PROGRESS">Containment in Progress</option>
-                    <option value="CLOSED">Containment Approved / Closed</option>
-                  </select>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowFilterDropdown(false)}
-                  className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
-                >
-                  Apply Filters
-                </button>
-              </div>
             )}
           </div>
         </div>
