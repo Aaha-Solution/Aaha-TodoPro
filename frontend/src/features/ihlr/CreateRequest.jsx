@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
   UploadCloud, 
-  Upload,
   Paperclip,
   X,
   Send, 
@@ -11,21 +11,17 @@ import {
   Trash2, 
   ArrowLeft,
   FileSpreadsheet,
-  File,
-  ExternalLink,
-  Loader2,
+  File as FileIcon,
+  Presentation,
+  Eye,
+  Download,
   Image as ImageIcon
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
-import { getFileMeta, parseAttachments } from './IhlrAttachmentView';
-import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
-
 
 const IhlrCreateRequest = () => {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
   const [submitting, setSubmitting] = useState(false);
-  const [uploadingFile, setUploadingFile] = useState(false);
   const [dbUsers, setDbUsers] = useState([]);
   const [attachments, setAttachments] = useState([]);
   const [previewAttachment, setPreviewAttachment] = useState(null);
@@ -88,52 +84,100 @@ const IhlrCreateRequest = () => {
     setQaWhyWhy(updated);
   };
 
-  const handleFileUpload = async (e) => {
-    const fileList = Array.from(e.target.files || []);
-    if (fileList.length === 0) return;
+  const getFileMeta = (file) => {
+    const ext = (file?.type || (file?.name ? file.name.split('.').pop() : '') || '').toUpperCase();
+    if (file?.isImage || ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'].includes(ext)) {
+      return {
+        badgeBg: 'bg-blue-50 text-blue-600 border-blue-200',
+        icon: ImageIcon,
+        typeName: 'Image',
+      };
+    }
+    if (file?.isPdf || ext === 'PDF') {
+      return {
+        badgeBg: 'bg-red-50 text-red-600 border-red-200',
+        icon: FileText,
+        typeName: 'PDF Document',
+      };
+    }
+    if (file?.isExcel || ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext)) {
+      return {
+        badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        icon: FileSpreadsheet,
+        typeName: 'Excel Spreadsheet',
+      };
+    }
+    if (file?.isPpt || ['PPT', 'PPTX', 'PPSX'].includes(ext)) {
+      return {
+        badgeBg: 'bg-orange-50 text-orange-700 border-orange-200',
+        icon: Presentation,
+        typeName: 'PowerPoint Presentation',
+      };
+    }
+    if (file?.isWord || ['DOC', 'DOCX'].includes(ext)) {
+      return {
+        badgeBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        icon: FileText,
+        typeName: 'Word Document',
+      };
+    }
+    return {
+      badgeBg: 'bg-slate-50 text-slate-700 border-slate-200',
+      icon: FileIcon,
+      typeName: 'Document',
+    };
+  };
 
-    setUploadingFile(true);
-    try {
-      const uploaded = await ihlrService.uploadAttachments(fileList);
-      if (uploaded && uploaded.length > 0) {
-        setAttachments((prev) => {
-          const existingNames = new Set(prev.map((f) => f.name));
-          const fresh = uploaded.filter((f) => !existingNames.has(f.name));
-          return [...prev, ...(fresh.length > 0 ? fresh : uploaded)];
-        });
-      }
-    } catch (err) {
-      console.warn('Upload API call failed, using client file representation:', err);
-      const clientFiles = fileList.map((file) => {
+  const processFiles = (fileList) => {
+    const files = Array.from(fileList || []);
+    if (files.length > 0) {
+      const newAttachments = files.map((file) => {
         const ext = file.name.split('.').pop()?.toUpperCase() || 'FILE';
-        const isImg = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'].includes(ext);
+        const isImage = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'].includes(ext);
+        const isPdf = ext === 'PDF';
+        const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
+        const isPpt = ['PPT', 'PPTX', 'PPSX'].includes(ext);
+        const isWord = ['DOC', 'DOCX'].includes(ext);
+
+        let previewUrl = '';
+        if (isImage || isPdf) {
+          try {
+            previewUrl = URL.createObjectURL(file);
+          } catch {
+            previewUrl = '';
+          }
+        }
+
         return {
           name: file.name,
           size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
           type: ext,
-          isImage: isImg,
-          url: URL.createObjectURL(file),
+          date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+          file,
+          url: previewUrl,
+          isImage,
+          isPdf,
+          isExcel,
+          isPpt,
+          isWord,
         };
       });
-      setAttachments((prev) => [...prev, ...clientFiles]);
-    } finally {
-      setUploadingFile(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+
+      setAttachments((prev) => [...prev, ...newAttachments]);
     }
   };
 
-  const handleRemoveAttachment = (indexToRemove) => {
-    setAttachments((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  const handleFileUpload = (e) => {
+    processFiles(e.target.files);
   };
 
-  const handleClearAllAttachments = (e) => {
-    if (e) e.stopPropagation();
-    setAttachments([]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  const handleDrop = (e) => {
+    e.preventDefault();
+    processFiles(e.dataTransfer.files);
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
@@ -161,12 +205,46 @@ const IhlrCreateRequest = () => {
 
     setSubmitting(true);
     try {
+      // Upload physical attachment files if any
+      let uploadedFilesMeta = [];
+      const filesToUpload = attachments
+        .filter((att) => att.file && (typeof window !== 'undefined' && window.File ? att.file instanceof window.File : true))
+        .map((att) => att.file);
+
+      if (filesToUpload.length > 0) {
+        try {
+          uploadedFilesMeta = await ihlrService.uploadAttachments(filesToUpload);
+        } catch (uploadErr) {
+          console.warn('Attachments upload notice:', uploadErr);
+        }
+      }
+
+      const finalAttachments = attachments.map((att) => {
+        const match = uploadedFilesMeta.find((u) => u.name === att.name || u.filename === att.name);
+        const dbUrl = match?.url || (match?.id ? `/api/ihlr/attachments/${match.id}` : (att.url || ''));
+        return {
+          id: match?.id || null,
+          name: att.name,
+          size: match?.size || att.size,
+          type: match?.type || att.type,
+          date: att.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+          path: match?.path || dbUrl,
+          url: dbUrl,
+          filename: match?.filename || att.name,
+          isImage: att.isImage,
+          isPdf: att.isPdf,
+          isExcel: att.isExcel,
+          isPpt: att.isPpt,
+        };
+      });
+
       await ihlrService.createRequest({
         ...formData,
         batch_date: formData.batch_date || new Date().toISOString().split('T')[0],
         actual_qty: formData.actual_qty ? Number(formData.actual_qty) : 1,
         qa_why_why: qaWhyWhy,
-        defect_image: attachments.length > 0 ? JSON.stringify(attachments) : ''
+        defect_image: finalAttachments.length > 0 ? JSON.stringify(finalAttachments) : '',
+        attachments: finalAttachments,
       });
       alert('IHLR Analysis Report submitted successfully!');
       navigate('/ihlr/my-requests');
@@ -230,7 +308,7 @@ const IhlrCreateRequest = () => {
               />
             </div>
 
-            {/* Date */}
+            {/* Incident Date */}
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
                 Incident Date *
@@ -420,128 +498,106 @@ const IhlrCreateRequest = () => {
               </select>
             </div>
           </div>
-
-          {/* Defect Attachment / Evidence Upload (Images, PDF, Word, Excel) */}
-          <div className="pt-2 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-                Defect Evidence / Attachment Upload (Images, PDF, Word, Excel)
-              </label>
-              {uploadingFile && (
-                <span className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold animate-pulse">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Uploading attachment(s)...
-                </span>
-              )}
-            </div>
-
-            {/* Input Bar with Comma-Separated Filenames + Clear Button + Upload Button */}
-            <div className="flex items-center gap-2.5">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  readOnly
-                  value={attachments.map((f) => f.name).join(', ')}
-                  placeholder="Select images, PDF, Word or Excel files..."
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full pl-3.5 pr-8 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-2xs truncate select-none"
-                />
-                {attachments.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleClearAllAttachments}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-100 transition cursor-pointer"
-                    title="Clear all files"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* Hidden Native Multi-File Input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-
-              {/* Upload Button matching requested UI */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingFile}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 hover:border-blue-400 rounded-lg text-xs font-semibold text-blue-600 hover:text-blue-700 transition shadow-2xs cursor-pointer shrink-0 disabled:opacity-50"
-              >
-                {uploadingFile ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                    <span>Uploading...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 text-blue-600" />
-                    <span>Upload</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Attachment Chips matching user requested UI: [ 📎 Filename.ext  ✕ ] */}
-            {attachments.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                {attachments.map((att, idx) => (
-                  <div
-                    key={`${att.name || att.url}-${idx}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f1f5f9] hover:bg-slate-200/80 border border-slate-200 text-xs font-medium text-slate-700 shadow-2xs transition group"
-                  >
-                    <Paperclip className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 shrink-0" />
-                    <span
-                      className="truncate max-w-[170px] sm:max-w-[240px] cursor-pointer hover:text-blue-600 select-none"
-                      title={`${att.name} ${att.size ? `(${att.size})` : ''} - Click to preview`}
-                      onClick={() => setPreviewAttachment(att)}
-                    >
-                      {att.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAttachment(idx)}
-                      className="p-0.5 text-slate-400 hover:text-red-500 rounded-full hover:bg-slate-300/50 transition cursor-pointer ml-0.5"
-                      title={`Remove ${att.name}`}
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Image Preview Thumbnails (if any images are selected) */}
-            {attachments.some((a) => a.isImage || (a.url && a.url.startsWith('data:image')) || ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF'].includes((a.type || '').toUpperCase())) && (
-              <div className="flex flex-wrap items-center gap-2.5 pt-2">
-                {attachments
-                  .filter((a) => a.isImage || (a.url && a.url.startsWith('data:image')) || ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF'].includes((a.type || '').toUpperCase()))
-                  .map((imgAtt, i) => (
-                    <div
-                      key={`img-prev-${i}`}
-                      className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-2xs group cursor-pointer"
-                      onClick={() => setPreviewAttachment(imgAtt)}
-                      title={`Preview: ${imgAtt.name}`}
-                    >
-                      <img src={imgAtt.url} alt={imgAtt.name} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition text-[9px] font-bold">
-                        View
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* Section 2: QA Why-Why Analysis */}
+        {/* Section 2: Defect Evidence / Attachment Upload */}
+        <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
+          <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
+            <Paperclip className="w-5 h-5 text-slate-700 mt-0.5" />
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                2. Defect Evidence / Attachment Upload (Images, PDF, Word, Excel, PPT)
+              </h2>
+              <p className="text-xs text-slate-500">
+                Upload defect evidence
+              </p>
+            </div>
+          </div>
+
+          {/* Drag & Drop Upload Zone */}
+          <label
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleDrop}
+            className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer bg-slate-50/50 hover:bg-slate-50 transition-colors"
+          >
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.csv,.ppt,.pptx,.doc,.docx,application/pdf,image/jpeg,image/png,image/*,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
+              <UploadCloud className="w-5 h-5" />
+            </div>
+            <p className="text-xs font-semibold text-slate-800">
+              Drag & drop files here or <span className="text-blue-600 underline">browse</span>
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Supports Images, PDF, Word, Excel (.xlsx, .xls, .csv), and PowerPoint (Max 25MB per file) • Select multiple files
+            </p>
+          </label>
+
+          {/* Attached Files List */}
+          {attachments.length > 0 && (
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {attachments.map((file, idx) => {
+                const meta = getFileMeta(file);
+                const IconComponent = meta.icon;
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => setPreviewAttachment(file)}
+                    className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs hover:border-blue-400 hover:shadow-xs transition cursor-pointer group"
+                    title="Click to preview file"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      {file.isImage && file.url ? (
+                        <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-slate-200 bg-slate-50 flex items-center justify-center">
+                          <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className={`w-8 h-8 rounded-lg shrink-0 border flex items-center justify-center font-bold text-[10px] ${meta.badgeBg}`}>
+                          <IconComponent className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-blue-600 transition" title={file.name}>
+                          {file.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {file.type} • {file.size} • {file.date}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span
+                        className="p-1.5 rounded-lg text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-50 transition"
+                        title="Preview file"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeAttachment(idx);
+                        }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                        title="Remove file"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Section 3: QA Why-Why Analysis */}
         <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs space-y-4">
           <div className="flex items-start gap-3 pb-4 border-b border-slate-100">
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -549,7 +605,7 @@ const IhlrCreateRequest = () => {
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                2. Problem Cause Why-Why Analysis (QA Team)
+                3. Problem Cause Why-Why Analysis (QA Team)
               </h2>
               <p className="text-xs text-slate-500">
                 5-Why investigation path performed by Quality Assurance to isolate root failure.
@@ -575,8 +631,6 @@ const IhlrCreateRequest = () => {
           </div>
         </div>
 
-
-
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 pt-2">
           <button
@@ -597,12 +651,121 @@ const IhlrCreateRequest = () => {
         </div>
       </form>
 
-      {/* Dedicated In-Page Preview Modal (Never opens in new tab) */}
-      <IhlrAttachmentPreviewModal
-        isOpen={Boolean(previewAttachment)}
-        attachment={previewAttachment}
-        onClose={() => setPreviewAttachment(null)}
-      />
+      {/* Attachment Preview Modal */}
+      {previewAttachment && (() => {
+        const meta = getFileMeta(previewAttachment);
+        const IconComponent = meta.icon;
+        return createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+            onClick={() => setPreviewAttachment(null)}
+          >
+            <div
+              className="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-3 min-w-0 pr-4">
+                  <span className={`px-2.5 py-1 text-xs font-bold rounded-lg border shrink-0 flex items-center gap-1.5 ${meta.badgeBg}`}>
+                    <IconComponent className="w-3.5 h-3.5" />
+                    {previewAttachment.type}
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-slate-900 truncate" title={previewAttachment.name}>
+                      {previewAttachment.name}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      {meta.typeName} {previewAttachment.size ? `• ${previewAttachment.size}` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {previewAttachment.url && (
+                    <a
+                      href={previewAttachment.url}
+                      download={previewAttachment.name}
+                      className="p-2 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                      title="Download file"
+                    >
+                      <Download className="w-4 h-4" />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPreviewAttachment(null)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                    title="Close preview"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content Preview */}
+              <div className="flex-1 overflow-auto p-4 my-2 flex items-center justify-center min-h-[300px] bg-slate-50/70 rounded-2xl border border-slate-100">
+                {previewAttachment.isImage && previewAttachment.url ? (
+                  <img
+                    src={previewAttachment.url}
+                    alt={previewAttachment.name}
+                    className="max-h-[65vh] w-auto max-w-full object-contain rounded-xl shadow-xs"
+                  />
+                ) : previewAttachment.isPdf && previewAttachment.url ? (
+                  <iframe
+                    src={previewAttachment.url}
+                    title={previewAttachment.name}
+                    className="w-full h-[65vh] rounded-xl border border-slate-200"
+                  />
+                ) : (
+                  <div className="text-center py-10 px-4 max-w-md">
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 text-lg font-bold border shadow-xs ${meta.badgeBg}`}>
+                      <IconComponent className="w-8 h-8" />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-800 mb-1">
+                      {previewAttachment.name}
+                    </h4>
+                    <p className="text-xs text-slate-500 mb-4">
+                      {previewAttachment.isExcel
+                        ? 'This Microsoft Excel spreadsheet can be downloaded or opened with Excel / Office viewer.'
+                        : previewAttachment.isPpt
+                          ? 'This Microsoft PowerPoint presentation can be downloaded or opened with PowerPoint / presentation viewer.'
+                          : `This file format (${previewAttachment.type}) cannot be directly rendered inline in the browser.`}
+                    </p>
+                    {previewAttachment.url && (
+                      <div className="flex flex-wrap items-center justify-center gap-3">
+                        <a
+                          href={previewAttachment.url}
+                          download={previewAttachment.name}
+                          className={`inline-flex items-center gap-2 px-4 py-2.5 text-white text-xs font-semibold rounded-xl shadow-xs transition ${previewAttachment.isExcel
+                            ? 'bg-emerald-600 hover:bg-emerald-700'
+                            : previewAttachment.isPpt
+                              ? 'bg-orange-600 hover:bg-orange-700'
+                              : 'bg-blue-600 hover:bg-blue-700'
+                            }`}
+                        >
+                          <Download className="w-4 h-4" />
+                          Download {previewAttachment.type} File
+                        </a>
+                        <a
+                          href={previewAttachment.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl shadow-xs transition"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Open in Browser Tab
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
     </div>
   );
 };
