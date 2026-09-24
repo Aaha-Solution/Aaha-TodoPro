@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
+import AttachmentThumbnail from '../../components/common/AttachmentThumbnail';
 
 const MyRequests = () => {
   const navigate = useNavigate();
@@ -689,6 +690,7 @@ const MyRequests = () => {
                   <th className="py-3.5 px-4 whitespace-nowrap align-middle">PROCESS/OPERATION</th>
                   <th className="py-3.5 px-4 whitespace-nowrap align-middle">CREATOR</th>
                   <th className="py-3.5 px-4 whitespace-nowrap align-middle">EXECUTOR</th>
+                  <th className="py-3.5 px-3 whitespace-nowrap align-middle text-center">EVIDENCE</th>
                   <th className="py-3.5 px-4 whitespace-nowrap align-middle text-center">STATUS</th>
                   <th className="py-3.5 px-6 whitespace-nowrap align-middle text-center">ACTION</th>
                 </tr>
@@ -715,6 +717,17 @@ const MyRequests = () => {
                       <td className="py-4 px-4 text-slate-700 font-medium align-middle whitespace-nowrap">{lineStr}</td>
                       <td className="py-4 px-4 text-slate-700 font-medium align-middle whitespace-nowrap">{creatorStr}</td>
                       <td className="py-4 px-4 text-slate-800 font-semibold align-middle whitespace-nowrap">{executorStr}</td>
+                      <td className="py-4 px-3 text-center align-middle whitespace-nowrap">
+                        <div className="flex items-center justify-center">
+                          <AttachmentThumbnail
+                            rawAttachment={req.action_attachments || req.attachments}
+                            onClick={(e) => {
+                              e?.stopPropagation?.();
+                              setActiveModalRequest(req);
+                            }}
+                          />
+                        </div>
+                      </td>
                       <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${meta.statusColor}`}>
                           {statusStr.toLowerCase().includes('close') ? (

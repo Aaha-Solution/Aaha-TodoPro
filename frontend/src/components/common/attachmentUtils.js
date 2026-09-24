@@ -17,10 +17,19 @@ export const resolveAttachmentUrl = (rawUrl) => {
   if (clean.startsWith('/api')) {
     return `http://localhost:5000${clean}`;
   }
+
+  const isProcessAudit =
+    (typeof window !== 'undefined' && window.location.pathname.includes('process-audit')) ||
+    clean.includes('process-audit');
+
   if (clean.startsWith('/uploads')) {
-    return `http://localhost:5000/api/ihlr${clean}`;
+    return isProcessAudit
+      ? `http://localhost:5000/api/process-audit${clean}`
+      : `http://localhost:5000/api/ihlr${clean}`;
   }
-  return `http://localhost:5000/api/ihlr/${clean.replace(/^\//, '')}`;
+  return isProcessAudit
+    ? `http://localhost:5000/api/process-audit/${clean.replace(/^\//, '')}`
+    : `http://localhost:5000/api/ihlr/${clean.replace(/^\//, '')}`;
 };
 
 export const getFileMeta = (type = '', name = '') => {
@@ -116,8 +125,11 @@ export const normalizeAttachment = (item) => {
 
   if (typeof item === 'object') {
     const name = item.name || item.filename || (item.url ? item.url.split('/').pop() : 'attachment');
-    const ext = (item.type || name.split('.').pop() || 'FILE').toUpperCase();
-    const rawUrl = item.url || '';
+    const rawUrl =
+      item.url ||
+      item.path ||
+      (item.id ? `/api/process-audit/attachments/${item.id}` : '') ||
+      (item.filename ? `/api/process-audit/attachments/${encodeURIComponent(item.filename)}` : '');
     const resolvedUrl = resolveAttachmentUrl(rawUrl);
     const isImage =
       item.isImage !== undefined
