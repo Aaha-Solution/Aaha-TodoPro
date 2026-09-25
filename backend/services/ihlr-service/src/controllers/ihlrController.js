@@ -3,7 +3,9 @@ import { successResponse, errorResponse } from '../../../shared/response.js';
 import { IhlrRequest } from '../models/IhlrRequest.js';
 import { saveBinaryFiles, streamBinaryFile } from '../../../shared/binaryStorage.js';
 import pool from '../../../shared/db.js';
-import { sendIhlrRequestEmails } from '../../../shared/mailer.js';
+import { sendIhlrRequestEmails, sendIhlrCloserEmails } from '../../../../shared/mailer.js';
+
+
 
 // In-memory fallback if DB is not reachable
 let fallbackRequests = [];
@@ -245,7 +247,7 @@ export const createIhlrRequest = async (req, res) => {
         await pool.query(
           `INSERT INTO ihlr_notifications 
            (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-           VALUES (?, ?, ?, ?, ?, 'assignment_required', ?, ?, '/ihlr/my-requests', 0)`,
+           VALUES (?, ?, ?, ?, ?, 'assignment_required', ?, ?, '/ihlr/approvals', 0)`,
           [
             assignedUser.id,
             assignedUser.name,
@@ -294,7 +296,61 @@ export const updateIhlrRequest = async (req, res) => {
       return errorResponse(res, 'IHLR Request not found to update', 404);
     }
 
-    return successResponse(res, updated, 'IHLR request updated successfully');
+    // 1. Trigger Closer In-App Notification to Raised Person
+    if (pool && updated) {
+      try {
+        const reqNo = updated.req_no || `IHLR-${updated.id || id}`;
+        const isClosed = String(updated.status || '').toUpperCase() === 'CLOSED';
+        const closerName = req.user?.name || updated.resp_person || 'Assigned Officer';
+        const notifType = isClosed ? 'case_closed' : 'countermeasure_updated';
+        const notifTitle = isClosed ? `IHLR Case Closed: #${reqNo}` : `Countermeasure Submitted: #${reqNo}`;
+        const notifMsg = isClosed
+          ? `Defect report #${reqNo} (${updated.model || 'Model'}) has been verified and marked as CLOSED by ${closerName}.`
+          : `5-Why root cause countermeasure submitted for #${reqNo} (${updated.model || 'Model'}) by ${closerName} (${updated.resp || 'Production'}). Status: ${updated.status || 'IN_PROGRESS'}.`;
+
+        if (updated.created_by_id || updated.created_by || updated.created_by_email) {
+          await pool.query(
+            `INSERT INTO ihlr_notifications 
+             (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, '/ihlr/my-requests', 0)`,
+            [
+              updated.created_by_id || null,
+              updated.created_by || 'Quality Admin',
+              updated.created_by_email || '',
+              updated.id || id,
+              reqNo,
+              notifType,
+              notifTitle,
+              notifMsg
+            ]
+          );
+        }
+      } catch (notifErr) {
+        console.warn('[IHLR Closer Notification Warning]:', notifErr.message);
+      }
+    }
+
+    // 2. Trigger Closer Email Dispatch
+    try {
+      sendIhlrCloserEmails({
+        request: updated,
+        closerUser: req.user,
+        creatorUser: {
+          id: updated.created_by_id,
+          name: updated.created_by,
+          email: updated.created_by_email
+        },
+        assignedUser: {
+          name: updated.resp_person,
+          email: updated.resp_person_email,
+          department: updated.resp
+        }
+      }).catch(mailErr => console.warn('[IHLR Mailer] Closer email dispatch warning:', mailErr.message));
+    } catch (mailSyncErr) {
+      console.warn('[IHLR Mailer] Sync closer email dispatch warning:', mailSyncErr.message);
+    }
+
+    return successResponse(res, updated, 'IHLR closer log updated successfully. Notifications and emails dispatched.');
   } catch (error) {
     return errorResponse(res, error.message, 500);
   }
@@ -368,21 +424,46 @@ export const getIhlrNotifications = async (req, res) => {
 
     const formatted = notifRows.map(n => {
       const isConfirmed = n.type === 'submission_confirmed';
+      const isClosed = n.type === 'case_closed';
+      const isUpdated = n.type === 'countermeasure_updated';
+
+      let badgeLabel = 'ACTION REQUIRED';
+      let accentColor = 'amber';
+      let footerFlag = 'ACTION_REQUIRED';
+      let dept = 'PRODUCTION';
+
+      if (isConfirmed) {
+        badgeLabel = 'REPORT LOGGED';
+        accentColor = 'blue';
+        footerFlag = 'SYSTEM_LOGS';
+        dept = 'INCOMING QUALITY';
+      } else if (isClosed) {
+        badgeLabel = 'CASE CLOSED';
+        accentColor = 'emerald';
+        footerFlag = 'SYSTEM_LOGS';
+        dept = 'QUALITY VERIFIED';
+      } else if (isUpdated) {
+        badgeLabel = 'COUNTERMEASURE SUBMITTED';
+        accentColor = 'indigo';
+        footerFlag = 'OPERATIONAL_UPDATE';
+        dept = 'PRODUCTION';
+      }
+
       return {
         id: n.id,
         rawId: n.request_id,
         requestId: n.req_no,
         reqNo: String(n.req_no).startsWith('IHLR-') ? `#${n.req_no}` : `#IHLR-${n.req_no}`,
-        badgeLabel: isConfirmed ? 'REPORT LOGGED' : 'ACTION REQUIRED',
-        accentColor: isConfirmed ? 'blue' : 'amber',
-        department: isConfirmed ? 'INCOMING QUALITY' : 'PRODUCTION',
+        badgeLabel,
+        accentColor,
+        department: dept,
         title: n.title,
         message: n.message,
         date: n.created_at ? new Date(n.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent Today',
         subCategory: 'LINE DEFECT REPORT',
-        footerFlag: isConfirmed ? 'SYSTEM_LOGS' : 'ACTION_REQUIRED',
+        footerFlag,
         read: Boolean(n.is_read),
-        type: isConfirmed ? 'confirmed' : 'assignment',
+        type: n.type,
         link: n.link || '/ihlr/my-requests'
       };
     });

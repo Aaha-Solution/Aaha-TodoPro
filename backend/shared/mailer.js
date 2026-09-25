@@ -13,23 +13,29 @@ const SMTP_USER = process.env.SMTP_USER || process.env.EMAIL_USER || '';
 const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
 const SMTP_FROM = process.env.SMTP_FROM || '"INEL Quality Portal" <noreply.inel.portal@gmail.com>';
 
-let transporter = null;
-if (SMTP_USER && SMTP_PASS) {
-  try {
-    transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_SECURE,
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      },
-    });
-    console.log('[Mailer] SMTP Transporter configured for:', SMTP_USER);
-  } catch (err) {
-    console.warn('[Mailer] Could not initialize nodemailer transporter:', err.message);
+function getTransporter() {
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = Number(process.env.SMTP_PORT) || 587;
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER || '';
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
+
+  if (user && pass) {
+    try {
+      return nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false }
+      });
+    } catch (err) {
+      console.warn('[Mailer] Could not initialize nodemailer transporter:', err.message);
+    }
   }
+  return null;
 }
+
 
 /**
  * Log an email event to MySQL email_logs table
@@ -103,10 +109,13 @@ export async function sendEmail({
   console.log(`   Subject   : ${subject}`);
   console.log(`======================================================\n`);
 
+  const transporter = getTransporter();
+  const senderFrom = process.env.SMTP_FROM || (process.env.SMTP_USER ? `"INEL Quality Portal" <${process.env.SMTP_USER}>` : SMTP_FROM);
+
   if (transporter) {
     try {
       const info = await transporter.sendMail({
-        from: SMTP_FROM,
+        from: senderFrom,
         to: cleanTo,
         subject,
         text,
@@ -379,4 +388,104 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
 
   return results;
 }
+
+/**
+ * Send closer / countermeasure update emails for IHLR requests
+ */
+export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, assignedUser }) {
+  const reqNo = request.req_no || `IHLR-${request.id || '1'}`;
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const reportUrl = `${baseUrl}/ihlr/my-requests`;
+  const approvalsUrl = `${baseUrl}/ihlr/approvals`;
+
+  const creatorEmail = creatorUser?.email || request.created_by_email;
+  const creatorName = creatorUser?.name || request.analysis_done_by || request.created_by || 'Quality Engineer';
+
+  const assignedEmail = assignedUser?.email || request.resp_person_email;
+  const assignedName = assignedUser?.name || request.resp_person || 'Responsible Officer';
+  const assignedDept = request.resp || assignedUser?.department || 'PRODUCTION';
+
+  const isClosed = String(request.status).toUpperCase() === 'CLOSED';
+  const closerWhy1 = Array.isArray(request.prod_why_why) ? (request.prod_why_why[0] || '—') : (typeof request.prod_why_why === 'string' ? JSON.parse(request.prod_why_why || '[]')[0] || '—' : '—');
+
+  const tableSummary = [
+    { label: 'Request Number', value: reqNo },
+    { label: 'Defect / Model', value: `${request.problem || '—'} (${request.model || '—'})` },
+    { label: 'Responsible Dept', value: assignedDept },
+    { label: 'Responsible Person', value: assignedName },
+    { label: 'Occurrence Cause (Why 1)', value: closerWhy1 },
+    { label: 'Action Taken', value: request.action || 'Containment in progress' },
+    { label: 'Target / Close Date', value: request.target_date || 'N/A' },
+    { label: 'Updated Status', value: request.status || (isClosed ? 'CLOSED' : 'IN_PROGRESS') },
+    { label: 'Remarks', value: request.remarks || 'None' }
+  ];
+
+  const results = {};
+
+  // Notify Creator (Raised Person) that countermeasure was submitted or case closed
+  if (creatorEmail) {
+    const subject = isClosed 
+      ? `[IHLR Case Closed] Defect Report #${reqNo} Verified & Closed`
+      : `[IHLR Update] Countermeasure Submitted for #${reqNo} (${assignedDept})`;
+
+    const html = generateEmailTemplate({
+      headerTitle: isClosed ? `IHLR Case Closed: #${reqNo}` : `Countermeasure Submitted: #${reqNo}`,
+      headerSubtitle: isClosed
+        ? `Defect containment and 5-Why corrective actions have been completed and verified.`
+        : `Responsible department ${assignedDept} has submitted 5-Why root cause countermeasure for review.`,
+      recipientName: creatorName,
+      greetingMessage: `<strong>${assignedName}</strong> (${assignedDept}) has updated the closer log for defect report <strong>${reqNo}</strong> (${request.model || 'Report'}).`,
+      tableData: tableSummary,
+      actionButtonText: 'Review Full IHLR Report',
+      actionButtonUrl: reportUrl,
+      footerNote: 'Please verify the containment action in the INEL portal.',
+      badgeColor: isClosed ? '#10b981' : '#2563eb',
+      badgeText: isClosed ? 'CASE CLOSED' : 'COUNTERMEASURE SUBMITTED',
+    });
+
+    results.creator = await sendEmail({
+      to: creatorEmail,
+      recipientName: creatorName,
+      recipientRole: 'RAISED_PERSON',
+      subject,
+      text: `Countermeasure submitted for IHLR #${reqNo} by ${assignedName} (${assignedDept}). Status: ${request.status}. Action: ${request.action}`,
+      html,
+      moduleType: 'IHLR',
+      requestId: request.id,
+      referenceNo: reqNo,
+    });
+  }
+
+  // Also confirm to Assigned Person if their email is available
+  if (assignedEmail && assignedEmail !== creatorEmail) {
+    const subject = `[IHLR Confirmation] Closer Log Saved for #${reqNo}`;
+    const html = generateEmailTemplate({
+      headerTitle: `Closer Log Recorded: #${reqNo}`,
+      headerSubtitle: `Your countermeasure and root cause analysis have been recorded in the quality system.`,
+      recipientName: assignedName,
+      greetingMessage: `Your submission for IHLR Report <strong>${reqNo}</strong> has been saved with status <strong>${request.status}</strong>.`,
+      tableData: tableSummary,
+      actionButtonText: 'View Closer Approvals',
+      actionButtonUrl: approvalsUrl,
+      footerNote: 'Thank you for submitting quality containment measures.',
+      badgeColor: '#10b981',
+      badgeText: 'SAVED',
+    });
+
+    results.assigned = await sendEmail({
+      to: assignedEmail,
+      recipientName: assignedName,
+      recipientRole: 'SELECTED_PERSON',
+      subject,
+      text: `Your countermeasure submission for IHLR #${reqNo} has been saved with status ${request.status}.`,
+      html,
+      moduleType: 'IHLR',
+      requestId: request.id,
+      referenceNo: reqNo,
+    });
+  }
+
+  return results;
+}
+
 

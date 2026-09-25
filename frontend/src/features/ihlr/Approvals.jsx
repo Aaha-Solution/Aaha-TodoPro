@@ -164,6 +164,7 @@ const IhlrApprovals = () => {
       };
 
       const updated = await ihlrService.updateRequest(selectedRequest.id, payload);
+      window.dispatchEvent(new Event('refreshNotifications'));
 
       setSuccessMessage(`Closer log updated successfully for ${selectedRequest.req_no}!`);
       setNewEvidenceFiles([]);

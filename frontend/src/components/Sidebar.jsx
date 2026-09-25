@@ -144,11 +144,14 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
                     }`
                   }
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-4 h-4 stroke-[2]" />
                   <span className="flex-1 text-left">{item.isAction ? `+ ${item.name}` : item.name}</span>
                   {item.name === 'Notifications' && unreadCount > 0 && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded-full leading-none">
-                      {unreadCount}
+                    <span className="relative flex items-center justify-center">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                      <span className="relative px-1.5 py-0.5 text-[10px] font-extrabold bg-red-600 text-white rounded-full leading-none shadow-xs">
+                        {unreadCount}
+                      </span>
                     </span>
                   )}
                 </NavLink>
@@ -159,23 +162,8 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
          
         </div>
 
-        {/* Bottom Actions: Notifications & Logout */}
-        <div className="p-5 border-t border-slate-800/80 space-y-1">
-          <NavLink
-            to={isIhlr ? "/ihlr/notifications" : "/process-audit/notifications"}
-            className="flex items-center justify-between px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-[#131b2e] hover:text-white transition"
-          >
-            <div className="flex items-center gap-3">
-              <Bell className="w-4 h-4" />
-              <span>Notifications</span>
-            </div>
-            {unreadCount > 0 && (
-              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded-full leading-none">
-                {unreadCount}
-              </span>
-            )}
-          </NavLink>
-
+        {/* Bottom Actions: Logout */}
+        <div className="p-5 border-t border-slate-800/80">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold text-red-400 hover:bg-red-950/30 hover:text-red-300 transition cursor-pointer"

@@ -437,7 +437,7 @@ const IhlrNotifications = () => {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => navigate('/ihlr/my-requests')}
+                      onClick={() => navigate(item.link || '/ihlr/my-requests')}
                       className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-blue-600 transition cursor-pointer"
                     >
                       <span>View Details</span>

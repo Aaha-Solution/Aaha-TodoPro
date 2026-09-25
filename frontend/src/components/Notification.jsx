@@ -93,13 +93,17 @@ const Notification = () => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
+        className="relative p-2.5 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center"
         aria-label="Notifications"
+        title="Notifications"
       >
-        <Bell className="w-5 h-5" />
+        <Bell className="w-5 h-5 text-slate-700 hover:text-slate-900 stroke-[2.2] transition-colors" />
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
-            {unreadCount > 9 ? '9+' : unreadCount}
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-80" />
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-red-600 text-white text-[9px] font-extrabold items-center justify-center ring-2 ring-white shadow-xs">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
           </span>
         )}
       </button>
@@ -133,12 +137,12 @@ const Notification = () => {
                   key={item.id}
                   onClick={() => handleItemClick(item)}
                   className={`p-3.5 hover:bg-slate-50 transition cursor-pointer flex items-start gap-3 ${
-                    !item.read ? 'bg-blue-50/30' : ''
+                    !item.read ? 'bg-red-50/20' : ''
                   }`}
                 >
                   <div
                     className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                      !item.read ? 'bg-blue-600 ring-4 ring-blue-100' : 'bg-transparent'
+                      !item.read ? 'bg-red-500 ring-4 ring-red-100' : 'bg-transparent'
                     }`}
                   />
                   <div className="flex-1 min-w-0">
