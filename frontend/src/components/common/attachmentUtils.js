@@ -13,13 +13,9 @@ export const resolveAttachmentUrl = (rawUrl) => {
   ) {
     return trimmed;
   }
-  const apiBase = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL)
-    ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, '')
-    : 'http://localhost:5000';
-
   const clean = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  if (clean.startsWith('/api/')) {
-    return `${apiBase}${clean}`;
+  if (clean.startsWith('/api')) {
+    return `http://localhost:5000${clean}`;
   }
 
   const isProcessAudit =
@@ -28,12 +24,12 @@ export const resolveAttachmentUrl = (rawUrl) => {
 
   if (clean.startsWith('/uploads')) {
     return isProcessAudit
-      ? `${apiBase}/api/process-audit${clean}`
-      : `${apiBase}/api/ihlr${clean}`;
+      ? `http://localhost:5000/api/process-audit${clean}`
+      : `http://localhost:5000/api/ihlr${clean}`;
   }
   return isProcessAudit
-    ? `${apiBase}/api/process-audit/${clean.replace(/^\//, '')}`
-    : `${apiBase}/api/ihlr/${clean.replace(/^\//, '')}`;
+    ? `http://localhost:5000/api/process-audit/${clean.replace(/^\//, '')}`
+    : `http://localhost:5000/api/ihlr/${clean.replace(/^\//, '')}`;
 };
 
 export const getFileMeta = (type = '', name = '') => {
@@ -132,8 +128,8 @@ export const normalizeAttachment = (item) => {
     const rawUrl =
       item.url ||
       item.path ||
-      (item.id ? `${defaultPrefix}/attachments/binary/${item.id}` : '') ||
-      (item.filename ? `${defaultPrefix}/attachments/binary/${encodeURIComponent(item.filename)}` : '');
+      (item.id ? `/api/process-audit/attachments/${item.id}` : '') ||
+      (item.filename ? `/api/process-audit/attachments/${encodeURIComponent(item.filename)}` : '');
     const resolvedUrl = resolveAttachmentUrl(rawUrl);
     const isImage =
       item.isImage !== undefined
@@ -161,12 +157,10 @@ export const normalizeAttachment = (item) => {
           rawUrl.toLowerCase().endsWith('.ppt');
 
     return {
-      id: item.id,
       name,
       url: resolvedUrl,
       size: item.size || '',
       type: ext,
-      date: item.date || '',
       isImage,
       isPdf,
       isExcel,
@@ -184,39 +178,32 @@ export const parseAttachments = (raw) => {
     return raw.map(normalizeAttachment).filter(Boolean);
   }
   if (typeof raw === 'object') {
-    if (raw.url || raw.name || raw.filename) return [normalizeAttachment(raw)].filter(Boolean);
+    if (raw.url || raw.name) return [normalizeAttachment(raw)].filter(Boolean);
     return [];
   }
   if (typeof raw === 'string') {
     const trimmed = raw.trim();
-    if (!trimmed || trimmed === '[]' || trimmed === 'null' || trimmed === '""') return [];
-
-    // If it's a JSON array or object string
-    if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          return parsed.map(normalizeAttachment).filter(Boolean);
-        }
-        if (parsed && typeof parsed === 'object') {
-          return [normalizeAttachment(parsed)].filter(Boolean);
-        }
-      } catch (err) {
-        console.warn('Could not parse JSON attachments:', err);
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map(normalizeAttachment).filter(Boolean);
       }
-      return [];
+      if (parsed && typeof parsed === 'object') {
+        return [normalizeAttachment(parsed)].filter(Boolean);
+      }
+    } catch {
+      // Fallback: comma-separated or single URL
+      if (trimmed.includes(',')) {
+        return trimmed
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map(normalizeAttachment)
+          .filter(Boolean);
+      }
+      return [normalizeAttachment(trimmed)].filter(Boolean);
     }
-
-    // Only if it's NOT a JSON string, fallback to comma-separated URLs or filenames:
-    if (trimmed.includes(',')) {
-      return trimmed
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map(normalizeAttachment)
-        .filter(Boolean);
-    }
-    return [normalizeAttachment(trimmed)].filter(Boolean);
   }
   return [];
 };

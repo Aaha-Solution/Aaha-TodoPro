@@ -22,29 +22,14 @@ import ExcelViewer from './ExcelViewer';
  */
 const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
   const [zoom, setZoom] = useState(1);
-  const [imageError, setImageError] = useState(false);
-
-  React.useEffect(() => {
-    setImageError(false);
-    setZoom(1);
-  }, [attachment?.url, attachment?.name]);
 
   if (!isOpen || !attachment) return null;
 
-  const ext = (attachment.type || attachment.name?.split('.').pop() || '').toUpperCase();
-  const meta = getFileMeta(attachment.type || ext, attachment.name);
-  const isImage = attachment.isImage !== undefined
-    ? attachment.isImage
-    : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || Boolean(attachment.url?.startsWith('data:image'));
-  const isPdf = attachment.isPdf !== undefined
-    ? attachment.isPdf
-    : ext === 'PDF' || Boolean(attachment.url?.toLowerCase().includes('.pdf'));
-  const isExcel = attachment.isExcel !== undefined
-    ? attachment.isExcel
-    : ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext) || Boolean(attachment.url?.toLowerCase().includes('.xls'));
-  const isWord = attachment.isWord !== undefined
-    ? attachment.isWord
-    : ['DOC', 'DOCX'].includes(ext) || Boolean(attachment.url?.toLowerCase().includes('.doc'));
+  const meta = getFileMeta(attachment.type, attachment.name);
+  const isImage = attachment.isImage;
+  const isPdf = attachment.isPdf;
+  const isExcel = attachment.isExcel;
+  const isWord = attachment.isWord;
 
   return (
     <div 
@@ -169,52 +154,14 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
             </div>
           ) : /* 3. High-Res Image Canvas */
           isImage ? (
-            !imageError ? (
-              <div className="w-full h-full flex items-center justify-center overflow-auto p-2">
-                <img
-                  src={attachment.url}
-                  alt={attachment.name}
-                  onError={() => setImageError(true)}
-                  style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
-                  className="max-h-[68vh] max-w-full object-contain rounded-xl shadow-md transition-transform duration-150"
-                />
-              </div>
-            ) : (
-              <div className="w-full max-w-md bg-white rounded-3xl p-8 border border-slate-200 shadow-xl text-center space-y-4 my-auto">
-                <div className="w-16 h-16 rounded-3xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto shadow-xs">
-                  <Paperclip className="w-8 h-8" />
-                </div>
-                <div>
-                  <h4 className="text-base font-bold text-slate-900 truncate" title={attachment.name}>
-                    {attachment.name}
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Image file could not be rendered directly in current viewport.
-                  </p>
-                </div>
-                {attachment.url && (
-                  <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                    <a
-                      href={attachment.url}
-                      download={attachment.name}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Download Image</span>
-                    </a>
-                    <a
-                      href={attachment.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl shadow-sm transition"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Open in New Tab</span>
-                    </a>
-                  </div>
-                )}
-              </div>
-            )
+            <div className="w-full h-full flex items-center justify-center overflow-auto p-2">
+              <img
+                src={attachment.url}
+                alt={attachment.name}
+                style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+                className="max-h-[68vh] max-w-full object-contain rounded-xl shadow-md transition-transform duration-150"
+              />
+            </div>
           ) : /* 4. Word Document Card */
           isWord ? (
             <div className="w-full max-w-lg bg-white rounded-3xl p-8 border border-slate-200 shadow-xl text-center space-y-4 my-auto">

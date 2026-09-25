@@ -15,14 +15,7 @@ api.interceptors.request.use((config) => {
   }
   // When sending FormData, remove Content-Type so browser automatically sets multipart/form-data with boundary
   if (config.data instanceof FormData) {
-    if (config.headers) {
-      delete config.headers['Content-Type'];
-      delete config.headers['content-type'];
-      if (typeof config.headers.delete === 'function') {
-        config.headers.delete('Content-Type');
-        config.headers.delete('content-type');
-      }
-    }
+    delete config.headers['Content-Type'];
   }
   return config;
 }, (error) => {
