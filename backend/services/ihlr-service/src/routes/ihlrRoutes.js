@@ -24,6 +24,8 @@ router.post('/upload', uploadMemory.array('files', 30), uploadAttachments);
 // Stream Binary File from MySQL Database
 router.get('/attachments/binary/:id', getBinaryAttachment);
 router.get('/attachments/binary/file/:filename', getBinaryAttachmentByFilename);
+router.get('/attachments/:id', getBinaryAttachment);
+router.get('/attachments/file/:filename', getBinaryAttachmentByFilename);
 
 // Next Request Number
 router.get('/next-req-no', getNextReqNo);
