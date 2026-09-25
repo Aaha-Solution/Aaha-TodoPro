@@ -125,42 +125,50 @@ export const normalizeAttachment = (item) => {
 
   if (typeof item === 'object') {
     const name = item.name || item.filename || (item.url ? item.url.split('/').pop() : 'attachment');
+    const ext = (item.type || (name ? name.split('.').pop() : '') || 'FILE').toUpperCase();
+    const isProcessAudit =
+      (typeof window !== 'undefined' && window.location.pathname.includes('process-audit')) ||
+      (item.url && item.url.includes('process-audit')) ||
+      (item.path && item.path.includes('process-audit'));
+    const defaultPrefix = isProcessAudit ? '/api/process-audit' : '/api/ihlr';
     const rawUrl =
       item.url ||
       item.path ||
-      (item.id ? `/api/process-audit/attachments/${item.id}` : '') ||
-      (item.filename ? `/api/process-audit/attachments/${encodeURIComponent(item.filename)}` : '');
+      (item.id ? `${defaultPrefix}/attachments/binary/${item.id}` : '') ||
+      (item.filename ? `${defaultPrefix}/attachments/binary/${encodeURIComponent(item.filename)}` : '');
     const resolvedUrl = resolveAttachmentUrl(rawUrl);
     const isImage =
       item.isImage !== undefined
         ? item.isImage
-        : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || rawUrl.startsWith('data:image');
-    const isPdf = item.isPdf !== undefined ? item.isPdf : ext === 'PDF' || rawUrl.toLowerCase().endsWith('.pdf');
+        : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || (rawUrl && rawUrl.startsWith('data:image'));
+    const isPdf = item.isPdf !== undefined ? item.isPdf : ext === 'PDF' || (rawUrl && rawUrl.toLowerCase().endsWith('.pdf'));
     const isExcel =
       item.isExcel !== undefined
         ? item.isExcel
         : ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext) ||
-          rawUrl.toLowerCase().endsWith('.xlsx') ||
-          rawUrl.toLowerCase().endsWith('.csv') ||
-          rawUrl.toLowerCase().endsWith('.xls');
+          (rawUrl && rawUrl.toLowerCase().endsWith('.xlsx')) ||
+          (rawUrl && rawUrl.toLowerCase().endsWith('.csv')) ||
+          (rawUrl && rawUrl.toLowerCase().endsWith('.xls'));
     const isWord =
       item.isWord !== undefined
         ? item.isWord
         : ['DOC', 'DOCX'].includes(ext) ||
-          rawUrl.toLowerCase().endsWith('.docx') ||
-          rawUrl.toLowerCase().endsWith('.doc');
+          (rawUrl && rawUrl.toLowerCase().endsWith('.docx')) ||
+          (rawUrl && rawUrl.toLowerCase().endsWith('.doc'));
     const isPpt =
       item.isPpt !== undefined
         ? item.isPpt
         : ['PPT', 'PPTX'].includes(ext) ||
-          rawUrl.toLowerCase().endsWith('.pptx') ||
-          rawUrl.toLowerCase().endsWith('.ppt');
+          (rawUrl && rawUrl.toLowerCase().endsWith('.pptx')) ||
+          (rawUrl && rawUrl.toLowerCase().endsWith('.ppt'));
 
     return {
+      id: item.id,
       name,
       url: resolvedUrl,
       size: item.size || '',
       type: ext,
+      date: item.date || '',
       isImage,
       isPdf,
       isExcel,
@@ -178,32 +186,39 @@ export const parseAttachments = (raw) => {
     return raw.map(normalizeAttachment).filter(Boolean);
   }
   if (typeof raw === 'object') {
-    if (raw.url || raw.name) return [normalizeAttachment(raw)].filter(Boolean);
+    if (raw.url || raw.name || raw.filename) return [normalizeAttachment(raw)].filter(Boolean);
     return [];
   }
   if (typeof raw === 'string') {
     const trimmed = raw.trim();
-    if (!trimmed) return [];
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed)) {
-        return parsed.map(normalizeAttachment).filter(Boolean);
+    if (!trimmed || trimmed === '[]' || trimmed === 'null' || trimmed === '""') return [];
+
+    // If it's a JSON array or object string
+    if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed.map(normalizeAttachment).filter(Boolean);
+        }
+        if (parsed && typeof parsed === 'object') {
+          return [normalizeAttachment(parsed)].filter(Boolean);
+        }
+      } catch (err) {
+        console.warn('Could not parse JSON attachments:', err);
       }
-      if (parsed && typeof parsed === 'object') {
-        return [normalizeAttachment(parsed)].filter(Boolean);
-      }
-    } catch {
-      // Fallback: comma-separated or single URL
-      if (trimmed.includes(',')) {
-        return trimmed
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .map(normalizeAttachment)
-          .filter(Boolean);
-      }
-      return [normalizeAttachment(trimmed)].filter(Boolean);
+      return [];
     }
+
+    // Only if it's NOT a JSON string, fallback to comma-separated URLs or filenames:
+    if (trimmed.includes(',')) {
+      return trimmed
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map(normalizeAttachment)
+        .filter(Boolean);
+    }
+    return [normalizeAttachment(trimmed)].filter(Boolean);
   }
   return [];
 };
