@@ -13,9 +13,13 @@ export const resolveAttachmentUrl = (rawUrl) => {
   ) {
     return trimmed;
   }
+  const apiBase = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL)
+    ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, '')
+    : 'http://localhost:5000';
+
   const clean = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  if (clean.startsWith('/api')) {
-    return `http://localhost:5000${clean}`;
+  if (clean.startsWith('/api/')) {
+    return `${apiBase}${clean}`;
   }
 
   const isProcessAudit =
@@ -24,12 +28,12 @@ export const resolveAttachmentUrl = (rawUrl) => {
 
   if (clean.startsWith('/uploads')) {
     return isProcessAudit
-      ? `http://localhost:5000/api/process-audit${clean}`
-      : `http://localhost:5000/api/ihlr${clean}`;
+      ? `${apiBase}/api/process-audit${clean}`
+      : `${apiBase}/api/ihlr${clean}`;
   }
   return isProcessAudit
-    ? `http://localhost:5000/api/process-audit/${clean.replace(/^\//, '')}`
-    : `http://localhost:5000/api/ihlr/${clean.replace(/^\//, '')}`;
+    ? `${apiBase}/api/process-audit/${clean.replace(/^\//, '')}`
+    : `${apiBase}/api/ihlr/${clean.replace(/^\//, '')}`;
 };
 
 export const getFileMeta = (type = '', name = '') => {
@@ -125,12 +129,6 @@ export const normalizeAttachment = (item) => {
 
   if (typeof item === 'object') {
     const name = item.name || item.filename || (item.url ? item.url.split('/').pop() : 'attachment');
-    const ext = (item.type || (name ? name.split('.').pop() : '') || 'FILE').toUpperCase();
-    const isProcessAudit =
-      (typeof window !== 'undefined' && window.location.pathname.includes('process-audit')) ||
-      (item.url && item.url.includes('process-audit')) ||
-      (item.path && item.path.includes('process-audit'));
-    const defaultPrefix = isProcessAudit ? '/api/process-audit' : '/api/ihlr';
     const rawUrl =
       item.url ||
       item.path ||
@@ -140,27 +138,27 @@ export const normalizeAttachment = (item) => {
     const isImage =
       item.isImage !== undefined
         ? item.isImage
-        : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || (rawUrl && rawUrl.startsWith('data:image'));
-    const isPdf = item.isPdf !== undefined ? item.isPdf : ext === 'PDF' || (rawUrl && rawUrl.toLowerCase().endsWith('.pdf'));
+        : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || rawUrl.startsWith('data:image');
+    const isPdf = item.isPdf !== undefined ? item.isPdf : ext === 'PDF' || rawUrl.toLowerCase().endsWith('.pdf');
     const isExcel =
       item.isExcel !== undefined
         ? item.isExcel
         : ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.xlsx')) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.csv')) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.xls'));
+          rawUrl.toLowerCase().endsWith('.xlsx') ||
+          rawUrl.toLowerCase().endsWith('.csv') ||
+          rawUrl.toLowerCase().endsWith('.xls');
     const isWord =
       item.isWord !== undefined
         ? item.isWord
         : ['DOC', 'DOCX'].includes(ext) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.docx')) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.doc'));
+          rawUrl.toLowerCase().endsWith('.docx') ||
+          rawUrl.toLowerCase().endsWith('.doc');
     const isPpt =
       item.isPpt !== undefined
         ? item.isPpt
         : ['PPT', 'PPTX'].includes(ext) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.pptx')) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.ppt'));
+          rawUrl.toLowerCase().endsWith('.pptx') ||
+          rawUrl.toLowerCase().endsWith('.ppt');
 
     return {
       id: item.id,

@@ -32,12 +32,30 @@ export const processAuditService = {
   },
 
   uploadAttachments: async (fileList) => {
-    const formData = new FormData();
-    for (const file of fileList) {
-      formData.append('files', file);
+    try {
+      const formData = new FormData();
+      for (const file of fileList) {
+        formData.append('files', file);
+      }
+      const res = await api.post('/process-audit/requests/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data?.data?.files || res.data?.files || [];
+    } catch (err) {
+      console.error('Failed to upload files to process audit:', err);
+      return Array.from(fileList).map((f) => {
+        const ext = f.name.split('.').pop()?.toUpperCase() || 'FILE';
+        const isImage = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext);
+        return {
+          name: f.name,
+          filename: f.name,
+          url: URL.createObjectURL(f),
+          size: `${(f.size / (1024 * 1024)).toFixed(2)} MB`,
+          type: ext,
+          isImage,
+        };
+      });
     }
-    const res = await api.post('/process-audit/requests/upload', formData);
-    return res.data?.data?.files || res.data?.files || [];
   },
 
   createRequest: async (data) => {

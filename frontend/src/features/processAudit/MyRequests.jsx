@@ -24,6 +24,7 @@ import {
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
 import AttachmentThumbnail from '../../components/common/AttachmentThumbnail';
+import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
 
 const MyRequests = () => {
   const navigate = useNavigate();
@@ -1226,122 +1227,12 @@ const MyRequests = () => {
         document.body
       )}
 
-      {/* Full File Preview Modal */}
-      {previewAttachment && (() => {
-        const meta = getFileMeta(previewAttachment);
-        const IconComponent = meta.icon;
-        return createPortal(
-          <div
-            className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/75 backdrop-blur-xs p-4 animate-in fade-in duration-150"
-            onClick={() => setPreviewAttachment(null)}
-          >
-            <div
-              className="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
-                <div className="flex items-center gap-3 min-w-0 pr-4">
-                  <span className={`px-2.5 py-1 text-xs font-bold rounded-lg border shrink-0 flex items-center gap-1.5 ${meta.badgeBg}`}>
-                    <IconComponent className="w-3.5 h-3.5" />
-                    {previewAttachment.type}
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-slate-900 truncate" title={previewAttachment.name}>
-                      {previewAttachment.name}
-                    </h3>
-                    <p className="text-[11px] text-slate-400">
-                      {meta.typeName} {previewAttachment.size ? `• ${previewAttachment.size}` : ''}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {previewAttachment.url && (
-                    <a
-                      href={previewAttachment.url}
-                      download={previewAttachment.name}
-                      className="p-2 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
-                      title="Download file"
-                    >
-                      <Download className="w-4 h-4" />
-                    </a>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setPreviewAttachment(null)}
-                    className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                    title="Close preview"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Modal Content Preview */}
-              <div className="flex-1 overflow-auto p-4 my-2 flex items-center justify-center min-h-[300px] bg-slate-50/70 rounded-2xl border border-slate-100">
-                {previewAttachment.isImage && previewAttachment.url && !previewImageError ? (
-                  <img
-                    src={previewAttachment.url}
-                    alt={previewAttachment.name}
-                    onError={() => setPreviewImageError(true)}
-                    className="max-h-[65vh] w-auto max-w-full object-contain rounded-xl shadow-xs"
-                  />
-                ) : previewAttachment.isPdf && previewAttachment.url ? (
-                  <iframe
-                    src={previewAttachment.url}
-                    title={previewAttachment.name}
-                    className="w-full h-[65vh] rounded-xl border border-slate-200"
-                  />
-                ) : (
-                  <div className="text-center py-10 px-4 max-w-md">
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 text-lg font-bold border shadow-xs ${meta.badgeBg}`}>
-                      <IconComponent className="w-8 h-8" />
-                    </div>
-                    <h4 className="text-sm font-bold text-slate-800 mb-1">
-                      {previewAttachment.name}
-                    </h4>
-                    <p className="text-xs text-slate-500 mb-4">
-                      {previewAttachment.isExcel
-                        ? 'This Microsoft Excel spreadsheet can be opened in browser tab or downloaded.'
-                        : previewAttachment.isPpt
-                          ? 'This Microsoft PowerPoint presentation can be opened in browser tab or downloaded.'
-                          : `This file format (${previewAttachment.type}) can be opened in browser tab or downloaded.`}
-                    </p>
-                    {previewAttachment.url && (
-                      <div className="flex flex-wrap items-center justify-center gap-3">
-                        <a
-                          href={previewAttachment.url}
-                          download={previewAttachment.name}
-                          className={`inline-flex items-center gap-2 px-4 py-2.5 text-white text-xs font-semibold rounded-xl shadow-xs transition ${previewAttachment.isExcel
-                            ? 'bg-emerald-600 hover:bg-emerald-700'
-                            : previewAttachment.isPpt
-                              ? 'bg-orange-600 hover:bg-orange-700'
-                              : 'bg-blue-600 hover:bg-blue-700'
-                            }`}
-                        >
-                          <Download className="w-4 h-4" />
-                          Download {previewAttachment.type} File
-                        </a>
-                        <a
-                          href={previewAttachment.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl shadow-xs transition"
-                        >
-                          <Eye className="w-4 h-4" />
-                          Open in Browser Tab
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>,
-          document.body
-        );
-      })()}
+      {/* Universal In-Page Attachment Preview Modal (Rich viewer identical to IHLR) */}
+      <AttachmentPreviewModal
+        isOpen={Boolean(previewAttachment)}
+        attachment={previewAttachment}
+        onClose={() => setPreviewAttachment(null)}
+      />
     </div>
   );
 };

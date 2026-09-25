@@ -351,15 +351,25 @@ const CreateRequest = () => {
     const finalAttachments = attachments.map((att) => {
       const match = uploadedFilesMeta.find((u) => u.name === att.name || u.filename === att.name);
       const dbUrl = match?.url || (match?.id ? `/api/process-audit/attachments/${match.id}` : `/api/process-audit/attachments/${encodeURIComponent(att.name)}`);
+      const ext = (match?.type || att.type || att.name?.split('.').pop() || 'FILE').toUpperCase();
+      const isImage = att.isImage !== undefined ? att.isImage : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext);
+      const isPdf = att.isPdf !== undefined ? att.isPdf : ext === 'PDF';
+      const isExcel = att.isExcel !== undefined ? att.isExcel : ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
+      const isPpt = att.isPpt !== undefined ? att.isPpt : ['PPT', 'PPTX', 'PPSX'].includes(ext);
+
       return {
         id: match?.id || null,
         name: att.name,
         size: match?.size || att.size,
-        type: match?.type || att.type,
-        date: att.date,
+        type: ext,
+        date: att.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
         path: match?.path || dbUrl,
         url: dbUrl,
         filename: match?.filename || att.name,
+        isImage,
+        isPdf,
+        isExcel,
+        isPpt,
       };
     });
 
