@@ -120,6 +120,14 @@ const ensureTable = async () => {
       SET r.created_by = COALESCE(u.name, u.email)
       WHERE r.created_by IS NULL OR TRIM(r.created_by) = ''
     `).catch(() => {});
+
+    // Clean up corrupted creator_remark where it was erroneously copied from comments or populated before closure/reopening
+    await pool.query(`
+      UPDATE process_audit_requests
+      SET creator_remark = NULL
+      WHERE (creator_remark = comments OR TRIM(creator_remark) = TRIM(comments))
+         OR (LOWER(status) NOT LIKE '%close%' AND LOWER(status) NOT LIKE '%open%' AND LOWER(status) NOT LIKE '%reopen%')
+    `).catch(() => {});
   } catch (err) {
     console.warn('[process_audit_requests] Table structure sync notice:', err.message);
   }
@@ -361,7 +369,8 @@ export const ProcessAuditRequest = {
       params.push(actionTakenBy);
       updates.push('action_taken_at = NOW()');
     }
-    if (creatorRemark !== null) {
+    const isClosureOrReopen = status.toLowerCase().includes('close') || status.toLowerCase().includes('open');
+    if (creatorRemark !== null && isClosureOrReopen) {
       updates.push('creator_remark = ?');
       params.push(creatorRemark);
     }

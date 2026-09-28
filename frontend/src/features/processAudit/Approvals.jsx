@@ -259,7 +259,7 @@ const ProcessAuditApprovals = () => {
           : req.target_date
         : ''
     );
-    setCloserRemarks(req.creator_remark || req.comments || req.remarks || req.rejection_reason || '');
+    setCloserRemarks('');
 
     // Status mapping
     const s = req.status || 'Pending Execution';
@@ -329,11 +329,8 @@ const ProcessAuditApprovals = () => {
         standardization_details: standardizationDetails.trim(),
         action_attachments: combinedEvidence,
         target_date: closerTargetDate || null,
-        creator_remark: closerRemarks.trim(),
-        comments: closerRemarks.trim(),
-        remarks: closerRemarks.trim(),
-        rejectionReason: closerStatus === 'Rejected' ? closerRemarks.trim() : null,
-        rejection_reason: closerStatus === 'Rejected' ? closerRemarks.trim() : null,
+        rejectionReason: closerStatus === 'Rejected' ? (errorMessage || 'Rejected by executor') : null,
+        rejection_reason: closerStatus === 'Rejected' ? (errorMessage || 'Rejected by executor') : null,
         action_taken_by: user?.name || user?.email || 'Assigned Executor',
         approved_by: user?.name || user?.email || 'Assigned Executor',
         approved_by_id: user?.id || null,

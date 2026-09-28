@@ -65,9 +65,22 @@ const MyRequests = () => {
 
   useEffect(() => {
     if (activeModalRequest) {
-      setCreatorRemark(activeModalRequest.creator_remark || '');
       const s = (activeModalRequest.status || '').toLowerCase();
-      setSelectedClosureStatus(s.includes('open') ? 'Open' : 'Closed');
+      const isAlreadyClosed = s.includes('close');
+      const isAlreadyOpen = s === 'open' || s.includes('open') || s.includes('reopen');
+
+      // Only populate existing remark if the auditor has previously closed or opened it,
+      // and ensure it does not mistakenly carry over the initial creation comments
+      const existingRemark = (activeModalRequest.creator_remark || '').trim();
+      const initialComments = (activeModalRequest.comments || '').trim();
+
+      if ((isAlreadyClosed || isAlreadyOpen) && existingRemark && existingRemark !== initialComments) {
+        setCreatorRemark(existingRemark);
+      } else {
+        setCreatorRemark('');
+      }
+
+      setSelectedClosureStatus(isAlreadyOpen ? 'Open' : 'Closed');
     }
   }, [activeModalRequest?.id]);
 
