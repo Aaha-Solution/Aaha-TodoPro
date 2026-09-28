@@ -20,8 +20,10 @@ import {
 import { ihlrService } from '../../services/ihlrService';
 import { useAuth } from '../../hooks/useAuth';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
+import { useModal } from '../../context/ModalContext';
 
 const IhlrCreateRequest = () => {
+  const { alert, success, error, warning } = useModal();
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -199,27 +201,27 @@ const IhlrCreateRequest = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canCreate) {
-      alert('Access Denied: Only Administrators from the INCOMING QUALITY department are authorized to create IHLR requests.');
+      warning('Access Denied: Only Administrators from the INCOMING QUALITY department are authorized to create IHLR requests.');
       return;
     }
     if (!formData.problem || !formData.model) {
-      alert('Please fill in the Problem Description and Model.');
+      warning('Please fill in the Problem Description and Model.');
       return;
     }
     if (!formData.shift) {
-      alert('Please select a Shift.');
+      warning('Please select a Shift.');
       return;
     }
     if (!formData.four_m) {
-      alert('Please select a 4M Category.');
+      warning('Please select a 4M Category.');
       return;
     }
     if (!formData.resp) {
-      alert('Please select a Responsibility department.');
+      warning('Please select a Responsibility department.');
       return;
     }
     if (!formData.resp_person) {
-      alert('Please select a User Name (Responsible Person) based on the department.');
+      warning('Please select a User Name (Responsible Person) based on the department.');
       return;
     }
 
@@ -279,10 +281,10 @@ const IhlrCreateRequest = () => {
         resp_person_email: selectedPersonUser?.email || '',
       });
       window.dispatchEvent(new Event('refreshNotifications'));
-      alert(`IHLR Analysis Report ${formData.req_no} submitted successfully!\n\n✓ In-App notifications sent to both ${creatorName} and ${formData.resp_person}.\n✓ Email notifications triggered to both parties.`);
+      await success(`IHLR Analysis Report ${formData.req_no} submitted successfully!\n\n✓ In-App notifications sent to both ${creatorName} and ${formData.resp_person}.\n✓ Email notifications triggered to both parties.`);
       navigate('/ihlr/my-requests');
     } catch (err) {
-      alert('Failed to submit IHLR Report: ' + err.message);
+      error('Failed to submit IHLR Report: ' + err.message);
     } finally {
       setSubmitting(false);
     }

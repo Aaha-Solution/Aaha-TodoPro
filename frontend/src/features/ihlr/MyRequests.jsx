@@ -30,10 +30,12 @@ import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import { useAuth } from '../../hooks/useAuth';
+import { useModal } from '../../context/ModalContext';
 
 const IhlrMyRequests = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { confirm: modalConfirm, error: modalError } = useModal();
 
   const userDept = (user?.department || (() => {
     try {
@@ -123,7 +125,7 @@ const IhlrMyRequests = () => {
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export to Excel:', err);
-      alert('Failed to export to Excel: ' + err.message);
+      modalError('Failed to export to Excel: ' + err.message);
     }
   };
 
@@ -240,7 +242,7 @@ const IhlrMyRequests = () => {
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export to PDF:', err);
-      alert('Failed to export to PDF: ' + err.message);
+      modalError('Failed to export to PDF: ' + err.message);
     }
   };
 
@@ -277,18 +279,19 @@ const IhlrMyRequests = () => {
       }
       setEditingCloser(null);
     } catch (err) {
-      alert('Failed to update status: ' + err.message);
+      modalError('Failed to update status: ' + err.message);
     }
   };
 
   const handleDelete = async (id, reqNo) => {
-    if (window.confirm(`Are you sure you want to delete IHLR report #${reqNo}?`)) {
+    const isConfirmed = await modalConfirm(`Are you sure you want to delete IHLR report #${reqNo}?`);
+    if (isConfirmed) {
       try {
         await ihlrService.deleteRequest(id);
         fetchRequests();
         if (activeModalRequest?.id === id) setActiveModalRequest(null);
       } catch (err) {
-        alert('Failed to delete report: ' + err.message);
+        modalError('Failed to delete report: ' + err.message);
       }
     }
   };

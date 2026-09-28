@@ -30,8 +30,10 @@ import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
+import { useModal } from '../../context/ModalContext';
 
 const IhlrApprovals = () => {
+  const { error: modalError } = useModal();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -245,7 +247,7 @@ const IhlrApprovals = () => {
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export approvals to Excel:', err);
-      alert('Failed to export to Excel: ' + err.message);
+      modalError('Failed to export to Excel: ' + err.message);
     }
   };
 
@@ -316,7 +318,7 @@ const IhlrApprovals = () => {
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export approvals to PDF:', err);
-      alert('Failed to export to PDF: ' + err.message);
+      modalError('Failed to export to PDF: ' + err.message);
     }
   };
 

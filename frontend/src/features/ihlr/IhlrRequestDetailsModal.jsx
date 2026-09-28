@@ -22,9 +22,9 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { parseAttachments, getFileMeta } from './IhlrAttachmentView';
-import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
+import { useModal } from '../../context/ModalContext';
 
 /**
  * Meaningful IHLR (In-House Line Rejection) Inspection & Analysis Report Modal:
@@ -36,6 +36,7 @@ import AttachmentChipList from '../../components/common/AttachmentChipList';
  * - Section 5: Containment Countermeasure & Target Closure
  */
 const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
+  const { error: modalError } = useModal();
   const [activeTab, setActiveTab] = useState('incident'); // 'incident' | 'closer'
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -146,7 +147,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export report to Excel:', err);
-      alert('Failed to export report to Excel: ' + err.message);
+      modalError('Failed to export report to Excel: ' + err.message);
     }
   };
 
@@ -295,7 +296,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export report to PDF:', err);
-      alert('Failed to export report to PDF: ' + err.message);
+      modalError('Failed to export report to PDF: ' + err.message);
     }
   };
 
