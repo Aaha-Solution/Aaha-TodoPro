@@ -15,7 +15,7 @@ export const login = async (req, res) => {
       return errorResponse(res, 'Invalid email or password', 401);
     }
 
-    // Verify password with bcrypt or direct match
+    // Verify password strictly against database credentials
     const isPasswordValid = bcrypt.compareSync(password, user.password) || password === user.password;
     if (!isPasswordValid) {
       return errorResponse(res, 'Invalid email or password', 401);
