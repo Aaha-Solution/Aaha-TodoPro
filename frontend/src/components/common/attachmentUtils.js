@@ -1,41 +1,146 @@
 /**
  * Universal Attachment Utilities for Process Audit, IHLR, and Try Out Status
+ * Shared across all application tabs, modals, tables, and modules.
  */
 
-export const resolveAttachmentUrl = (rawUrl) => {
-  if (!rawUrl) return '';
-  const trimmed = String(rawUrl).trim();
-  if (
-    trimmed.startsWith('http://') ||
-    trimmed.startsWith('https://') ||
-    trimmed.startsWith('data:') ||
-    trimmed.startsWith('blob:')
-  ) {
-    return trimmed;
+/**
+ * Dynamically resolves the API Gateway base URL.
+ * Automatically adapts to:
+ * - Localhost (development on same machine)
+ * - LAN IP, e.g. http://192.168.0.169:5000 (accessing across Wi-Fi/LAN)
+ * - Custom domain or production gateway
+ */
+export const getGatewayBaseUrl = () => {
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    const { protocol, hostname } = window.location;
+    return `${protocol}//${hostname}:5000`;
   }
-  const clean = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  if (clean.startsWith('/api')) {
-    return `http://localhost:5000${clean}`;
-  }
-
-  const isIhlr =
-    (typeof window !== 'undefined' && window.location.pathname.includes('/ihlr')) ||
-    clean.includes('ihlr');
-  const isTryout =
-    (typeof window !== 'undefined' && (window.location.pathname.includes('tryout') || window.location.pathname.includes('try-out'))) ||
-    clean.includes('tryout');
-  const isProcessAudit =
-    (typeof window !== 'undefined' && window.location.pathname.includes('process-audit')) ||
-    clean.includes('process-audit');
-
-  const moduleApi = isIhlr ? '/api/ihlr' : (isTryout ? '/api/tryout-status' : '/api/process-audit');
-
-  if (clean.startsWith('/uploads')) {
-    return `http://localhost:5000${moduleApi}${clean}`;
-  }
-  return `http://localhost:5000${moduleApi}/${clean.replace(/^\//, '')}`;
+  return (import.meta.env.VITE_GATEWAY_URL || 'http://localhost:5000').replace(/\/+$/, '');
 };
 
+/**
+ * Universal Attachment URL Resolver
+ * Resolves attachment objects, numeric IDs, database filenames, relative paths,
+ * or full URLs into fully qualified, gateway-proxied streaming URLs.
+ * Works seamlessly across all tabs (Process Audit, IHLR, Try Out Status).
+ *
+ * @param {string|number|object} rawAtt - The raw attachment reference
+ * @param {string} moduleOverride - Optional explicit module ('process-audit', 'ihlr', 'tryout-status')
+ * @returns {string} Fully resolved streaming URL
+ */
+export const resolveAttachmentUrl = (rawAtt, moduleOverride = '') => {
+  if (rawAtt === null || rawAtt === undefined) return '';
+
+  const gatewayBase = getGatewayBaseUrl();
+
+  // 1. Detect module API prefix
+  let moduleApi = '';
+  if (moduleOverride) {
+    const cleanMod = moduleOverride.replace(/^\/api\/?/, '').replace(/^\//, '');
+    moduleApi = `/api/${cleanMod}`;
+  } else if (typeof rawAtt === 'object' && (rawAtt.module || rawAtt.module_name)) {
+    const mod = String(rawAtt.module || rawAtt.module_name).toLowerCase();
+    moduleApi = mod.includes('ihlr') ? '/api/ihlr' : (mod.includes('tryout') ? '/api/tryout-status' : '/api/process-audit');
+  } else if (typeof window !== 'undefined' && window.location) {
+    const path = window.location.pathname.toLowerCase();
+    if (path.includes('/ihlr') || path.includes('ihlr')) {
+      moduleApi = '/api/ihlr';
+    } else if (path.includes('tryout') || path.includes('try-out')) {
+      moduleApi = '/api/tryout-status';
+    } else {
+      moduleApi = '/api/process-audit';
+    }
+  } else {
+    moduleApi = '/api/process-audit';
+  }
+
+  // 2. Direct numeric ID lookup (e.g. 42 or "42")
+  const isNumeric = typeof rawAtt === 'number' || (typeof rawAtt === 'string' && /^\d+$/.test(rawAtt.trim()));
+  if (isNumeric) {
+    return `${gatewayBase}${moduleApi}/attachments/${String(rawAtt).trim()}`;
+  }
+
+  // 3. Object-based attachment lookup
+  if (typeof rawAtt === 'object') {
+    // If it already has a persistent remote URL, resolve that URL
+    if (rawAtt.url && !rawAtt.url.startsWith('blob:')) {
+      return resolveAttachmentUrl(rawAtt.url, moduleOverride);
+    }
+    if (rawAtt.path && !rawAtt.path.startsWith('blob:')) {
+      return resolveAttachmentUrl(rawAtt.path, moduleOverride);
+    }
+    // If it has an ID
+    if (rawAtt.id !== undefined && rawAtt.id !== null) {
+      return `${gatewayBase}${moduleApi}/attachments/${rawAtt.id}`;
+    }
+    // If it has a filename
+    if (rawAtt.filename) {
+      return `${gatewayBase}${moduleApi}/attachments/${encodeURIComponent(rawAtt.filename)}`;
+    }
+    // If it has a name
+    if (rawAtt.name) {
+      return `${gatewayBase}${moduleApi}/attachments/${encodeURIComponent(rawAtt.name)}`;
+    }
+    // If in-memory blob URL (pre-upload preview)
+    if (rawAtt.url && rawAtt.url.startsWith('blob:')) {
+      return rawAtt.url;
+    }
+    return '';
+  }
+
+  const trimmed = String(rawAtt).trim();
+  if (!trimmed || trimmed === '[]' || trimmed === 'null' || trimmed === '""') return '';
+
+  // 4. In-memory and data URLs (pass through as-is)
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+
+  // 5. Full HTTP/HTTPS URLs - ensure gateway port 5000 dynamically matches current LAN IP
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    try {
+      const u = new URL(trimmed);
+      if (u.port === '5000' && typeof window !== 'undefined' && window.location && window.location.hostname) {
+        u.hostname = window.location.hostname;
+        return u.toString();
+      }
+    } catch {}
+    return trimmed;
+  }
+
+  const clean = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+
+  // 6. Already has microservice route prefix
+  if (
+    clean.startsWith('/api/process-audit') ||
+    clean.startsWith('/api/ihlr') ||
+    clean.startsWith('/api/tryout-status')
+  ) {
+    return `${gatewayBase}${clean}`;
+  }
+
+  // 7. Generic /api route
+  if (clean.startsWith('/api/')) {
+    return `${gatewayBase}${clean}`;
+  }
+
+  // 8. Legacy uploads folder
+  if (clean.startsWith('/uploads/')) {
+    return `${gatewayBase}${moduleApi}${clean}`;
+  }
+
+  // 9. Raw filename or relative path
+  return `${gatewayBase}${moduleApi}/attachments/${clean.replace(/^\//, '')}`;
+};
+
+/**
+ * Common Alias for resolveAttachmentUrl to preserve compatibility
+ */
+export const getFullAttachmentUrl = resolveAttachmentUrl;
+
+/**
+ * Returns metadata (badge colors, icons, labels) for any file type or extension.
+ */
 export const getFileMeta = (type = '', name = '') => {
   const ext = (type || name.split('.').pop() || 'FILE').toUpperCase();
 
@@ -87,25 +192,26 @@ export const getFileMeta = (type = '', name = '') => {
   };
 };
 
-export const normalizeAttachment = (item) => {
+/**
+ * Normalizes any attachment item (string, object, or File) into a uniform schema.
+ */
+export const normalizeAttachment = (item, defaultModule = '') => {
   if (!item) return null;
 
   if (typeof item === 'string') {
     let trimmed = item.trim();
     if (!trimmed || trimmed === '[]' || trimmed === 'null' || trimmed === '""') return null;
 
-    // Guard against malformed JSON chunk fragments like '{"id":16' or '"name":"foo"'
+    // Guard against malformed JSON chunk fragments
     if (trimmed.startsWith('{"') || trimmed.endsWith('"}') || trimmed.includes('":"') || trimmed.startsWith('[{')) {
-      // If it's a full valid JSON object or array, try parsing it
       if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
         try {
           const parsed = JSON.parse(trimmed);
           if (parsed && typeof parsed === 'object') {
-            return normalizeAttachment(parsed);
+            return normalizeAttachment(parsed, defaultModule);
           }
         } catch {}
       }
-      // If it's a partial chunk or unparseable JSON fragment, reject it
       if (trimmed.includes('":"')) return null;
     }
 
@@ -132,7 +238,7 @@ export const normalizeAttachment = (item) => {
 
     return {
       name: filename,
-      url: resolveAttachmentUrl(trimmed),
+      url: resolveAttachmentUrl(trimmed, defaultModule),
       size: '',
       type: ext,
       isImage,
@@ -144,55 +250,35 @@ export const normalizeAttachment = (item) => {
   }
 
   if (typeof item === 'object') {
-    const name = item.name || item.filename || (item.url ? item.url.split('/').pop() : 'attachment');
+    const name = item.name || item.filename || (item.url ? item.url.split('/').pop()?.split('?')[0] : 'attachment');
     const ext = (item.type || (name ? name.split('.').pop() : '') || 'FILE').toUpperCase();
 
-    const isIhlr =
-      (typeof window !== 'undefined' && window.location.pathname.includes('/ihlr')) ||
-      (item.url && item.url.includes('/ihlr')) ||
-      (item.path && item.path.includes('/ihlr'));
-    const isTryout =
-      (typeof window !== 'undefined' && (window.location.pathname.includes('tryout') || window.location.pathname.includes('try-out'))) ||
-      (item.url && item.url.includes('tryout')) ||
-      (item.path && item.path.includes('tryout'));
-    const isProcessAudit =
-      (typeof window !== 'undefined' && window.location.pathname.includes('process-audit')) ||
-      (item.url && item.url.includes('process-audit')) ||
-      (item.path && item.path.includes('process-audit'));
-
-    const defaultPrefix = isIhlr ? '/api/ihlr' : (isTryout ? '/api/tryout-status' : '/api/process-audit');
-
-    const rawUrl =
-      item.url ||
-      item.path ||
-      (item.id ? `${defaultPrefix}/attachments/binary/${item.id}` : '') ||
-      (item.filename ? `${defaultPrefix}/attachments/binary/${encodeURIComponent(item.filename)}` : '');
-    const resolvedUrl = resolveAttachmentUrl(rawUrl);
+    const resolvedUrl = resolveAttachmentUrl(item, defaultModule);
 
     const isImage =
       item.isImage !== undefined
         ? item.isImage
-        : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || (rawUrl && rawUrl.startsWith('data:image'));
-    const isPdf = item.isPdf !== undefined ? item.isPdf : ext === 'PDF' || (rawUrl && rawUrl.toLowerCase().endsWith('.pdf'));
+        : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || (resolvedUrl && resolvedUrl.startsWith('data:image'));
+    const isPdf = item.isPdf !== undefined ? item.isPdf : ext === 'PDF' || (resolvedUrl && resolvedUrl.toLowerCase().endsWith('.pdf'));
     const isExcel =
       item.isExcel !== undefined
         ? item.isExcel
         : ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.xlsx')) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.csv')) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.xls'));
+          (resolvedUrl && resolvedUrl.toLowerCase().endsWith('.xlsx')) ||
+          (resolvedUrl && resolvedUrl.toLowerCase().endsWith('.csv')) ||
+          (resolvedUrl && resolvedUrl.toLowerCase().endsWith('.xls'));
     const isWord =
       item.isWord !== undefined
         ? item.isWord
         : ['DOC', 'DOCX'].includes(ext) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.docx')) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.doc'));
+          (resolvedUrl && resolvedUrl.toLowerCase().endsWith('.docx')) ||
+          (resolvedUrl && resolvedUrl.toLowerCase().endsWith('.doc'));
     const isPpt =
       item.isPpt !== undefined
         ? item.isPpt
         : ['PPT', 'PPTX'].includes(ext) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.pptx')) ||
-          (rawUrl && rawUrl.toLowerCase().endsWith('.ppt'));
+          (resolvedUrl && resolvedUrl.toLowerCase().endsWith('.pptx')) ||
+          (resolvedUrl && resolvedUrl.toLowerCase().endsWith('.ppt'));
 
     return {
       id: item.id,
@@ -201,7 +287,8 @@ export const normalizeAttachment = (item) => {
       url: resolvedUrl,
       size: item.size || '',
       type: ext,
-      date: item.date || '',
+      date: item.date || item.uploaded_at || '',
+      file: item.file || (item instanceof File ? item : null),
       isImage,
       isPdf,
       isExcel,
@@ -213,13 +300,22 @@ export const normalizeAttachment = (item) => {
   return null;
 };
 
-export const parseAttachments = (raw) => {
+/**
+ * Universal attachments parser. Accepts:
+ * - JSON strings (arrays or objects)
+ * - Array of objects or strings
+ * - Single objects or raw strings
+ * - Comma-separated strings (safely distinguishes JSON from plain CSV lists)
+ */
+export const parseAttachments = (raw, defaultModule = '') => {
   if (!raw) return [];
   if (Array.isArray(raw)) {
-    return raw.map(normalizeAttachment).filter(Boolean);
+    return raw.map((item) => normalizeAttachment(item, defaultModule)).filter(Boolean);
   }
   if (typeof raw === 'object') {
-    if (raw.url || raw.name || raw.filename || raw.id) return [normalizeAttachment(raw)].filter(Boolean);
+    if (raw.url || raw.name || raw.filename || raw.id) {
+      return [normalizeAttachment(raw, defaultModule)].filter(Boolean);
+    }
     return [];
   }
   if (typeof raw === 'string') {
@@ -240,15 +336,14 @@ export const parseAttachments = (raw) => {
           } catch {}
         }
         if (Array.isArray(parsed)) {
-          return parsed.map(normalizeAttachment).filter(Boolean);
+          return parsed.map((item) => normalizeAttachment(item, defaultModule)).filter(Boolean);
         }
         if (parsed && typeof parsed === 'object') {
-          return [normalizeAttachment(parsed)].filter(Boolean);
+          return [normalizeAttachment(parsed, defaultModule)].filter(Boolean);
         }
       } catch (err) {
         console.warn('Could not parse JSON attachments:', err);
       }
-      // CRITICAL: Never fall through to comma-splitting for JSON structures!
       return [];
     }
 
@@ -258,11 +353,11 @@ export const parseAttachments = (raw) => {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean)
-        .map(normalizeAttachment)
+        .map((item) => normalizeAttachment(item, defaultModule))
         .filter(Boolean);
     }
 
-    return [normalizeAttachment(trimmed)].filter(Boolean);
+    return [normalizeAttachment(trimmed, defaultModule)].filter(Boolean);
   }
   return [];
 };

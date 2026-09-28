@@ -1,8 +1,12 @@
--- India Nippon Electricals Limited - Todo Database Schema & Initial Data
+-- ==============================================================================
+-- India Nippon Electricals Limited (INEL)
+-- Microservices Database Schema & Seed Data
+-- ==============================================================================
+
 CREATE DATABASE IF NOT EXISTS inel_todo;
 USE inel_todo;
 
--- Drop existing tables to allow a clean reset
+-- Clean reset of all existing tables
 DROP TABLE IF EXISTS email_logs;
 DROP TABLE IF EXISTS ihlr_notifications;
 DROP TABLE IF EXISTS process_audit_notifications;
@@ -10,12 +14,15 @@ DROP TABLE IF EXISTS process_audit_approvals;
 DROP TABLE IF EXISTS ihlr_attachments;
 DROP TABLE IF EXISTS app_attachments;
 DROP TABLE IF EXISTS process_audit_attachment_files;
+DROP TABLE IF EXISTS tryout_trials;
 DROP TABLE IF EXISTS line_stoppers;
 DROP TABLE IF EXISTS ihlr_requests;
 DROP TABLE IF EXISTS process_audit_requests;
 DROP TABLE IF EXISTS users;
 
--- 1. Users Table
+-- ==============================================================================
+-- 1. USERS TABLE
+-- ==============================================================================
 CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -25,10 +32,14 @@ CREATE TABLE users (
   department VARCHAR(100) DEFAULT 'PRODUCTION',
   status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_user_email (email),
+  INDEX idx_user_role (role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. Process Audit Production Requests
+-- ==============================================================================
+-- 2. PROCESS AUDIT PRODUCTION REQUESTS
+-- ==============================================================================
 CREATE TABLE process_audit_requests (
   id INT AUTO_INCREMENT PRIMARY KEY,
   issue_no VARCHAR(50) NOT NULL,
@@ -37,21 +48,37 @@ CREATE TABLE process_audit_requests (
   model VARCHAR(100) NOT NULL,
   process_operation VARCHAR(100) NOT NULL,
   shift VARCHAR(50) NOT NULL,
-  issue_type VARCHAR(50),
-  priority VARCHAR(50),
-  issue_observation TEXT,
-  attachments JSON,
+  issue_type VARCHAR(50) NULL,
+  priority VARCHAR(50) NULL,
+  issue_observation TEXT NULL,
+  attachments JSON NULL,
   department VARCHAR(100) NOT NULL,
   executor VARCHAR(100) NOT NULL,
-  comments TEXT,
+  comments TEXT NULL,
   status VARCHAR(50) DEFAULT 'Pending Execution',
-  created_by VARCHAR(100),
+  root_cause TEXT NULL,
+  corrective_action TEXT NULL,
+  action_attachments JSON NULL,
+  standardization_details TEXT NULL,
+  target_date VARCHAR(50) NULL,
+  action_taken_by VARCHAR(100) NULL,
+  action_taken_at TIMESTAMP NULL,
+  approved_by VARCHAR(100) NULL,
+  approved_by_id INT NULL,
+  approved_by_email VARCHAR(100) NULL,
+  approved_at TIMESTAMP NULL,
+  created_by VARCHAR(100) NULL,
   created_by_id INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_pa_issue_no (issue_no),
+  INDEX idx_pa_status (status),
+  INDEX idx_pa_executor (executor)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. Process Audit Approvals & Sign-offs
+-- ==============================================================================
+-- 3. PROCESS AUDIT APPROVALS & SIGN-OFFS
+-- ==============================================================================
 CREATE TABLE process_audit_approvals (
   id INT AUTO_INCREMENT PRIMARY KEY,
   request_id INT NOT NULL,
@@ -70,12 +97,14 @@ CREATE TABLE process_audit_approvals (
   status VARCHAR(50) DEFAULT 'Approved',
   comments TEXT NULL,
   approved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_request_id (request_id),
-  INDEX idx_issue_no (issue_no),
-  INDEX idx_approved_by (approved_by)
-);
+  INDEX idx_pa_appr_request (request_id),
+  INDEX idx_pa_appr_issue (issue_no),
+  INDEX idx_pa_appr_user (approved_by)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. Process Audit Notifications
+-- ==============================================================================
+-- 4. PROCESS AUDIT NOTIFICATIONS
+-- ==============================================================================
 CREATE TABLE process_audit_notifications (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NULL,
@@ -89,11 +118,27 @@ CREATE TABLE process_audit_notifications (
   link VARCHAR(255) DEFAULT '/process-audit/approvals',
   is_read TINYINT(1) DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_user_name (user_name),
-  INDEX idx_req_id (request_id)
-);
+  INDEX idx_pa_notif_user (user_name),
+  INDEX idx_pa_notif_req (request_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. IHLR (In-House Line Rejection) Analysis Reports
+-- ==============================================================================
+-- 5. PROCESS AUDIT BINARY ATTACHMENTS STORAGE (LONGBLOB)
+-- ==============================================================================
+CREATE TABLE process_audit_attachment_files (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  filename VARCHAR(255) NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL DEFAULT 'application/octet-stream',
+  file_size INT NOT NULL DEFAULT 0,
+  file_data LONGBLOB NOT NULL,
+  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_pa_att_filename (filename)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==============================================================================
+-- 6. IHLR (IN-HOUSE LINE REJECTION) ANALYSIS REPORTS
+-- ==============================================================================
 CREATE TABLE ihlr_requests (
   id INT AUTO_INCREMENT PRIMARY KEY,
   req_no VARCHAR(50) NOT NULL,
@@ -104,17 +149,17 @@ CREATE TABLE ihlr_requests (
   problem_detected_at VARCHAR(100) NOT NULL,
   received_from VARCHAR(100) NOT NULL,
   analysis_done_by VARCHAR(100) NOT NULL,
-  defect_image TEXT,
-  qa_why_why JSON,
+  defect_image TEXT NULL,
+  qa_why_why JSON NULL,
   actual_qty INT DEFAULT 1,
   four_m VARCHAR(50) DEFAULT 'MAN',
   resp VARCHAR(50) DEFAULT 'PRODUCTION',
-  resp_person VARCHAR(100),
-  prod_why_why JSON,
-  action TEXT,
-  evidence_attachment TEXT,
-  target_date DATE,
-  remarks TEXT,
+  resp_person VARCHAR(100) NULL,
+  prod_why_why JSON NULL,
+  action TEXT NULL,
+  evidence_attachment TEXT NULL,
+  target_date DATE NULL,
+  remarks TEXT NULL,
   status ENUM('OPEN', 'IN_PROGRESS', 'CLOSED') DEFAULT 'OPEN',
   created_by VARCHAR(100) NULL,
   created_by_id INT NULL,
@@ -122,11 +167,14 @@ CREATE TABLE ihlr_requests (
   resp_person_email VARCHAR(150) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_req_no (req_no),
-  INDEX idx_resp_person (resp_person)
-);
+  INDEX idx_ihlr_req_no (req_no),
+  INDEX idx_ihlr_resp_person (resp_person),
+  INDEX idx_ihlr_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 6. IHLR In-App Notifications (Dual alerts: raised person & assigned person)
+-- ==============================================================================
+-- 7. IHLR IN-APP NOTIFICATIONS
+-- ==============================================================================
 CREATE TABLE ihlr_notifications (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NULL,
@@ -142,9 +190,11 @@ CREATE TABLE ihlr_notifications (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_ihlr_notif_user (user_name),
   INDEX idx_ihlr_notif_req (request_id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 7. Common App Binary File Attachments Storage (LONGBLOB)
+-- ==============================================================================
+-- 8. COMMON APP BINARY ATTACHMENTS STORAGE (LONGBLOB)
+-- ==============================================================================
 CREATE TABLE app_attachments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   module_name VARCHAR(50) NOT NULL DEFAULT 'COMMON',
@@ -155,12 +205,14 @@ CREATE TABLE app_attachments (
   file_size BIGINT NOT NULL,
   file_data LONGBLOB NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_mod (module_name),
-  INDEX idx_ref (ref_id),
-  INDEX idx_fn (filename)
-);
+  INDEX idx_app_att_mod (module_name),
+  INDEX idx_app_att_ref (ref_id),
+  INDEX idx_app_att_fn (filename)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 8. IHLR Specific Binary Attachments (backward compatibility)
+-- ==============================================================================
+-- 9. IHLR SPECIFIC BINARY ATTACHMENTS (LONGBLOB)
+-- ==============================================================================
 CREATE TABLE ihlr_attachments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   request_id INT NULL,
@@ -170,11 +222,13 @@ CREATE TABLE ihlr_attachments (
   file_size BIGINT NOT NULL,
   file_data LONGBLOB NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_req (request_id),
-  INDEX idx_fn (filename)
-);
+  INDEX idx_ihlr_att_req (request_id),
+  INDEX idx_ihlr_att_fn (filename)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 9. Email Audit Logs Table
+-- ==============================================================================
+-- 10. EMAIL AUDIT LOGS TABLE
+-- ==============================================================================
 CREATE TABLE email_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
   module_type VARCHAR(50) NOT NULL,
@@ -192,11 +246,13 @@ CREATE TABLE email_logs (
   sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_email_ref (reference_no),
   INDEX idx_email_recipient (recipient_email)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ============================================================================
--- INITIAL SEED DATA (Default Admin Only)
--- ============================================================================
+-- ==============================================================================
+-- INITIAL SEED DATA
+-- ==============================================================================
 
+-- 1. Default Administrator Account (Password: Admin@123)
 INSERT INTO users (id, name, email, password, role, department, status) VALUES
-(1, 'Admin', 'admin@gmail.com', '$2a$10$CrwtyoMRR8nc7T9QGIok1Okp6GtY07069ME0c0kvvrpMu7NzsSKR6', 'ADMIN', 'INCOMING QUALITY', 'ACTIVE');
+(1, 'Admin', 'admin@gmail.com', '$2a$10$CrwtyoMRR8nc7T9QGIok1Okp6GtY07069ME0c0kvvrpMu7NzsSKR6', 'ADMIN', 'INCOMING QUALITY', 'ACTIVE')
+ON DUPLICATE KEY UPDATE name = VALUES(name);

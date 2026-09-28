@@ -309,6 +309,43 @@ const UserManagement = () => {
         </div>
       </div>
 
+      {/* Common Module Tabs Switcher */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 w-fit">
+        <button
+          type="button"
+          onClick={() => navigate('/process-audit/users')}
+          className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+            !isIhlr
+              ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+          }`}
+        >
+          <span className={`w-2 h-2 rounded-full ${!isIhlr ? 'bg-blue-600' : 'bg-slate-400'}`} />
+          <span>Process Audit</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/ihlr/users')}
+          className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+            isIhlr
+              ? 'bg-white text-indigo-700 shadow-xs border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+          }`}
+        >
+          <span className={`w-2 h-2 rounded-full ${isIhlr ? 'bg-indigo-600' : 'bg-slate-400'}`} />
+          <span>In-House Line Rejection (IHLR)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/system-selection')}
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-white/50 transition cursor-pointer"
+        >
+          <span>All Manufacturing Portals</span>
+        </button>
+      </div>
+
         {/* KPI Metrics Strip - Common across all tabs */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
@@ -447,6 +484,7 @@ const UserManagement = () => {
                   <th className="py-3.5 px-4">EMPLOYEE ID</th>
                   <th className="py-3.5 px-4">ROLE</th>
                   <th className="py-3.5 px-4">DEPARTMENT</th>
+                  <th className="py-3.5 px-4">TABS &amp; SCOPE</th>
                   <th className="py-3.5 px-4">STATUS</th>
                   <th className="py-3.5 px-6 text-right">ACTIONS</th>
                 </tr>
@@ -454,7 +492,7 @@ const UserManagement = () => {
               <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <td colSpan={8} className="py-12 text-center text-slate-400">
                       <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                       <p className="font-semibold text-slate-600">No personnel found</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">Try refining your search terms or filters.</p>
@@ -510,6 +548,21 @@ const UserManagement = () => {
                         {/* Department */}
                         <td className="py-4 px-4 text-slate-700 font-medium">
                           {u.department}
+                        </td>
+
+                        {/* Tabs & Access Scope */}
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <div className="flex flex-wrap items-center gap-1">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200" title="Process Audit Observation tabs">
+                              Process Audit
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" title="In-House Line Rejection tabs">
+                              IHLR
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200" title="Try Out Status tabs">
+                              Try Out
+                            </span>
+                          </div>
                         </td>
 
                         {/* Status Toggle */}
@@ -700,6 +753,27 @@ const UserManagement = () => {
                 </div>
               </div>
 
+              {/* Universal Tab Permissions Info */}
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5">
+                <span className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  Universal Tab Scope (Active for all portals)
+                </span>
+                <p className="text-[11px] text-slate-500">
+                  This enterprise user will automatically have access to all tabs across all portals.
+                </p>
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                    <Check className="w-3 h-3 text-blue-600" /> Process Audit
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    <Check className="w-3 h-3 text-indigo-600" /> IHLR Defect Tracking
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                    <Check className="w-3 h-3 text-amber-600" /> Try Out Trials
+                  </span>
+                </div>
+              </div>
+
               {/* Actions */}
               <div className="flex gap-3 pt-3">
                 <button
@@ -816,6 +890,27 @@ const UserManagement = () => {
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
+              </div>
+
+              {/* Universal Tab Permissions Info */}
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5">
+                <span className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  Universal Tab Scope (Active for all portals)
+                </span>
+                <p className="text-[11px] text-slate-500">
+                  Role and department updates will immediately apply across all tabs in all portals.
+                </p>
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                    <Check className="w-3 h-3 text-blue-600" /> Process Audit
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    <Check className="w-3 h-3 text-indigo-600" /> IHLR Defect Tracking
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                    <Check className="w-3 h-3 text-amber-600" /> Try Out Trials
+                  </span>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-3">

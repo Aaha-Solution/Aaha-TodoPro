@@ -24,7 +24,7 @@ import {
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
 import AttachmentThumbnail from '../../components/common/AttachmentThumbnail';
-import { triggerDirectDownload } from '../../components/common/attachmentUtils';
+import { triggerDirectDownload, resolveAttachmentUrl } from '../../components/common/attachmentUtils';
 
 const MyRequests = () => {
   const navigate = useNavigate();
@@ -196,55 +196,7 @@ const MyRequests = () => {
     };
   };
 
-  const getFullAttachmentUrl = (att) => {
-    if (!att) return '';
-    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
-
-    // Numeric ID lookup directly
-    if (typeof att === 'number' || (typeof att === 'string' && /^\d+$/.test(att.trim()))) {
-      return `${apiBase}/api/process-audit/attachments/${String(att).trim()}`;
-    }
-
-    if (typeof att === 'object' && att.id) {
-      return `${apiBase}/api/process-audit/attachments/${att.id}`;
-    }
-
-    let url = '';
-    if (typeof att === 'string') {
-      url = att;
-    } else {
-      // Prioritize persistent backend URLs over stale browser blob URLs
-      if (att.url && !att.url.startsWith('blob:')) {
-        url = att.url;
-      } else if (att.path && !att.path.startsWith('blob:')) {
-        url = att.path;
-      } else if (att.filename) {
-        url = `/api/process-audit/attachments/${encodeURIComponent(att.filename)}`;
-      } else if (att.name) {
-        url = `/api/process-audit/attachments/${encodeURIComponent(att.name)}`;
-      }
-    }
-
-    if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-
-    // If still a dead blob: URL, resolve through database endpoint using filename/name
-    if (url.startsWith('blob:')) {
-      const fallbackName = typeof att === 'object' ? (att.filename || att.name) : '';
-      if (fallbackName) {
-        return `${apiBase}/api/process-audit/attachments/${encodeURIComponent(fallbackName)}`;
-      }
-      return url;
-    }
-
-    const cleanUrl = url.startsWith('/') ? url : `/${url}`;
-    if (cleanUrl.startsWith('/uploads/')) {
-      return `${apiBase}/api/process-audit${cleanUrl}`;
-    }
-    return `${apiBase}${cleanUrl}`;
-  };
+  const getFullAttachmentUrl = (att) => resolveAttachmentUrl(att, 'process-audit');
 
   const getFileMeta = (file) => {
     const fileName = typeof file === 'string' ? file : (file?.name || file?.filename || file?.path || '');

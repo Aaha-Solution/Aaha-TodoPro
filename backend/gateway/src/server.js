@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
@@ -102,8 +103,23 @@ app.use((req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`[INEL API Gateway] running on http://localhost:${PORT}`);
+const getLocalIp = () => {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return 'localhost';
+};
+
+app.listen(PORT, '0.0.0.0', () => {
+  const localIp = getLocalIp();
+  console.log(`[INEL API Gateway] running on:`);
+  console.log(`  > Local:   http://localhost:${PORT}`);
+  console.log(`  > Network: http://${localIp}:${PORT}`);
   console.log(`[Gateway Routing Matrix]`);
   console.log(` -> /api/auth          => ${authServiceUrl}`);
   console.log(` -> /api/users         => ${authServiceUrl}`);

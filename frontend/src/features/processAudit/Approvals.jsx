@@ -38,6 +38,7 @@ import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import AttachmentThumbnail from '../../components/common/AttachmentThumbnail';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
+import { resolveAttachmentUrl, triggerDirectDownload } from '../../components/common/attachmentUtils';
 
 const ProcessAuditApprovals = () => {
   const { user } = useAuth();
@@ -78,53 +79,8 @@ const ProcessAuditApprovals = () => {
 
   const fileInputRef = useRef(null);
 
-  // Attachment URL resolver tailored for Process Audit backend
-  const getFullAttachmentUrl = (att) => {
-    if (!att) return '';
-    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
-
-    if (typeof att === 'number' || (typeof att === 'string' && /^\d+$/.test(att.trim()))) {
-      return `${apiBase}/api/process-audit/attachments/${String(att).trim()}`;
-    }
-
-    if (typeof att === 'object' && att.id) {
-      return `${apiBase}/api/process-audit/attachments/${att.id}`;
-    }
-
-    let url = '';
-    if (typeof att === 'string') {
-      url = att;
-    } else {
-      if (att.url && !att.url.startsWith('blob:')) {
-        url = att.url;
-      } else if (att.path && !att.path.startsWith('blob:')) {
-        url = att.path;
-      } else if (att.filename) {
-        url = `/api/process-audit/attachments/${encodeURIComponent(att.filename)}`;
-      } else if (att.name) {
-        url = `/api/process-audit/attachments/${encodeURIComponent(att.name)}`;
-      }
-    }
-
-    if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-
-    if (url.startsWith('blob:')) {
-      const fallbackName = typeof att === 'object' ? (att.filename || att.name) : '';
-      if (fallbackName) {
-        return `${apiBase}/api/process-audit/attachments/${encodeURIComponent(fallbackName)}`;
-      }
-      return url;
-    }
-
-    const cleanUrl = url.startsWith('/') ? url : `/${url}`;
-    if (cleanUrl.startsWith('/uploads/')) {
-      return `${apiBase}/api/process-audit${cleanUrl}`;
-    }
-    return `${apiBase}${cleanUrl}`;
-  };
+  // Universal attachment URL resolver
+  const getFullAttachmentUrl = (att) => resolveAttachmentUrl(att, 'process-audit');
 
   // Convert raw attachment data into uniform objects
   const normalizeAttachment = (item) => {

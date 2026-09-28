@@ -12,7 +12,7 @@ import {
   Paperclip,
   Check
 } from 'lucide-react';
-import { getFileMeta, triggerDirectDownload } from './attachmentUtils';
+import { getFileMeta, triggerDirectDownload, resolveAttachmentUrl } from './attachmentUtils';
 import ExcelViewer from './ExcelViewer';
 
 /**
@@ -34,12 +34,15 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
   const ext = (attachment.type || attachment.name?.split('.').pop() || '').toUpperCase();
   const meta = getFileMeta(attachment.type || ext, attachment.name);
 
-  // Derive preview URL (creates object URL if file exists locally but url is missing)
-  let activeUrl = attachment.url;
+  // Derive preview URL universally across all modules and formats
+  let activeUrl = attachment.url ? resolveAttachmentUrl(attachment.url) : '';
   if (!activeUrl && attachment.file) {
     try {
       activeUrl = URL.createObjectURL(attachment.file);
     } catch {}
+  }
+  if (!activeUrl && (attachment.id || attachment.filename || attachment.path || typeof attachment === 'string')) {
+    activeUrl = resolveAttachmentUrl(attachment);
   }
 
   const isImage = attachment.isImage !== undefined
