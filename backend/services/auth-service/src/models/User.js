@@ -60,5 +60,12 @@ export const User = {
     if (!pool) throw new Error('Database connection pool is not available');
     const [result] = await pool.query('DELETE FROM users WHERE id = ?', [id]);
     return result.affectedRows > 0;
+  },
+
+  updatePassword: async (id, newPassword) => {
+    if (!pool) throw new Error('Database connection pool is not available');
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+    const [result] = await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, id]);
+    return result.affectedRows > 0;
   }
 };

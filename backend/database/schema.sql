@@ -252,7 +252,7 @@ CREATE TABLE email_logs (
 -- INITIAL SEED DATA
 -- ==============================================================================
 
--- 1. Default Administrator Account (Password: Admin@123)
+-- 1. Default Administrator Account (Password: admin@123)
 INSERT INTO users (id, name, email, password, role, department, status) VALUES
-(1, 'Admin', 'admin@gmail.com', '$2a$10$CrwtyoMRR8nc7T9QGIok1Okp6GtY07069ME0c0kvvrpMu7NzsSKR6', 'ADMIN', 'INCOMING QUALITY', 'ACTIVE')
-ON DUPLICATE KEY UPDATE name = VALUES(name);
+(1, 'Admin', 'admin@gmail.com', '$2a$10$FPtxFd2HfqHQv3xiXzuj9.HmyZTpuaFZ5pmQJFleBmySa.Vdn2nxm', 'ADMIN', 'INCOMING QUALITY', 'ACTIVE')
+ON DUPLICATE KEY UPDATE name = VALUES(name), password = VALUES(password);
