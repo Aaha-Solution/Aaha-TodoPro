@@ -22,14 +22,39 @@ import ExcelViewer from './ExcelViewer';
  */
 const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
   const [zoom, setZoom] = useState(1);
+  const [imageError, setImageError] = useState(false);
+
+  React.useEffect(() => {
+    setImageError(false);
+    setZoom(1);
+  }, [attachment?.url, attachment?.name]);
 
   if (!isOpen || !attachment) return null;
 
-  const meta = getFileMeta(attachment.type, attachment.name);
-  const isImage = attachment.isImage;
-  const isPdf = attachment.isPdf;
-  const isExcel = attachment.isExcel;
-  const isWord = attachment.isWord;
+  const ext = (attachment.type || attachment.name?.split('.').pop() || '').toUpperCase();
+  const meta = getFileMeta(attachment.type || ext, attachment.name);
+
+  // Derive preview URL (creates object URL if file exists locally but url is missing)
+  let activeUrl = attachment.url;
+  if (!activeUrl && attachment.file) {
+    try {
+      activeUrl = URL.createObjectURL(attachment.file);
+    } catch {}
+  }
+
+  const isImage = attachment.isImage !== undefined
+    ? attachment.isImage
+    : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || Boolean(activeUrl?.startsWith('data:image'));
+  const isPdf = attachment.isPdf !== undefined
+    ? attachment.isPdf
+    : ext === 'PDF' || Boolean(activeUrl?.toLowerCase().includes('.pdf'));
+  const isExcel = attachment.isExcel !== undefined
+    ? attachment.isExcel
+    : ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext) ||
+      Boolean(activeUrl?.toLowerCase().includes('.xls') || activeUrl?.toLowerCase().includes('.csv') || attachment.name?.toLowerCase().endsWith('.csv') || attachment.name?.toLowerCase().endsWith('.xlsx') || attachment.name?.toLowerCase().endsWith('.xls'));
+  const isWord = attachment.isWord !== undefined
+    ? attachment.isWord
+    : ['DOC', 'DOCX'].includes(ext) || Boolean(activeUrl?.toLowerCase().includes('.doc'));
 
   return (
     <div 
@@ -95,9 +120,9 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
               </div>
             )}
 
-            {attachment.url && (
+            {activeUrl && (
               <a
-                href={attachment.url}
+                href={activeUrl}
                 download={attachment.name}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
                 title="Download original file"
@@ -123,13 +148,13 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
           {/* 1. Interactive Excel / Spreadsheet Viewer */}
           {isExcel ? (
             <div className="w-full">
-              <ExcelViewer url={attachment.url} filename={attachment.name} />
+              <ExcelViewer url={activeUrl} filename={attachment.name} file={attachment.file} />
             </div>
           ) : /* 2. Embedded PDF Document Viewer */
           isPdf ? (
             <div className="w-full h-[68vh] rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-xs">
               <object
-                data={attachment.url}
+                data={activeUrl}
                 type="application/pdf"
                 className="w-full h-full"
               >

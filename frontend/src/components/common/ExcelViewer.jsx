@@ -140,7 +140,7 @@ const parseWorksheetToGrid = (worksheet) => {
   return { headerRow, bodyRows, colsInfo, totalCols: range.e.c - range.s.c + 1 };
 };
 
-const ExcelViewer = ({ url, filename }) => {
+const ExcelViewer = ({ url, filename, file }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sheets, setSheets] = useState([]);
@@ -150,15 +150,22 @@ const ExcelViewer = ({ url, filename }) => {
   const [workbookRef, setWorkbookRef] = useState(null);
 
   const loadExcel = async () => {
-    if (!url) return;
+    if (!url && !file) return;
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to load file (${response.status}: ${response.statusText})`);
+      let arrayBuffer;
+      if (file && typeof file.arrayBuffer === 'function') {
+        arrayBuffer = await file.arrayBuffer();
+      } else if (url) {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to load file (${response.status}: ${response.statusText})`);
+        }
+        arrayBuffer = await response.arrayBuffer();
+      } else {
+        throw new Error('No spreadsheet data or URL provided.');
       }
-      const arrayBuffer = await response.arrayBuffer();
 
       // Read with full formatting, styles, date and number formats retained
       const workbook = XLSX.read(arrayBuffer, {
@@ -192,7 +199,7 @@ const ExcelViewer = ({ url, filename }) => {
 
   useEffect(() => {
     loadExcel();
-  }, [url]);
+  }, [url, file]);
 
   const handleSheetChange = (sheetName) => {
     setActiveSheet(sheetName);
