@@ -43,16 +43,11 @@ const Notification = () => {
 
   useEffect(() => {
     fetchLiveNotifications();
-    const interval = setInterval(fetchLiveNotifications, 10000); // 10s poll
-    const handleFocus = () => fetchLiveNotifications();
     const handleRefresh = () => fetchLiveNotifications();
 
-    window.addEventListener('focus', handleFocus);
     window.addEventListener('refreshNotifications', handleRefresh);
 
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('refreshNotifications', handleRefresh);
     };
   }, [user?.name, user?.id, user?.role, isIhlr]);
@@ -92,7 +87,11 @@ const Notification = () => {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          if (next) fetchLiveNotifications();
+        }}
         className="relative p-2.5 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center"
         aria-label="Notifications"
         title="Notifications"

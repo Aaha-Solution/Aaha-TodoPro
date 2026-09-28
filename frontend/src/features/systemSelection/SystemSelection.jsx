@@ -6,8 +6,7 @@ import {
   Wrench, 
   ArrowRight, 
   LogOut, 
-  Info,
-  Users
+  Info
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -107,19 +106,6 @@ const SystemSelection = () => {
 
         {/* Right User Bar */}
         <div className="flex items-center gap-3 sm:gap-4">
-          {isAdmin && (
-            <button
-              onClick={() => navigate('/process-audit/users')}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-all shadow-2xs cursor-pointer"
-              title="Enterprise User Directory"
-            >
-              <Users className="w-3.5 h-3.5 text-slate-500" />
-              <span>Users</span>
-            </button>
-          )}
-
-          {isAdmin && <div className="h-5 w-px bg-slate-200 hidden sm:block" />}
-
           <div 
             onClick={() => {
               if (isAdmin) {
