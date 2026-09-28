@@ -307,3 +307,100 @@ export const updateRequestStatus = async (req, res) => {
     return errorResponse(res, err.message);
   }
 };
+
+export const reassignRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body || {};
+    const { new_department, new_executor, reason } = body;
+
+    if (!new_department || !new_executor) {
+      return errorResponse(res, 'New department and new executor are required for reassignment', 400);
+    }
+
+    // Verify department authorization: Only INCOMING QUALITY or ADMIN can reassign
+    const userId = req.user?.id || body.reassigned_by_id;
+    const userName = req.user?.name || body.reassigned_by;
+    const userRole = (req.user?.role || body.role || '').toUpperCase();
+    const userDept = (req.user?.department || body.user_department || '').toUpperCase();
+
+    let isAuthorized = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY' || userDept.includes('INCOMING');
+    if (!isAuthorized && (userId || userName)) {
+      const [uRows] = await pool.query(
+        'SELECT department, role FROM users WHERE id = ? OR LOWER(name) = LOWER(?) LIMIT 1',
+        [userId || 0, userName || '']
+      );
+      if (uRows.length > 0) {
+        const uD = (uRows[0].department || '').trim().toUpperCase();
+        const uR = (uRows[0].role || '').trim().toUpperCase();
+        if (uR === 'ADMIN' || uD === 'INCOMING QUALITY' || uD.includes('INCOMING')) {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      return errorResponse(
+        res,
+        'Access Denied: Only personnel from INCOMING QUALITY or ADMIN are authorized to reassign requests.',
+        403
+      );
+    }
+
+    const reassignedByName = req.user?.name || body.reassigned_by || 'Quality Auditor';
+    const reassignedById = req.user?.id || body.reassigned_by_id || null;
+
+    const result = await ProcessAuditRequest.reassign(id, {
+      new_department,
+      new_executor,
+      reason,
+      reassigned_by: reassignedByName,
+      reassigned_by_id: reassignedById,
+    });
+
+    const updated = result.updated;
+    const issueNo = updated.issue_no || (updated.id ? `PA-${updated.id}` : 'PA-1');
+
+    // Notify new executor and clean up old executor notification
+    try {
+      // Mark old executor approval notification as read
+      await pool.query(
+        `UPDATE process_audit_notifications 
+         SET is_read = 1 
+         WHERE (request_id = ? OR issue_no = ?) AND type = 'approval_required' AND LOWER(TRIM(user_name)) = LOWER(TRIM(?))`,
+        [updated.id, issueNo, result.prevExec]
+      ).catch(() => {});
+
+      // Lookup new executor user_id
+      const [execUserRows] = await pool.query(
+        'SELECT id FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1',
+        [new_executor.trim()]
+      ).catch(() => [[]]);
+      const newExecUserId = execUserRows?.[0]?.id || null;
+
+      const reasonText = reason ? ` Reason: ${reason}` : '';
+      const notifMsg = `Request #${issueNo} has been reassigned to ${new_department} (${new_executor}) by ${reassignedByName}.${reasonText} Awaiting your review & sign-off.`;
+
+      await pool.query(
+        `INSERT INTO process_audit_notifications 
+         (user_name, user_id, request_id, issue_no, type, title, message, link) 
+         VALUES (?, ?, ?, ?, 'approval_required', ?, ?, '/process-audit/approvals')`,
+        [
+          new_executor.trim(),
+          newExecUserId,
+          updated.id,
+          issueNo,
+          `Audit Request Reassigned to You: #${issueNo}`,
+          notifMsg
+        ]
+      );
+    } catch (notifErr) {
+      console.warn('Failed to insert reassignment notification:', notifErr.message);
+    }
+
+    return successResponse(res, updated, 'Request reassigned successfully');
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+

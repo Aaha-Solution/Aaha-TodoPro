@@ -19,7 +19,9 @@ import {
   CheckCheck,
   RotateCcw,
   MessageSquare,
-  ChevronDown
+  ChevronDown,
+  ArrowRightLeft,
+  History
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
@@ -62,6 +64,165 @@ const MyRequests = () => {
   const [creatorRemark, setCreatorRemark] = useState('');
   const [selectedClosureStatus, setSelectedClosureStatus] = useState('Closed');
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Reassignment State
+  const [dbUsers, setDbUsers] = useState([]);
+  const [deptUsers, setDeptUsers] = useState([]);
+  const [loadingDeptUsers, setLoadingDeptUsers] = useState(false);
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [reassigningRequest, setReassigningRequest] = useState(null);
+  const [reassignDept, setReassignDept] = useState('');
+  const [reassignExecutor, setReassignExecutor] = useState('');
+  const [reassignReason, setReassignReason] = useState('');
+  const [reassignLoading, setReassignLoading] = useState(false);
+
+  const departmentList = Array.from(
+    new Set([
+      'PRODUCTION',
+      'MAINTENANCE',
+      'PED',
+      'MATERIALS',
+      'MARKETING',
+      'INCOMING QUALITY',
+      ...dbUsers.map((u) => (u.department || u.dept || '').trim()).filter(Boolean),
+    ])
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    processAuditService.getUsers()
+      .then((users) => {
+        if (isMounted && Array.isArray(users)) setDbUsers(users);
+      })
+      .catch((err) => console.error('Failed to load users:', err));
+    return () => { isMounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!reassignDept) {
+      setDeptUsers([]);
+      return;
+    }
+    let isMounted = true;
+    setLoadingDeptUsers(true);
+    processAuditService.getUsers(reassignDept)
+      .then((users) => {
+        if (!isMounted) return;
+        if (Array.isArray(users) && users.length > 0) {
+          setDeptUsers(users);
+        } else {
+          const matched = dbUsers.filter(
+            (u) => (u.department || u.dept || '').trim().toLowerCase() === reassignDept.trim().toLowerCase()
+          );
+          setDeptUsers(matched);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch executors for department:', err);
+        if (isMounted) {
+          const matched = dbUsers.filter(
+            (u) => (u.department || u.dept || '').trim().toLowerCase() === reassignDept.trim().toLowerCase()
+          );
+          setDeptUsers(matched);
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoadingDeptUsers(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [reassignDept, dbUsers]);
+
+  const parseReassignmentHistory = (hist) => {
+    if (!hist) return [];
+    if (Array.isArray(hist)) return hist;
+    if (typeof hist === 'string') {
+      try {
+        const parsed = JSON.parse(hist);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const handleOpenReassignModal = (reqItem) => {
+    const target = reqItem || activeModalRequest;
+    if (!target) return;
+    setReassigningRequest(target);
+    const targetDept = target.department || 'PRODUCTION';
+    setReassignDept(targetDept);
+    setReassignExecutor(target.executor || '');
+    setReassignReason('');
+    setShowReassignModal(true);
+  };
+
+  const handleConfirmReassign = async () => {
+    if (!reassigningRequest) return;
+    if (!reassignDept || !reassignExecutor) {
+      alert('Please select both a new Department and an Assigned Executor.');
+      return;
+    }
+    if (!reassignReason.trim()) {
+      alert('Please provide a reason or note explaining why this request is being reassigned.');
+      return;
+    }
+
+    setReassignLoading(true);
+    try {
+      const payload = {
+        new_department: reassignDept.trim(),
+        new_executor: reassignExecutor.trim(),
+        reason: reassignReason.trim(),
+        reassigned_by: user?.name || user?.email || 'Quality Auditor',
+        reassigned_by_id: user?.id || null,
+        role: user?.role,
+        user_department: currentDept
+      };
+
+      const updated = await processAuditService.reassignRequest(reassigningRequest.id, payload);
+      window.dispatchEvent(new Event('refreshNotifications'));
+
+      const merged = {
+        ...reassigningRequest,
+        ...updated,
+        department: reassignDept.trim(),
+        executor: reassignExecutor.trim(),
+        reassignment_history: updated.reassignment_history || [
+          ...parseReassignmentHistory(reassigningRequest.reassignment_history),
+          {
+            id: parseReassignmentHistory(reassigningRequest.reassignment_history).length + 1,
+            reassigned_at: new Date().toISOString(),
+            reassigned_by: user?.name || user?.email || 'Quality Auditor',
+            reassigned_by_id: user?.id || null,
+            previous_department: reassigningRequest.department,
+            previous_executor: reassigningRequest.executor,
+            new_department: reassignDept.trim(),
+            new_executor: reassignExecutor.trim(),
+            reason: reassignReason.trim()
+          }
+        ]
+      };
+
+      setRequests((prev) =>
+        prev.map((r) => (r.id === reassigningRequest.id || r.issue_no === reassigningRequest.issue_no ? merged : r))
+      );
+
+      if (activeModalRequest && (activeModalRequest.id === reassigningRequest.id || activeModalRequest.issue_no === reassigningRequest.issue_no)) {
+        setActiveModalRequest(merged);
+      }
+
+      alert(`Audit Request ${merged.issue_no || reassigningRequest.id} has been successfully reassigned to ${reassignDept} (${reassignExecutor})!`);
+      setShowReassignModal(false);
+      setReassigningRequest(null);
+    } catch (err) {
+      console.error('Failed to reassign request:', err);
+      alert('Failed to reassign request: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setReassignLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (activeModalRequest) {
@@ -714,23 +875,38 @@ const MyRequests = () => {
                         )}
                       </td>
                       <td className="py-4 px-6 text-center align-middle whitespace-nowrap">
-                        {statusStr.toLowerCase().includes('approved') && !statusStr.toLowerCase().includes('close') ? (
-                          <button
-                            onClick={() => setActiveModalRequest(req)}
-                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5 mx-auto"
-                            title="Review resolution and complete auditor sign-off"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Review &amp; Close</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => setActiveModalRequest(req)}
-                            className="px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition shadow-2xs cursor-pointer"
-                          >
-                            View Details
-                          </button>
-                        )}
+                        <div className="flex items-center justify-center gap-1.5">
+                          {statusStr.toLowerCase().includes('approved') && !statusStr.toLowerCase().includes('close') ? (
+                            <button
+                              onClick={() => setActiveModalRequest(req)}
+                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                              title="Review resolution and complete auditor sign-off"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Review &amp; Close</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setActiveModalRequest(req)}
+                              className="px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition shadow-2xs cursor-pointer flex items-center gap-1"
+                              title="View details"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-slate-500" />
+                              <span>View</span>
+                            </button>
+                          )}
+
+                          {canTrack && !statusStr.toLowerCase().includes('close') && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenReassignModal(req)}
+                              className="p-1.5 bg-white hover:bg-blue-50 text-slate-500 hover:text-blue-600 rounded-lg border border-slate-200 transition shadow-2xs cursor-pointer"
+                              title="Reassign Department or Executor"
+                            >
+                              <ArrowRightLeft className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -800,15 +976,96 @@ const MyRequests = () => {
                   <span className="font-bold text-slate-800">{activeModalRequest.process_operation || activeModalRequest.line}</span>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Department</span>
+                  <div className="flex items-center justify-between pb-1">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Department</span>
+                    {canTrack && !activeModalRequest.status?.toLowerCase().includes('close') && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenReassignModal(activeModalRequest)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                        title="Reassign to another department or executor"
+                      >
+                        <ArrowRightLeft className="w-3 h-3" />
+                        <span>Reassign</span>
+                      </button>
+                    )}
+                  </div>
                   <span className="font-bold text-slate-800">{activeModalRequest.department}</span>
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Assigned Executor</span>
-                <span className="font-bold text-slate-800">{activeModalRequest.executor}</span>
+              <div className="p-3 bg-slate-50 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Assigned Executor</span>
+                  <span className="font-bold text-slate-800">{activeModalRequest.executor}</span>
+                </div>
+                {canTrack && !activeModalRequest.status?.toLowerCase().includes('close') && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenReassignModal(activeModalRequest)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                    title="Change department or executor assignment"
+                  >
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                    <span>Reassign Request</span>
+                  </button>
+                )}
               </div>
+
+              {/* Reassignment History Audit Trail (when reassignments occurred) */}
+              {(() => {
+                const history = parseReassignmentHistory(activeModalRequest.reassignment_history);
+                if (history.length === 0) return null;
+                return (
+                  <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-amber-200/60">
+                      <div className="flex items-center gap-2">
+                        <History className="w-4 h-4 text-amber-700" />
+                        <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                          Reassignment History &amp; Audit Log
+                        </h4>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/70 text-amber-900 border border-amber-300">
+                        {history.length} {history.length === 1 ? 'Reassignment' : 'Reassignments'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {history.map((item, idx) => (
+                        <div key={idx} className="p-3 bg-white rounded-xl border border-amber-100 shadow-2xs space-y-1.5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] gap-1">
+                            <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                              <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[10px] font-mono flex items-center justify-center font-bold">
+                                {idx + 1}
+                              </span>
+                              <span>Reassigned by <strong className="text-blue-700">{item.reassigned_by || 'Quality Auditor'}</strong></span>
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {item.reassigned_at ? new Date(item.reassigned_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-xs flex-wrap py-1">
+                            <div className="px-2.5 py-1 bg-slate-100 rounded-lg text-slate-600 line-through text-[11px]">
+                              {item.previous_department} ({item.previous_executor})
+                            </div>
+                            <span className="text-amber-600 font-bold">➔</span>
+                            <div className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg font-bold text-[11px]">
+                              {item.new_department} ({item.new_executor})
+                            </div>
+                          </div>
+
+                          {item.reason && (
+                            <p className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 italic">
+                              &ldquo;{item.reason}&rdquo;
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {activeModalRequest.issue_observation && (
                 <div className="p-3 bg-slate-50 rounded-xl">
@@ -1210,6 +1467,149 @@ const MyRequests = () => {
         attachment={previewAttachment}
         onClose={() => setPreviewAttachment(null)}
       />
+
+      {/* Reassign Department & Executor Modal */}
+      {showReassignModal && reassigningRequest && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200/80 space-y-5 animate-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <ArrowRightLeft className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Reassign Audit Observation
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-mono">
+                    {reassigningRequest.issue_no || `PA-${reassigningRequest.id}`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReassignModal(false);
+                  setReassigningRequest(null);
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Current Assignment banner */}
+            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl text-xs space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Current Assignment
+              </span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-600">Department: <strong className="text-slate-800">{reassigningRequest.department}</strong></span>
+                <span className="text-slate-600">Executor: <strong className="text-slate-800">{reassigningRequest.executor}</strong></span>
+              </div>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  New Department <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={reassignDept}
+                    onChange={(e) => {
+                      setReassignDept(e.target.value);
+                      setReassignExecutor('');
+                    }}
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer appearance-none pr-8"
+                  >
+                    {departmentList.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    New Executor / Lead <span className="text-rose-500">*</span>
+                  </label>
+                  {loadingDeptUsers && (
+                    <span className="text-[10px] text-blue-600 flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3 animate-spin" /> Loading team...
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <select
+                    value={reassignExecutor}
+                    onChange={(e) => setReassignExecutor(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer appearance-none pr-8"
+                  >
+                    <option value="">-- Select Executor for {reassignDept} --</option>
+                    {deptUsers.map((u) => (
+                      <option key={u.id || u.name} value={u.name || u.email}>
+                        {u.name || u.email} {u.role ? `(${u.role})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Reassignment Reason &amp; Note <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={reassignReason}
+                  onChange={(e) => setReassignReason(e.target.value)}
+                  placeholder="Explain why this request is being reassigned (e.g. wrong department selected at creation, transferred to responsible team, etc.)..."
+                  className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReassignModal(false);
+                  setReassigningRequest(null);
+                }}
+                disabled={reassignLoading}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReassign}
+                disabled={reassignLoading}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition"
+              >
+                {reassignLoading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Reassigning...</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                    <span>Confirm Reassignment</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

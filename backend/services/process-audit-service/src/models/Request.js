@@ -73,6 +73,9 @@ const ensureTable = async () => {
     if (!colNames.includes('approved_at')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN approved_at TIMESTAMP NULL`).catch(() => {});
     }
+    if (!colNames.includes('reassignment_history')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN reassignment_history JSON NULL`).catch(() => {});
+    }
 
     // Drop any existing defaults on MySQL columns
     await pool.query(`ALTER TABLE process_audit_requests MODIFY issue_type VARCHAR(50) NULL`).catch(() => {});
@@ -441,5 +444,73 @@ export const ProcessAuditRequest = {
     }
 
     return updatedRow;
+  },
+
+  reassign: async (id, data = {}) => {
+    if (!pool) throw new Error('Database connection pool is not available');
+    const numericId = parseInt(String(id).replace(/\D/g, ''), 10) || id;
+
+    const [cols] = await pool.query(`SHOW COLUMNS FROM process_audit_requests`).catch(() => [[]]);
+    const colNames = cols.map((c) => c.Field);
+    if (!colNames.includes('reassignment_history')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN reassignment_history JSON NULL`).catch(() => {});
+    }
+
+    const [rows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?', [numericId, String(id)]);
+    if (rows.length === 0) throw new Error('Audit Request not found');
+    const req = rows[0];
+
+    const prevDept = req.department;
+    const prevExec = req.executor;
+    const newDept = (data.new_department || data.department || prevDept).trim();
+    const newExec = (data.new_executor || data.executor || prevExec).trim();
+    const reason = (data.reason || '').trim();
+    const reassignedBy = (data.reassigned_by || data.reassignedBy || 'Quality Auditor').trim();
+    const reassignedById = data.reassigned_by_id || data.reassignedById || null;
+
+    let history = [];
+    if (req.reassignment_history) {
+      if (Array.isArray(req.reassignment_history)) {
+        history = req.reassignment_history;
+      } else if (typeof req.reassignment_history === 'string') {
+        try {
+          const parsed = JSON.parse(req.reassignment_history);
+          history = Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          history = [];
+        }
+      }
+    }
+
+    const logEntry = {
+      id: history.length + 1,
+      reassigned_at: new Date().toISOString(),
+      reassigned_by: reassignedBy,
+      reassigned_by_id: reassignedById,
+      previous_department: prevDept,
+      previous_executor: prevExec,
+      new_department: newDept,
+      new_executor: newExec,
+      reason: reason || 'Department / Executor reassigned by Quality Auditor'
+    };
+
+    history.push(logEntry);
+
+    await pool.query(
+      `UPDATE process_audit_requests 
+       SET department = ?, executor = ?, reassignment_history = ? 
+       WHERE id = ? OR issue_no = ?`,
+      [newDept, newExec, JSON.stringify(history), numericId, String(id)]
+    );
+
+    const [updatedRows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?', [numericId, String(id)]);
+    return {
+      updated: updatedRows[0],
+      logEntry,
+      prevDept,
+      prevExec,
+      newDept,
+      newExec
+    };
   }
 };

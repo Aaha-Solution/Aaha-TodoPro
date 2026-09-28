@@ -77,6 +77,11 @@ export const processAuditService = {
     return res.data?.data || res.data;
   },
 
+  reassignRequest: async (id, data) => {
+    const res = await api.put(`/process-audit/requests/${id}/reassign`, data);
+    return res.data?.data || res.data;
+  },
+
   getNotifications: async (params) => {
     try {
       const res = await api.get('/process-audit/notifications', { params });
