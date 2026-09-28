@@ -140,6 +140,60 @@ const ProcessAuditApprovals = () => {
     return list.map(normalizeAttachment).filter(Boolean);
   };
 
+  const renderPriorityBadge = (priority) => {
+    if (!priority) return <span className="text-slate-400 font-normal">—</span>;
+    const p = String(priority).toLowerCase();
+    if (p === 'critical') {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+          Critical
+        </span>
+      );
+    }
+    if (p === 'high') {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+          High
+        </span>
+      );
+    }
+    if (p === 'medium') {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+          Medium
+        </span>
+      );
+    }
+    if (p === 'low') {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          Low
+        </span>
+      );
+    }
+    return <span className="text-slate-700 font-medium">{priority}</span>;
+  };
+
+  const renderIssueTypeBadge = (issueType) => {
+    if (!issueType) return <span className="text-slate-400 font-normal">—</span>;
+    const it = String(issueType).toLowerCase();
+    if (it === 'repeated') {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-orange-50 text-orange-700 border border-orange-200">
+          Repeated
+        </span>
+      );
+    }
+    if (it === 'new') {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+          New
+        </span>
+      );
+    }
+    return <span className="text-slate-700 font-medium">{issueType}</span>;
+  };
+
   const matchesExecutorUser = (execStr, uName, uEmail) => {
     if (!execStr) return false;
     const e = execStr.trim().toLowerCase();
@@ -246,6 +300,13 @@ const ProcessAuditApprovals = () => {
   const handleSaveCloser = async (e) => {
     if (e) e.preventDefault();
     if (!selectedRequest) return;
+
+    // Do not allow re-saving if status is already approved
+    const s = String(selectedRequest.status || '').toLowerCase();
+    if (s.includes('approved') || s.includes('close')) {
+      setErrorMessage('This request has already been approved and signed off. Saving again is disabled.');
+      return;
+    }
 
     setIsSaving(true);
     setSuccessMessage('');
@@ -507,6 +568,14 @@ const ProcessAuditApprovals = () => {
     };
   });
 
+  const isRequestApproved = (req) => {
+    if (!req || !req.status) return false;
+    const s = String(req.status).trim().toLowerCase();
+    return s.includes('approved') || s.includes('close');
+  };
+
+  const isSelectedApproved = Boolean(selectedRequest && isRequestApproved(selectedRequest));
+
   return (
     <div className="space-y-6 w-full pb-16">
       {/* Top Header & Breadcrumbs */}
@@ -555,11 +624,26 @@ const ProcessAuditApprovals = () => {
               </h2>
             </div>
             {selectedRequest && (
-              <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                {selectedRequest.issue_no || (selectedRequest.id ? `PA-${selectedRequest.id}` : `#${selectedRequest.id}`)}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                  {selectedRequest.issue_no || (selectedRequest.id ? `PA-${selectedRequest.id}` : `#${selectedRequest.id}`)}
+                </span>
+                {isSelectedApproved && (
+                  <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    APPROVED
+                  </span>
+                )}
+              </div>
             )}
           </div>
+
+          {/* Approved & Locked Notice */}
+          {isSelectedApproved && (
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 animate-in fade-in">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>This request is already <strong>APPROVED</strong></span>
+            </div>
+          )}
 
           {/* Success / Error Alerts */}
           {successMessage && (
@@ -578,20 +662,17 @@ const ProcessAuditApprovals = () => {
           {/* Form Fields */}
           <form onSubmit={handleSaveCloser} className="space-y-4 text-xs">
 
-            {/* 1. Request Reference Fields (Disabled grey boxes) */}
-           
-
-            {/* Root Cause Field (replaces 5-Why occurrence cause) */}
+            {/* Root Cause Field */}
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
                 ROOT CAUSE <span className="text-rose-500">*</span>
               </label>
               <textarea
                 rows={2}
-                disabled={!selectedRequest}
+                disabled={!selectedRequest || isSelectedApproved}
                 value={rootCause}
                 onChange={(e) => setRootCause(e.target.value)}
-                placeholder={selectedRequest ? 'Identify underlying root cause of deviation/defect...' : 'Click a row on the right to select'}
+                placeholder={!selectedRequest ? 'Click a row on the right to select' : isSelectedApproved ? 'Approved - Editing is locked' : 'Identify underlying root cause of deviation/defect...'}
                 className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition resize-none"
               />
             </div>
@@ -603,10 +684,10 @@ const ProcessAuditApprovals = () => {
               </label>
               <textarea
                 rows={2}
-                disabled={!selectedRequest}
+                disabled={!selectedRequest || isSelectedApproved}
                 value={closerAction}
                 onChange={(e) => setCloserAction(e.target.value)}
-                placeholder={selectedRequest ? 'Describe corrective actions taken / countermeasures...' : 'Click a row on the right to select'}
+                placeholder={!selectedRequest ? 'Click a row on the right to select' : isSelectedApproved ? 'Approved - Editing is locked' : 'Describe corrective actions taken / countermeasures...'}
                 className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition resize-none"
               />
             </div>
@@ -618,10 +699,10 @@ const ProcessAuditApprovals = () => {
               </label>
               <textarea
                 rows={2}
-                disabled={!selectedRequest}
+                disabled={!selectedRequest || isSelectedApproved}
                 value={standardizationDetails}
                 onChange={(e) => setStandardizationDetails(e.target.value)}
-                placeholder={selectedRequest ? 'Detail SOP revisions, Work Instructions, poka-yoke, or line standards...' : 'Click a row on the right to select'}
+                placeholder={!selectedRequest ? 'Click a row on the right to select' : isSelectedApproved ? 'Approved - Editing is locked' : 'Detail SOP revisions, Work Instructions, poka-yoke, or line standards...'}
                 className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition resize-none"
               />
             </div>
@@ -639,7 +720,7 @@ const ProcessAuditApprovals = () => {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  disabled={!selectedRequest}
+                  disabled={!selectedRequest || isSelectedApproved}
                   onClick={() => fileInputRef.current && fileInputRef.current.click()}
                   className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                 >
@@ -668,14 +749,16 @@ const ProcessAuditApprovals = () => {
                   <AttachmentChipList
                     attachments={existingEvidence}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    onRemove={(idx) => handleRemoveExistingEvidence(idx)}
+                    onRemove={isSelectedApproved ? undefined : (idx) => handleRemoveExistingEvidence(idx)}
+                    readonly={isSelectedApproved}
                   />
                 )}
                 {previewableNewFiles.length > 0 && (
                   <AttachmentChipList
                     attachments={previewableNewFiles}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    onRemove={(idx) => handleRemoveNewEvidence(idx)}
+                    onRemove={isSelectedApproved ? undefined : (idx) => handleRemoveNewEvidence(idx)}
+                    readonly={isSelectedApproved}
                   />
                 )}
               </div>
@@ -688,14 +771,13 @@ const ProcessAuditApprovals = () => {
               </label>
               <input
                 type="date"
-                disabled={!selectedRequest}
+                disabled={!selectedRequest || isSelectedApproved}
                 value={closerTargetDate}
                 onChange={(e) => setCloserTargetDate(e.target.value)}
                 className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition"
               />
             </div>
 
-          
             {/* Action Submit Button */}
             <div className="pt-2">
               {!selectedRequest ? (
@@ -706,6 +788,28 @@ const ProcessAuditApprovals = () => {
                 >
                   Select a Request to Validate
                 </button>
+              ) : isSelectedApproved ? (
+                <div className="space-y-1.5">
+                  {selectedRequest?.status?.toLowerCase().includes('close') ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-3 px-4 rounded-xl border border-teal-300 bg-teal-50 text-teal-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                      <span>Closed</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-3 px-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                    >
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span>Approved</span>
+                    </button>
+                  )}
+                </div>
               ) : (
                 <button
                   type="submit"
@@ -970,182 +1074,249 @@ const ProcessAuditApprovals = () => {
       </div>
 
       {/* Comprehensive Report Modal (View Details via Eye Icon) */}
-      {activeModalRequest && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                  <ClipboardCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <span>Audit Request Details: #{activeModalRequest.issue_no || (activeModalRequest.id ? `PA-${activeModalRequest.id}` : 'PA-1')}</span>
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    {activeModalRequest.model || activeModalRequest.stage || 'Stage'} • {activeModalRequest.process_operation || activeModalRequest.line || 'Line'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
-                  (activeModalRequest.status || '').toLowerCase().includes('approved')
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : (activeModalRequest.status || '').toLowerCase().includes('reject')
-                    ? 'bg-rose-50 text-rose-700 border-rose-200'
-                    : 'bg-amber-50 text-amber-700 border-amber-200'
-                }`}>
-                  {activeModalRequest.status || 'Pending Execution'}
-                </span>
-                <button
-                  onClick={() => setActiveModalRequest(null)}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
+      {activeModalRequest && (() => {
+        const reqId = activeModalRequest.issue_no || (activeModalRequest.id ? `PA-${activeModalRequest.id}` : 'PA-1');
+        const escalationDateStr = formatDate(activeModalRequest.escalation_date || activeModalRequest.created_at);
+        const productStr = activeModalRequest.product || '—';
+        const modelStr = activeModalRequest.model || activeModalRequest.stage || '—';
+        const processStr = activeModalRequest.process_operation || activeModalRequest.line || '—';
+        const shiftStr = activeModalRequest.shift || '—';
+        const executorStr = activeModalRequest.executor || '—';
+        const commentsStr = activeModalRequest.comments || activeModalRequest.issue_observation || activeModalRequest.problem || 'No observation recorded.';
+        const creatorAttachments = parseAttachments(activeModalRequest.attachments);
+        const actionAttachments = parseAttachments(activeModalRequest.action_attachments);
 
-            {/* Modal Scrollable Content */}
-            <div className="my-5 overflow-y-auto pr-1.5 space-y-5 text-xs flex-1">
-              {/* Overview Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-slate-400 block font-semibold text-[10px] uppercase">Incident Date &amp; Shift</span>
-                  <span className="font-bold text-slate-800 truncate block">
-                    {formatDate(activeModalRequest.escalation_date || activeModalRequest.created_at)} ({activeModalRequest.shift || '—'})
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                    <ClipboardCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <span>Audit Request Details</span>
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {modelStr} • {processStr}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                    (activeModalRequest.status || '').toLowerCase().includes('approved')
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : (activeModalRequest.status || '').toLowerCase().includes('reject')
+                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    {activeModalRequest.status || 'Pending Execution'}
                   </span>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-slate-400 block font-semibold text-[10px] uppercase">Product</span>
-                  <span className="font-bold text-slate-800 font-mono truncate block">{activeModalRequest.product || '—'}</span>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-slate-400 block font-semibold text-[10px] uppercase">Department</span>
-                  <span className="font-bold text-slate-800 truncate block">{activeModalRequest.department || '—'}</span>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-slate-400 block font-semibold text-[10px] uppercase">Assigned Executor</span>
-                  <span className="font-bold text-blue-700 truncate block">{activeModalRequest.executor || '—'}</span>
+                  <button
+                    onClick={() => setActiveModalRequest(null)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Observation Findings */}
-              <div>
-                <span className="text-slate-500 block font-bold mb-1.5 uppercase text-[10px] tracking-wider">
-                  Audit Observation &amp; Findings
-                </span>
-                <p className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-slate-800 leading-relaxed whitespace-pre-wrap text-xs font-normal">
-                  {activeModalRequest.issue_observation || activeModalRequest.problem || 'No observation recorded.'}
-                </p>
+              {/* Modal Scrollable Content */}
+              <div className="my-5 overflow-y-auto pr-1.5 space-y-5 text-xs flex-1">
+                {/* 1. SEPARATE ISSUE NO BANNER */}
+                <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-2xl">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-blue-900">ISSUE NO:</span>
+                    <span className="bg-white text-blue-700 border border-blue-300 px-3 py-1 rounded-xl text-sm font-mono font-bold tracking-wide shadow-2xs">
+                      {reqId}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-slate-500 font-semibold">Assign Department:</span>
+                    <strong className="text-slate-800 font-bold">{activeModalRequest.department || '—'}</strong>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-500 font-semibold">Created by:</span>
+                    <strong className="text-slate-800 font-bold">{activeModalRequest.created_by || 'Quality Auditor'} (Incomming Quality)</strong>
+                  </div>
+                </div>
+
+              
+
+                {/* 2. RESPONSIVE BREAKDOWN CARDS */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-slate-400 block font-semibold text-[10px] uppercase">Escalation Date *</span>
+                    <span className="font-bold text-slate-800 truncate block mt-0.5">{escalationDateStr}</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-slate-400 block font-semibold text-[10px] uppercase">Product</span>
+                    <span className="font-bold text-slate-800 truncate block mt-0.5">{productStr}</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-slate-400 block font-semibold text-[10px] uppercase">Model</span>
+                    <span className="font-bold text-slate-800 truncate block mt-0.5">{modelStr}</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-slate-400 block font-semibold text-[10px] uppercase">Process / Operation *</span>
+                    <span className="font-bold text-slate-800 truncate block mt-0.5">{processStr}</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-slate-400 block font-semibold text-[10px] uppercase">Shift</span>
+                    <span className="font-bold text-slate-800 truncate block mt-0.5">{shiftStr}</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-slate-400 block font-semibold text-[10px] uppercase mb-1">Issue Type</span>
+                    <div>{renderIssueTypeBadge(activeModalRequest.issue_type)}</div>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-slate-400 block font-semibold text-[10px] uppercase mb-1">Priority</span>
+                    <div>{renderPriorityBadge(activeModalRequest.priority)}</div>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-slate-400 block font-semibold text-[10px] uppercase">Assign Executor</span>
+                    <span className="font-bold text-blue-700 truncate block mt-0.5">{executorStr}</span>
+                  </div>
+                </div>
+
+                {/* 4. COMMENTS / OBSERVATION */}
+                <div>
+                  <span className="text-slate-600 block font-bold mb-1.5 uppercase text-[10px] tracking-wider">
+                    Comments / Audit Observation &amp; Findings
+                  </span>
+                  <p className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-slate-800 leading-relaxed whitespace-pre-wrap text-xs font-normal">
+                    {commentsStr}
+                  </p>
+                </div>
+
+                {/* 5. ATTACHMENTS (CREATOR INCIDENT ATTACHMENTS) */}
+                <div>
+                  <span className="text-slate-600 block font-bold mb-1.5 uppercase text-[10px] tracking-wider">
+                    Attachments ({creatorAttachments.length})
+                  </span>
+                  {creatorAttachments.length > 0 ? (
+                    <AttachmentChipList
+                      attachments={creatorAttachments}
+                      onPreview={(att) => setSelectedPreviewAttachment(att)}
+                      readonly
+                    />
+                  ) : (
+                    <p className="text-xs text-slate-400 italic bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                      No attachments provided for this request.
+                    </p>
+                  )}
+                </div>
+
+                {/* 6. CLOSER / SIGN-OFF EXECUTION DETAILS */}
+                {(activeModalRequest.root_cause || activeModalRequest.corrective_action || activeModalRequest.standardization_details || actionAttachments.length > 0) && (
+                  <div className="pt-4 border-t border-slate-200/80 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">Closer &amp; Sign-off Execution Details</span>
+                      <span className="text-[10px] text-slate-400">({activeModalRequest.action_taken_by ? `By ${activeModalRequest.action_taken_by}` : 'Action Recorded'})</span>
+                    </div>
+
+                    {activeModalRequest.root_cause && (
+                      <div>
+                        <span className="text-amber-700 block font-bold mb-1 uppercase text-[10px] tracking-wider">
+                          Root Cause Analysis
+                        </span>
+                        <p className="p-3.5 bg-amber-50/50 border border-amber-200/60 rounded-2xl text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                          {activeModalRequest.root_cause}
+                        </p>
+                      </div>
+                    )}
+
+                    {activeModalRequest.corrective_action && (
+                      <div>
+                        <span className="text-blue-700 block font-bold mb-1 uppercase text-[10px] tracking-wider">
+                          Corrective Actions &amp; Countermeasures
+                        </span>
+                        <p className="p-3.5 bg-blue-50/50 border border-blue-200/60 rounded-2xl text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                          {activeModalRequest.corrective_action}
+                        </p>
+                      </div>
+                    )}
+
+                    {activeModalRequest.standardization_details && (
+                      <div>
+                        <span className="text-slate-700 block font-bold mb-1 uppercase text-[10px] tracking-wider">
+                          Standardization Details
+                        </span>
+                        <p className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                          {activeModalRequest.standardization_details}
+                        </p>
+                      </div>
+                    )}
+
+                    {activeModalRequest.target_date && (
+                      <div>
+                        <span className="text-slate-700 block font-bold mb-1 uppercase text-[10px] tracking-wider">
+                          Target Date
+                        </span>
+                        <p className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-slate-800 text-xs font-semibold">
+                          {activeModalRequest.target_date}
+                        </p>
+                      </div>
+                    )}
+
+                    {actionAttachments.length > 0 && (
+                      <div>
+                        <span className="text-slate-500 block font-bold mb-1.5 uppercase text-[10px] tracking-wider">
+                          Executor Action Evidence ({actionAttachments.length})
+                        </span>
+                        <AttachmentChipList
+                          attachments={actionAttachments}
+                          onPreview={(att) => setSelectedPreviewAttachment(att)}
+                          readonly
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Sign-off Remarks */}
+                {(activeModalRequest.creator_remark || activeModalRequest.remarks) && (
+                  <div>
+                    <span className="text-slate-500 block font-bold mb-1.5 uppercase text-[10px] tracking-wider">
+                      Sign-off Remarks &amp; Auditor Notes
+                    </span>
+                    <p className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                      {activeModalRequest.creator_remark || activeModalRequest.remarks}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Root Cause */}
-              {activeModalRequest.root_cause && (
-                <div>
-                  <span className="text-amber-700 block font-bold mb-1.5 uppercase text-[10px] tracking-wider">
-                    Root Cause Analysis
-                  </span>
-                  <p className="p-3.5 bg-amber-50/50 border border-amber-200/60 rounded-2xl text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
-                    {activeModalRequest.root_cause}
-                  </p>
+              {/* Modal Footer */}
+              <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 shrink-0">
+                <div className="text-[11px] text-slate-400">
+                  Created by: <strong className="text-slate-700">{activeModalRequest.created_by || 'Quality Auditor'}</strong>
                 </div>
-              )}
-
-              {/* Corrective Action */}
-              {activeModalRequest.corrective_action && (
-                <div>
-                  <span className="text-blue-700 block font-bold mb-1.5 uppercase text-[10px] tracking-wider">
-                    Corrective Actions &amp; Countermeasures
-                  </span>
-                  <p className="p-3.5 bg-blue-50/50 border border-blue-200/60 rounded-2xl text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
-                    {activeModalRequest.corrective_action}
-                  </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      populateForm(activeModalRequest);
+                      setActiveModalRequest(null);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                  >
+                    Edit in Sign-off Form
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveModalRequest(null)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 font-semibold text-xs hover:bg-slate-50 transition cursor-pointer"
+                  >
+                    Close
+                  </button>
                 </div>
-              )}
-
-              {/* Standardization Details */}
-              {activeModalRequest.standardization_details && (
-                <div>
-                  <span className="text-slate-700 block font-bold mb-1.5 uppercase text-[10px] tracking-wider">
-                    Standardization Details
-                  </span>
-                  <p className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
-                    {activeModalRequest.standardization_details}
-                  </p>
-                </div>
-              )}
-
-              {/* Creator Incident / Defect Attachments */}
-              {parseAttachments(activeModalRequest.attachments).length > 0 && (
-                <div>
-                  <span className="text-slate-500 block font-bold mb-1.5 uppercase text-[10px] tracking-wider">
-                    Creator Incident Attachments
-                  </span>
-                  <AttachmentChipList
-                    attachments={parseAttachments(activeModalRequest.attachments)}
-                    onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    readonly
-                  />
-                </div>
-              )}
-
-              {/* Executor Evidence Attachments */}
-              {parseAttachments(activeModalRequest.action_attachments).length > 0 && (
-                <div>
-                  <span className="text-slate-500 block font-bold mb-1.5 uppercase text-[10px] tracking-wider">
-                    Executor Action Evidence
-                  </span>
-                  <AttachmentChipList
-                    attachments={parseAttachments(activeModalRequest.action_attachments)}
-                    onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    readonly
-                  />
-                </div>
-              )}
-
-              {/* Remarks */}
-              {(activeModalRequest.creator_remark || activeModalRequest.comments || activeModalRequest.remarks) && (
-                <div>
-                  <span className="text-slate-500 block font-bold mb-1.5 uppercase text-[10px] tracking-wider">
-                    Sign-off Remarks &amp; Auditor Notes
-                  </span>
-                  <p className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
-                    {activeModalRequest.creator_remark || activeModalRequest.comments || activeModalRequest.remarks}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 shrink-0">
-              <div className="text-[11px] text-slate-400">
-                Created by: <strong className="text-slate-700">{activeModalRequest.created_by || 'Quality Auditor'}</strong>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    populateForm(activeModalRequest);
-                    setActiveModalRequest(null);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
-                >
-                  Edit in Sign-off Form
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveModalRequest(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 font-semibold text-xs hover:bg-slate-50 transition cursor-pointer"
-                >
-                  Close
-                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Universal Attachment Preview Modal */}
       <AttachmentPreviewModal

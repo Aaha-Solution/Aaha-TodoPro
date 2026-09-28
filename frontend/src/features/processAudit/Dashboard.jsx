@@ -8,6 +8,7 @@ import {
   Cpu, 
   ShieldCheck, 
   Check, 
+  CheckCircle2,
   X, 
   Eye,
   FileText,
@@ -105,6 +106,12 @@ const ProcessAuditDashboard = () => {
 
   const getStatusMeta = (status) => {
     const s = (status || '').toLowerCase();
+    if (s.includes('close')) {
+      return {
+        statusColor: 'bg-teal-50 text-teal-700 border-teal-200/80',
+        dotColor: 'bg-teal-500',
+      };
+    }
     if (s.includes('approved') && !s.includes('partially') && !s.includes('pending')) {
       return {
         statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
@@ -189,6 +196,7 @@ const ProcessAuditDashboard = () => {
   const inExec = metrics.inExecution !== undefined ? metrics.inExecution : requests.filter(r => (r.status || '').toLowerCase().includes('in execution')).length;
   const pendingApp = metrics.pendingApproval !== undefined ? metrics.pendingApproval : requests.filter(r => (r.status || '').toLowerCase().includes('pending approval')).length;
   const approved = metrics.approved !== undefined ? metrics.approved : requests.filter(r => (r.status || '').toLowerCase() === 'approved').length;
+  const closed = metrics.closed !== undefined ? metrics.closed : requests.filter(r => (r.status || '').toLowerCase().includes('close')).length;
   const rejected = metrics.rejected !== undefined ? metrics.rejected : requests.filter(r => (r.status || '').toLowerCase().includes('reject')).length;
 
   const kpis = [
@@ -226,6 +234,13 @@ const ProcessAuditDashboard = () => {
       subtitle: 'Released to Inventory',
       icon: Check,
       iconBg: 'bg-emerald-50 text-emerald-600',
+    },
+    {
+      title: 'Closed',
+      value: String(closed),
+      subtitle: 'Audit signed off & closed',
+      icon: CheckCircle2,
+      iconBg: 'bg-teal-50 text-teal-600',
     },
     {
       title: 'Rejected',
@@ -366,18 +381,18 @@ const ProcessAuditDashboard = () => {
         </div>
       </div>
 
-      {/* 6 Top Metric Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* 7 Top Metric Cards Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
             <div
               key={idx}
-              className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs hover:shadow-xs transition flex flex-col justify-between"
+              className="bg-white rounded-2xl p-4 sm:p-4.5 border border-slate-200/90 shadow-2xs hover:shadow-xs transition flex flex-col justify-between"
             >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-600 truncate">{kpi.title}</span>
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${kpi.iconBg}`}>
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-xs font-semibold text-slate-700 truncate">{kpi.title}</span>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${kpi.iconBg}`}>
                   <Icon className="w-3.5 h-3.5" />
                 </div>
               </div>

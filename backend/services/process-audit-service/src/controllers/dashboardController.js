@@ -11,20 +11,22 @@ export const getDashboardMetrics = async (req, res) => {
     let inExecution = 0;
     let pendingApproval = 0;
     let approved = 0;
+    let closed = 0;
     let rejected = 0;
 
     rows.forEach(r => {
       const c = Number(r.count) || 0;
       totalRequests += c;
       const s = (r.status || '').toLowerCase();
-      if (s.includes('pending execution')) pendingExecution += c;
+      if (s.includes('close')) closed += c;
+      else if (s.includes('pending execution')) pendingExecution += c;
       else if (s.includes('in execution')) inExecution += c;
       else if (s.includes('pending approval')) pendingApproval += c;
       else if (s.includes('approved')) approved += c;
       else if (s.includes('rejected')) rejected += c;
     });
 
-    const auditPerformance = totalRequests > 0 ? Number(((approved / totalRequests) * 100).toFixed(1)) : 100.0;
+    const auditPerformance = totalRequests > 0 ? Number((((approved + closed) / totalRequests) * 100).toFixed(1)) : 100.0;
 
     const data = {
       totalRequests,
@@ -32,6 +34,7 @@ export const getDashboardMetrics = async (req, res) => {
       inExecution,
       pendingApproval,
       approved,
+      closed,
       rejected,
       openCapa: rejected,
       auditPerformance
