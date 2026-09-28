@@ -525,7 +525,16 @@ const IhlrMyRequests = () => {
                     {/* Defect Attachment Thumbnail */}
                     <td className="py-3.5 px-2 text-center">
                       <div className="flex items-center justify-center">
-                        <IhlrAttachmentThumbnail rawAttachment={r.defect_image} />
+                        <IhlrAttachmentThumbnail
+                          rawAttachment={r.defect_image}
+                          onClick={(e) => {
+                            e?.stopPropagation?.();
+                            const atts = parseAttachments(r.defect_image);
+                            if (atts && atts.length > 0) {
+                              setSelectedPreviewAttachment(atts[0]);
+                            }
+                          }}
+                        />
                       </div>
                     </td>
 

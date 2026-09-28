@@ -12,7 +12,7 @@ import {
   Paperclip,
   Check
 } from 'lucide-react';
-import { getFileMeta } from './attachmentUtils';
+import { getFileMeta, triggerDirectDownload } from './attachmentUtils';
 import ExcelViewer from './ExcelViewer';
 
 /**
@@ -121,15 +121,19 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
             )}
 
             {activeUrl && (
-              <a
-                href={activeUrl}
-                download={attachment.name}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  triggerDirectDownload(activeUrl, attachment.name, attachment.file);
+                }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
-                title="Download original file"
+                title="Download file directly"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Download</span>
-              </a>
+              </button>
             )}
 
             <button
@@ -165,14 +169,14 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
                 >
                   <div className="p-6 text-center">
                     <p className="text-sm font-semibold text-slate-700">PDF preview not supported by your browser.</p>
-                    <a
-                      href={attachment.url}
-                      download={attachment.name}
-                      className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold"
+                    <button
+                      type="button"
+                      onClick={() => triggerDirectDownload(activeUrl, attachment.name, attachment.file)}
+                      className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
                     >
                       <Download className="w-4 h-4" />
                       Download PDF
-                    </a>
+                    </button>
                   </div>
                 </iframe>
               </object>
@@ -203,14 +207,14 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
               </div>
 
               <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
-                <a
-                  href={attachment.url}
-                  download={attachment.name}
+                <button
+                  type="button"
+                  onClick={() => triggerDirectDownload(activeUrl || attachment.url, attachment.name, attachment.file)}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 transition cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
                   <span>Download Word Document</span>
-                </a>
+                </button>
               </div>
             </div>
           ) : /* 5. Fallback File Card */
@@ -229,14 +233,14 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
               </div>
 
               <div className="flex items-center justify-center pt-3">
-                <a
-                  href={attachment.url}
-                  download={attachment.name}
+                <button
+                  type="button"
+                  onClick={() => triggerDirectDownload(activeUrl || attachment.url, attachment.name, attachment.file)}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
                   <span>Download File</span>
-                </a>
+                </button>
               </div>
             </div>
           )}

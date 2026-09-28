@@ -266,3 +266,90 @@ export const parseAttachments = (raw) => {
   }
   return [];
 };
+
+/**
+ * Universal browser-direct file downloader
+ * Downloads files cleanly to the user's computer WITHOUT navigating away,
+ * opening blank pages, or affecting the UI state or open modals.
+ */
+export const triggerDirectDownload = async (url, filename = 'download', file = null) => {
+  try {
+    // 1. If file object already exists in memory
+    if (file && (file instanceof Blob || file instanceof File)) {
+      const blobUrl = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = blobUrl;
+      a.download = filename || file.name || 'download';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        if (a.parentNode) document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      }, 300);
+      return true;
+    }
+
+    if (!url) return false;
+
+    // 2. If already a blob or data URL
+    if (url.startsWith('blob:') || url.startsWith('data:')) {
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename || 'download';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        if (a.parentNode) document.body.removeChild(a);
+      }, 300);
+      return true;
+    }
+
+    // 3. For remote or server URLs (Cross-origin or relative)
+    // Fetch as Blob and create a same-origin Blob URL so the browser enforces direct download
+    // without ever reloading or changing the current page
+    const fetchUrl = url.includes('?') ? `${url}&download=1` : `${url}?download=1`;
+    let blob;
+    try {
+      const res = await fetch(fetchUrl);
+      if (res.ok) {
+        blob = await res.blob();
+      } else {
+        const retry = await fetch(url);
+        if (retry.ok) blob = await retry.blob();
+      }
+    } catch {}
+
+    if (blob) {
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = blobUrl;
+      a.download = filename || url.split('/').pop()?.split('?')[0] || 'download';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        if (a.parentNode) document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      }, 300);
+      return true;
+    }
+
+    // Fallback if CORS prevents blob fetch
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = fetchUrl;
+    a.download = filename || 'download';
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      if (a.parentNode) document.body.removeChild(a);
+    }, 300);
+    return true;
+  } catch (err) {
+    console.error('[triggerDirectDownload] Error:', err);
+    return false;
+  }
+};

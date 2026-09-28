@@ -677,20 +677,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                   <span className="text-[11px] text-slate-400 font-medium">Click any file to preview or inspect</span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  {attachments.map((att, idx) => (
-                    <div
-                      key={`${att.name || att.url}-${idx}`}
-                      onClick={() => setPreviewAttachment(att)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#f1f5f9] hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs font-medium text-slate-700 hover:text-blue-700 shadow-2xs transition cursor-pointer group"
-                      title={`Click to preview ${att.name}`}
-                    >
-                      <Paperclip className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 shrink-0" />
-                      <span className="truncate max-w-[200px]">{att.name}</span>
-                      <Eye className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 shrink-0 ml-0.5" />
-                    </div>
-                  ))}
-                </div>
+                <AttachmentChipList
+                  attachments={attachments}
+                  onPreview={(att) => setPreviewAttachment(att)}
+                  readonly={true}
+                />
               </div>
             )}
 

@@ -161,11 +161,14 @@ export const streamBinaryFile = async (req, res) => {
       return res.status(404).send('File attachment not found in database');
     }
 
+    const isDownload = req.query.download === '1' || req.query.download === 'true';
+    const dispositionType = isDownload ? 'attachment' : 'inline';
+
     res.setHeader('Content-Type', attachment.mime_type || 'application/octet-stream');
     res.setHeader('Content-Length', attachment.file_size || attachment.file_data.length);
     res.setHeader(
       'Content-Disposition',
-      `inline; filename="${encodeURIComponent(attachment.original_name || attachment.filename)}"`
+      `${dispositionType}; filename="${encodeURIComponent(attachment.original_name || attachment.filename)}"`
     );
     res.setHeader('Cache-Control', 'public, max-age=86400'); // 24h caching
 

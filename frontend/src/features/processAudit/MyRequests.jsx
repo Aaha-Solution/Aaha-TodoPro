@@ -24,6 +24,7 @@ import {
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
 import AttachmentThumbnail from '../../components/common/AttachmentThumbnail';
+import { triggerDirectDownload } from '../../components/common/attachmentUtils';
 
 const MyRequests = () => {
   const navigate = useNavigate();
@@ -931,16 +932,18 @@ const MyRequests = () => {
                             </button>
 
                             {att.url && (
-                              <a
-                                href={att.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                download={att.name}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  triggerDirectDownload(att.url, att.name);
+                                }}
                                 className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
-                                title="Download file"
+                                title="Download file directly"
                               >
                                 <Download className="w-3.5 h-3.5" />
-                              </a>
+                              </button>
                             )}
                           </div>
                         </div>
@@ -1037,9 +1040,18 @@ const MyRequests = () => {
                                     >
                                       <Eye className="w-3.5 h-3.5" />
                                     </button>
-                                    <a href={fullUrl} target="_blank" rel="noreferrer" download={att.name} className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100" title="Download">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        triggerDirectDownload(fullUrl, att.name);
+                                      }}
+                                      className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+                                      title="Download file directly"
+                                    >
                                       <Download className="w-3.5 h-3.5" />
-                                    </a>
+                                    </button>
                                   </div>
                                 )}
                               </div>

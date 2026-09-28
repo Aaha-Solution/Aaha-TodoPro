@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
+import { triggerDirectDownload } from '../../components/common/attachmentUtils';
 
 const ProcessAuditDashboard = () => {
   const navigate = useNavigate();
@@ -673,16 +674,18 @@ const ProcessAuditDashboard = () => {
                             </button>
 
                             {att.url && (
-                              <a
-                                href={att.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                download={att.name}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  triggerDirectDownload(att.url, att.name);
+                                }}
                                 className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
-                                title="Download file"
+                                title="Download file directly"
                               >
                                 <Download className="w-3.5 h-3.5" />
-                              </a>
+                              </button>
                             )}
                           </div>
                         </div>
@@ -755,14 +758,23 @@ const ProcessAuditDashboard = () => {
                                     <button
                                       type="button"
                                       onClick={() => setPreviewAttachment({ ...att, url: fullUrl, isImage: meta.isImage, isPdf: meta.isPdf, isExcel: meta.isExcel, isPpt: meta.isPpt, type: att.type || meta.typeName })}
-                                      className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100"
+                                      className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100 cursor-pointer"
                                       title="Preview"
                                     >
                                       <Eye className="w-3.5 h-3.5" />
                                     </button>
-                                    <a href={fullUrl} target="_blank" rel="noreferrer" download={att.name} className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100" title="Download">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        triggerDirectDownload(fullUrl, att.name);
+                                      }}
+                                      className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+                                      title="Download file directly"
+                                    >
                                       <Download className="w-3.5 h-3.5" />
-                                    </a>
+                                    </button>
                                   </div>
                                 )}
                               </div>

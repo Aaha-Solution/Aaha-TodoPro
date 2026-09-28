@@ -20,9 +20,12 @@ export const getAttachment = async (req, res) => {
     const mimeType = fileRecord.mime_type || 'application/octet-stream';
     const filename = fileRecord.original_name || fileRecord.filename || 'attachment';
 
+    const isDownload = req.query.download === '1' || req.query.download === 'true';
+    const dispositionType = isDownload ? 'attachment' : 'inline';
+
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Length', fileRecord.file_data.length);
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader('Content-Disposition', `${dispositionType}; filename="${encodeURIComponent(filename)}"`);
     res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24h
 
     return res.end(fileRecord.file_data);

@@ -9,6 +9,7 @@ import {
   Table as TableIcon,
   RefreshCw
 } from 'lucide-react';
+import { triggerDirectDownload } from './attachmentUtils';
 
 /**
  * Universal Excel / Spreadsheet Live Viewer Component
@@ -238,15 +239,19 @@ const ExcelViewer = ({ url, filename, file }) => {
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Retry</span>
           </button>
-          {url && (
-            <a
-              href={url}
-              download={filename || 'spreadsheet.xlsx'}
+          {(url || file) && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                triggerDirectDownload(url, filename || 'spreadsheet.xlsx', file);
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Download File</span>
-            </a>
+            </button>
           )}
         </div>
       </div>
@@ -295,16 +300,20 @@ const ExcelViewer = ({ url, filename, file }) => {
             />
           </div>
 
-          {url && (
-            <a
-              href={url}
-              download={filename || 'spreadsheet.xlsx'}
+          {(url || file) && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                triggerDirectDownload(url, filename || 'spreadsheet.xlsx', file);
+              }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-2xs transition cursor-pointer shrink-0"
               title="Download Original Excel File"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Download</span>
-            </a>
+            </button>
           )}
         </div>
       </div>
