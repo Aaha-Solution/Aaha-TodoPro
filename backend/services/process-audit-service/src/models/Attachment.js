@@ -1,11 +1,5 @@
 import pool from '../../../shared/db.js';
 import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOADS_DIR = path.resolve(__dirname, '../../uploads');
-const ATTACHMENTS_DIR = path.resolve(UPLOADS_DIR, 'attachments');
 
 // Auto-ensure table structure for storing binary attachments directly in MySQL
 export const ensureAttachmentTable = async () => {
@@ -29,55 +23,13 @@ export const ensureAttachmentTable = async () => {
   }
 };
 
-// Migrate any pre-existing files on disk into database so past records are preserved
-export const migrateDiskFilesIfAny = async () => {
-  if (!pool || !fs.existsSync(ATTACHMENTS_DIR)) return;
-  try {
-    const files = fs.readdirSync(ATTACHMENTS_DIR);
-    for (const filename of files) {
-      const fullPath = path.join(ATTACHMENTS_DIR, filename);
-      const stat = fs.statSync(fullPath);
-      if (!stat.isFile()) continue;
-
-      // Check if already in DB
-      const [existing] = await pool.query(
-        'SELECT id FROM process_audit_attachment_files WHERE filename = ? LIMIT 1',
-        [filename]
-      );
-      if (existing.length === 0) {
-        const fileBuffer = fs.readFileSync(fullPath);
-        const ext = path.extname(filename).toLowerCase();
-        let mime = 'application/octet-stream';
-        if (['.jpg', '.jpeg'].includes(ext)) mime = 'image/jpeg';
-        else if (ext === '.png') mime = 'image/png';
-        else if (ext === '.webp') mime = 'image/webp';
-        else if (ext === '.pdf') mime = 'application/pdf';
-        else if (['.xls', '.xlsx'].includes(ext)) mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-
-        const originalName = filename.replace(/^(.+)-\d+-\d+(\.[^.]+)$/, '$1$2');
-
-        await pool.query(
-          `INSERT INTO process_audit_attachment_files 
-           (filename, original_name, mime_type, file_size, file_data, uploaded_at) 
-           VALUES (?, ?, ?, ?, ?, NOW())`,
-          [filename, originalName || filename, mime, stat.size, fileBuffer]
-        );
-        console.log(`[Process Audit Service] Migrated disk file to DB binary: ${filename}`);
-      }
-    }
-  } catch (err) {
-    console.warn('[Process Audit Service] migrateDiskFilesIfAny notice:', err.message);
-  }
-};
-
-// Run table setup and disk file migration
+// Initialize table on startup
 (async () => {
   await ensureAttachmentTable();
-  await migrateDiskFilesIfAny();
 })();
 
 export const Attachment = {
-  // Save an in-memory file buffer directly to MySQL as LONGBLOB
+  // Save file buffer directly into MySQL database (LONGBLOB) - No disk storage
   saveAttachment: async (file) => {
     if (!pool) throw new Error('Database pool not available');
     await ensureAttachmentTable();
@@ -95,6 +47,7 @@ export const Attachment = {
       throw new Error(`File buffer is empty for ${originalName}`);
     }
 
+    // Insert binary buffer directly into MySQL LONGBLOB column
     const query = `
       INSERT INTO process_audit_attachment_files 
       (filename, original_name, mime_type, file_size, file_data, uploaded_at)
@@ -125,7 +78,7 @@ export const Attachment = {
     };
   },
 
-  // Retrieve binary data and metadata from database
+  // Retrieve binary data and metadata directly from MySQL database
   getAttachmentByIdOrFilename: async (idOrFilename) => {
     if (!pool) throw new Error('Database pool not available');
     await ensureAttachmentTable();
@@ -145,10 +98,12 @@ export const Attachment = {
 
     const isNumeric = /^\d+$/.test(cleanBase);
 
+    // 1. Fetch by primary key ID directly from MySQL
     if (isNumeric) {
-      const [rows] = await pool.query('SELECT * FROM process_audit_attachment_files WHERE id = ? LIMIT 1', [
-        parseInt(cleanBase, 10),
-      ]);
+      const [rows] = await pool.query(
+        'SELECT id, filename, original_name, mime_type, file_size, file_data, uploaded_at FROM process_audit_attachment_files WHERE id = ? LIMIT 1',
+        [parseInt(cleanBase, 10)]
+      );
       if (rows.length > 0) return rows[0];
     }
 
@@ -157,8 +112,10 @@ export const Attachment = {
     const spaceVersion = cleanBase.replace(/_/g, ' ');
     const underscoreVersion = cleanBase.replace(/\s+/g, '_');
 
+    // 2. Fetch by filename directly from MySQL
     const [matchRows] = await pool.query(
-      `SELECT * FROM process_audit_attachment_files 
+      `SELECT id, filename, original_name, mime_type, file_size, file_data, uploaded_at 
+       FROM process_audit_attachment_files 
        WHERE filename = ? 
           OR original_name = ? 
           OR original_name = ?
@@ -180,28 +137,6 @@ export const Attachment = {
 
     if (matchRows.length > 0) {
       return matchRows[0];
-    }
-
-    // Secondary fallback: if still on disk during transitional phase
-    const fallbackPath = path.join(ATTACHMENTS_DIR, String(idOrFilename));
-    if (fs.existsSync(fallbackPath) && fs.statSync(fallbackPath).isFile()) {
-      const buffer = fs.readFileSync(fallbackPath);
-      const stat = fs.statSync(fallbackPath);
-      const ext = path.extname(fallbackPath).toLowerCase();
-      let mime = 'application/octet-stream';
-      if (['.jpg', '.jpeg'].includes(ext)) mime = 'image/jpeg';
-      else if (ext === '.png') mime = 'image/png';
-      else if (ext === '.webp') mime = 'image/webp';
-      else if (ext === '.pdf') mime = 'application/pdf';
-
-      return {
-        id: null,
-        filename: path.basename(fallbackPath),
-        original_name: path.basename(fallbackPath),
-        mime_type: mime,
-        file_size: stat.size,
-        file_data: buffer,
-      };
     }
 
     return null;

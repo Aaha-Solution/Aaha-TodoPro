@@ -27,6 +27,7 @@ export const getDbPool = (customConfig = {}) => {
 
   try {
     pool = mysql.createPool(config);
+    pool.query('SET GLOBAL max_allowed_packet = 31457280').catch(() => {}); // 30MB
   } catch (error) {
     console.warn(`[Database Pool] Initialization warning: ${error.message}`);
   }

@@ -11,7 +11,7 @@ import userRoutes from './routes/userRoutes.js';
 import approvalRoutes from './routes/approvalRoutes.js';
 import attachmentRoutes from './routes/attachmentRoutes.js';
 import { getAttachment, downloadAttachment } from './controllers/attachmentController.js';
-import { ensureAttachmentTable, migrateDiskFilesIfAny } from './models/Attachment.js';
+import { ensureAttachmentTable } from './models/Attachment.js';
 import { errorHandler } from '../../../shared/errorMiddleware.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -24,8 +24,8 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Initialize attachment database table and migrate any past disk files into MySQL
-ensureAttachmentTable().then(() => migrateDiskFilesIfAny()).catch(err => {
+// Initialize attachment database table in MySQL
+ensureAttachmentTable().catch(err => {
   console.warn('[Process Audit Service] Attachment init warning:', err.message);
 });
 
