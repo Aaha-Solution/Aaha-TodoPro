@@ -19,8 +19,7 @@ import CreateRequest from '../features/processAudit/CreateRequest';
 import MyRequests from '../features/processAudit/MyRequests';
 import ProcessAuditApprovals from '../features/processAudit/Approvals';
 import ProcessAuditNotifications from '../features/processAudit/Notifications';
-import EditUser from '../features/processAudit/users/EditUser';
-import UserDetails from '../features/processAudit/users/UserDetails';
+import ProcessAuditProfile from '../features/processAudit/Profile';
 
 // IHLR (In-House Line Rejection) Feature
 import IhlrDashboard from '../features/ihlr/Dashboard';
@@ -40,6 +39,9 @@ const AppRoutes = () => {
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/auth/login" element={<Navigate to="/login" replace />} />
+        <Route path="/auth/forgot-password" element={<Navigate to="/forgot-password" replace />} />
+        <Route path="/auth" element={<Navigate to="/login" replace />} />
       </Route>
 
       {/* Protected Routes */}
@@ -60,11 +62,9 @@ const AppRoutes = () => {
           <Route path="my-requests" element={<MyRequests />} />
           <Route path="approvals" element={<ProcessAuditApprovals />} />
           <Route path="notifications" element={<ProcessAuditNotifications />} />
-          <Route path="profile" element={<UserDetails />} />
+          <Route path="profile" element={<ProcessAuditProfile />} />
           <Route path="users" element={<UserManagement />} />
-          <Route path="users/create" element={<Navigate to="/process-audit/users?action=new" replace />} />
-          <Route path="users/edit/:id" element={<EditUser />} />
-          <Route path="users/:id" element={<UserDetails />} />
+          <Route path="users/*" element={<Navigate to="/process-audit/users" replace />} />
         </Route>
 
         {/* IHLR (In-House Line Rejection) Module Workspace */}
