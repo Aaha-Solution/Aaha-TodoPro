@@ -374,15 +374,20 @@ export const getIhlrNotifications = async (req, res) => {
     const userName = (req.query.user || req.query.user_name || req.user?.name || '').trim();
     const userId = req.query.user_id ? Number(req.query.user_id) : (req.user?.id || null);
     const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN';
 
     let notifRows = [];
     if (pool) {
       let query = 'SELECT * FROM ihlr_notifications';
       const params = [];
-      if (!isAdmin && (userName || userId)) {
+      if (userName && userId) {
         query += ' WHERE (LOWER(TRIM(user_name)) = LOWER(TRIM(?)) OR user_id = ?)';
         params.push(userName, userId);
+      } else if (userName) {
+        query += ' WHERE LOWER(TRIM(user_name)) = LOWER(TRIM(?))';
+        params.push(userName);
+      } else if (userId) {
+        query += ' WHERE user_id = ?';
+        params.push(userId);
       }
       query += ' ORDER BY id DESC LIMIT 50';
       const [rows] = await pool.query(query, params).catch(() => [[]]);
@@ -489,11 +494,14 @@ export const markIhlrNotificationRead = async (req, res) => {
 export const markAllIhlrNotificationsRead = async (req, res) => {
   try {
     const userName = (req.body?.user || req.query.user || '').trim();
+    const userRole = (req.body?.role || req.query.role || req.user?.role || '').trim().toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || !userName || userName.toLowerCase() === 'admin';
+
     if (pool) {
-      if (userName) {
-        await pool.query('UPDATE ihlr_notifications SET is_read = 1 WHERE LOWER(TRIM(user_name)) = LOWER(TRIM(?))', [userName]);
-      } else {
+      if (isAdmin) {
         await pool.query('UPDATE ihlr_notifications SET is_read = 1');
+      } else {
+        await pool.query('UPDATE ihlr_notifications SET is_read = 1 WHERE LOWER(TRIM(user_name)) = LOWER(TRIM(?))', [userName]);
       }
     }
     return successResponse(res, null, 'All notifications marked as read');

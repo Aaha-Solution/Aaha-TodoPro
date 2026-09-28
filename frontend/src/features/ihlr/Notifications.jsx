@@ -16,9 +16,12 @@ import {
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
 import { useAuth } from '../../hooks/useAuth';
+import { useDispatch } from 'react-redux';
+import { setNotifications as setReduxNotifications, markAllAsRead as setReduxMarkAllAsRead } from '../../redux/slices/notificationSlice';
 
 const IhlrNotifications = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -139,6 +142,7 @@ const IhlrNotifications = () => {
       }
 
       setNotifications(streamList);
+      dispatch(setReduxNotifications(streamList));
     } catch (err) {
       console.error('Failed to load IHLR notifications:', err);
     } finally {
@@ -160,7 +164,9 @@ const IhlrNotifications = () => {
   // Mark all read
   const handleMarkAllRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    dispatch(setReduxMarkAllAsRead());
     await ihlrService.markAllNotificationsAsRead(user?.name).catch(() => {});
+    window.dispatchEvent(new Event('refreshNotifications'));
   };
 
   // Toggle individual read / unread
@@ -169,13 +175,14 @@ const IhlrNotifications = () => {
     if (!item) return;
     const nextRead = !item.read;
 
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === targetId ? { ...n, read: nextRead } : n))
-    );
+    const updated = notifications.map((n) => (n.id === targetId ? { ...n, read: nextRead } : n));
+    setNotifications(updated);
+    dispatch(setReduxNotifications(updated));
 
     if (item.notifId && nextRead) {
       await ihlrService.markNotificationAsRead(item.notifId).catch(() => {});
     }
+    window.dispatchEvent(new Event('refreshNotifications'));
   };
 
   // Counts

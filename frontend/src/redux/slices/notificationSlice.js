@@ -1,12 +1,8 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  notifications: [
-    { id: 1, title: 'New Audit Scheduled', message: 'Process audit for Assembly Line 2 scheduled tomorrow at 10 AM', time: '10m ago', read: false },
-    { id: 2, title: 'Line Rejection Alert', message: 'SMT Line 1 reported 12 defects (Part INEL-CDI-902)', time: '1h ago', read: false },
-    { id: 3, title: 'Sample Approved', message: 'EV Inverter Housing sample approval signed off by QC Lead', time: '3h ago', read: true },
-  ],
-  unreadCount: 2,
+  notifications: [],
+  unreadCount: 0,
 };
 
 export const notificationSlice = createSlice({

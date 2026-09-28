@@ -82,6 +82,7 @@ const Notification = () => {
       processAuditService.markAllNotificationsAsRead(user?.name);
     }
     dispatch(markAllAsRead());
+    window.dispatchEvent(new Event('refreshNotifications'));
   };
 
   return (

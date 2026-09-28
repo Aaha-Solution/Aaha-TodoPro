@@ -13,9 +13,12 @@ import {
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
+import { useDispatch } from 'react-redux';
+import { setNotifications as setReduxNotifications, markAllAsRead as setReduxMarkAllAsRead } from '../../redux/slices/notificationSlice';
 
 const ProcessAuditNotifications = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +31,9 @@ const ProcessAuditNotifications = () => {
         user_id: user?.id,
         role: user?.role,
       });
-      setNotifications(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setNotifications(list);
+      dispatch(setReduxNotifications(list));
     } catch (err) {
       console.error('Failed to load notifications:', err);
     } finally {
@@ -42,8 +47,10 @@ const ProcessAuditNotifications = () => {
 
   const handleMarkAllRead = async () => {
     try {
-      await processAuditService.markAllNotificationsAsRead(user?.name);
       setNotifications(notifications.map((n) => ({ ...n, read: true })));
+      dispatch(setReduxMarkAllAsRead());
+      await processAuditService.markAllNotificationsAsRead(user?.name);
+      window.dispatchEvent(new Event('refreshNotifications'));
     } catch (err) {
       console.error('Failed to mark all as read:', err);
     }
@@ -51,10 +58,11 @@ const ProcessAuditNotifications = () => {
 
   const handleItemClick = async (item) => {
     if (!item.read) {
+      const updated = notifications.map((n) => (n.id === item.id ? { ...n, read: true } : n));
+      setNotifications(updated);
+      dispatch(setReduxNotifications(updated));
       await processAuditService.markNotificationAsRead(item.id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
-      );
+      window.dispatchEvent(new Event('refreshNotifications'));
     }
     const targetLink = item.link || (item.type === 'approval_required' ? '/process-audit/approvals' : '/process-audit/my-requests');
     navigate(targetLink);
