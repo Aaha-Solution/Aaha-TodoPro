@@ -29,10 +29,8 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   })() || '').trim().toUpperCase();
 
   const isIhlr = location.pathname.startsWith('/ihlr');
-  const isIncomingQuality = userDept === 'INCOMING QUALITY' || userDept.includes('INCOMING');
-  const isRoleAdmin = user?.role?.toUpperCase() === 'ADMIN';
-  const canAccessUserManagement = isRoleAdmin || isIncomingQuality;
-  const isProcessQualityLead = isRoleAdmin || isIncomingQuality;
+  const isIncomingQuality = userDept === 'INCOMING QUALITY';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
 
   const handleLogout = () => {
     logout();
@@ -42,18 +40,18 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   const navItems = isIhlr
     ? [
         { name: 'Dashboard', path: '/ihlr/dashboard', icon: LayoutDashboard },
-        ...(isProcessQualityLead ? [{ name: 'Create Request', path: '/ihlr/create-request', icon: Plus, isAction: true }] : []),
-        { name: isProcessQualityLead ? 'All Requests' : 'My Requests', path: '/ihlr/my-requests', icon: Layers },
-        { name: isProcessQualityLead ? 'All Approvals' : 'Approvals', path: '/ihlr/approvals', icon: ClipboardCheck },
-        ...(canAccessUserManagement ? [{ name: 'User Management', path: '/ihlr/users', icon: Users }] : []),
+        ...(isAdmin ? [{ name: 'Create Request', path: '/ihlr/create-request', icon: Plus, isAction: true }] : []),
+        { name: isAdmin ? 'All Requests' : 'My Requests', path: '/ihlr/my-requests', icon: Layers },
+        { name: isAdmin ? 'All Approvals' : 'Approvals', path: '/ihlr/approvals', icon: ClipboardCheck },
+        ...(isAdmin ? [{ name: 'User Management', path: '/ihlr/users', icon: Users }] : []),
         { name: 'Notifications', path: '/ihlr/notifications', icon: Bell },
       ]
     : [
         { name: 'Dashboard', path: '/process-audit/dashboard', icon: LayoutDashboard },
-        ...(isProcessQualityLead ? [{ name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true }] : []),
-        { name: isProcessQualityLead ? 'All Requests' : 'My Requests', path: '/process-audit/my-requests', icon: Layers },
-        { name: isProcessQualityLead ? 'All Approvals' : 'Approvals', path: '/process-audit/approvals', icon: ClipboardCheck },
-        ...(canAccessUserManagement ? [{ name: 'User Management', path: '/process-audit/users', icon: Users }] : []),
+        ...(isAdmin ? [{ name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true }] : []),
+        { name: isAdmin ? 'All Requests' : 'My Requests', path: '/process-audit/my-requests', icon: Layers },
+        { name: isAdmin ? 'All Approvals' : 'Approvals', path: '/process-audit/approvals', icon: ClipboardCheck },
+        ...(isAdmin ? [{ name: 'User Management', path: '/process-audit/users', icon: Users }] : []),
         { name: 'Notifications', path: '/process-audit/notifications', icon: Bell },
       ];
 

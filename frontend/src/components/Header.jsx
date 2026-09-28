@@ -31,9 +31,8 @@ const Header = ({ toggleSidebar }) => {
     }
   })() || '').trim().toUpperCase();
 
-  const isIncomingQuality = userDept === 'INCOMING QUALITY' || userDept.includes('INCOMING');
-  const isRoleAdmin = user?.role?.toUpperCase() === 'ADMIN';
-  const canAccessUserManagement = isRoleAdmin || isIncomingQuality;
+  const isIncomingQuality = userDept === 'INCOMING QUALITY';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
 
   return (
     <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-8 flex items-center justify-between shadow-2xs">
@@ -66,9 +65,9 @@ const Header = ({ toggleSidebar }) => {
 
         {/* User Info Avatar */}
         <div 
-          onClick={() => navigate(canAccessUserManagement ? (isIhlr ? '/ihlr/users' : '/process-audit/users') : (isIhlr ? '/ihlr/profile' : '/process-audit/profile'))}
+          onClick={() => navigate(isAdmin ? (isIhlr ? '/ihlr/users' : '/process-audit/users') : (isIhlr ? '/ihlr/profile' : '/process-audit/profile'))}
           className="flex items-center gap-2.5 cursor-pointer select-none"
-          title={canAccessUserManagement ? "Manage Users & Profile" : "View Profile"}
+          title={isAdmin ? "Manage Users & Profile" : "View Profile"}
         >
           <div className="w-8 h-8 rounded-full bg-[#2563eb] text-white flex items-center justify-center font-bold text-xs shadow-sm">
             {user?.name ? user.name.charAt(0).toUpperCase() : 'I'}

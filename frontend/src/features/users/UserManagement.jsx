@@ -239,7 +239,7 @@ const UserManagement = () => {
     }
   })() || '').trim().toUpperCase();
 
-  const isIncomingQuality = userDept === 'INCOMING QUALITY' || userDept.includes('INCOMING');
+  const isIncomingQuality = userDept === 'INCOMING QUALITY';
   const isAdmin = currentAuthUser?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
 
   if (!isAdmin) {
