@@ -236,19 +236,20 @@ const ProcessAuditDashboard = () => {
       iconBg: 'bg-emerald-50 text-emerald-600',
     },
     {
-      title: 'Closed',
-      value: String(closed),
-      subtitle: 'Audit signed off & closed',
-      icon: CheckCircle2,
-      iconBg: 'bg-teal-50 text-teal-600',
-    },
-    {
       title: 'Rejected',
       value: String(rejected),
       subtitle: 'Actionable rework needed',
       icon: X,
       iconBg: 'bg-rose-50 text-rose-600',
     },
+    {
+      title: 'Closed',
+      value: String(closed),
+      subtitle: 'Audit signed off & closed',
+      icon: CheckCircle2,
+      iconBg: 'bg-teal-50 text-teal-600',
+    },
+    
   ];
 
   const getAttachmentsList = (attData) => {
