@@ -74,7 +74,16 @@ const SystemSelection = () => {
   ];
 
   const currentUserName = user?.name || 'Admin';
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+  const userDept = (user?.department || (() => {
+    try {
+      const u = localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.department : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+  const isIncomingQuality = userDept === 'INCOMING QUALITY' || userDept.includes('INCOMING');
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col justify-between text-slate-800 antialiased">
