@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, ExternalLink } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { setNotifications, markAsRead, markAllAsRead } from '../redux/slices/notificationSlice';
-import { processAuditService } from '../services/processAuditService';
-import { ihlrService } from '../services/ihlrService';
+import {
+  fetchNotificationsForTab,
+  markNotificationReadForTab,
+  markAllNotificationsReadForTab
+} from '../services/notificationFeedService';
 import { useAuth } from '../hooks/useAuth';
 
 const Notification = () => {
@@ -17,27 +20,17 @@ const Notification = () => {
   const { user } = useAuth();
 
   const isIhlr = location.pathname.startsWith('/ihlr');
+  const tabMode = isIhlr ? 'ihlr' : 'process-audit';
 
   const fetchLiveNotifications = async () => {
     try {
-      const params = {
-        user: user?.name,
-        user_id: user?.id,
-        role: user?.role,
-      };
-
-      let data = [];
-      if (isIhlr) {
-        data = await ihlrService.getNotifications(params);
-      } else {
-        data = await processAuditService.getNotifications(params);
-      }
-
+      // Get live data specifically for the current active tab
+      const data = await fetchNotificationsForTab(tabMode, user);
       if (Array.isArray(data)) {
         dispatch(setNotifications(data));
       }
     } catch (err) {
-      console.error('Failed to load notifications in header:', err);
+      console.error(`Failed to load ${tabMode} notifications in header:`, err);
     }
   };
 
@@ -46,11 +39,13 @@ const Notification = () => {
     const handleRefresh = () => fetchLiveNotifications();
 
     window.addEventListener('refreshNotifications', handleRefresh);
+    window.addEventListener('focus', handleRefresh);
 
     return () => {
       window.removeEventListener('refreshNotifications', handleRefresh);
+      window.removeEventListener('focus', handleRefresh);
     };
-  }, [user?.name, user?.id, user?.role, isIhlr]);
+  }, [user?.name, user?.id, user?.role, tabMode]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -62,25 +57,17 @@ const Notification = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleItemClick = (item) => {
+  const handleItemClick = async (item) => {
     if (!item.read) {
-      if (isIhlr) {
-        ihlrService.markNotificationAsRead(item.id);
-      } else {
-        processAuditService.markNotificationAsRead(item.id);
-      }
+      await markNotificationReadForTab(tabMode, item.notifId, item.rawId);
       dispatch(markAsRead(item.id));
     }
     setOpen(false);
     navigate(item.link || (isIhlr ? '/ihlr/my-requests' : '/process-audit/approvals'));
   };
 
-  const handleMarkAllRead = () => {
-    if (isIhlr) {
-      ihlrService.markAllNotificationsAsRead(user?.name);
-    } else {
-      processAuditService.markAllNotificationsAsRead(user?.name);
-    }
+  const handleMarkAllRead = async () => {
+    await markAllNotificationsReadForTab(tabMode, user?.name);
     dispatch(markAllAsRead());
     window.dispatchEvent(new Event('refreshNotifications'));
   };
@@ -95,7 +82,7 @@ const Notification = () => {
         }}
         className="relative p-2.5 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center"
         aria-label="Notifications"
-        title="Notifications"
+        title="Notifications Centre"
       >
         <Bell className="w-5 h-5 text-slate-700 hover:text-slate-900 stroke-[2.2] transition-colors" />
         {unreadCount > 0 && (
@@ -109,13 +96,24 @@ const Notification = () => {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute right-0 mt-2 w-84 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
           <div className="px-4 pb-2.5 flex items-center justify-between border-b border-slate-100">
             <div>
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                {isIhlr ? 'IHLR Alerts' : 'Notifications'}
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <span>{isIhlr ? 'IHLR Alerts' : 'Audit Alerts'}</span>
+                <span
+                  className={`text-[9px] font-mono px-1.5 py-0.2 rounded-full font-bold ${
+                    isIhlr
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                      : 'bg-blue-50 text-blue-700 border border-blue-200'
+                  }`}
+                >
+                  {isIhlr ? 'IHLR' : 'PROCESS AUDIT'}
+                </span>
               </h4>
-              <p className="text-[11px] text-slate-500">{unreadCount} unread message{unreadCount === 1 ? '' : 's'}</p>
+              <p className="text-[11px] text-slate-500">
+                {unreadCount} unread alert{unreadCount === 1 ? '' : 's'}
+              </p>
             </div>
             {unreadCount > 0 && (
               <button
@@ -128,30 +126,69 @@ const Notification = () => {
             )}
           </div>
 
-          <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
+          <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
             {notifications.length === 0 ? (
-              <p className="p-4 text-center text-xs text-slate-400">No notifications</p>
+              <p className="p-6 text-center text-xs text-slate-400">No notifications in stream</p>
             ) : (
-              notifications.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleItemClick(item)}
-                  className={`p-3.5 hover:bg-slate-50 transition cursor-pointer flex items-start gap-3 ${
-                    !item.read ? 'bg-red-50/20' : ''
-                  }`}
-                >
+              notifications.map((item) => {
+                const badgeColor =
+                  item.accentColor === 'emerald'
+                    ? 'bg-emerald-600'
+                    : item.accentColor === 'amber'
+                    ? 'bg-amber-600'
+                    : item.accentColor === 'rose'
+                    ? 'bg-rose-600'
+                    : 'bg-blue-600';
+
+                return (
                   <div
-                    className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                      !item.read ? 'bg-red-500 ring-4 ring-red-100' : 'bg-transparent'
+                    key={item.id}
+                    onClick={() => handleItemClick(item)}
+                    className={`p-3.5 hover:bg-slate-50 transition cursor-pointer flex items-start gap-3 ${
+                      !item.read ? 'bg-blue-50/20' : ''
                     }`}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-800 truncate">{item.title}</p>
-                    <p className="text-xs text-slate-600 mt-0.5 leading-relaxed line-clamp-2">{item.message}</p>
-                    <span className="text-[10px] text-slate-400 mt-1 block font-mono">{item.time || item.date}</span>
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                        !item.read ? 'bg-blue-600 ring-4 ring-blue-100' : 'bg-transparent'
+                      }`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                        {item.badgeLabel && (
+                          <span
+                            className={`px-1.5 py-0.2 text-[9px] font-extrabold uppercase rounded text-white ${badgeColor}`}
+                          >
+                            {item.badgeLabel}
+                          </span>
+                        )}
+                        {item.reqNo && (
+                          <span className="text-[10px] font-mono font-bold text-slate-700 bg-slate-100 px-1 rounded">
+                            {item.reqNo}
+                          </span>
+                        )}
+                        {item.department && (
+                          <span className="text-[9px] font-semibold text-blue-700 bg-blue-50 px-1 rounded border border-blue-100">
+                            {item.department}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-bold text-slate-800 truncate">{item.title}</p>
+                      <p className="text-xs text-slate-600 mt-0.5 leading-relaxed line-clamp-2">
+                        {item.message}
+                      </p>
+                      <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
+                        <span className="font-mono">{item.timeDisplay || item.date || item.time}</span>
+                        {item.subCategory && (
+                          <span className="font-semibold text-slate-400 uppercase text-[9px]">
+                            {item.subCategory}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -161,9 +198,10 @@ const Notification = () => {
                 setOpen(false);
                 navigate(isIhlr ? '/ihlr/notifications' : '/process-audit/notifications');
               }}
-              className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer inline-flex items-center gap-1"
             >
-              View All Notifications
+              <span>View All Notifications</span>
+              <ExternalLink className="w-3 h-3" />
             </button>
           </div>
         </div>

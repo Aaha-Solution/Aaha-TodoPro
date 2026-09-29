@@ -17,7 +17,7 @@ const Header = ({ toggleSidebar }) => {
   } else if (location.pathname.includes('/my-requests')) {
     pageTitle = isIhlr ? 'IHLR Request Tracking' : 'Request Tracking';
   } else if (location.pathname.includes('/notifications')) {
-    pageTitle = isIhlr ? 'IHLR Notifications' : 'Notification Center';
+    pageTitle = 'Notifications Centre';
   } else if (location.pathname.includes('/profile') || location.pathname.includes('/users')) {
     pageTitle = 'User Profile & Team Management';
   }
