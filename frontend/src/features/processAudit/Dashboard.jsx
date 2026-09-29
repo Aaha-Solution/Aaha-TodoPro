@@ -5,8 +5,6 @@ import {
   Plus, 
   BarChart3, 
   Hourglass, 
-  Cpu, 
-  ShieldCheck, 
   Check, 
   CheckCircle2,
   X, 
@@ -118,6 +116,12 @@ const ProcessAuditDashboard = () => {
         dotColor: 'bg-emerald-500',
       };
     }
+    if (s === 'open' || s.includes('open') || s.includes('reopen')) {
+      return {
+        statusColor: 'bg-sky-50 text-sky-700 border-sky-200/80',
+        dotColor: 'bg-sky-500',
+      };
+    }
     if (s.includes('reject')) {
       return {
         statusColor: 'bg-rose-50 text-rose-700 border-rose-200/80',
@@ -192,12 +196,20 @@ const ProcessAuditDashboard = () => {
   };
 
   const total = metrics.totalRequests !== undefined ? metrics.totalRequests : requests.length;
-  const pendingExec = metrics.pendingExecution !== undefined ? metrics.pendingExecution : requests.filter(r => (r.status || '').toLowerCase().includes('pending execution')).length;
-  const inExec = metrics.inExecution !== undefined ? metrics.inExecution : requests.filter(r => (r.status || '').toLowerCase().includes('in execution')).length;
-  const pendingApp = metrics.pendingApproval !== undefined ? metrics.pendingApproval : requests.filter(r => (r.status || '').toLowerCase().includes('pending approval')).length;
-  const approved = metrics.approved !== undefined ? metrics.approved : requests.filter(r => (r.status || '').toLowerCase() === 'approved').length;
-  const closed = metrics.closed !== undefined ? metrics.closed : requests.filter(r => (r.status || '').toLowerCase().includes('close')).length;
+  const pendingExec = metrics.pendingExecution !== undefined ? metrics.pendingExecution : requests.filter(r => {
+    const s = (r.status || '').toLowerCase();
+    return s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject'));
+  }).length;
+  const openCount = metrics.open !== undefined ? metrics.open : requests.filter(r => {
+    const s = (r.status || '').toLowerCase();
+    return s === 'open' || s.includes('open') || s.includes('reopen');
+  }).length;
+  const approved = metrics.approved !== undefined ? metrics.approved : requests.filter(r => {
+    const s = (r.status || '').toLowerCase();
+    return s.includes('approved') && !s.includes('partially') && !s.includes('pending');
+  }).length;
   const rejected = metrics.rejected !== undefined ? metrics.rejected : requests.filter(r => (r.status || '').toLowerCase().includes('reject')).length;
+  const closed = metrics.closed !== undefined ? metrics.closed : requests.filter(r => (r.status || '').toLowerCase().includes('close')).length;
 
   const kpis = [
     {
@@ -215,17 +227,10 @@ const ProcessAuditDashboard = () => {
       iconBg: 'bg-amber-50 text-amber-600',
     },
     {
-      title: 'In Execution',
-      value: String(inExec),
-      subtitle: 'Floor machining & assembly',
-      icon: Cpu,
-      iconBg: 'bg-purple-50 text-purple-600',
-    },
-    {
-      title: 'Pending Approval',
-      value: String(pendingApp),
-      subtitle: 'Level 1 & Level 2 reviews',
-      icon: ShieldCheck,
+      title: 'Open',
+      value: String(openCount),
+      subtitle: 'Active audit observations',
+      icon: AlertCircle,
       iconBg: 'bg-sky-50 text-sky-600',
     },
     {
@@ -249,7 +254,6 @@ const ProcessAuditDashboard = () => {
       icon: CheckCircle2,
       iconBg: 'bg-teal-50 text-teal-600',
     },
-    
   ];
 
   const getAttachmentsList = (attData) => {
@@ -382,8 +386,8 @@ const ProcessAuditDashboard = () => {
         </div>
       </div>
 
-      {/* 7 Top Metric Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
+      {/* 6 Top Metric Cards Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (

@@ -8,8 +8,7 @@ export const getDashboardMetrics = async (req, res) => {
     
     let totalRequests = 0;
     let pendingExecution = 0;
-    let inExecution = 0;
-    let pendingApproval = 0;
+    let openCount = 0;
     let approved = 0;
     let closed = 0;
     let rejected = 0;
@@ -19,11 +18,11 @@ export const getDashboardMetrics = async (req, res) => {
       totalRequests += c;
       const s = (r.status || '').toLowerCase();
       if (s.includes('close')) closed += c;
-      else if (s.includes('pending execution')) pendingExecution += c;
-      else if (s.includes('in execution')) inExecution += c;
-      else if (s.includes('pending approval')) pendingApproval += c;
-      else if (s.includes('approved')) approved += c;
-      else if (s.includes('rejected')) rejected += c;
+      else if (s === 'open' || s.includes('open') || s.includes('reopen')) openCount += c;
+      else if (s.includes('approved') && !s.includes('partially') && !s.includes('pending')) approved += c;
+      else if (s.includes('rejected') || s.includes('reject')) rejected += c;
+      else if (s.includes('pending execution') || s.includes('pending')) pendingExecution += c;
+      else pendingExecution += c;
     });
 
     const auditPerformance = totalRequests > 0 ? Number((((approved + closed) / totalRequests) * 100).toFixed(1)) : 100.0;
@@ -31,11 +30,12 @@ export const getDashboardMetrics = async (req, res) => {
     const data = {
       totalRequests,
       pendingExecution,
-      inExecution,
-      pendingApproval,
+      open: openCount,
       approved,
       closed,
       rejected,
+      inExecution: 0,
+      pendingApproval: 0,
       openCapa: rejected,
       auditPerformance
     };

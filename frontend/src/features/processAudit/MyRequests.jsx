@@ -978,17 +978,7 @@ const MyRequests = () => {
                 <div className="p-3 bg-slate-50 rounded-xl">
                   <div className="flex items-center justify-between pb-1">
                     <span className="text-slate-400 block text-[10px] uppercase font-bold">Department</span>
-                    {canTrack && !activeModalRequest.status?.toLowerCase().includes('close') && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenReassignModal(activeModalRequest)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-bold transition cursor-pointer"
-                        title="Reassign to another department or executor"
-                      >
-                        <ArrowRightLeft className="w-3 h-3" />
-                        <span>Reassign</span>
-                      </button>
-                    )}
+                   
                   </div>
                   <span className="font-bold text-slate-800">{activeModalRequest.department}</span>
                 </div>
