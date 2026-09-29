@@ -309,42 +309,6 @@ const UserManagement = () => {
         </div>
       </div>
 
-      {/* Common Module Tabs Switcher */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 w-fit">
-        <button
-          type="button"
-          onClick={() => navigate('/process-audit/users')}
-          className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-            !isIhlr
-              ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-          }`}
-        >
-          <span className={`w-2 h-2 rounded-full ${!isIhlr ? 'bg-blue-600' : 'bg-slate-400'}`} />
-          <span>Process Audit</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate('/ihlr/users')}
-          className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-            isIhlr
-              ? 'bg-white text-indigo-700 shadow-xs border border-slate-200'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-          }`}
-        >
-          <span className={`w-2 h-2 rounded-full ${isIhlr ? 'bg-indigo-600' : 'bg-slate-400'}`} />
-          <span>In-House Line Rejection (IHLR)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate('/system-selection')}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-white/50 transition cursor-pointer"
-        >
-          <span>All Manufacturing Portals</span>
-        </button>
-      </div>
 
         {/* KPI Metrics Strip - Common across all tabs */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
