@@ -699,19 +699,12 @@ const IhlrCreateRequest = () => {
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 pt-2">
           <button
-            type="button"
-            onClick={() => navigate('/ihlr/my-requests')}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
             type="submit"
             disabled={submitting}
             className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             <Send className="w-4 h-4" />
-            <span>{submitting ? 'Submitting...' : 'Submit IHLR Report'}</span>
+            <span>{submitting ? 'Submitting...' : 'Submit Report'}</span>
           </button>
         </div>
       </form>

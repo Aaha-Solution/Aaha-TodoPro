@@ -473,7 +473,7 @@ const IhlrDashboard = () => {
                         title="View Detailed Why-Why Analysis"
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        <span>Inspect</span>
+                        <span>View</span>
                       </button>
                     </td>
                   </tr>
