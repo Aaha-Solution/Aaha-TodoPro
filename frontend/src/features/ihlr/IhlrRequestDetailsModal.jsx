@@ -22,6 +22,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { parseAttachments, getFileMeta } from './IhlrAttachmentView';
+import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import { useModal } from '../../context/ModalContext';

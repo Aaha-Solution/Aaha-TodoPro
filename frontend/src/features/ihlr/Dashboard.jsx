@@ -26,6 +26,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ihlrService } from '../../services/ihlrService';
 import { IhlrAttachmentThumbnail, parseAttachments } from './IhlrAttachmentView';
+import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import { useAuth } from '../../hooks/useAuth';
@@ -200,12 +201,12 @@ const IhlrDashboard = () => {
     {
       title: 'Open Containments',
       value: stats.open || 0,
-      subtitle: 'Awaiting root cause closer',
+      subtitle: 'Awaiting root cause closure',
       icon: AlertCircle,
       iconBg: 'bg-rose-50 text-rose-600',
     },
     {
-      title: 'In-Progress (Why-Why)',
+      title: 'In-Progress',
       value: stats.inProgress || 0,
       subtitle: 'RCA & action review',
       icon: Hourglass,
@@ -346,7 +347,7 @@ const IhlrDashboard = () => {
           <div>
             <h2 className="text-base font-bold text-slate-900">Recent IHLR Analysis Reports</h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Live manufacturing rejection cases with Why-Why analysis & closer actions.
+              Live manufacturing rejection cases with Why-Why analysis & closure actions.
             </p>
           </div>
           <div className="flex items-center gap-3">
