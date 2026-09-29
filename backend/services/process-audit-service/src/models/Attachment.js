@@ -1,5 +1,4 @@
 import pool from '../../../shared/db.js';
-import mysql from 'mysql2/promise';
 import path from 'path';
 
 // Auto-ensure table structure for storing binary attachments directly in MySQL
@@ -55,46 +54,13 @@ export const Attachment = {
       VALUES (?, ?, ?, ?, ?, NOW())
     `;
 
-    let result;
-    try {
-      [result] = await pool.query(query, [
-        filename,
-        originalName,
-        mimeType,
-        fileSize,
-        fileBuffer,
-      ]);
-    } catch (queryErr) {
-      if (queryErr.message && queryErr.message.includes('max_allowed_packet')) {
-        console.warn('[Attachment Model] Detected max_allowed_packet error. Elevating packet limit and retrying upload...');
-        const tempConn = await mysql.createConnection({
-          host: process.env.DB_HOST || 'localhost',
-          user: process.env.DB_USER || 'root',
-          password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '',
-          database: process.env.DB_NAME || 'inel_todo',
-        });
-        await tempConn.query('SET GLOBAL max_allowed_packet = 1073741824'); // 1GB
-        await tempConn.end();
-
-        // Fresh connection created AFTER SET GLOBAL will inherit the new 1GB limit
-        const retryConn = await mysql.createConnection({
-          host: process.env.DB_HOST || 'localhost',
-          user: process.env.DB_USER || 'root',
-          password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '',
-          database: process.env.DB_NAME || 'inel_todo',
-        });
-        [result] = await retryConn.query(query, [
-          filename,
-          originalName,
-          mimeType,
-          fileSize,
-          fileBuffer,
-        ]);
-        await retryConn.end();
-      } else {
-        throw queryErr;
-      }
-    }
+    const [result] = await pool.query(query, [
+      filename,
+      originalName,
+      mimeType,
+      fileSize,
+      fileBuffer,
+    ]);
 
     const insertedId = result.insertId;
     const extName = ext.replace('.', '').toUpperCase() || 'FILE';
