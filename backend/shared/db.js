@@ -27,7 +27,24 @@ export const getDbPool = (customConfig = {}) => {
 
   try {
     pool = mysql.createPool(config);
-    pool.query('SET GLOBAL max_allowed_packet = 67108864').catch(() => {}); // 64MB
+
+    // Increase MySQL server max_allowed_packet to 1GB to support large file uploads (LONGBLOB)
+    // Run SET GLOBAL on a dedicated standalone connection so all subsequent pool connections inherit the 1GB limit
+    (async () => {
+      try {
+        const initConn = await mysql.createConnection({
+          host: config.host,
+          user: config.user,
+          password: config.password,
+          database: config.database,
+          port: config.port,
+        });
+        await initConn.query('SET GLOBAL max_allowed_packet = 1073741824'); // 1GB
+        await initConn.end();
+      } catch (err) {
+        pool.query('SET GLOBAL max_allowed_packet = 1073741824').catch(() => {});
+      }
+    })();
   } catch (error) {
     console.warn(`[Database Pool] Initialization warning: ${error.message}`);
   }
