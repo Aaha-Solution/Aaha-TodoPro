@@ -311,7 +311,7 @@ export const updateIhlrRequest = async (req, res) => {
       return errorResponse(res, 'IHLR Request not found to update', 404);
     }
 
-    // 1. Trigger Closer In-App Notification to Raised Person
+    // 1. Trigger Closer In-App Notification to BOTH Raised Person AND Closer Person
     if (pool && updated) {
       try {
         const reqNo = updated.req_no || `IHLR-${updated.id || id}`;
@@ -323,6 +323,7 @@ export const updateIhlrRequest = async (req, res) => {
           ? `Defect report #${reqNo} (${updated.model || 'Model'}) has been verified and marked as CLOSED by ${closerName}.`
           : `5-Why root cause countermeasure submitted for #${reqNo} (${updated.model || 'Model'}) by ${closerName} (${updated.resp || 'Production'}). Status: ${updated.status || 'IN_PROGRESS'}.`;
 
+        // Notification A: For Raised Person
         if (updated.created_by_id || updated.created_by || updated.created_by_email) {
           await pool.query(
             `INSERT INTO ihlr_notifications 
@@ -340,6 +341,45 @@ export const updateIhlrRequest = async (req, res) => {
             ]
           );
         }
+
+        // Notification B: For Closer / Assigned Person (Acknowledgment)
+        let closerUserId = null;
+        let closerEmail = updated.resp_person_email || '';
+        let closerPersonName = updated.resp_person || closerName;
+
+        if (closerPersonName || closerEmail) {
+          const [uRows] = await pool.query(
+            'SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
+            [closerPersonName || '', closerEmail || closerPersonName || '']
+          );
+          if (uRows && uRows.length > 0) {
+            closerUserId = uRows[0].id;
+            closerEmail = closerEmail || uRows[0].email;
+            closerPersonName = uRows[0].name || closerPersonName;
+          }
+        }
+
+        const closerNotifType = isClosed ? 'closure_confirmed' : 'countermeasure_saved';
+        const closerNotifTitle = isClosed ? `IHLR Case Closed: #${reqNo}` : `Closer Log Saved: #${reqNo}`;
+        const closerNotifMsg = isClosed
+          ? `You have closed defect report #${reqNo} (${updated.model || 'Model'}). Containment and root cause countermeasures have been signed off.`
+          : `Your 5-Why root cause countermeasure for #${reqNo} (${updated.model || 'Model'}) has been saved successfully.`;
+
+        await pool.query(
+          `INSERT INTO ihlr_notifications 
+           (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, '/ihlr/approvals', 0)`,
+          [
+            closerUserId,
+            closerPersonName,
+            closerEmail,
+            updated.id || id,
+            reqNo,
+            closerNotifType,
+            closerNotifTitle,
+            closerNotifMsg
+          ]
+        );
       } catch (notifErr) {
         console.warn('[IHLR Closer Notification Warning]:', notifErr.message);
       }
@@ -444,8 +484,8 @@ export const getIhlrNotifications = async (req, res) => {
 
     const formatted = notifRows.map(n => {
       const isConfirmed = n.type === 'submission_confirmed';
-      const isClosed = n.type === 'case_closed';
-      const isUpdated = n.type === 'countermeasure_updated';
+      const isClosed = n.type === 'case_closed' || n.type === 'closure_confirmed' || n.type === 'closed';
+      const isUpdated = n.type === 'countermeasure_updated' || n.type === 'countermeasure_saved';
 
       let badgeLabel = 'ACTION REQUIRED';
       let accentColor = 'amber';
@@ -460,7 +500,7 @@ export const getIhlrNotifications = async (req, res) => {
       } else if (isClosed) {
         badgeLabel = 'CASE CLOSED';
         accentColor = 'emerald';
-        footerFlag = 'SYSTEM_LOGS';
+        footerFlag = 'CASE_CLOSED';
         dept = 'QUALITY VERIFIED';
       } else if (isUpdated) {
         badgeLabel = 'COUNTERMEASURE SUBMITTED';

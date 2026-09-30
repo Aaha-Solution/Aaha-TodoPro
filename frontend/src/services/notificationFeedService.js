@@ -39,22 +39,49 @@ export const fetchIhlrNotificationsFeed = async (user) => {
 
     if (Array.isArray(apiNotifs)) {
       apiNotifs.forEach((n) => {
+        const isClosedNotif =
+          ['case_closed', 'closure_confirmed', 'closed'].includes(n.type) ||
+          (n.title && n.title.toLowerCase().includes('closed')) ||
+          n.badgeLabel === 'CASE CLOSED';
+        const isUpdatedNotif =
+          ['countermeasure_updated', 'countermeasure_saved'].includes(n.type) ||
+          n.badgeLabel === 'COUNTERMEASURE SUBMITTED';
+        const isConfirmedNotif = n.type === 'submission_confirmed';
+
         streamList.push({
           id: `notif-${n.id}`,
           notifId: n.id,
           rawId: n.rawId,
           reqNo: n.reqNo || (n.requestId ? `#${n.requestId}` : '#IHLR'),
-          badgeLabel: n.badgeLabel || (n.type === 'submission_confirmed' ? 'REPORT LOGGED' : 'ACTION REQUIRED'),
-          accentColor: n.accentColor || (n.type === 'submission_confirmed' ? 'blue' : 'amber'),
-          department: n.department || 'QUALITY',
+          badgeLabel: isClosedNotif
+            ? 'CASE CLOSED'
+            : isUpdatedNotif
+            ? 'COUNTERMEASURE SUBMITTED'
+            : isConfirmedNotif
+            ? 'REPORT LOGGED'
+            : n.badgeLabel || 'ACTION REQUIRED',
+          accentColor: isClosedNotif
+            ? 'emerald'
+            : isUpdatedNotif
+            ? 'indigo'
+            : isConfirmedNotif
+            ? 'blue'
+            : n.accentColor || 'amber',
+          department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : 'PRODUCTION'),
           title: n.title,
           message: n.message,
           timeDisplay: formatStreamDate(n.date),
           subCategory: 'LINE DEFECT REPORT',
-          footerFlag: n.footerFlag || (n.type === 'submission_confirmed' ? 'SYSTEM_LOGS' : 'ACTION_REQUIRED'),
+          footerFlag: isClosedNotif
+            ? 'CASE_CLOSED'
+            : isUpdatedNotif
+            ? 'OPERATIONAL_UPDATE'
+            : isConfirmedNotif
+            ? 'SYSTEM_LOGS'
+            : n.footerFlag || 'ACTION_REQUIRED',
           read: Boolean(n.read),
-          type: n.type || 'info',
-          link: n.link || '/ihlr/my-requests',
+          type: n.type || (isClosedNotif ? 'closed' : 'info'),
+          link: n.link || '/ihlr/approvals',
         });
       });
     }

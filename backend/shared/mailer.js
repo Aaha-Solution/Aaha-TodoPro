@@ -456,20 +456,27 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
     });
   }
 
-  // Also confirm to Assigned Person if their email is available
-  if (assignedEmail && assignedEmail !== creatorEmail) {
-    const subject = `[IHLR Confirmation] Closer Log Saved for #${reqNo}`;
+  // Also confirm to Assigned / Closer Person if their email is available
+  if (assignedEmail) {
+    const subject = isClosed
+      ? `[IHLR Case Closed] Closer Confirmation: Defect Report #${reqNo} Marked as CLOSED`
+      : `[IHLR Confirmation] Closer Log Saved for #${reqNo}`;
+
     const html = generateEmailTemplate({
-      headerTitle: `Closer Log Recorded: #${reqNo}`,
-      headerSubtitle: `Your countermeasure and root cause analysis have been recorded in the quality system.`,
+      headerTitle: isClosed ? `Case Closed & Signed-Off: #${reqNo}` : `Closer Log Recorded: #${reqNo}`,
+      headerSubtitle: isClosed
+        ? `Your closure sign-off and root cause containment measures have been confirmed in the quality portal.`
+        : `Your countermeasure and root cause analysis have been recorded in the quality system.`,
       recipientName: assignedName,
-      greetingMessage: `Your submission for IHLR Report <strong>${reqNo}</strong> has been saved with status <strong>${request.status}</strong>.`,
+      greetingMessage: isClosed
+        ? `You have successfully verified and marked IHLR Report <strong>${reqNo}</strong> as <strong>CLOSED</strong>. Corrective action sign-off is complete.`
+        : `Your submission for IHLR Report <strong>${reqNo}</strong> has been saved with status <strong>${request.status}</strong>.`,
       tableData: tableSummary,
       actionButtonText: 'View Closer Approvals',
       actionButtonUrl: approvalsUrl,
       footerNote: 'Thank you for submitting quality containment measures.',
-      badgeColor: '#10b981',
-      badgeText: 'SAVED',
+      badgeColor: isClosed ? '#10b981' : '#2563eb',
+      badgeText: isClosed ? 'CASE CLOSED' : 'SAVED',
     });
 
     results.assigned = await sendEmail({
@@ -477,7 +484,9 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
       recipientName: assignedName,
       recipientRole: 'SELECTED_PERSON',
       subject,
-      text: `Your countermeasure submission for IHLR #${reqNo} has been saved with status ${request.status}.`,
+      text: isClosed
+        ? `Defect report #${reqNo} has been marked as CLOSED by ${assignedName}. Containment verified.`
+        : `Your countermeasure submission for IHLR #${reqNo} has been saved with status ${request.status}.`,
       html,
       moduleType: 'IHLR',
       requestId: request.id,

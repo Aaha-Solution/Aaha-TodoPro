@@ -12,7 +12,8 @@ import {
   RefreshCw,
   X,
   ExternalLink,
-  ClipboardCheck
+  ClipboardCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useDispatch } from 'react-redux';
@@ -367,18 +368,23 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                 {/* Card Footer: Status Flag & Mark Unread Action */}
                 <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
                   <div className="flex items-center gap-1.5 text-slate-500 font-semibold text-[11px]">
-                    {item.footerFlag === 'ACTION_REQUIRED' ? (
-                      <span className="inline-flex items-center gap-1.5 text-amber-600">
+                    {item.footerFlag === 'CASE_CLOSED' || item.footerFlag === 'CLOSED' || item.badgeLabel === 'CASE CLOSED' ? (
+                      <span className="inline-flex items-center gap-1.5 text-emerald-600 font-bold">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                        Incident Closed &amp; Signed Off
+                      </span>
+                    ) : item.footerFlag === 'ACTION_REQUIRED' ? (
+                      <span className="inline-flex items-center gap-1.5 text-amber-600 font-bold">
                         <AlertCircle className="w-3.5 h-3.5" />
                         Action Required
                       </span>
                     ) : item.footerFlag === 'SYSTEM_LOGS' ? (
-                      <span className="inline-flex items-center gap-1.5 text-emerald-600">
+                      <span className="inline-flex items-center gap-1.5 text-blue-600">
                         <Check className="w-3.5 h-3.5" />
-                        System Logs
+                        Logged in Quality Records
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 text-blue-600">
+                      <span className="inline-flex items-center gap-1.5 text-indigo-600">
                         <Activity className="w-3.5 h-3.5" />
                         Operational Update
                       </span>
