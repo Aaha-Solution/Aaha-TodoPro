@@ -741,13 +741,6 @@ const IhlrApprovals = () => {
                           <td className="py-3.5 px-3">
                             <IhlrAttachmentThumbnail
                               rawAttachment={r.evidence_attachment || r.defect_image}
-                              onClick={(e) => {
-                                e?.stopPropagation?.();
-                                const atts = parseAttachments(r.evidence_attachment || r.defect_image);
-                                if (atts && atts.length > 0) {
-                                  setSelectedPreviewAttachment(atts[0]);
-                                }
-                              }}
                             />
                           </td>
                           <td className="py-3.5 px-3 text-center whitespace-nowrap">

@@ -290,25 +290,18 @@ const IhlrDashboard = () => {
         </div>
       </div>
 
-      {/* KPI Cards Row */}
+      {/* KPI Cards Row (Display only - No navigation) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, index) => {
           const Icon = kpi.icon;
           return (
             <div
               key={index}
-              onClick={() => {
-                if (kpi.filterStatus && kpi.filterStatus !== 'All') {
-                  navigate('/ihlr/my-requests', { state: { filterStatus: kpi.filterStatus } });
-                } else {
-                  navigate('/ihlr/my-requests');
-                }
-              }}
-              className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between hover:shadow-md hover:border-slate-300 transition cursor-pointer group"
+              className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between select-none"
             >
               <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 transition uppercase tracking-wider">{kpi.title}</span>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.iconBg} transition group-hover:scale-110`}>
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{kpi.title}</span>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.iconBg}`}>
                   <Icon className="w-5 h-5" />
                 </div>
               </div>
@@ -440,18 +433,11 @@ const IhlrDashboard = () => {
                       <span className="text-[10px] text-slate-500 font-mono">{req.received_from}</span>
                     </td>
 
-                    {/* Defect Attachment Thumbnail (PDF, Excel, Word, JPG) */}
+                    {/* Defect Attachment Thumbnail (Display only - No modal on click) */}
                     <td className="py-4 px-2 text-center">
                       <div className="flex items-center justify-center">
                         <IhlrAttachmentThumbnail
                           rawAttachment={req.defect_image}
-                          onClick={(e) => {
-                            e?.stopPropagation?.();
-                            const atts = parseAttachments(req.defect_image);
-                            if (atts && atts.length > 0) {
-                              setSelectedPreviewAttachment(atts[0]);
-                            }
-                          }}
                         />
                       </div>
                     </td>

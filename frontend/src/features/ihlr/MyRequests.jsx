@@ -532,18 +532,11 @@ const IhlrMyRequests = () => {
                       {r.analysis_done_by}
                     </td>
 
-                    {/* Defect Attachment Thumbnail */}
+                    {/* Defect Attachment Thumbnail (Display only - No modal on click) */}
                     <td className="py-3.5 px-2 text-center">
                       <div className="flex items-center justify-center">
                         <IhlrAttachmentThumbnail
                           rawAttachment={r.defect_image}
-                          onClick={(e) => {
-                            e?.stopPropagation?.();
-                            const atts = parseAttachments(r.defect_image);
-                            if (atts && atts.length > 0) {
-                              setSelectedPreviewAttachment(atts[0]);
-                            }
-                          }}
                         />
                       </div>
                     </td>
