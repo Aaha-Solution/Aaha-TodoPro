@@ -36,9 +36,15 @@ export const getDashboardStats = async (req, res) => {
     if (!requests) requests = fallbackRequests;
 
     const total = requests.length;
-    const open = requests.filter(r => r.status === 'OPEN').length;
-    const inProgress = requests.filter(r => r.status === 'IN_PROGRESS').length;
-    const closed = requests.filter(r => r.status === 'CLOSED').length;
+    const open = requests.filter(r => {
+      const s = (r.status || '').toUpperCase();
+      return s === 'OPEN' || s === 'PENDING';
+    }).length;
+    const inProgress = requests.filter(r => {
+      const s = (r.status || '').toUpperCase();
+      return s === 'IN_PROGRESS' || s === 'IN-PROGRESS';
+    }).length;
+    const closed = requests.filter(r => (r.status || '').toUpperCase() === 'CLOSED').length;
 
     const fourMBreakdown = {
       MAN: requests.filter(r => (r.four_m || '').toUpperCase() === 'MAN').length,
@@ -50,6 +56,7 @@ export const getDashboardStats = async (req, res) => {
     return successResponse(res, {
       total,
       open,
+      pending: open,
       inProgress,
       closed,
       fourMBreakdown,
@@ -95,7 +102,15 @@ export const getIhlrRequests = async (req, res) => {
     }
 
     if (status && status !== 'All') {
-      requests = requests.filter(r => (r.status || '').toUpperCase() === status.toUpperCase());
+      const targetStatus = status.toUpperCase();
+      if (targetStatus === 'OPEN' || targetStatus === 'PENDING') {
+        requests = requests.filter(r => {
+          const s = (r.status || '').toUpperCase();
+          return s === 'OPEN' || s === 'PENDING';
+        });
+      } else {
+        requests = requests.filter(r => (r.status || '').toUpperCase() === targetStatus);
+      }
     }
 
     return successResponse(res, requests, 'IHLR requests retrieved successfully');

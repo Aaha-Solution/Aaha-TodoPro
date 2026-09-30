@@ -124,7 +124,7 @@ const IhlrDashboard = () => {
       doc.setFontSize(9);
       doc.setTextColor(100, 116, 139);
       doc.text(
-        `Generated: ${today} | Total Active Cases: ${stats.total || 0} | Open: ${stats.open || 0} | In Progress: ${stats.inProgress || 0} | Closed: ${stats.closed || 0}`,
+        `Generated: ${today} | Total Requests: ${stats.total || 0} | Pending: ${stats.pending ?? stats.open ?? 0} | In Progress: ${stats.inProgress || 0} | Closed: ${stats.closed || 0}`,
         40,
         68
       );
@@ -192,18 +192,20 @@ const IhlrDashboard = () => {
 
   const kpis = [
     {
-      title: 'Total IHLR Reports',
+      title: 'Total Requests',
       value: stats.total || 0,
       subtitle: 'Recorded line rejections',
       icon: Layers,
       iconBg: 'bg-blue-50 text-blue-600',
+      filterStatus: 'All',
     },
     {
-      title: 'Open Containments',
-      value: stats.open || 0,
+      title: 'Pending',
+      value: stats.pending !== undefined ? stats.pending : (stats.open || 0),
       subtitle: 'Awaiting root cause closure',
       icon: AlertCircle,
       iconBg: 'bg-rose-50 text-rose-600',
+      filterStatus: 'OPEN',
     },
     {
       title: 'In-Progress',
@@ -211,27 +213,29 @@ const IhlrDashboard = () => {
       subtitle: 'RCA & action review',
       icon: Hourglass,
       iconBg: 'bg-amber-50 text-amber-600',
+      filterStatus: 'IN_PROGRESS',
     },
     {
-      title: 'Closed & Contained',
+      title: 'Closed',
       value: stats.closed || 0,
       subtitle: 'Verified by Quality',
       icon: CheckCircle2,
       iconBg: 'bg-emerald-50 text-emerald-600',
+      filterStatus: 'CLOSED',
     },
   ];
 
   const getStatusBadge = (status) => {
     const s = (status || '').toUpperCase();
-    if (s === 'OPEN') {
+    if (s === 'OPEN' || s === 'PENDING') {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
           <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-          OPEN
+          {s === 'PENDING' ? 'PENDING' : 'OPEN'}
         </span>
       );
     }
-    if (s === 'IN_PROGRESS') {
+    if (s === 'IN_PROGRESS' || s === 'IN-PROGRESS') {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -293,11 +297,18 @@ const IhlrDashboard = () => {
           return (
             <div
               key={index}
-              className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between hover:shadow-xs transition"
+              onClick={() => {
+                if (kpi.filterStatus && kpi.filterStatus !== 'All') {
+                  navigate('/ihlr/my-requests', { state: { filterStatus: kpi.filterStatus } });
+                } else {
+                  navigate('/ihlr/my-requests');
+                }
+              }}
+              className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between hover:shadow-md hover:border-slate-300 transition cursor-pointer group"
             >
               <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{kpi.title}</span>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.iconBg}`}>
+                <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 transition uppercase tracking-wider">{kpi.title}</span>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.iconBg} transition group-hover:scale-110`}>
                   <Icon className="w-5 h-5" />
                 </div>
               </div>

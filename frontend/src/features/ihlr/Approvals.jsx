@@ -596,9 +596,9 @@ const IhlrApprovals = () => {
                 onChange={(e) => setCloserStatus(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition"
               >
-                <option value="OPEN">OPEN (Containment Required)</option>
-                <option value="IN_PROGRESS">IN PROGRESS (Why-Why Review)</option>
-                <option value="CLOSED">CLOSED (Resolved &amp; Signed-off)</option>
+                <option value="OPEN">OPEN</option>
+                <option value="IN_PROGRESS">IN PROGRESS</option>
+                <option value="CLOSED">CLOSED</option>
               </select>
             </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Download,
   Search,
@@ -34,6 +34,7 @@ import { useModal } from '../../context/ModalContext';
 
 const IhlrMyRequests = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { confirm: modalConfirm, error: modalError } = useModal();
 
@@ -58,7 +59,13 @@ const IhlrMyRequests = () => {
   const [search, setSearch] = useState('');
   const [selectedShift, setSelectedShift] = useState('All');
   const [selected4M, setSelected4M] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState(location.state?.filterStatus || 'All');
+
+  useEffect(() => {
+    if (location.state?.filterStatus) {
+      setSelectedStatus(location.state.filterStatus);
+    }
+  }, [location.state]);
 
   // Modal State
   const [activeModalRequest, setActiveModalRequest] = useState(null);
@@ -298,15 +305,15 @@ const IhlrMyRequests = () => {
 
   const getStatusBadge = (status) => {
     const s = (status || '').toUpperCase();
-    if (s === 'OPEN') {
+    if (s === 'OPEN' || s === 'PENDING') {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">
           <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-          OPEN
+          {s === 'PENDING' ? 'PENDING' : 'OPEN'}
         </span>
       );
     }
-    if (s === 'IN_PROGRESS') {
+    if (s === 'IN_PROGRESS' || s === 'IN-PROGRESS') {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -405,9 +412,9 @@ const IhlrMyRequests = () => {
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
             >
               <option value="All">All Statuses</option>
-              <option value="OPEN">OPEN (Containment Required)</option>
-              <option value="IN_PROGRESS">IN PROGRESS</option>
-              <option value="CLOSED">CLOSED (Resolved)</option>
+              <option value="OPEN">Pending</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="CLOSED">Closed</option>
             </select>
           </div>
         </div>
@@ -654,9 +661,9 @@ const IhlrMyRequests = () => {
                   id="modal-status-select"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 outline-none"
                 >
-                  <option value="OPEN">OPEN (Containment Required)</option>
-                  <option value="IN_PROGRESS">IN PROGRESS (Why-Why Review)</option>
-                  <option value="CLOSED">CLOSED (Verified &amp; Resolved)</option>
+                  <option value="OPEN">OPEN</option>
+                  <option value="IN_PROGRESS">IN PROGRESS</option>
+                  <option value="CLOSED">CLOSED</option>
                 </select>
               </div>
 
