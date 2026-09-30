@@ -6,36 +6,18 @@ import {
   Hourglass, 
   CheckCircle2, 
   Layers, 
-  ArrowUpRight,
   Eye,
-  X,
-  FileText,
-  Calendar,
-  User,
-  Wrench,
-  Clock,
-  ShieldCheck,
-  RefreshCw,
-  Download,
-  FileSpreadsheet,
-  Check,
-  Paperclip
+  RefreshCw
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { ihlrService } from '../../services/ihlrService';
-import { IhlrAttachmentThumbnail, parseAttachments } from './IhlrAttachmentView';
+import { IhlrAttachmentThumbnail } from './IhlrAttachmentView';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
-import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import { useAuth } from '../../hooks/useAuth';
-import { useModal } from '../../context/ModalContext';
 
 const IhlrDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { error: modalError } = useModal();
 
   const userDept = (user?.department || (() => {
     try {
@@ -62,117 +44,6 @@ const IhlrDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedPreviewAttachment, setSelectedPreviewAttachment] = useState(null);
-
-  // Export State
-  const [showExportModal, setShowExportModal] = useState(false);
-
-  // Export to Excel (.xlsx)
-  const handleExportExcel = () => {
-    try {
-      const exportData = (stats.recentRequests || []).map((r, index) => ({
-        'SL NO': index + 1,
-        'REQ NO': String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
-        'DATE': r.batch_date ? r.batch_date.split('T')[0] : '—',
-        'SHIFT': String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`,
-        'PROBLEM': r.problem || '—',
-        'MODEL': r.model || '—',
-        'DETECTED AT': r.problem_detected_at || '—',
-        'RECEIVED FROM': r.received_from || '—',
-        '4M': r.four_m || '—',
-        'RESPONSIBILITY': r.resp || '—',
-        'STATUS': r.status || 'OPEN'
-      }));
-
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      worksheet['!cols'] = [
-        { wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 12 },
-        { wch: 25 }, { wch: 15 }, { wch: 16 }, { wch: 16 },
-        { wch: 12 }, { wch: 16 }, { wch: 14 }
-      ];
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Recent IHLR Reports');
-      const today = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(workbook, `IHLR_Recent_Reports_${today}.xlsx`);
-      setShowExportModal(false);
-    } catch (err) {
-      console.error('Failed to export dashboard reports to Excel:', err);
-      modalError('Failed to export to Excel: ' + err.message);
-    }
-  };
-
-  // Export to PDF (.pdf)
-  const handleExportPdf = () => {
-    try {
-      const doc = new jsPDF({
-        orientation: 'landscape',
-        unit: 'pt',
-        format: 'a4'
-      });
-
-      const today = new Date().toISOString().slice(0, 10);
-
-      // Top Title and Company Branding
-      doc.setFontSize(16);
-      doc.setTextColor(30, 41, 59);
-      doc.text('INDIA NIPPON ELECTRICALS LIMITED', 40, 36);
-
-      doc.setFontSize(11);
-      doc.setTextColor(37, 99, 235);
-      doc.text('IHLR Overview Dashboard - Recent Analysis Reports', 40, 52);
-
-      doc.setFontSize(9);
-      doc.setTextColor(100, 116, 139);
-      doc.text(
-        `Generated: ${today} | Total Requests: ${stats.total || 0} | Pending: ${stats.pending ?? stats.open ?? 0} | In Progress: ${stats.inProgress || 0} | Closed: ${stats.closed || 0}`,
-        40,
-        68
-      );
-
-      const tableHeaders = [
-        ['SL', 'REQ NO', 'DATE / SHIFT', 'PROBLEM', 'MODEL', 'STAGE & LINE', '4M', 'RESP', 'STATUS']
-      ];
-
-      const tableRows = (stats.recentRequests || []).map((r, idx) => [
-        idx + 1,
-        String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
-        `${r.batch_date ? r.batch_date.split('T')[0] : '—'}\n${String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}`,
-        r.problem || '—',
-        r.model || '—',
-        `${r.problem_detected_at || '—'}\n(${r.received_from || 'Line'})`,
-        r.four_m || '—',
-        r.resp || '—',
-        r.status || 'OPEN'
-      ]);
-
-      autoTable(doc, {
-        head: tableHeaders,
-        body: tableRows,
-        startY: 80,
-        theme: 'grid',
-        styles: { fontSize: 8.5, cellPadding: 4, valign: 'middle', overflow: 'linebreak' },
-        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-        columnStyles: {
-          0: { cellWidth: 30, halign: 'center' },
-          1: { cellWidth: 70, fontStyle: 'bold', halign: 'center' },
-          2: { cellWidth: 80 },
-          3: { cellWidth: 140 },
-          4: { cellWidth: 80 },
-          5: { cellWidth: 100 },
-          6: { cellWidth: 50, halign: 'center' },
-          7: { cellWidth: 80 },
-          8: { cellWidth: 60, halign: 'center', fontStyle: 'bold' }
-        },
-        alternateRowStyles: { fillColor: [248, 250, 252] }
-      });
-
-      doc.save(`IHLR_Dashboard_Reports_${today}.pdf`);
-      setShowExportModal(false);
-    } catch (err) {
-      console.error('Failed to export dashboard reports to PDF:', err);
-      modalError('Failed to export to PDF: ' + err.message);
-    }
-  };
 
   const loadData = async () => {
     setLoading(true);
@@ -347,29 +218,12 @@ const IhlrDashboard = () => {
 
       {/* Recent IHLR Analysis Reports Table */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-        <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-5 sm:p-6 border-b border-slate-100">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Recent IHLR Analysis Reports</h2>
+            <h2 className="text-base font-bold text-slate-900">Recent 5 Requests</h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Live manufacturing rejection cases with Why-Why analysis & closure actions.
             </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-2xs hover:shadow-xs transition transform active:scale-95 cursor-pointer"
-              id="dashboard-export-btn"
-            >
-              <Download className="w-3.5 h-3.5 text-blue-600" />
-              <span>Export View</span>
-            </button>
-            <button
-              onClick={() => navigate('/ihlr/my-requests')}
-              className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 transition cursor-pointer"
-            >
-              <span>View All Reports</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
 
@@ -399,7 +253,7 @@ const IhlrDashboard = () => {
                   </td>
                 </tr>
               ) : (
-                stats.recentRequests.map((req, index) => (
+                (stats.recentRequests || []).slice(0, 5).map((req, index) => (
                   <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
                     {/* SL NO */}
                     <td className="py-4 px-4 text-center font-mono font-semibold text-slate-500">
@@ -497,19 +351,6 @@ const IhlrDashboard = () => {
         isOpen={Boolean(selectedPreviewAttachment)}
         attachment={selectedPreviewAttachment}
         onClose={() => setSelectedPreviewAttachment(null)}
-      />
-
-      {/* Universal Export Format Selection Modal */}
-      <ExportSelectionModal
-        isOpen={showExportModal}
-        onClose={() => setShowExportModal(false)}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-        title="Export Dashboard Summary"
-        subtitle="Choose download format for recent reports"
-        recordCount={(stats.recentRequests || []).length}
-        excelDescription="Download full structured workbook with recent incident details, line rejections, and 4M classification."
-        pdfDescription="Official landscape document formatted with India Nippon Electricals Limited branding, tables, and page numbers."
       />
     </div>
   );

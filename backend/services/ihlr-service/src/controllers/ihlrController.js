@@ -53,6 +53,8 @@ export const getDashboardStats = async (req, res) => {
       MATERIAL: requests.filter(r => (r.four_m || '').toUpperCase() === 'MATERIAL').length,
     };
 
+    const sortedRequests = [...requests].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+
     return successResponse(res, {
       total,
       open,
@@ -60,7 +62,7 @@ export const getDashboardStats = async (req, res) => {
       inProgress,
       closed,
       fourMBreakdown,
-      recentRequests: requests.slice(0, 5)
+      recentRequests: sortedRequests.slice(0, 5)
     }, 'IHLR dashboard metrics retrieved successfully');
   } catch (error) {
     return errorResponse(res, error.message, 500);
