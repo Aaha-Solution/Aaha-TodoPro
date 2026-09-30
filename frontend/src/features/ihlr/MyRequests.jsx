@@ -31,6 +31,7 @@ import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import { useAuth } from '../../hooks/useAuth';
 import { useModal } from '../../context/ModalContext';
+import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 
 const IhlrMyRequests = () => {
   const navigate = useNavigate();
@@ -81,7 +82,7 @@ const IhlrMyRequests = () => {
       const exportData = requests.map((r, index) => ({
         'SL NO': index + 1,
         'REQ NO': String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
-        'DATE': r.batch_date ? r.batch_date.split('T')[0] : '—',
+        'DATE': formatDateDDMMYYYY(r.batch_date),
         'SHIFT': String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`,
         'PROBLEM': r.problem || '—',
         'MODEL': r.model || '—',
@@ -185,7 +186,7 @@ const IhlrMyRequests = () => {
       const tableRows = requests.map((r, idx) => [
         idx + 1,
         String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
-        `${r.batch_date ? r.batch_date.split('T')[0] : '—'}\n${String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}`,
+        `${formatDateDDMMYYYY(r.batch_date)}\n${String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}`,
         r.problem || '—',
         r.model || '—',
         r.problem_detected_at || '—',
@@ -500,7 +501,7 @@ const IhlrMyRequests = () => {
                     {/* Date / Shift */}
                     <td className="py-3.5 px-3 whitespace-nowrap">
                       <div className="font-semibold text-slate-900">
-                        {r.batch_date ? r.batch_date.split('T')[0] : '—'}
+                        {formatDateDDMMYYYY(r.batch_date)}
                       </div>
                       <span className="text-[10px] font-bold text-slate-400 font-mono">
                         {String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}

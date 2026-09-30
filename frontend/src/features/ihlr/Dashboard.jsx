@@ -13,6 +13,7 @@ import { IhlrAttachmentThumbnail } from './IhlrAttachmentView';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 import { useAuth } from '../../hooks/useAuth';
+import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 
 const IhlrDashboard = () => {
   const navigate = useNavigate();
@@ -259,7 +260,7 @@ const IhlrDashboard = () => {
                     {/* Date / Shift */}
                     <td className="py-4 px-4">
                       <div className="font-semibold text-slate-900">
-                        {req.batch_date ? req.batch_date.split('T')[0] : '—'}
+                        {formatDateDDMMYYYY(req.batch_date)}
                       </div>
                       <span className="text-[10px] font-bold text-slate-400 font-mono">
                         {String(req.shift || '').startsWith('Shift') ? req.shift : `Shift ${req.shift}`}

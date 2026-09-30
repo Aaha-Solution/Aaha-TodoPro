@@ -145,7 +145,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
                   }
                 >
                   <Icon className="w-4 h-4 stroke-[2]" />
-                  <span className="flex-1 text-left">{item.isAction ? `+ ${item.name}` : item.name}</span>
+                  <span className="flex-1 text-left">{item.name}</span>
                   {item.name === 'Notifications' && unreadCount > 0 && (
                     <span className="relative flex items-center justify-center">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />

@@ -31,6 +31,7 @@ import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import { useModal } from '../../context/ModalContext';
+import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 
 const IhlrApprovals = () => {
   const { error: modalError } = useModal();
@@ -212,7 +213,7 @@ const IhlrApprovals = () => {
       const exportData = filtered.map((r, index) => ({
         'SL NO': index + 1,
         'REQ NO': String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
-        'DATE': r.batch_date ? r.batch_date.split('T')[0] : '—',
+        'DATE': formatDateDDMMYYYY(r.batch_date),
         'SHIFT': String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`,
         'PROBLEM': r.problem || '—',
         'MODEL': r.model || '—',
@@ -282,7 +283,7 @@ const IhlrApprovals = () => {
       const tableRows = filtered.map((r, idx) => [
         idx + 1,
         String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
-        r.batch_date ? r.batch_date.split('T')[0] : '—',
+        formatDateDDMMYYYY(r.batch_date),
         `${r.problem || '—'}\n(${r.model || '—'})`,
         r.problem_detected_at || '—',
         r.four_m || '—',
@@ -728,7 +729,7 @@ const IhlrApprovals = () => {
                             {String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`}
                           </td>
                           <td className="py-3.5 px-3 whitespace-nowrap text-slate-600 font-mono text-[11px]">
-                            {r.batch_date ? r.batch_date.split('T')[0] : '—'}
+                            {formatDateDDMMYYYY(r.batch_date)}
                           </td>
                           <td className="py-3.5 px-4">
                             <div className="font-semibold text-slate-900 truncate max-w-[180px]" title={r.problem}>

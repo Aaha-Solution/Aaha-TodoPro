@@ -21,6 +21,7 @@ import { ihlrService } from '../../services/ihlrService';
 import { useAuth } from '../../hooks/useAuth';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
 import { useModal } from '../../context/ModalContext';
+import { getTodayDateInput, formatDateDDMMYYYY } from '../../utils/dateUtils';
 
 const IhlrCreateRequest = () => {
   const { alert, success, error, warning } = useModal();
@@ -48,7 +49,7 @@ const IhlrCreateRequest = () => {
 
   const [formData, setFormData] = useState({
     req_no: 'IHLR-1',
-    batch_date: '',
+    batch_date: getTodayDateInput(),
     shift: '',
     problem: '',
     model: '',
@@ -375,8 +376,9 @@ const IhlrCreateRequest = () => {
 
             {/* Incident Date */}
             <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Incident Date *
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center justify-between">
+                <span>Incident Date *</span>
+                <span className="text-[10px] text-slate-400 font-mono font-normal">DD/MM/YYYY</span>
               </label>
               <input
                 type="date"

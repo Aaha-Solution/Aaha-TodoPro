@@ -57,11 +57,19 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
   const evidenceAttachments = parseAttachments(request.evidence_attachment);
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
+    if (!dateStr) return '—';
     try {
+      const raw = String(dateStr).split('T')[0].trim();
+      const parts = raw.split('-');
+      if (parts.length === 3 && parts[0].length === 4) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr;
-      return d.toISOString().split('T')[0];
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
     } catch {
       return dateStr;
     }
