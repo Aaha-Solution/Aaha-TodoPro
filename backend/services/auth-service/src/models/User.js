@@ -43,12 +43,22 @@ export const User = {
 
   update: async (id, updates) => {
     if (!pool) throw new Error('Database connection pool is not available');
-    const { name, role, department, status } = updates;
+    const { name, role, department, status, password } = updates;
     const normalizedRole = (role && role.toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
-    await pool.query(
-      'UPDATE users SET name = ?, role = ?, department = ?, status = ? WHERE id = ?',
-      [name, normalizedRole, department, status ? status.toUpperCase() : 'ACTIVE', id]
-    );
+    
+    if (password && typeof password === 'string' && password.trim()) {
+      const hashedPassword = bcrypt.hashSync(password.trim(), 10);
+      await pool.query(
+        'UPDATE users SET name = ?, role = ?, department = ?, status = ?, password = ? WHERE id = ?',
+        [name, normalizedRole, department, status ? status.toUpperCase() : 'ACTIVE', hashedPassword, id]
+      );
+    } else {
+      await pool.query(
+        'UPDATE users SET name = ?, role = ?, department = ?, status = ? WHERE id = ?',
+        [name, normalizedRole, department, status ? status.toUpperCase() : 'ACTIVE', id]
+      );
+    }
+
     const [rows] = await pool.query(
       'SELECT id, name, email, role, department, status, updated_at FROM users WHERE id = ?',
       [id]
