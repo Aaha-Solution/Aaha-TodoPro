@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   AlertCircle, 
-  Hourglass, 
   CheckCircle2, 
   Layers, 
   Eye,
@@ -77,14 +76,6 @@ const IhlrDashboard = () => {
       icon: AlertCircle,
       iconBg: 'bg-rose-50 text-rose-600',
       filterStatus: 'OPEN',
-    },
-    {
-      title: 'In-Progress',
-      value: stats.inProgress || 0,
-      subtitle: 'RCA & action review',
-      icon: Hourglass,
-      iconBg: 'bg-amber-50 text-amber-600',
-      filterStatus: 'IN_PROGRESS',
     },
     {
       title: 'Closed',
@@ -162,7 +153,7 @@ const IhlrDashboard = () => {
       </div>
 
       {/* KPI Cards Row (Display only - No navigation) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {kpis.map((kpi, index) => {
           const Icon = kpi.icon;
           return (
