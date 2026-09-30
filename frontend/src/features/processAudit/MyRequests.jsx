@@ -1460,8 +1460,14 @@ const MyRequests = () => {
 
       {/* Reassign Department & Executor Modal */}
       {showReassignModal && reassigningRequest && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200/80 space-y-5 animate-in zoom-in-95">
+        <div 
+          className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
+          style={{ zIndex: 10001 }}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200/80 space-y-5 animate-in zoom-in-95 relative"
+            style={{ zIndex: 10002 }}
+          >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
