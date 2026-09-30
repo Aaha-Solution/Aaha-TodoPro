@@ -49,19 +49,8 @@ const ProcessAuditDashboard = () => {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (!isAdmin) {
-        if (isIncomingQuality) {
-          if (user?.name) params.created_by = user.name;
-          if (user?.id) params.created_by_id = user.id;
-        } else {
-          if (user?.name) params.executor = user.name;
-        }
-        params.role = user?.role;
-      }
-
       const [reqsData, statsData] = await Promise.allSettled([
-        processAuditService.getRequests(params),
+        processAuditService.getRequests(),
         processAuditService.getDashboardStats()
       ]);
 
@@ -335,20 +324,17 @@ const ProcessAuditDashboard = () => {
     return tokens.includes(u);
   };
 
-  const userRequests = requests.filter((r) => {
-    if (isAdmin) return true;
-    const myName = (user?.name || '').trim().toLowerCase();
-    const myId = user?.id;
-    const creator = (r.created_by || r.creator || '').trim().toLowerCase();
-    const creatorId = r.created_by_id;
-    const exec = (r.executor || '').trim().toLowerCase();
-
-    if (isIncomingQuality) {
-      return (myId && creatorId && Number(myId) === Number(creatorId)) || matchExactToken(creator, myName);
-    } else {
-      return matchExactToken(exec, myName);
-    }
-  });
+  // Show only the 10 most recently created requests (newest creation date & ID first)
+  const recentRequests = [...requests]
+    .sort((a, b) => {
+      const timeA = new Date(a.created_at || a.createdAt || a.escalation_date || 0).getTime();
+      const timeB = new Date(b.created_at || b.createdAt || b.escalation_date || 0).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      const idA = typeof a.id === 'number' ? a.id : parseInt(String(a.id || a.issue_no || '').replace(/\D/g, ''), 10) || 0;
+      const idB = typeof b.id === 'number' ? b.id : parseInt(String(b.id || b.issue_no || '').replace(/\D/g, ''), 10) || 0;
+      return idB - idA;
+    })
+    .slice(0, 10);
 
   return (
     <div className="space-y-7 pb-12">
@@ -358,9 +344,7 @@ const ProcessAuditDashboard = () => {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Dashboard
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Real-time manufacturing KPIs and production audit telemetry.
-          </p>
+       
         </div>
 
         <div className="flex items-center gap-3">
@@ -423,9 +407,7 @@ const ProcessAuditDashboard = () => {
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
               Recent Production Requests
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Live records from database with latest sequential audit history.
-            </p>
+           
           </div>
           {canCreate && (
             <button
@@ -444,10 +426,10 @@ const ProcessAuditDashboard = () => {
               <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
               Loading production requests from database...
             </div>
-          ) : userRequests.length === 0 ? (
+          ) : recentRequests.length === 0 ? (
             <div className="py-16 text-center text-slate-400 text-xs">
               <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-              <p className="font-semibold text-slate-600 mb-1">No production requests found for your account</p>
+              <p className="font-semibold text-slate-600 mb-1">No production requests recorded yet</p>
               {canCreate && (
                 <>
                   <p className="text-slate-400 mb-4">Click below to create your first production audit request.</p>
@@ -475,7 +457,7 @@ const ProcessAuditDashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {userRequests.slice(0, 10).map((req) => {
+                {recentRequests.map((req) => {
                   const reqId = req.issue_no || (req.id ? `PA-${req.id}` : 'PA-1');
                   const dateStr = formatDate(req.escalation_date || req.created_at);
                   const prodStr = req.product || '-';

@@ -186,7 +186,7 @@ export const ProcessAuditRequest = {
       query += ` WHERE ` + conditions.join(' AND ');
     }
 
-    query += ` ORDER BY r.id DESC`;
+    query += ` ORDER BY r.created_at DESC, r.id DESC`;
 
     const [rows] = await pool.query(query, params);
     return rows;
