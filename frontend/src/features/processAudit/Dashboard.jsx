@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Plus, 
-  BarChart3, 
-  Hourglass, 
-  Check, 
+import {
+  Plus,
+  BarChart3,
+  Hourglass,
+  Check,
   CheckCircle2,
-  X, 
+  X,
   Eye,
   FileText,
   RefreshCw,
@@ -93,9 +93,9 @@ const ProcessAuditDashboard = () => {
     if (!dateVal) return '-';
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return String(dateVal);
-    return d.toLocaleDateString('en-GB', { 
-      day: '2-digit', 
-      month: 'short', 
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
@@ -215,42 +215,42 @@ const ProcessAuditDashboard = () => {
     {
       title: 'Total Requests',
       value: String(total),
-      subtitle: 'Across all production lines',
+
       icon: BarChart3,
       iconBg: 'bg-blue-50 text-blue-600',
     },
     {
       title: 'Pending Execution',
       value: String(pendingExec),
-      subtitle: 'Awaiting floor commencement',
+
       icon: Hourglass,
       iconBg: 'bg-amber-50 text-amber-600',
     },
-    {
-      title: 'Open',
-      value: String(openCount),
-      subtitle: 'Active audit observations',
-      icon: AlertCircle,
-      iconBg: 'bg-sky-50 text-sky-600',
-    },
+
     {
       title: 'Approved',
       value: String(approved),
-      subtitle: 'Released to Inventory',
       icon: Check,
       iconBg: 'bg-emerald-50 text-emerald-600',
     },
     {
       title: 'Rejected',
       value: String(rejected),
-      subtitle: 'Actionable rework needed',
+
       icon: X,
       iconBg: 'bg-rose-50 text-rose-600',
     },
     {
+      title: 'Open',
+      value: String(openCount),
+
+      icon: AlertCircle,
+      iconBg: 'bg-sky-50 text-sky-600',
+    },
+    {
       title: 'Closed',
       value: String(closed),
-      subtitle: 'Audit signed off & closed',
+
       icon: CheckCircle2,
       iconBg: 'bg-teal-50 text-teal-600',
     },
@@ -674,107 +674,107 @@ const ProcessAuditDashboard = () => {
                 selectedRequest.standardization_details ||
                 selectedRequest.target_date ||
                 (selectedRequest.action_attachments && selectedRequest.action_attachments !== '[]')) && (
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/90 space-y-3.5">
-                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-200">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                        Executor Corrective Action &amp; Standardization Report
-                      </h4>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/90 space-y-3.5">
+                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-200">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                          Executor Corrective Action &amp; Standardization Report
+                        </h4>
+                      </div>
+                      {selectedRequest.action_taken_by && (
+                        <span className="text-[10px] text-slate-500">
+                          Signed-off by: <strong className="text-slate-800">{selectedRequest.action_taken_by}</strong>
+                        </span>
+                      )}
                     </div>
-                    {selectedRequest.action_taken_by && (
-                      <span className="text-[10px] text-slate-500">
-                        Signed-off by: <strong className="text-slate-800">{selectedRequest.action_taken_by}</strong>
-                      </span>
+
+                    {selectedRequest.root_cause && (
+                      <div>
+                        <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Root cause</span>
+                        <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                          {selectedRequest.root_cause}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedRequest.corrective_action && (
+                      <div>
+                        <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Corrective Action (by Resp. Team)</span>
+                        <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                          {selectedRequest.corrective_action}
+                        </p>
+                      </div>
+                    )}
+
+                    {(() => {
+                      const actionAtts = getAttachmentsList(selectedRequest.action_attachments);
+                      if (actionAtts.length === 0) return null;
+                      return (
+                        <div>
+                          <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1.5">Action Attachments ({actionAtts.length})</span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {actionAtts.map((att, i) => {
+                              const meta = getFileMeta(att);
+                              const IconComponent = meta.icon;
+                              const fullUrl = getFullAttachmentUrl(att);
+                              return (
+                                <div key={i} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                  <div className="flex items-center gap-2 min-w-0 pr-2">
+                                    <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 border ${meta.badgeBg}`}>
+                                      <IconComponent className="w-3.5 h-3.5" />
+                                    </div>
+                                    <span className="font-semibold text-slate-800 truncate text-[11px]" title={att.name}>{att.name}</span>
+                                  </div>
+                                  {fullUrl && (
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => setPreviewAttachment({ ...att, url: fullUrl, isImage: meta.isImage, isPdf: meta.isPdf, isExcel: meta.isExcel, isPpt: meta.isPpt, type: att.type || meta.typeName })}
+                                        className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+                                        title="Preview"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          triggerDirectDownload(fullUrl, att.name);
+                                        }}
+                                        className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+                                        title="Download file directly"
+                                      >
+                                        <Download className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {selectedRequest.standardization_details && (
+                      <div>
+                        <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Standardization details</span>
+                        <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                          {selectedRequest.standardization_details}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedRequest.target_date && (
+                      <div className="flex items-center gap-2 text-xs pt-1">
+                        <span className="text-[#003366] font-bold">Target Date:</span>
+                        <span className="font-semibold text-slate-800 font-mono">{formatDate(selectedRequest.target_date)}</span>
+                      </div>
                     )}
                   </div>
-
-                  {selectedRequest.root_cause && (
-                    <div>
-                      <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Root cause</span>
-                      <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
-                        {selectedRequest.root_cause}
-                      </p>
-                    </div>
-                  )}
-
-                  {selectedRequest.corrective_action && (
-                    <div>
-                      <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Corrective Action (by Resp. Team)</span>
-                      <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
-                        {selectedRequest.corrective_action}
-                      </p>
-                    </div>
-                  )}
-
-                  {(() => {
-                    const actionAtts = getAttachmentsList(selectedRequest.action_attachments);
-                    if (actionAtts.length === 0) return null;
-                    return (
-                      <div>
-                        <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1.5">Action Attachments ({actionAtts.length})</span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {actionAtts.map((att, i) => {
-                            const meta = getFileMeta(att);
-                            const IconComponent = meta.icon;
-                            const fullUrl = getFullAttachmentUrl(att);
-                            return (
-                              <div key={i} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                                <div className="flex items-center gap-2 min-w-0 pr-2">
-                                  <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 border ${meta.badgeBg}`}>
-                                    <IconComponent className="w-3.5 h-3.5" />
-                                  </div>
-                                  <span className="font-semibold text-slate-800 truncate text-[11px]" title={att.name}>{att.name}</span>
-                                </div>
-                                {fullUrl && (
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => setPreviewAttachment({ ...att, url: fullUrl, isImage: meta.isImage, isPdf: meta.isPdf, isExcel: meta.isExcel, isPpt: meta.isPpt, type: att.type || meta.typeName })}
-                                      className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100 cursor-pointer"
-                                      title="Preview"
-                                    >
-                                      <Eye className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        triggerDirectDownload(fullUrl, att.name);
-                                      }}
-                                      className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100 cursor-pointer"
-                                      title="Download file directly"
-                                    >
-                                      <Download className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {selectedRequest.standardization_details && (
-                    <div>
-                      <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Standardization details</span>
-                      <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
-                        {selectedRequest.standardization_details}
-                      </p>
-                    </div>
-                  )}
-
-                  {selectedRequest.target_date && (
-                    <div className="flex items-center gap-2 text-xs pt-1">
-                      <span className="text-[#003366] font-bold">Target Date:</span>
-                      <span className="font-semibold text-slate-800 font-mono">{formatDate(selectedRequest.target_date)}</span>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
             </div>
 
             <div className="flex items-center justify-end pt-4 border-t border-slate-100">
