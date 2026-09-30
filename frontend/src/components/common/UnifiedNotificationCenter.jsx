@@ -11,7 +11,6 @@ import {
   Mail,
   RefreshCw,
   X,
-  ExternalLink,
   ClipboardCheck,
   CheckCircle2
 } from 'lucide-react';
@@ -314,7 +313,8 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
             return (
               <div
                 key={item.id}
-                className={`bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs hover:shadow-xs transition flex flex-col gap-3.5 border-l-4 ${borderAccent} ${
+                onClick={() => navigate(item.link || defaultLink)}
+                className={`bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-150 cursor-pointer flex flex-col gap-3.5 border-l-4 ${borderAccent} ${
                   !item.read ? 'ring-1 ring-blue-500/10' : ''
                 }`}
               >
@@ -394,16 +394,10 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => navigate(item.link || defaultLink)}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-blue-600 transition cursor-pointer"
-                    >
-                      <span>View Details</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => toggleRead(item.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleRead(item.id);
+                      }}
                       className="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-wider transition cursor-pointer"
                       title={item.read ? 'Mark as Unread' : 'Mark as Read'}
                     >
