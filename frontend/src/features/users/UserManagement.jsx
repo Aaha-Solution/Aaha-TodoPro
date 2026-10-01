@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   XCircle,
+  AlertCircle,
   Edit2,
   Trash2,
   X,
@@ -93,6 +94,10 @@ const UserManagement = () => {
     )
   );
 
+  // Field-level inline errors
+  const [addFormErrors, setAddFormErrors] = useState({});
+  const [editFormErrors, setEditFormErrors] = useState({});
+
   // Load users from backend / local storage on mount
   useEffect(() => {
     const fetchUsers = async () => {
@@ -127,6 +132,7 @@ const UserManagement = () => {
       systems: ['processAudit', 'ihlr', 'tryOutStatus'],
       password: ''
     });
+    setAddFormErrors({});
     setShowAddModal(true);
   };
 
@@ -148,23 +154,56 @@ const UserManagement = () => {
     }));
   };
 
+  const validateAddForm = () => {
+    const errs = {};
+    const trimmedName = (formData.name || '').trim();
+    const trimmedEmpId = (formData.employeeId || '').trim();
+    const trimmedEmail = (formData.email || '').trim();
+    const trimmedPass = (formData.password || '').trim();
+
+    if (!trimmedName) {
+      errs.name = 'Full Name is required';
+    }
+
+    if (!trimmedEmpId) {
+      errs.employeeId = 'Employee ID is required';
+    } else if (
+      users.some(
+        (u) =>
+          (u.employeeId || u.employee_id || String(u.id)).trim().toLowerCase() ===
+          trimmedEmpId.toLowerCase()
+      )
+    ) {
+      errs.employeeId = `Employee ID "${trimmedEmpId}" is already in DB`;
+    }
+
+    if (!trimmedEmail) {
+      errs.email = 'Enterprise Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      errs.email = 'Please enter a valid enterprise email address';
+    } else if (
+      users.some((u) => (u.email || '').trim().toLowerCase() === trimmedEmail.toLowerCase())
+    ) {
+      errs.email = `Email "${trimmedEmail}" is already registered in DB`;
+    }
+
+    if (!trimmedPass) {
+      errs.password = 'Password is required';
+    } else if (trimmedPass.length < 6) {
+      errs.password = 'Password must be at least 6 characters';
+    }
+
+    setAddFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleCreateUserSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.email.trim()) {
-      alert('Please provide full name and email address.');
+    if (!validateAddForm()) {
       return;
     }
 
-    const trimmedEmpId = (formData.employeeId || '').trim();
-    if (!trimmedEmpId) {
-      alert('Please provide an Employee ID.');
-      return;
-    }
-
-    if (isAddEmpDuplicate) {
-      alert(`Employee ID "${trimmedEmpId}" already exists in the database. Please provide a unique Employee ID.`);
-      return;
-    }
+    const trimmedEmpId = formData.employeeId.trim();
 
     try {
       const created = await userService.createUser({
@@ -174,9 +213,17 @@ const UserManagement = () => {
       const freshData = await userService.getUsers();
       dispatch(setUsers(freshData));
       setShowAddModal(false);
+      setAddFormErrors({});
       showToast(`User "${created?.name || formData.name}" created successfully in Database!`);
     } catch (err) {
-      alert('Failed to save user in DB: ' + (err.response?.data?.message || err.message));
+      const msg = err.response?.data?.message || err.message;
+      if (msg.toLowerCase().includes('employee id') || msg.toLowerCase().includes('employee_id')) {
+        setAddFormErrors((prev) => ({ ...prev, employeeId: msg }));
+      } else if (msg.toLowerCase().includes('email')) {
+        setAddFormErrors((prev) => ({ ...prev, email: msg }));
+      } else {
+        alert('Failed to save user in DB: ' + msg);
+      }
     }
   };
 
@@ -187,24 +234,49 @@ const UserManagement = () => {
       password: '',
       status: (userToEdit.status && userToEdit.status.toUpperCase() === 'INACTIVE') ? 'Inactive' : 'Active'
     });
+    setEditFormErrors({});
     setShowEditPassword(false);
     setShowEditModal(true);
   };
 
+  const validateEditForm = () => {
+    const errs = {};
+    const trimmedName = (editingUser?.name || '').trim();
+    const trimmedEmpId = (editingUser?.employeeId || '').trim();
+    const trimmedPass = (editingUser?.password || '').trim();
+
+    if (!trimmedName) {
+      errs.name = 'Full Name is required';
+    }
+
+    if (!trimmedEmpId) {
+      errs.employeeId = 'Employee ID is required';
+    } else if (
+      users.some(
+        (u) =>
+          String(u.id) !== String(editingUser.id) &&
+          (u.employeeId || u.employee_id || String(u.id)).trim().toLowerCase() ===
+            trimmedEmpId.toLowerCase()
+      )
+    ) {
+      errs.employeeId = `Employee ID "${trimmedEmpId}" already taken by another user`;
+    }
+
+    if (trimmedPass && trimmedPass.length < 6) {
+      errs.password = 'Password must be at least 6 characters';
+    }
+
+    setEditFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleEditUserSubmit = async (e) => {
     e.preventDefault();
-    if (!editingUser.name.trim()) return;
+    if (!validateEditForm()) {
+      return;
+    }
 
     const trimmedEmpId = (editingUser.employeeId || '').trim();
-    if (!trimmedEmpId) {
-      alert('Please provide an Employee ID.');
-      return;
-    }
-
-    if (isEditEmpDuplicate) {
-      alert(`Employee ID "${trimmedEmpId}" already exists in the database for another user.`);
-      return;
-    }
 
     try {
       const payload = {
@@ -222,13 +294,19 @@ const UserManagement = () => {
       const freshData = await userService.getUsers();
       dispatch(setUsers(freshData));
       setShowEditModal(false);
+      setEditFormErrors({});
       showToast(
         payload.password
           ? `User "${editingUser.name}" details and password updated successfully in Database!`
           : `User "${editingUser.name}" updated successfully in Database!`
       );
     } catch (err) {
-      alert('Failed to update user in DB: ' + (err.response?.data?.message || err.message));
+      const msg = err.response?.data?.message || err.message;
+      if (msg.toLowerCase().includes('employee id') || msg.toLowerCase().includes('employee_id')) {
+        setEditFormErrors((prev) => ({ ...prev, employeeId: msg }));
+      } else {
+        alert('Failed to update user in DB: ' + msg);
+      }
     }
   };
 
@@ -811,7 +889,7 @@ const UserManagement = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreateUserSubmit} className="mt-5 space-y-4">
+            <form noValidate onSubmit={handleCreateUserSubmit} className="mt-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Full Name */}
                 <div>
@@ -820,39 +898,49 @@ const UserManagement = () => {
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (addFormErrors.name) setAddFormErrors((prev) => ({ ...prev, name: '' }));
+                    }}
                     placeholder="e.g. Ramesh Kumar"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                  />
-                </div>
-
-                {/* Employee ID */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center justify-between">
-                    <span>Employee ID *</span>
-                    {isAddEmpDuplicate && (
-                      <span className="text-[10px] text-red-600 font-semibold lowercase tracking-normal flex items-center gap-0.5">
-                        <XCircle className="w-3 h-3 inline" /> already in DB
-                      </span>
-                    )}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.employeeId}
-                    onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                    placeholder="e.g. USR-008"
-                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 font-mono focus:bg-white focus:ring-2 outline-none transition ${
-                      isAddEmpDuplicate
+                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
+                      addFormErrors.name
                         ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
                         : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
                     }`}
                   />
-                  {isAddEmpDuplicate && (
-                    <p className="text-[10px] text-red-500 font-medium mt-1">
-                      Employee ID &quot;{formData.employeeId}&quot; is already registered in DB.
+                  {addFormErrors.name && (
+                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{addFormErrors.name}</span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Employee ID */}
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Employee ID *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.employeeId}
+                    onChange={(e) => {
+                      setFormData({ ...formData, employeeId: e.target.value });
+                      if (addFormErrors.employeeId) setAddFormErrors((prev) => ({ ...prev, employeeId: '' }));
+                    }}
+                    placeholder="e.g. USR-008"
+                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 font-mono focus:bg-white focus:ring-2 outline-none transition ${
+                      addFormErrors.employeeId || isAddEmpDuplicate
+                        ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
+                  />
+                  {(addFormErrors.employeeId || isAddEmpDuplicate) && (
+                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{addFormErrors.employeeId || `Employee ID "${formData.employeeId}" is already registered in DB.`}</span>
                     </p>
                   )}
                 </div>
@@ -867,13 +955,25 @@ const UserManagement = () => {
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
                   <input
                     type="email"
-                    required
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, email: e.target.value });
+                      if (addFormErrors.email) setAddFormErrors((prev) => ({ ...prev, email: '' }));
+                    }}
                     placeholder="ramesh@inel.co.in"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
+                      addFormErrors.email
+                        ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
                   />
                 </div>
+                {addFormErrors.email && (
+                  <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                    <span>{addFormErrors.email}</span>
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -920,11 +1020,17 @@ const UserManagement = () => {
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
                     <input
                       type={showAddPassword ? 'text' : 'password'}
-                      required
                       value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, password: e.target.value });
+                        if (addFormErrors.password) setAddFormErrors((prev) => ({ ...prev, password: '' }));
+                      }}
                       placeholder="Enter password"
-                      className="w-full pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                      className={`w-full pl-9 pr-10 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
+                        addFormErrors.password
+                          ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                          : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
                     />
                     <button
                       type="button"
@@ -935,6 +1041,12 @@ const UserManagement = () => {
                       {showAddPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  {addFormErrors.password && (
+                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{addFormErrors.password}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1015,7 +1127,7 @@ const UserManagement = () => {
               </button>
             </div>
 
-            <form onSubmit={handleEditUserSubmit} className="mt-5 space-y-4">
+            <form noValidate onSubmit={handleEditUserSubmit} className="mt-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Full Name */}
                 <div>
@@ -1024,38 +1136,48 @@ const UserManagement = () => {
                   </label>
                   <input
                     type="text"
-                    required
                     value={editingUser.name}
-                    onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                  />
-                </div>
-
-                {/* Employee ID (Editable & Validated) */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center justify-between">
-                    <span>Employee ID *</span>
-                    {isEditEmpDuplicate && (
-                      <span className="text-[10px] text-red-600 font-semibold lowercase tracking-normal flex items-center gap-0.5">
-                        <XCircle className="w-3 h-3 inline" /> already in DB
-                      </span>
-                    )}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editingUser.employeeId || ''}
-                    onChange={(e) => setEditingUser({ ...editingUser, employeeId: e.target.value })}
-                    placeholder="e.g. USR-008"
-                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 font-mono focus:bg-white focus:ring-2 outline-none transition ${
-                      isEditEmpDuplicate
+                    onChange={(e) => {
+                      setEditingUser({ ...editingUser, name: e.target.value });
+                      if (editFormErrors.name) setEditFormErrors((prev) => ({ ...prev, name: '' }));
+                    }}
+                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
+                      editFormErrors.name
                         ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
                         : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
                     }`}
                   />
-                  {isEditEmpDuplicate && (
-                    <p className="text-[10px] text-red-500 font-medium mt-1">
-                      Employee ID &quot;{editingUser.employeeId}&quot; is already taken by another user.
+                  {editFormErrors.name && (
+                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{editFormErrors.name}</span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Employee ID (Editable & Validated) */}
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Employee ID *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.employeeId || ''}
+                    onChange={(e) => {
+                      setEditingUser({ ...editingUser, employeeId: e.target.value });
+                      if (editFormErrors.employeeId) setEditFormErrors((prev) => ({ ...prev, employeeId: '' }));
+                    }}
+                    placeholder="e.g. USR-008"
+                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 font-mono focus:bg-white focus:ring-2 outline-none transition ${
+                      editFormErrors.employeeId || isEditEmpDuplicate
+                        ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
+                  />
+                  {(editFormErrors.employeeId || isEditEmpDuplicate) && (
+                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{editFormErrors.employeeId || `Employee ID "${editingUser.employeeId}" is already taken by another user.`}</span>
                     </p>
                   )}
                 </div>
@@ -1135,9 +1257,16 @@ const UserManagement = () => {
                   <input
                     type={showEditPassword ? 'text' : 'password'}
                     value={editingUser.password || ''}
-                    onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+                    onChange={(e) => {
+                      setEditingUser({ ...editingUser, password: e.target.value });
+                      if (editFormErrors.password) setEditFormErrors((prev) => ({ ...prev, password: '' }));
+                    }}
                     placeholder="Enter new password to update..."
-                    className="w-full pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    className={`w-full pl-9 pr-10 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
+                      editFormErrors.password
+                        ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
                   />
                   <button
                     type="button"
@@ -1148,7 +1277,13 @@ const UserManagement = () => {
                     {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                {editingUser.password && (
+                {editFormErrors.password && (
+                  <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                    <span>{editFormErrors.password}</span>
+                  </p>
+                )}
+                {editingUser.password && !editFormErrors.password && (
                   <p className="text-[10px] text-blue-600 font-medium mt-1 flex items-center gap-1">
                     <Sparkles className="w-3 h-3" /> New password will be saved upon clicking "Save Changes"
                   </p>
