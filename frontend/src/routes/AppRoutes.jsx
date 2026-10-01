@@ -1,5 +1,6 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { clearIhlrDraft } from '../utils/storage';
 
 // Layouts
 import AuthLayout from '../layouts/AuthLayout';
@@ -33,6 +34,15 @@ import IhlrProfile from '../features/ihlr/Profile';
 import ProtectedRoute from './ProtectedRoute';
 
 const AppRoutes = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    // When switching to other main tabs/modules (like process-audit, system-selection, login), clear IHLR draft
+    if (!location.pathname.startsWith('/ihlr')) {
+      clearIhlrDraft();
+    }
+  }, [location.pathname]);
+
   return (
     <Routes>
       {/* Public Auth Routes */}

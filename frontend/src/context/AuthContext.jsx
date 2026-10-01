@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { storage } from '../utils/storage';
+import { storage, clearIhlrDraft } from '../utils/storage';
 
 const AuthContext = createContext(null);
 
@@ -20,11 +20,15 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
     storage.clear();
+    clearIhlrDraft();
   };
 
   const switchSystem = (systemId) => {
     setSelectedSystem(systemId);
     localStorage.setItem('4m_selected_system', systemId);
+    if (systemId !== 'ihlr') {
+      clearIhlrDraft();
+    }
   };
 
   return (

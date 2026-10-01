@@ -47,7 +47,21 @@ const IhlrCreateRequest = () => {
   const [attachments, setAttachments] = useState([]);
   const [previewAttachment, setPreviewAttachment] = useState(null);
 
-  const [formData, setFormData] = useState({
+  const getDraftKey = () => {
+    let uid = user?.id || user?.email;
+    if (!uid) {
+      try {
+        const u = localStorage.getItem('todo_user');
+        if (u) {
+          const parsed = JSON.parse(u);
+          uid = parsed?.id || parsed?.email;
+        }
+      } catch {}
+    }
+    return `ihlr_create_request_draft_${uid || 'default'}`;
+  };
+
+  const defaultFormData = {
     req_no: 'IHLR-1',
     batch_date: getTodayDateInput(),
     shift: '',
@@ -61,9 +75,94 @@ const IhlrCreateRequest = () => {
     resp: '',
     resp_person: '',
     status: 'OPEN'
+  };
+
+  const getSavedDraft = () => {
+    try {
+      const key = getDraftKey();
+      const raw = localStorage.getItem(key) || localStorage.getItem('ihlr_create_request_draft');
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn('Failed to parse IHLR draft:', e);
+    }
+    return null;
+  };
+
+  const [formData, setFormData] = useState(() => {
+    const saved = getSavedDraft();
+    if (saved?.formData) {
+      return {
+        ...defaultFormData,
+        ...saved.formData,
+        status: 'OPEN'
+      };
+    }
+    return defaultFormData;
   });
 
-  const [qaWhyWhy, setQaWhyWhy] = useState(['', '', '', '', '']);
+  const [qaWhyWhy, setQaWhyWhy] = useState(() => {
+    const saved = getSavedDraft();
+    if (Array.isArray(saved?.qaWhyWhy)) {
+      return saved.qaWhyWhy;
+    }
+    return ['', '', '', '', ''];
+  });
+
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(() => {
+    const saved = getSavedDraft();
+    if (saved?.formData) {
+      const d = saved.formData;
+      return Boolean(
+        d.problem || d.model || d.shift || d.four_m || d.resp || d.resp_person ||
+        d.received_from || d.analysis_done_by || d.problem_detected_at || d.actual_qty ||
+        (saved.qaWhyWhy && saved.qaWhyWhy.some(w => w && w.trim()))
+      );
+    }
+    return false;
+  });
+
+  // Auto-save form inputs to localStorage so data is maintained across tab switches
+  useEffect(() => {
+    const key = getDraftKey();
+    const isDirty = Boolean(
+      formData.problem ||
+      formData.model ||
+      formData.shift ||
+      formData.four_m ||
+      formData.resp ||
+      formData.resp_person ||
+      formData.received_from ||
+      formData.analysis_done_by ||
+      formData.problem_detected_at ||
+      formData.actual_qty ||
+      qaWhyWhy.some((w) => w && w.trim())
+    );
+
+    if (isDirty) {
+      try {
+        localStorage.setItem(key, JSON.stringify({ formData, qaWhyWhy, updatedAt: new Date().toISOString() }));
+      } catch (err) {
+        console.warn('IHLR draft save error:', err);
+      }
+    }
+  }, [formData, qaWhyWhy]);
+
+  const handleResetForm = () => {
+    const key = getDraftKey();
+    try {
+      localStorage.removeItem(key);
+      localStorage.removeItem('ihlr_create_request_draft');
+    } catch {}
+    setFormData((prev) => ({
+      ...defaultFormData,
+      req_no: prev.req_no || 'IHLR-1',
+    }));
+    setQaWhyWhy(['', '', '', '', '']);
+    setAttachments([]);
+    setHasRestoredDraft(false);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -282,6 +381,11 @@ const IhlrCreateRequest = () => {
         resp_person_email: selectedPersonUser?.email || '',
       });
       window.dispatchEvent(new Event('refreshNotifications'));
+      const draftKey = getDraftKey();
+      try {
+        localStorage.removeItem(draftKey);
+        localStorage.removeItem('ihlr_create_request_draft');
+      } catch {}
       await success(`IHLR Analysis Report ${formData.req_no} submitted successfully!\n\n✓ In-App notifications sent to both ${creatorName} and ${formData.resp_person}.\n✓ Email notifications triggered to both parties.`);
       navigate('/ihlr/my-requests');
     } catch (err) {
@@ -341,6 +445,22 @@ const IhlrCreateRequest = () => {
           </p>
         </div>
       </div>
+
+      {hasRestoredDraft && (
+        <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50/90 border border-blue-200/90 rounded-xl text-xs text-blue-800 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+            <span><strong>Draft Restored:</strong> Your form inputs were preserved across tab switching.</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetForm}
+            className="text-xs text-blue-700 hover:text-red-600 font-semibold underline ml-3 cursor-pointer shrink-0 transition"
+          >
+            Discard Draft
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Section 1: Requestor & Incident Information */}
@@ -557,6 +677,11 @@ const IhlrCreateRequest = () => {
                       ? 'Users not found for this department'
                       : 'Select User Name'}
                 </option>
+                {formData.resp_person && !getDepartmentUsers(formData.resp).some((u) => u.name === formData.resp_person) && (
+                  <option value={formData.resp_person}>
+                    {formData.resp_person}
+                  </option>
+                )}
                 {getDepartmentUsers(formData.resp).map((u) => (
                   <option key={u.id} value={u.name}>
                     {u.name}
@@ -700,6 +825,13 @@ const IhlrCreateRequest = () => {
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={handleResetForm}
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+          >
+            Clear Form
+          </button>
           <button
             type="submit"
             disabled={submitting}

@@ -33,5 +33,24 @@ export const storage = {
     localStorage.removeItem('4m_cms_token');
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem('4m_cms_user');
+    clearIhlrDraft();
   }
 };
+
+export const clearIhlrDraft = () => {
+  try {
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('ihlr_create_request_draft')) {
+        localStorage.removeItem(key);
+      }
+    });
+    Object.keys(sessionStorage).forEach((key) => {
+      if (key.startsWith('ihlr_create_request_draft')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+  } catch (e) {
+    console.warn('Error clearing IHLR draft:', e);
+  }
+};
+
