@@ -20,6 +20,30 @@ const formatStreamDate = (dateVal) => {
 };
 
 /**
+ * Read state overrides cache (persists read/unread state in localStorage)
+ */
+export const getReadOverrides = (tab, user) => {
+  try {
+    const key = `notifications_read_${tab}_${user?.id || user?.name || 'global'}`;
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+export const setReadOverride = (tab, user, notifKey, isRead) => {
+  try {
+    const key = `notifications_read_${tab}_${user?.id || user?.name || 'global'}`;
+    const current = getReadOverrides(tab, user);
+    current[String(notifKey)] = Boolean(isRead);
+    localStorage.setItem(key, JSON.stringify(current));
+  } catch (e) {
+    console.warn('Failed to save read override in localStorage:', e);
+  }
+};
+
+/**
  * Loads and standardizes IHLR notifications & recent defect requests.
  */
 export const fetchIhlrNotificationsFeed = async (user) => {
@@ -35,6 +59,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
       ihlrService.getRequests().catch(() => []),
     ]);
 
+    const overrides = getReadOverrides('ihlr', user);
     const streamList = [];
 
     if (Array.isArray(apiNotifs)) {
@@ -48,8 +73,16 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           n.badgeLabel === 'COUNTERMEASURE SUBMITTED';
         const isConfirmedNotif = n.type === 'submission_confirmed';
 
+        const notifIdStr = `notif-${n.id}`;
+        let isItemRead = Boolean(n.read || n.is_read);
+        if (overrides[notifIdStr] !== undefined) {
+          isItemRead = overrides[notifIdStr];
+        } else if (overrides[n.id] !== undefined) {
+          isItemRead = overrides[n.id];
+        }
+
         streamList.push({
-          id: `notif-${n.id}`,
+          id: notifIdStr,
           notifId: n.id,
           rawId: n.rawId,
           reqNo: n.reqNo || (n.requestId ? `#${n.requestId}` : '#IHLR'),
@@ -79,9 +112,9 @@ export const fetchIhlrNotificationsFeed = async (user) => {
             : isConfirmedNotif
             ? 'SYSTEM_LOGS'
             : n.footerFlag || 'ACTION_REQUIRED',
-          read: Boolean(n.read),
+          read: isItemRead,
           type: n.type || (isClosedNotif ? 'closed' : 'info'),
-          link: n.link || '/ihlr/approvals',
+          link: '/ihlr/my-requests',
         });
       });
     }
@@ -96,9 +129,24 @@ export const fetchIhlrNotificationsFeed = async (user) => {
         const formattedDate = formatStreamDate(r.created_at || r.batch_date);
 
         if (!streamList.some((s) => s.reqNo === `#${reqNo}`)) {
+          const reqCardId = isClosed
+            ? `req-closed-${r.id || idx}`
+            : isInProgress
+            ? `req-progress-${r.id || idx}`
+            : `req-open-${r.id || idx}`;
+
+          let isReqRead = isClosed ? true : false;
+          if (overrides[reqCardId] !== undefined) {
+            isReqRead = overrides[reqCardId];
+          } else if (overrides[`req-${r.id}`] !== undefined) {
+            isReqRead = overrides[`req-${r.id}`];
+          } else if (overrides[`#${reqNo}`] !== undefined) {
+            isReqRead = overrides[`#${reqNo}`];
+          }
+
           if (isClosed) {
             streamList.push({
-              id: `req-closed-${r.id || idx}`,
+              id: reqCardId,
               rawId: r.id,
               reqNo: `#${reqNo}`,
               badgeLabel: 'CONTAINMENT APPROVED',
@@ -109,13 +157,13 @@ export const fetchIhlrNotificationsFeed = async (user) => {
               timeDisplay: formattedDate,
               subCategory: fourM,
               footerFlag: 'SYSTEM_LOGS',
-              read: true,
+              read: isReqRead,
               type: 'closed',
               link: '/ihlr/my-requests',
             });
           } else if (isInProgress) {
             streamList.push({
-              id: `req-progress-${r.id || idx}`,
+              id: reqCardId,
               rawId: r.id,
               reqNo: `#${reqNo}`,
               badgeLabel: 'COUNTERMEASURE REQUIRED',
@@ -126,13 +174,13 @@ export const fetchIhlrNotificationsFeed = async (user) => {
               timeDisplay: formattedDate,
               subCategory: fourM,
               footerFlag: 'ACTION_REQUIRED',
-              read: false,
+              read: isReqRead,
               type: 'in_progress',
               link: '/ihlr/my-requests',
             });
           } else {
             streamList.push({
-              id: `req-open-${r.id || idx}`,
+              id: reqCardId,
               rawId: r.id,
               reqNo: `#${reqNo}`,
               badgeLabel: 'NEW LINE REJECTION',
@@ -143,7 +191,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
               timeDisplay: formattedDate,
               subCategory: fourM,
               footerFlag: 'ACTION_REQUIRED',
-              read: false,
+              read: isReqRead,
               type: 'open',
               link: '/ihlr/my-requests',
             });
@@ -294,20 +342,33 @@ export const fetchNotificationsForTab = async (tab, user) => {
 };
 
 /**
- * Tab-aware mark notification as read
+ * Tab-aware mark notification as read / unread
  */
-export const markNotificationReadForTab = async (tab, notifId, rawId) => {
-  const idToMark = notifId || rawId;
+export const markNotificationReadForTab = async (tab, notifId, rawId, isRead = true, user = null, fullId = null) => {
+  // Save read override in localStorage
+  if (fullId) setReadOverride(tab, user, fullId, isRead);
+  if (notifId) setReadOverride(tab, user, notifId, isRead);
+  if (rawId) setReadOverride(tab, user, `req-${rawId}`, isRead);
+
+  const idToMark = notifId;
   if (!idToMark) return;
-  return tab === 'ihlr'
-    ? ihlrService.markNotificationAsRead(idToMark).catch(() => {})
-    : processAuditService.markNotificationAsRead(idToMark).catch(() => {});
+
+  if (tab === 'ihlr') {
+    return isRead
+      ? ihlrService.markNotificationAsRead(idToMark).catch(() => {})
+      : ihlrService.markNotificationAsUnread(idToMark).catch(() => {});
+  } else {
+    return processAuditService.markNotificationAsRead(idToMark).catch(() => {});
+  }
 };
 
 /**
  * Tab-aware mark all notifications as read
  */
-export const markAllNotificationsReadForTab = async (tab, userName) => {
+export const markAllNotificationsReadForTab = async (tab, userName, user = null, allIds = []) => {
+  if (Array.isArray(allIds) && allIds.length > 0) {
+    allIds.forEach((id) => setReadOverride(tab, user, id, true));
+  }
   return tab === 'ihlr'
     ? ihlrService.markAllNotificationsAsRead(userName).catch(() => {})
     : processAuditService.markAllNotificationsAsRead(userName).catch(() => {});

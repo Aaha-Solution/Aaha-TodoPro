@@ -539,10 +539,23 @@ export const getIhlrNotifications = async (req, res) => {
 export const markIhlrNotificationRead = async (req, res) => {
   try {
     const { id } = req.params;
+    const isRead = req.body?.read !== undefined ? (req.body.read ? 1 : 0) : 1;
     if (pool) {
-      await pool.query('UPDATE ihlr_notifications SET is_read = 1 WHERE id = ?', [id]);
+      await pool.query('UPDATE ihlr_notifications SET is_read = ? WHERE id = ?', [isRead, id]);
     }
-    return successResponse(res, null, 'Notification marked as read');
+    return successResponse(res, null, `Notification marked as ${isRead ? 'read' : 'unread'}`);
+  } catch (error) {
+    return errorResponse(res, error.message, 500);
+  }
+};
+
+export const markIhlrNotificationUnread = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (pool) {
+      await pool.query('UPDATE ihlr_notifications SET is_read = 0 WHERE id = ?', [id]);
+    }
+    return successResponse(res, null, 'Notification marked as unread');
   } catch (error) {
     return errorResponse(res, error.message, 500);
   }

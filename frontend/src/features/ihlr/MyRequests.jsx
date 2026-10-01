@@ -57,7 +57,7 @@ const IhlrMyRequests = () => {
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(location.state?.search || '');
   const [selectedShift, setSelectedShift] = useState('All');
   const [selected4M, setSelected4M] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState(location.state?.filterStatus || 'All');
@@ -65,6 +65,9 @@ const IhlrMyRequests = () => {
   useEffect(() => {
     if (location.state?.filterStatus) {
       setSelectedStatus(location.state.filterStatus);
+    }
+    if (location.state?.search) {
+      setSearch(location.state.search);
     }
   }, [location.state]);
 

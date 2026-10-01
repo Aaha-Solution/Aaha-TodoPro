@@ -67,9 +67,10 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
 
   // Mark all read for this tab
   const handleMarkAllRead = async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    const updated = notifications.map((n) => ({ ...n, read: true }));
+    setNotifications(updated);
     dispatch(setReduxMarkAllAsRead());
-    await markAllNotificationsReadForTab(tabMode, user?.name);
+    await markAllNotificationsReadForTab(tabMode, user?.name, user, notifications.map(n => n.id));
     window.dispatchEvent(new Event('refreshNotifications'));
   };
 
@@ -83,10 +84,32 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
     setNotifications(updated);
     dispatch(setReduxNotifications(updated));
 
-    if (nextRead) {
-      await markNotificationReadForTab(tabMode, item.notifId, item.rawId);
-    }
+    await markNotificationReadForTab(tabMode, item.notifId, item.rawId, nextRead, user, item.id);
     window.dispatchEvent(new Event('refreshNotifications'));
+  };
+
+  // Handle Card Click: Mark as read if unread and navigate
+  const handleCardClick = async (item) => {
+    if (!item.read) {
+      const updated = notifications.map((n) => (n.id === item.id ? { ...n, read: true } : n));
+      setNotifications(updated);
+      dispatch(setReduxNotifications(updated));
+      await markNotificationReadForTab(tabMode, item.notifId, item.rawId, true, user, item.id);
+      window.dispatchEvent(new Event('refreshNotifications'));
+    }
+
+    if (isIhlr) {
+      // In IHLR, navigate directly to "All Requests" (MyRequests.jsx) with request search
+      const cleanReqNo = item.reqNo ? item.reqNo.replace(/^#/, '').trim() : '';
+      navigate('/ihlr/my-requests', {
+        state: {
+          search: cleanReqNo,
+          highlightReq: cleanReqNo
+        }
+      });
+    } else {
+      navigate(item.link || '/process-audit/approvals');
+    }
   };
 
   // Counts
@@ -255,12 +278,22 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
           </div>
         ) : filteredNotifications.length === 0 ? (
           <div className="py-16 text-center text-slate-400 text-xs bg-white rounded-2xl border border-slate-200/90 shadow-2xs">
-            <Mail className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+            {activeFilterTab === 'UNREAD' ? (
+              <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
+            ) : (
+              <Mail className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+            )}
             <p className="font-semibold text-slate-700 mb-1">
-              {notifications.length === 0 ? 'No notifications found in database' : 'No alerts matching your criteria'}
+              {activeFilterTab === 'UNREAD'
+                ? 'All caught up! No unread notifications'
+                : notifications.length === 0
+                ? 'No notifications found in database'
+                : 'No alerts matching your criteria'}
             </p>
             <p className="text-slate-400 text-[11px]">
-              {notifications.length === 0
+              {activeFilterTab === 'UNREAD'
+                ? 'All incident and defect reports have been reviewed.'
+                : notifications.length === 0
                 ? isIhlr
                   ? 'When line rejection reports or containment actions are recorded, they will appear here in real time.'
                   : 'When audit observations or sign-off requests are assigned, they will appear here in real time.'
@@ -313,7 +346,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
             return (
               <div
                 key={item.id}
-                onClick={() => navigate(item.link || defaultLink)}
+                onClick={() => handleCardClick(item)}
                 className={`bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-150 cursor-pointer flex flex-col gap-3.5 border-l-4 ${borderAccent} ${
                   !item.read ? 'ring-1 ring-blue-500/10' : ''
                 }`}

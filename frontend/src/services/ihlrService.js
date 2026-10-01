@@ -200,7 +200,16 @@ export const ihlrService = {
 
   markNotificationAsRead: async (id) => {
     try {
-      const res = await api.patch(`/ihlr/notifications/${id}/read`);
+      const res = await api.patch(`/ihlr/notifications/${id}/read`, { read: true });
+      return res.data?.data || res.data;
+    } catch {
+      return null;
+    }
+  },
+
+  markNotificationAsUnread: async (id) => {
+    try {
+      const res = await api.patch(`/ihlr/notifications/${id}/unread`, { read: false });
       return res.data?.data || res.data;
     } catch {
       return null;

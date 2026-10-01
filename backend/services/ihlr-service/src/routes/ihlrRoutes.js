@@ -8,6 +8,7 @@ import {
   deleteIhlrRequest,
   getIhlrNotifications,
   markIhlrNotificationRead,
+  markIhlrNotificationUnread,
   markAllIhlrNotificationsRead,
   getNextReqNo,
   uploadAttachments,
@@ -43,6 +44,7 @@ router.delete('/requests/:id', deleteIhlrRequest);
 // Activity & Notifications
 router.get('/notifications', getIhlrNotifications);
 router.patch('/notifications/:id/read', markIhlrNotificationRead);
+router.patch('/notifications/:id/unread', markIhlrNotificationUnread);
 router.patch('/notifications/mark-all-read', markAllIhlrNotificationsRead);
 
 // Backward compatibility alias
