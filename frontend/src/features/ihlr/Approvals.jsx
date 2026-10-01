@@ -30,6 +30,7 @@ import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
+import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 
@@ -227,7 +228,7 @@ const IhlrApprovals = () => {
         'W4': r.prod_why_why?.[3] || '—',
         'W5': r.prod_why_why?.[4] || '—',
         'ACTION': r.action || '—',
-        'TARGET DATE': r.target_date || '—',
+        'TARGET DATE': formatDateDDMMYYYY(r.target_date),
         'REMARKS': r.remarks || '—',
         'STATUS': r.status || 'OPEN'
       }));
@@ -288,7 +289,7 @@ const IhlrApprovals = () => {
         r.problem_detected_at || '—',
         r.four_m || '—',
         r.action || '—',
-        r.target_date ? r.target_date.split('T')[0] : '—',
+        formatDateDDMMYYYY(r.target_date),
         r.remarks || '—',
         r.status || 'OPEN'
       ]);
@@ -553,8 +554,7 @@ const IhlrApprovals = () => {
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
                 TARGET DATE
               </label>
-              <input
-                type="date"
+              <DateInput
                 disabled={!selectedRequest}
                 value={closerTargetDate}
                 onChange={(e) => setCloserTargetDate(e.target.value)}

@@ -101,7 +101,7 @@ const IhlrMyRequests = () => {
         'WHY 4': r.prod_why_why?.[3] || '—',
         'WHY 5': r.prod_why_why?.[4] || '—',
         'ACTION TAKEN': r.action || '—',
-        'TARGET DATE': r.target_date || '—',
+        'TARGET DATE': formatDateDDMMYYYY(r.target_date),
         'STATUS': r.status || 'OPEN'
       }));
 

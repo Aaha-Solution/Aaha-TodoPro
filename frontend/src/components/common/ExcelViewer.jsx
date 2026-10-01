@@ -89,7 +89,11 @@ const parseWorksheetToGrid = (worksheet) => {
           formatted = XLSX.utils.format_cell(cell);
         } catch {
           if (cell.v instanceof Date) {
-            formatted = cell.v.toLocaleDateString();
+            const d = cell.v;
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            formatted = `${day}/${month}/${year}`;
           } else {
             formatted = cell.v !== undefined ? String(cell.v) : '';
           }

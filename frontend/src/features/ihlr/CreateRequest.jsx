@@ -20,6 +20,7 @@ import {
 import { ihlrService } from '../../services/ihlrService';
 import { useAuth } from '../../hooks/useAuth';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
+import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
 import { getTodayDateInput, formatDateDDMMYYYY } from '../../utils/dateUtils';
 
@@ -500,11 +501,10 @@ const IhlrCreateRequest = () => {
                 <span>Incident Date *</span>
                 <span className="text-[10px] text-slate-400 font-mono font-normal">DD/MM/YYYY</span>
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={formData.batch_date}
                 onChange={(e) => setFormData({ ...formData, batch_date: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium cursor-pointer"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium"
                 required
               />
             </div>

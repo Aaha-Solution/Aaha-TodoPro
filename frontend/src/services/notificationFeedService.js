@@ -9,11 +9,15 @@ const formatStreamDate = (dateVal) => {
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return String(dateVal);
-    return `${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} • ${d.toLocaleTimeString('en-US', {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const time = d.toLocaleTimeString('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
-    })}`;
+    });
+    return `${day}/${month}/${year} • ${time}`;
   } catch {
     return String(dateVal);
   }

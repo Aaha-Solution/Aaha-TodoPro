@@ -145,12 +145,30 @@ const UserManagement = () => {
     }));
   };
 
+  const handleRoleChange = (newRole) => {
+    const isAdmin = (newRole || '').trim().toUpperCase() === 'ADMIN';
+    setFormData((prev) => ({
+      ...prev,
+      role: newRole,
+      department: isAdmin ? 'INCOMING QUALITY' : (prev.department === 'INCOMING QUALITY' ? 'PRODUCTION' : prev.department),
+    }));
+  };
+
   const handleEditDepartmentChange = (newDept) => {
     const isIncomingQuality = (newDept || '').trim().toUpperCase() === 'INCOMING QUALITY';
     setEditingUser((prev) => ({
       ...prev,
       department: newDept,
       role: isIncomingQuality ? 'ADMIN' : 'USER',
+    }));
+  };
+
+  const handleEditRoleChange = (newRole) => {
+    const isAdmin = (newRole || '').trim().toUpperCase() === 'ADMIN';
+    setEditingUser((prev) => ({
+      ...prev,
+      role: newRole,
+      department: isAdmin ? 'INCOMING QUALITY' : (prev.department === 'INCOMING QUALITY' ? 'PRODUCTION' : prev.department),
     }));
   };
 
@@ -1000,7 +1018,7 @@ const UserManagement = () => {
                   </label>
                   <select
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    onChange={(e) => handleRoleChange(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
                   >
                     {ROLES.map((role) => (
@@ -1220,7 +1238,7 @@ const UserManagement = () => {
                   </label>
                   <select
                     value={editingUser.role ? editingUser.role.toUpperCase() : 'USER'}
-                    onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                    onChange={(e) => handleEditRoleChange(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
                   >
                     {ROLES.map((r) => (

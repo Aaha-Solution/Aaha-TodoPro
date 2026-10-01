@@ -26,6 +26,7 @@ import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import { useModal } from '../../context/ModalContext';
+import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 
 /**
  * Meaningful IHLR (In-House Line Rejection) Inspection & Analysis Report Modal:
@@ -57,22 +58,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
   const evidenceAttachments = parseAttachments(request.evidence_attachment);
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return '—';
-    try {
-      const raw = String(dateStr).split('T')[0].trim();
-      const parts = raw.split('-');
-      if (parts.length === 3 && parts[0].length === 4) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const year = d.getFullYear();
-      return `${day}/${month}/${year}`;
-    } catch {
-      return dateStr;
-    }
+    return formatDateDDMMYYYY(dateStr);
   };
 
   const formatShift = (shift) => {
@@ -294,7 +280,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
         doc.setFontSize(8);
         doc.setTextColor(148, 163, 184);
         doc.text(
-          `Page ${i} of ${pageCount}  |  Generated on ${new Date().toLocaleDateString()}`,
+          `Page ${i} of ${pageCount}  |  Generated on ${formatDateDDMMYYYY(new Date())}`,
           40,
           doc.internal.pageSize.height - 20
         );
