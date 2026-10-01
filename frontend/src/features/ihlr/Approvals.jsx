@@ -32,10 +32,25 @@ import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
+import { useAuth } from '../../hooks/useAuth';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 
 const IhlrApprovals = () => {
+  const { user } = useAuth();
   const { success: modalSuccess, error: modalError } = useModal();
+
+  const userDept = (user?.department || (() => {
+    try {
+      const u = localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.department : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
+  const userRole = (user?.role || '').trim().toUpperCase();
+  const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -163,8 +178,8 @@ const IhlrApprovals = () => {
         action: closerAction,
         evidence_attachment: JSON.stringify(combinedEvidence),
         target_date: closerTargetDate || null,
-        remarks: closerRemarks,
-        status: closerStatus
+        remarks: isAdmin ? closerRemarks : (selectedRequest.remarks || ''),
+        status: isAdmin ? closerStatus : (selectedRequest.status || 'OPEN')
       };
 
       const updated = await ihlrService.updateRequest(selectedRequest.id, payload);
@@ -564,45 +579,82 @@ const IhlrApprovals = () => {
               />
             </div>
 
-            {/* Remarks (Image 1: REMARKS Word) with character count counter like Image 2 */}
+            {/* Remarks (Image 1: REMARKS Word) */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
-                  REMARKS <span className="text-rose-500">*</span>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>REMARKS</span>
+                  <span className="text-rose-500">*</span>
+                  {!isAdmin && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded border border-amber-200">
+                      Admin / Requester Only
+                    </span>
+                  )}
                 </label>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {1000 - closerRemarks.length} chars left
-                </span>
+                {isAdmin && (
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {1000 - closerRemarks.length} chars left
+                  </span>
+                )}
               </div>
               <textarea
                 rows={2}
                 maxLength={1000}
-                disabled={!selectedRequest}
+                disabled={!selectedRequest || !isAdmin}
                 value={closerRemarks}
                 onChange={(e) => setCloserRemarks(e.target.value)}
-                placeholder={selectedRequest ? 'Enter Remarks...' : 'Click a row on the right to select'}
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition resize-none"
+                placeholder={
+                  !selectedRequest
+                    ? 'Click a row on the right to select'
+                    : !isAdmin
+                    ? 'Remarks are reserved for Admin / Requester validation.'
+                    : 'Enter Remarks...'
+                }
+                className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none ${
+                  !selectedRequest || !isAdmin
+                    ? 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none'
+                    : 'bg-white border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Provide closer remarks and validation summary
+                {!isAdmin
+                  ? 'Only Admin role users can provide closer remarks and validation summary.'
+                  : 'Provide closer remarks and validation summary'}
               </p>
             </div>
 
             {/* Status (Image 1: REQUESTOR Status / Image 2: APPROVER VALIDATION STATUS) */}
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                STATUS <span className="text-rose-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>STATUS</span>
+                  <span className="text-rose-500">*</span>
+                  {!isAdmin && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded border border-amber-200">
+                      Admin / Requester Only
+                    </span>
+                  )}
+                </label>
+              </div>
               <select
-                disabled={!selectedRequest}
+                disabled={!selectedRequest || !isAdmin}
                 value={closerStatus}
                 onChange={(e) => setCloserStatus(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition"
+                className={`w-full px-3.5 py-2.5 border rounded-xl font-bold text-slate-800 outline-none transition ${
+                  !selectedRequest || !isAdmin
+                    ? 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none'
+                    : 'bg-white border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
+                }`}
               >
                 <option value="OPEN">OPEN</option>
                 <option value="IN_PROGRESS">IN PROGRESS</option>
                 <option value="CLOSED">CLOSED</option>
               </select>
+              {!isAdmin && (
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Only Admin role users can validate and update request status.
+                </p>
+              )}
             </div>
 
             {/* Action Submit Button (Exact style from Reference Image 2) */}
