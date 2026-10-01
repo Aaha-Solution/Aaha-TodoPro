@@ -58,9 +58,44 @@ const IhlrApprovals = () => {
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [activeModalRequest, setActiveModalRequest] = useState(null);
   const [selectedPreviewAttachment, setSelectedPreviewAttachment] = useState(null);
-
-  // Selected row for Closer Log form (left panel)
   const [selectedRequest, setSelectedRequest] = useState(null);
+
+  const cleanStr = (val) => (val || '').trim().toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s+/i, '');
+  const uName = cleanStr(user?.name);
+  const uEmail = cleanStr(user?.email);
+  const uId = String(user?.id || '');
+
+  const rRespPerson = cleanStr(selectedRequest?.resp_person);
+  const rRespEmail = cleanStr(selectedRequest?.resp_person_email);
+  const isCloser = Boolean(
+    rRespPerson && (uName === rRespPerson || (uEmail && uEmail === rRespEmail))
+  );
+
+  const rCreatedBy = cleanStr(selectedRequest?.created_by);
+  const rCreatedEmail = cleanStr(selectedRequest?.created_by_email);
+  const rCreatedId = String(selectedRequest?.created_by_id || '');
+  const isRequester = Boolean(
+    (rCreatedId && uId && rCreatedId === uId) ||
+    (rCreatedBy && uName === rCreatedBy) ||
+    (rCreatedEmail && uEmail && uEmail === rCreatedEmail)
+  );
+
+  const isSelectedClosed = String(selectedRequest?.status || '').toUpperCase() === 'CLOSED';
+
+  // 1. Closer Fields (Occurrence Cause 5-Why: W1-W5, Action, Evidence Attachment, Target Date):
+  //    Only the assigned Closer (or Admin) can update. Disabled for requester.
+  const canUpdateCloserFields = Boolean(
+    selectedRequest && (isAdmin || isCloser) && (!isSelectedClosed || isAdmin)
+  );
+
+  // 2. Requester / Admin Fields (Remarks, Status):
+  //    "these fields only to update the closer and the next two fields are requester or admin to update"
+  //    Only the Requester (or Admin) can update. Disabled for closer!
+  const canUpdateRequesterFields = Boolean(
+    selectedRequest && (isAdmin || isRequester) && (!isSelectedClosed || isAdmin)
+  );
+
+  const isLockedForCloserUser = !isAdmin && isSelectedClosed;
 
   // Form State for Closer Fields
   const [closerWhyWhy, setCloserWhyWhy] = useState(['', '', '', '', '']);
@@ -168,51 +203,73 @@ const IhlrApprovals = () => {
     setNewEvidenceFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Submit Closer Log Updates
+  // Submit Updates (Closer fields vs Requester fields vs Admin)
   const handleSaveCloser = async (e) => {
     if (e) e.preventDefault();
     if (!selectedRequest) return;
+
+    if (isLockedForCloserUser) {
+      modalError('This incident is closed. Only Admin can update closed reports.');
+      return;
+    }
+
+    if (!canUpdateCloserFields && !canUpdateRequesterFields) {
+      modalError('You do not have permission to update fields on this request.');
+      return;
+    }
 
     setIsSaving(true);
     setSuccessMessage('');
     setErrorMessage('');
 
     try {
-      let uploadedList = [];
-      if (newEvidenceFiles.length > 0) {
-        uploadedList = await ihlrService.uploadAttachments(newEvidenceFiles);
+      const payload = {};
+
+      // 1. Closer Fields (Occurrence Cause 5-Why: W1-W5, Action, Evidence, Target Date)
+      if (canUpdateCloserFields) {
+        let uploadedList = [];
+        if (newEvidenceFiles.length > 0) {
+          uploadedList = await ihlrService.uploadAttachments(newEvidenceFiles);
+        }
+        const combinedEvidence = [...existingEvidence, ...uploadedList];
+
+        payload.prod_why_why = closerWhyWhy;
+        payload.action = closerAction;
+        payload.evidence_attachment = JSON.stringify(combinedEvidence);
+        payload.target_date = closerTargetDate || null;
       }
 
-      // Combine existing with newly uploaded
-      const combinedEvidence = [...existingEvidence, ...uploadedList];
-
-      const payload = {
-        prod_why_why: closerWhyWhy,
-        action: closerAction,
-        evidence_attachment: JSON.stringify(combinedEvidence),
-        target_date: closerTargetDate || null,
-        remarks: isAdmin ? closerRemarks : (selectedRequest.remarks || ''),
-        status: isAdmin ? closerStatus : (selectedRequest.status || 'OPEN')
-      };
+      // 2. Requester / Admin Fields (Remarks, Status)
+      if (canUpdateRequesterFields) {
+        payload.remarks = closerRemarks;
+        payload.status = closerStatus;
+      }
 
       const updated = await ihlrService.updateRequest(selectedRequest.id, payload);
       window.dispatchEvent(new Event('refreshNotifications'));
 
-      setSuccessMessage(`Closer log updated successfully for ${selectedRequest.req_no}!`);
+      const msg =
+        canUpdateCloserFields && canUpdateRequesterFields
+          ? `Report & sign-off updated successfully for ${selectedRequest.req_no}!`
+          : canUpdateCloserFields
+          ? `Closer details submitted! Requester and Admin have been alerted via notification & email to complete pending remarks and status sign-off.`
+          : `Status & Remarks updated successfully for ${selectedRequest.req_no}!`;
+
+      setSuccessMessage(msg);
       setNewEvidenceFiles([]);
       if (updated) {
         populateForm(updated);
       }
       await fetchRequests();
-      modalSuccess(`Closer log updated successfully for ${selectedRequest.req_no}!`);
+      modalSuccess(msg);
 
       setTimeout(() => {
         setSuccessMessage('');
       }, 4000);
     } catch (err) {
-      console.error('Failed to update closer log:', err);
-      setErrorMessage(err.message || 'Failed to update closer fields');
-      modalError(err.message || 'Failed to update closer fields');
+      console.error('Failed to update request:', err);
+      setErrorMessage(err.message || 'Failed to update fields');
+      modalError(err.message || 'Failed to update fields');
     } finally {
       setIsSaving(false);
     }
@@ -497,8 +554,19 @@ const IhlrApprovals = () => {
             {/* Separator */}
             <div className="pt-2 border-t border-slate-100">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-amber-700">
-                  Occurrence Cause (Production Team - 5 Why)
+                <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
+                  <span>Occurrence Cause (Production Team - 5 Why)</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        Closer
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        Closer Only (Read-Only)
+                      </span>
+                    )
+                  )}
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">W1 to W5</span>
               </div>
@@ -512,11 +580,17 @@ const IhlrApprovals = () => {
                     </span>
                     <input
                       type="text"
-                      disabled={!selectedRequest}
+                      disabled={!canUpdateCloserFields}
                       value={closerWhyWhy[idx] || ''}
                       onChange={(e) => handleWhyChange(idx, e.target.value)}
-                      placeholder={selectedRequest ? `Enter ${label} cause...` : 'Select request on right'}
-                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition"
+                      placeholder={
+                        !selectedRequest
+                          ? 'Select request on right'
+                          : canUpdateCloserFields
+                          ? `Enter ${label} cause...`
+                          : 'Read-only (Closer only)'
+                      }
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition"
                     />
                   </div>
                 ))}
@@ -525,24 +599,55 @@ const IhlrApprovals = () => {
 
             {/* Action Field (Image 1: Action Words) */}
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                ACTION <span className="text-rose-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>ACTION</span>
+                  <span className="text-rose-500">*</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        Closer
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        Closer Only (Read-Only)
+                      </span>
+                    )
+                  )}
+                </label>
+              </div>
               <textarea
                 rows={2}
-                disabled={!selectedRequest}
+                disabled={!canUpdateCloserFields}
                 value={closerAction}
                 onChange={(e) => setCloserAction(e.target.value)}
-                placeholder={selectedRequest ? 'Describe corrective actions taken / countermeasures...' : 'Click a row on the right to select'}
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition resize-none"
+                placeholder={
+                  !selectedRequest
+                    ? 'Click a row on the right to select'
+                    : canUpdateCloserFields
+                    ? 'Describe corrective actions taken / countermeasures...'
+                    : 'Read-only (Closer only)'
+                }
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none"
               />
             </div>
 
             {/* Evidence Attachment (Image 1: Format PPT, JPEG, EXCEL & PDF) */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
-                  EVIDENCE ATTACHMENT
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>EVIDENCE ATTACHMENT</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        Closer
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        Closer Only (Read-Only)
+                      </span>
+                    )
+                  )}
                 </label>
                 <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
               </div>
@@ -551,7 +656,7 @@ const IhlrApprovals = () => {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  disabled={!selectedRequest}
+                  disabled={!canUpdateCloserFields}
                   onClick={() => fileInputRef.current && fileInputRef.current.click()}
                   className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                 >
@@ -580,14 +685,14 @@ const IhlrApprovals = () => {
                   <AttachmentChipList
                     attachments={existingEvidence}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    onRemove={(idx) => handleRemoveExistingEvidence(idx)}
+                    onRemove={canUpdateCloserFields ? (idx) => handleRemoveExistingEvidence(idx) : undefined}
                   />
                 )}
                 {previewableNewFiles.length > 0 && (
                   <AttachmentChipList
                     attachments={previewableNewFiles}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    onRemove={(idx) => handleRemoveNewEvidence(idx)}
+                    onRemove={canUpdateCloserFields ? (idx) => handleRemoveNewEvidence(idx) : undefined}
                   />
                 )}
               </div>
@@ -595,16 +700,44 @@ const IhlrApprovals = () => {
 
             {/* Target Date */}
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                TARGET DATE
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>TARGET DATE</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        Closer
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        Closer Only (Read-Only)
+                      </span>
+                    )
+                  )}
+                </label>
+              </div>
               <DateInput
-                disabled={!selectedRequest}
+                disabled={!canUpdateCloserFields}
                 value={closerTargetDate}
                 onChange={(e) => setCloserTargetDate(e.target.value)}
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition"
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition"
               />
             </div>
+
+            {/* Pending Sign-Off Alert Banner */}
+            {selectedRequest && !isSelectedClosed && (
+              <div className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/70 text-amber-900 text-[11px] flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="leading-tight">
+                  <span className="font-bold">Pending Fields Sign-off: </span>
+                  <span className="text-amber-800">
+                    {canUpdateRequesterFields
+                      ? 'Closer has submitted containment countermeasures. Please review, provide remarks, and sign off the status below.'
+                      : 'Closer details submitted. Requester or Admin must complete validation remarks and finalize status.'}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Remarks (Image 1: REMARKS Word) */}
             <div>
@@ -612,13 +745,19 @@ const IhlrApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>REMARKS</span>
                   <span className="text-rose-500">*</span>
-                  {!isAdmin && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded border border-amber-200">
-                      Admin / Requester Only
-                    </span>
+                  {selectedRequest && (
+                    canUpdateRequesterFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded border border-amber-200">
+                        Requester / Admin
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        Requester / Admin Only (Read-Only)
+                      </span>
+                    )
                   )}
                 </label>
-                {isAdmin && (
+                {canUpdateRequesterFields && (
                   <span className="text-[10px] text-slate-400 font-mono">
                     {1000 - closerRemarks.length} chars left
                   </span>
@@ -627,64 +766,89 @@ const IhlrApprovals = () => {
               <textarea
                 rows={2}
                 maxLength={1000}
-                disabled={!selectedRequest || !isAdmin}
+                disabled={!canUpdateRequesterFields}
                 value={closerRemarks}
                 onChange={(e) => setCloserRemarks(e.target.value)}
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
-                    : !isAdmin
-                    ? 'Remarks are reserved for Admin / Requester validation.'
-                    : 'Enter Remarks...'
+                    : canUpdateRequesterFields
+                    ? 'Enter remarks and validation summary...'
+                    : 'Remarks can only be updated by the Requester or Admin.'
                 }
                 className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none ${
-                  !selectedRequest || !isAdmin
+                  !canUpdateRequesterFields
                     ? 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                     : 'bg-white border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                 }`}
               />
               <p className="text-[10px] text-slate-400 mt-0.5">
-                {!isAdmin
-                  ? 'Only Admin role users can provide closer remarks and validation summary.'
-                  : 'Provide closer remarks and validation summary'}
+                {canUpdateRequesterFields
+                  ? 'Provide requester sign-off or admin review remarks.'
+                  : 'Only the Requester or Admin can enter remarks.'}
               </p>
             </div>
 
-            {/* Status (Image 1: REQUESTOR Status / Image 2: APPROVER VALIDATION STATUS) */}
+            {/* Status */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>STATUS</span>
                   <span className="text-rose-500">*</span>
-                  {!isAdmin && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded border border-amber-200">
-                      Admin / Requester Only
+                  {selectedRequest && (
+                    canUpdateRequesterFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded border border-amber-200">
+                        Requester / Admin
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        Requester / Admin Only (Read-Only)
+                      </span>
+                    )
+                  )}
+                  {isSelectedClosed && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200">
+                      Closed
                     </span>
                   )}
                 </label>
               </div>
               <select
-                disabled={!selectedRequest || !isAdmin}
+                disabled={!canUpdateRequesterFields}
                 value={closerStatus}
                 onChange={(e) => setCloserStatus(e.target.value)}
                 className={`w-full px-3.5 py-2.5 border rounded-xl font-bold text-slate-800 outline-none transition ${
-                  !selectedRequest || !isAdmin
+                  !canUpdateRequesterFields
                     ? 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                     : 'bg-white border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
                 }`}
               >
-                <option value="OPEN">OPEN</option>
-                <option value="IN_PROGRESS">IN PROGRESS</option>
-                <option value="CLOSED">CLOSED</option>
+                {isAdmin ? (
+                  <>
+                    <option value="OPEN">OPEN</option>
+                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                    <option value="CLOSED">CLOSED</option>
+                  </>
+                ) : isSelectedClosed ? (
+                  <option value="CLOSED">CLOSED (FINALIZED)</option>
+                ) : (
+                  <>
+                    <option value="OPEN">OPEN</option>
+                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                    <option value="CLOSED">CLOSED</option>
+                  </>
+                )}
               </select>
-              {!isAdmin && (
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  Only Admin role users can validate and update request status.
-                </p>
-              )}
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {isLockedForCloserUser
+                  ? 'Status is Closed. Only Admin can update status again.'
+                  : canUpdateRequesterFields
+                  ? 'Select OPEN, IN PROGRESS, or CLOSED. Once closed, non-admin users cannot update again.'
+                  : 'Only the Requester or Admin can update status.'}
+              </p>
             </div>
 
-            {/* Action Submit Button (Exact style from Reference Image 2) */}
+            {/* Action Submit Button */}
             <div className="pt-2">
               {!selectedRequest ? (
                 <button
@@ -694,6 +858,16 @@ const IhlrApprovals = () => {
                 >
                   Select a Request to Validate
                 </button>
+              ) : isLockedForCloserUser ? (
+                <div className="w-full py-3 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Incident Closed — Updates Locked for Users (Admin Only)</span>
+                </div>
+              ) : !canUpdateCloserFields && !canUpdateRequesterFields ? (
+                <div className="w-full py-3 px-4 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-slate-500" />
+                  <span>Read Only Access — Closer or Requester Only</span>
+                </div>
               ) : (
                 <button
                   type="submit"
@@ -703,12 +877,18 @@ const IhlrApprovals = () => {
                   {isSaving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Saving Closer Details...</span>
+                      <span>Saving Updates...</span>
                     </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      <span>Update Closer Log</span>
+                      <span>
+                        {canUpdateCloserFields && canUpdateRequesterFields
+                          ? 'Save & Update Report'
+                          : canUpdateCloserFields
+                          ? 'Update Closer Log'
+                          : 'Update Status & Remarks'}
+                      </span>
                     </>
                   )}
                 </button>

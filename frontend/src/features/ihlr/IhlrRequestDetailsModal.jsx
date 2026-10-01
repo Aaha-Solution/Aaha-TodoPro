@@ -27,25 +27,39 @@ import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
+import { useAuth } from '../../hooks/useAuth';
 
 /**
  * Meaningful IHLR (In-House Line Rejection) Inspection & Analysis Report Modal:
  * - Direct, single-scroll layout without confusing CMS/L1/L2/L3 terms
- * - Section 1: Incident & Line Defect Details
- * - Section 2: Defect Problem Description
- * - Section 3: Attachments & Technical Evidence (Images, PDF, Excel, Word)
- * - Section 4: 5-Why Cause Analysis (QA Problem Cause & Production Occurrence Cause)
- * - Section 5: Containment Countermeasure & Target Closure
+ * - Separate Tabs:
+ *   1. Requester Details (Incident info, defect description, defect attachments, QA 5-Why)
+ *   2. Closer Details (Production 5-Why, containment actions, closer evidence, target date, remarks, sign-off)
  */
 const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
   const { error: modalError } = useModal();
-  const [activeTab, setActiveTab] = useState('incident'); // 'incident' | 'closer'
+  const { user } = useAuth();
+
+  const userDept = (user?.department || (() => {
+    try {
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.department : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
+  const userRole = (user?.role || '').trim().toUpperCase();
+  const isIncomingQuality = userDept === 'INCOMING QUALITY';
+  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
+
+  const [activeTab, setActiveTab] = useState('requester'); // 'requester' | 'closer'
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFormat, setExportFormat] = useState('excel'); // 'excel' | 'pdf'
 
   useEffect(() => {
-    setActiveTab('incident');
+    setActiveTab('requester');
   }, [request?.id]);
 
   if (!isOpen || !request) return null;
@@ -321,7 +335,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                   <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
                     IHLR Rejection Analysis Report
                   </h3>
-                  {onEditMode && (
+                  {isAdmin && onEditMode && (
                     <button
                       type="button"
                       onClick={() => onEditMode(request)}
@@ -350,43 +364,49 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
             </button>
           </div>
 
-          {/* Tab Navigation: Shown when request is Closed */}
-          {isClosed && (
-            <div className="flex items-center gap-3 px-6 pt-2 border-b border-slate-200 bg-slate-50/80 shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab('incident')}
-                className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'incident'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <Folder className="w-4 h-4" />
-                <span>Incident &amp; Rejection Details</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('closer')}
-                className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'closer'
+          {/* Tab Navigation: Cleanly separate Requester Details vs Closer Details */}
+          <div className="flex items-center gap-2 sm:gap-4 px-6 pt-2 border-b border-slate-200 bg-slate-50/80 shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('requester')}
+              className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+                activeTab === 'requester'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Folder className="w-4 h-4" />
+              <span>Requester Details</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('closer')}
+              className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+                activeTab === 'closer'
+                  ? isClosed
                     ? 'border-emerald-600 text-emerald-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Closer Details</span>
+                    : 'border-amber-600 text-amber-700'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <CheckCircle2 className={`w-4 h-4 ${isClosed ? 'text-emerald-600' : 'text-amber-600'}`} />
+              <span>Closer Details</span>
+              {isClosed ? (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
                   Closed
                 </span>
-              </button>
-            </div>
-          )}
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                  {request.status || 'Pending'}
+                </span>
+              )}
+            </button>
+          </div>
 
-          {/* Modal Body: Single Unified Scrollable IHLR Report or Closer View */}
+          {/* Modal Body: Scrollable Tab Content */}
           <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
-            {isClosed && activeTab === 'closer' ? (
-              /* TAB 2: CLOSER DETAILS (FIELDS FROM IMAGE 1) */
+            {activeTab === 'closer' ? (
+              /* TAB 2: CLOSER DETAILS */
               <div className="space-y-6 animate-in fade-in duration-150">
                 {/* 1. Quick Summary Bar */}
                 <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200/90 flex flex-wrap items-center justify-between gap-4 text-xs">
@@ -508,273 +528,250 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                   </div>
                 </div>
 
-                {/* 6. Requestor Status & Sign-off Details */}
-                <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/90 flex flex-wrap items-center justify-between gap-3 text-xs">
+                {/* 6. Closer Status & Sign-off Details */}
+                <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
+                  isClosed
+                    ? 'bg-emerald-50/70 border-emerald-200/90'
+                    : 'bg-amber-50/70 border-amber-200/90'
+                }`}>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span className="font-bold text-emerald-900">Incident Fully Validated &amp; Closed</span>
+                    {isClosed ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span className="font-bold text-emerald-900">Incident Fully Validated &amp; Closed</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        <span className="font-bold text-amber-900">Containment Countermeasure in Progress</span>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-4 text-[11px] text-slate-600 font-medium">
                     <span>4M: <strong className="text-amber-800 font-mono">{request.four_m || 'MAN'}</strong></span>
-                    <span>Resp: <strong className="text-blue-700 font-mono">{request.resp || 'PRODUCTION'}</strong></span>
+                    <span>Resp: <strong className="text-blue-700 font-mono">{request.resp || 'PRODUCTION'}{request.resp_person ? ` (${request.resp_person})` : ''}</strong></span>
                   </div>
                 </div>
               </div>
             ) : (
-              <>
+              <div className="space-y-6 animate-in fade-in duration-150">
                 {/* 📁 1. GENERAL INFORMATION & DEFECT PARAMETERS */}
                 <div className="space-y-3">
-              <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
-                <Folder className="w-4 h-4" />
-                <span>1. INCIDENT &amp; LINE DEFECT DETAILS</span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-6 text-xs p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80">
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    REQ NO
-                  </span>
-                  <span className="font-bold text-slate-900 font-mono text-sm">
-                    {request.req_no || `IHLR-${request.id}`}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    INCIDENT DATE
-                  </span>
-                  <span className="font-medium text-slate-800">
-                    {formatDate(request.batch_date)}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    SHIFT
-                  </span>
-                  <span className="font-medium text-slate-800">
-                    {formatShift(request.shift)}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                    STATUS
-                  </span>
-                  {getStatusBadge(request.status)}
-                </div>
-
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    4M CATEGORY
-                  </span>
-                  <span className="font-bold text-amber-700 font-mono">
-                    {request.four_m || 'N/A'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    RESPONSIBILITY (DEPT)
-                  </span>
-                  <span className="font-bold text-slate-900 font-mono">
-                    {request.resp || 'N/A'}
-                  </span>
-                  {request.resp_person && (
-                    <span className="block text-[11px] text-blue-600 font-semibold mt-0.5">
-                      {request.resp_person}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    MODEL NAME / PART
-                  </span>
-                  <span className="font-bold text-slate-900">
-                    {request.model || 'N/A'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    REJECTED QTY
-                  </span>
-                  <span className="font-bold text-slate-900 font-mono">
-                    {request.actual_qty || '1'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    DETECTED AT
-                  </span>
-                  <span className="font-medium text-slate-800">
-                    {request.problem_detected_at || 'Line Inspection'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    RECEIVED FROM LINE
-                  </span>
-                  <span className="font-medium text-slate-800 font-mono">
-                    {request.received_from || 'Assembly Line'}
-                  </span>
-                </div>
-
-                <div className="sm:col-span-2">
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    ANALYSIS DONE BY
-                  </span>
-                  <span className="font-bold text-slate-900 block">
-                    {request.analysis_done_by || 'Admin'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 📄 2. DEFECT PROBLEM DESCRIPTION */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
-                <FileText className="w-4 h-4" />
-                <span>2. DEFECT PROBLEM DESCRIPTION</span>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                    PROBLEM / DEFECT PHENOMENON
-                  </span>
-                  <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 leading-relaxed font-normal min-h-[50px]">
-                    {request.problem || 'No defect description logged.'}
-                  </div>
-                </div>
-
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                    DETAILED DEFECT OCCURRENCE &amp; OBSERVATION
-                  </span>
-                  <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 leading-relaxed font-normal min-h-[60px]">
-                    {request.occurrence_cause || request.problem || 'No detailed occurrence observations recorded.'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 📎 3. ATTACHMENTS & TECHNICAL EVIDENCE */}
-            {attachments.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
-                    <Paperclip className="w-4 h-4" />
-                    <span>3. DEFECT EVIDENCE &amp; ATTACHMENTS ({attachments.length})</span>
+                    <Folder className="w-4 h-4" />
+                    <span>1. INCIDENT &amp; LINE DEFECT DETAILS</span>
                   </div>
-                  <span className="text-[11px] text-slate-400 font-medium">Click any file to preview or inspect</span>
-                </div>
 
-                <AttachmentChipList
-                  attachments={attachments}
-                  onPreview={(att) => setPreviewAttachment(att)}
-                  readonly={true}
-                />
-              </div>
-            )}
-
-            {/* 🔬 4. 5-WHY ROOT CAUSE ANALYSIS */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
-                <ShieldCheck className="w-4 h-4" />
-                <span>4. 5-WHY ROOT CAUSE ANALYSIS</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                {/* QA Why-Why */}
-                <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200/80 space-y-3">
-                  <div className="flex items-center gap-2 pb-2 border-b border-amber-200/60">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                      QA Problem Cause (5-Why Analysis)
-                    </h4>
-                  </div>
-                  <div className="space-y-2">
-                    {(request.qa_why_why || []).map((w, idx) =>
-                      w ? (
-                        <div key={idx} className="flex items-start gap-2">
-                          <span className="font-mono font-bold text-amber-700 shrink-0">W{idx + 1}:</span>
-                          <span className="text-slate-800 leading-relaxed">{w}</span>
-                        </div>
-                      ) : null
-                    )}
-                    {(!request.qa_why_why || request.qa_why_why.filter(Boolean).length === 0) && (
-                      <p className="text-slate-400 italic">No QA 5-Why analysis recorded.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Production Why-Why */}
-                <div className="p-4 rounded-2xl bg-blue-50/40 border border-blue-200/80 space-y-3">
-                  <div className="flex items-center gap-2 pb-2 border-b border-blue-200/60">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                      Production Occurrence Cause (5-Why)
-                    </h4>
-                  </div>
-                  <div className="space-y-2">
-                    {(request.prod_why_why || []).map((w, idx) =>
-                      w ? (
-                        <div key={idx} className="flex items-start gap-2">
-                          <span className="font-mono font-bold text-blue-700 shrink-0">W{idx + 1}:</span>
-                          <span className="text-slate-800 leading-relaxed">{w}</span>
-                        </div>
-                      ) : null
-                    )}
-                    {(!request.prod_why_why || request.prod_why_why.filter(Boolean).length === 0) && (
-                      <p className="text-slate-400 italic">No production 5-Why analysis recorded.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 🛡️ 5. CONTAINMENT COUNTERMEASURE & TARGET CLOSURE */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
-                <Wrench className="w-4 h-4" />
-                <span>5. CONTAINMENT COUNTERMEASURE &amp; CLOSURE</span>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3 text-xs">
-                <div>
-                  <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                    CORRECTIVE ACTION &amp; CONTAINMENT
-                  </span>
-                  <div className="text-slate-800 font-medium leading-relaxed bg-white p-3 rounded-xl border border-slate-200/60">
-                    {request.action || 'Containment action pending review.'}
-                  </div>
-                </div>
-
-                {request.remarks && (
-                  <div>
-                    <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                      REMARKS
-                    </span>
-                    <div className="text-slate-700 bg-white p-3 rounded-xl border border-slate-200/60 leading-relaxed">
-                      {request.remarks}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-6 text-xs p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80">
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        REQ NO
+                      </span>
+                      <span className="font-bold text-slate-900 font-mono text-sm">
+                        {request.req_no || `IHLR-${request.id}`}
+                      </span>
                     </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        INCIDENT DATE
+                      </span>
+                      <span className="font-medium text-slate-800">
+                        {formatDate(request.batch_date)}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        SHIFT
+                      </span>
+                      <span className="font-medium text-slate-800">
+                        {formatShift(request.shift)}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                        STATUS
+                      </span>
+                      {getStatusBadge(request.status)}
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        4M CATEGORY
+                      </span>
+                      <span className="font-bold text-amber-700 font-mono">
+                        {request.four_m || 'N/A'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        RESPONSIBILITY (DEPT)
+                      </span>
+                      <span className="font-bold text-slate-900 font-mono">
+                        {request.resp || 'N/A'}
+                      </span>
+                      {request.resp_person && (
+                        <span className="block text-[11px] text-blue-600 font-semibold mt-0.5">
+                          {request.resp_person}
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        MODEL NAME / PART
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {request.model || 'N/A'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        REJECTED QTY
+                      </span>
+                      <span className="font-bold text-slate-900 font-mono">
+                        {request.actual_qty || '1'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        DETECTED AT
+                      </span>
+                      <span className="font-medium text-slate-800">
+                        {request.problem_detected_at || 'Line Inspection'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        RECEIVED FROM LINE
+                      </span>
+                      <span className="font-medium text-slate-800 font-mono">
+                        {request.received_from || 'Assembly Line'}
+                      </span>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        ANALYSIS DONE BY
+                      </span>
+                      <span className="font-bold text-slate-900 block">
+                        {request.analysis_done_by || 'Admin'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 📄 2. DEFECT PROBLEM DESCRIPTION */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
+                    <FileText className="w-4 h-4" />
+                    <span>2. DEFECT PROBLEM DESCRIPTION</span>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        PROBLEM / DEFECT PHENOMENON
+                      </span>
+                      <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 leading-relaxed font-normal min-h-[50px]">
+                        {request.problem || 'No defect description logged.'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        DETAILED DEFECT OCCURRENCE &amp; OBSERVATION
+                      </span>
+                      <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 leading-relaxed font-normal min-h-[60px]">
+                        {request.occurrence_cause || request.problem || 'No detailed occurrence observations recorded.'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 📎 3. ATTACHMENTS & TECHNICAL EVIDENCE */}
+                {attachments.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
+                        <Paperclip className="w-4 h-4" />
+                        <span>3. DEFECT EVIDENCE &amp; ATTACHMENTS ({attachments.length})</span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-medium">Click any file to preview or inspect</span>
+                    </div>
+
+                    <AttachmentChipList
+                      attachments={attachments}
+                      onPreview={(att) => setPreviewAttachment(att)}
+                      readonly={true}
+                    />
                   </div>
                 )}
 
-                <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-200/60 text-slate-500 text-[11px] gap-2">
-                  <span>Target Date: <strong className="text-slate-800">{request.target_date || 'N/A'}</strong></span>
-                  <span>Responsible Person: <strong className="text-blue-600">{request.resp_person || request.resp || 'Quality Team'}</strong></span>
-                  <span>Closure Status: {getStatusBadge(request.status)}</span>
+                {/* 🔬 4. QA 5-WHY ROOT CAUSE ANALYSIS */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-amber-600 text-xs font-bold uppercase tracking-wider">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>4. QA PROBLEM CAUSE (5-WHY ROOT CAUSE ANALYSIS)</span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-mono">Logged by Requester / QA</span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200/80 space-y-3 text-xs">
+                    <div className="flex items-center gap-2 pb-2 border-b border-amber-200/60">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                        QA Problem Cause (5-Why Breakdown)
+                      </h4>
+                    </div>
+                    <div className="space-y-2">
+                      {(request.qa_why_why || []).map((w, idx) =>
+                        w ? (
+                          <div key={idx} className="flex items-start gap-2">
+                            <span className="font-mono font-bold text-amber-700 shrink-0">W{idx + 1}:</span>
+                            <span className="text-slate-800 leading-relaxed font-medium">{w}</span>
+                          </div>
+                        ) : null
+                      )}
+                      {(!request.qa_why_why || request.qa_why_why.filter(Boolean).length === 0) && (
+                        <p className="text-slate-400 italic">No QA 5-Why analysis recorded.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Switch Banner to Closer Details */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50/60 border border-blue-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5 text-slate-700">
+                    <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                      <Wrench className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-900 block">Occurrence Analysis &amp; Closer Details</span>
+                      <span className="text-[11px] text-slate-500">
+                        Production 5-Why, containment action countermeasure, and closer evidence are in the Closer tab.
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('closer')}
+                    className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <span>View Closer Details</span>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-            </div>
-          </>
-        )}
-      </div>
+            )}
+          </div>
 
           {/* Modal Footer */}
           <div className="p-4 sm:p-5 border-t border-slate-100 bg-white flex items-center justify-between shrink-0">

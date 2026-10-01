@@ -283,6 +283,11 @@ const IhlrMyRequests = () => {
 
   const handleUpdateStatus = async (id, newStatus, actionUpdate) => {
     try {
+      const target = requests.find((r) => r.id === id);
+      if (!isAdmin && target && target.status === 'CLOSED') {
+        modalError('This incident is closed. Only Admin can update closed reports.');
+        return;
+      }
       await ihlrService.updateRequest(id, {
         status: newStatus,
         action: actionUpdate !== undefined ? actionUpdate : undefined
@@ -608,19 +613,29 @@ const IhlrMyRequests = () => {
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => setEditingCloser(r)}
-                          className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                          title="Update Containment & Status"
+                          disabled={!isAdmin && r.status === 'CLOSED'}
+                          onClick={() => {
+                            if (!isAdmin && r.status === 'CLOSED') return;
+                            setEditingCloser(r);
+                          }}
+                          className={`p-1.5 rounded-lg transition ${
+                            !isAdmin && r.status === 'CLOSED'
+                              ? 'text-slate-300 cursor-not-allowed select-none'
+                              : 'text-slate-500 hover:bg-slate-100 cursor-pointer'
+                          }`}
+                          title={!isAdmin && r.status === 'CLOSED' ? 'Incident Closed — Updates locked for users (Admin only)' : 'Update Containment & Status'}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(r.id, r.req_no)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                          title="Delete Report"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDelete(r.id, r.req_no)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                            title="Delete Report"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -637,6 +652,7 @@ const IhlrMyRequests = () => {
         request={activeModalRequest}
         onClose={() => setActiveModalRequest(null)}
         onEditMode={(req) => {
+          if (!isAdmin && req?.status === 'CLOSED') return;
           setActiveModalRequest(null);
           setEditingCloser(req);
         }}
@@ -671,14 +687,35 @@ const IhlrMyRequests = () => {
                   Status
                 </label>
                 <select
+                  disabled={!isAdmin && editingCloser.status === 'CLOSED'}
                   defaultValue={editingCloser.status}
                   id="modal-status-select"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 outline-none"
+                  className={`w-full px-3 py-2 border rounded-xl font-bold text-slate-900 outline-none ${
+                    !isAdmin && editingCloser.status === 'CLOSED'
+                      ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed select-none'
+                      : 'bg-slate-50 border-slate-200'
+                  }`}
                 >
-                  <option value="OPEN">OPEN</option>
-                  <option value="IN_PROGRESS">IN PROGRESS</option>
-                  <option value="CLOSED">CLOSED</option>
+                  {isAdmin ? (
+                    <>
+                      <option value="OPEN">OPEN</option>
+                      <option value="IN_PROGRESS">IN PROGRESS</option>
+                      <option value="CLOSED">CLOSED</option>
+                    </>
+                  ) : editingCloser.status === 'CLOSED' ? (
+                    <option value="CLOSED">CLOSED (FINALIZED)</option>
+                  ) : (
+                    <>
+                      <option value="IN_PROGRESS">IN PROGRESS</option>
+                      <option value="CLOSED">CLOSED</option>
+                    </>
+                  )}
                 </select>
+                {!isAdmin && editingCloser.status === 'CLOSED' && (
+                  <p className="text-[10px] text-emerald-600 font-semibold mt-1">
+                    This incident is closed. Only Admin can update status again.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -687,10 +724,11 @@ const IhlrMyRequests = () => {
                 </label>
                 <textarea
                   rows={3}
+                  disabled={!isAdmin && editingCloser.status === 'CLOSED'}
                   defaultValue={editingCloser.action}
                   id="modal-action-text"
                   placeholder="Describe corrective actions performed..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none disabled:bg-slate-100 disabled:text-slate-400"
                 />
               </div>
             </div>
@@ -703,17 +741,23 @@ const IhlrMyRequests = () => {
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const s = document.getElementById('modal-status-select').value;
-                  const a = document.getElementById('modal-action-text').value;
-                  handleUpdateStatus(editingCloser.id, s, a);
-                }}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
-              >
-                Save Changes
-              </button>
+              {!isAdmin && editingCloser.status === 'CLOSED' ? (
+                <span className="text-xs text-slate-400 italic py-2">
+                  Updates locked for closed records (Admin only)
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const s = document.getElementById('modal-status-select').value;
+                    const a = document.getElementById('modal-action-text').value;
+                    handleUpdateStatus(editingCloser.id, s, a);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+                >
+                  Save Changes
+                </button>
+              )}
             </div>
           </div>
         </div>

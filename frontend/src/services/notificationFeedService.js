@@ -76,6 +76,10 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           ['case_closed', 'closure_confirmed', 'closed'].includes(n.type) ||
           (n.title && n.title.toLowerCase().includes('closed')) ||
           n.badgeLabel === 'CASE CLOSED';
+        const isPendingSignoff =
+          ['closer_completed_pending_review', 'closer_completed_pending_admin_signoff', 'pending_requester_signoff'].includes(n.type) ||
+          (n.title && n.title.toLowerCase().includes('pending sign-off')) ||
+          (n.title && n.title.toLowerCase().includes('pending fields'));
         const isUpdatedNotif =
           ['countermeasure_updated', 'countermeasure_saved'].includes(n.type) ||
           n.badgeLabel === 'COUNTERMEASURE SUBMITTED';
@@ -104,6 +108,8 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           reqNo: n.reqNo || (n.requestId ? `#${n.requestId}` : '#IHLR'),
           badgeLabel: isClosedNotif
             ? 'CASE CLOSED'
+            : isPendingSignoff
+            ? 'PENDING SIGN-OFF'
             : isUpdatedNotif
             ? 'COUNTERMEASURE SUBMITTED'
             : isConfirmedNotif
@@ -111,18 +117,22 @@ export const fetchIhlrNotificationsFeed = async (user) => {
             : n.badgeLabel || 'ACTION REQUIRED',
           accentColor: isClosedNotif
             ? 'emerald'
+            : isPendingSignoff
+            ? 'amber'
             : isUpdatedNotif
             ? 'indigo'
             : isConfirmedNotif
             ? 'blue'
             : n.accentColor || 'amber',
-          department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : 'PRODUCTION'),
+          department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : 'PRODUCTION'),
           title: n.title,
           message: n.message,
           timeDisplay: formatStreamDate(n.date),
           subCategory: 'LINE DEFECT REPORT',
           footerFlag: isClosedNotif
             ? 'CASE_CLOSED'
+            : isPendingSignoff
+            ? 'ACTION_REQUIRED'
             : isUpdatedNotif
             ? 'OPERATIONAL_UPDATE'
             : isConfirmedNotif
@@ -130,7 +140,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
             : n.footerFlag || 'ACTION_REQUIRED',
           read: isItemRead,
           type: n.type || (isClosedNotif ? 'closed' : 'info'),
-          link: '/ihlr/my-requests',
+          link: n.link || '/ihlr/approvals',
         });
       });
     }

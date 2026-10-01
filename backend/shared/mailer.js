@@ -392,7 +392,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
 /**
  * Send closer / countermeasure update emails for IHLR requests
  */
-export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, assignedUser }) {
+export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, assignedUser, adminUsers = [] }) {
   const reqNo = request.req_no || `IHLR-${request.id || '1'}`;
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const reportUrl = `${baseUrl}/ihlr/my-requests`;
@@ -412,35 +412,37 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
     { label: 'Request Number', value: reqNo },
     { label: 'Defect / Model', value: `${request.problem || '—'} (${request.model || '—'})` },
     { label: 'Responsible Dept', value: assignedDept },
-    { label: 'Responsible Person', value: assignedName },
+    { label: 'Responsible Closer', value: assignedName },
     { label: 'Occurrence Cause (Why 1)', value: closerWhy1 },
     { label: 'Action Taken', value: request.action || 'Containment in progress' },
     { label: 'Target / Close Date', value: request.target_date || 'N/A' },
     { label: 'Updated Status', value: request.status || (isClosed ? 'CLOSED' : 'IN_PROGRESS') },
-    { label: 'Remarks', value: request.remarks || 'None' }
+    { label: 'Remarks', value: request.remarks || (isClosed ? 'Closed' : '(Pending validation by Requester/Admin)') }
   ];
 
-  const results = {};
+  const results = { admins: [] };
 
-  // Notify Creator (Raised Person) that countermeasure was submitted or case closed
+  // 1. Notify Creator (Raised Person / Requester)
   if (creatorEmail) {
     const subject = isClosed 
       ? `[IHLR Case Closed] Defect Report #${reqNo} Verified & Closed`
-      : `[IHLR Update] Countermeasure Submitted for #${reqNo} (${assignedDept})`;
+      : `[Action Required] Closer Completed Countermeasures for #${reqNo} - Pending Remarks & Status Sign-Off`;
 
     const html = generateEmailTemplate({
-      headerTitle: isClosed ? `IHLR Case Closed: #${reqNo}` : `Countermeasure Submitted: #${reqNo}`,
+      headerTitle: isClosed ? `IHLR Case Closed: #${reqNo}` : `Closer Countermeasure Completed: #${reqNo}`,
       headerSubtitle: isClosed
         ? `Defect containment and 5-Why corrective actions have been completed and verified.`
-        : `Responsible department ${assignedDept} has submitted 5-Why root cause countermeasure for review.`,
+        : `Closer ${assignedName} (${assignedDept}) has completed 5-Why root cause analysis and corrective action. Please complete pending remarks and status sign-off.`,
       recipientName: creatorName,
-      greetingMessage: `<strong>${assignedName}</strong> (${assignedDept}) has updated the closer log for defect report <strong>${reqNo}</strong> (${request.model || 'Report'}).`,
+      greetingMessage: isClosed
+        ? `Defect observation report <strong>${reqNo}</strong> (${request.model || 'Model'}) has been signed off and marked as <strong>CLOSED</strong>.`
+        : `Closer <strong>${assignedName}</strong> (${assignedDept}) has completed the 5-Why root cause analysis and corrective action for defect report <strong>${reqNo}</strong> (${request.model || 'Report'}).<br><br><strong>Action Required:</strong> Please review the containment countermeasure details below and complete the pending fields: <strong>Remarks</strong> &amp; <strong>Status sign-off</strong>.`,
       tableData: tableSummary,
-      actionButtonText: 'Review Full IHLR Report',
-      actionButtonUrl: reportUrl,
-      footerNote: 'Please verify the containment action in the INEL portal.',
-      badgeColor: isClosed ? '#10b981' : '#2563eb',
-      badgeText: isClosed ? 'CASE CLOSED' : 'COUNTERMEASURE SUBMITTED',
+      actionButtonText: isClosed ? 'Review Full IHLR Report' : 'Complete Pending Remarks & Sign-Off',
+      actionButtonUrl: approvalsUrl,
+      footerNote: isClosed ? 'Verification complete in the INEL portal.' : 'Action required: Please enter your review remarks and sign off status in the portal.',
+      badgeColor: isClosed ? '#10b981' : '#d97706',
+      badgeText: isClosed ? 'CASE CLOSED' : 'ACTION REQUIRED: PENDING SIGN-OFF',
     });
 
     results.creator = await sendEmail({
@@ -448,7 +450,9 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
       recipientName: creatorName,
       recipientRole: 'RAISED_PERSON',
       subject,
-      text: `Countermeasure submitted for IHLR #${reqNo} by ${assignedName} (${assignedDept}). Status: ${request.status}. Action: ${request.action}`,
+      text: isClosed
+        ? `Defect report #${reqNo} verified and closed.`
+        : `Action Required: Closer ${assignedName} (${assignedDept}) completed root cause countermeasures for #${reqNo}. Please complete remarks and sign off status at: ${approvalsUrl}`,
       html,
       moduleType: 'IHLR',
       requestId: request.id,
@@ -456,27 +460,72 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
     });
   }
 
-  // Also confirm to Assigned / Closer Person if their email is available
+  // 2. Notify Quality Admins
+  if (Array.isArray(adminUsers) && adminUsers.length > 0) {
+    for (const admin of adminUsers) {
+      const adminEmail = admin?.email;
+      const adminName = admin?.name || 'Quality Admin';
+      if (!adminEmail || (creatorEmail && adminEmail.toLowerCase() === creatorEmail.toLowerCase())) {
+        continue; // avoid duplicate email if creator is this admin
+      }
+
+      const adminSubject = isClosed
+        ? `[IHLR Case Closed] Incident #${reqNo} Closed by Quality Team`
+        : `[Admin Action Required] Closer Completed Countermeasures for #${reqNo} - Pending Sign-Off`;
+
+      const adminHtml = generateEmailTemplate({
+        headerTitle: isClosed ? `Case Closed: #${reqNo}` : `Pending Closer Review: #${reqNo}`,
+        headerSubtitle: isClosed
+          ? `Defect report #${reqNo} has been finalized and closed.`
+          : `Closer ${assignedName} (${assignedDept}) has completed root cause analysis and countermeasures. Ready for validation remarks and status sign-off.`,
+        recipientName: adminName,
+        greetingMessage: isClosed
+          ? `Defect report <strong>${reqNo}</strong> (${request.model || 'Model'}) has been signed off and closed.`
+          : `Closer <strong>${assignedName}</strong> (${assignedDept}) has completed the 5-Why root cause analysis and corrective action for defect report <strong>${reqNo}</strong> (${request.model || 'Report'}).<br><br><strong>Admin Action Required:</strong> Please review root cause details, provide validation remarks, and finalize the incident status.`,
+        tableData: tableSummary,
+        actionButtonText: 'Review & Sign-Off Incident',
+        actionButtonUrl: approvalsUrl,
+        footerNote: 'Please sign off in the INEL Quality Portal.',
+        badgeColor: isClosed ? '#10b981' : '#d97706',
+        badgeText: isClosed ? 'CASE CLOSED' : 'PENDING ADMIN SIGN-OFF',
+      });
+
+      const adminRes = await sendEmail({
+        to: adminEmail,
+        recipientName: adminName,
+        recipientRole: 'ADMIN',
+        subject: adminSubject,
+        text: `Admin Action Required: Closer ${assignedName} completed countermeasures for #${reqNo}. Please review and finalize sign-off at: ${approvalsUrl}`,
+        html: adminHtml,
+        moduleType: 'IHLR',
+        requestId: request.id,
+        referenceNo: reqNo,
+      });
+      results.admins.push(adminRes);
+    }
+  }
+
+  // 3. Acknowledge to Closer (Assigned Person)
   if (assignedEmail) {
     const subject = isClosed
       ? `[IHLR Case Closed] Closer Confirmation: Defect Report #${reqNo} Marked as CLOSED`
-      : `[IHLR Confirmation] Closer Log Saved for #${reqNo}`;
+      : `[IHLR Acknowledgment] Closer Countermeasures Submitted for #${reqNo}`;
 
     const html = generateEmailTemplate({
-      headerTitle: isClosed ? `Case Closed & Signed-Off: #${reqNo}` : `Closer Log Recorded: #${reqNo}`,
+      headerTitle: isClosed ? `Case Closed & Signed-Off: #${reqNo}` : `Closer Submission Acknowledged: #${reqNo}`,
       headerSubtitle: isClosed
         ? `Your closure sign-off and root cause containment measures have been confirmed in the quality portal.`
-        : `Your countermeasure and root cause analysis have been recorded in the quality system.`,
+        : `Your 5-Why root cause countermeasures have been successfully submitted. Requester and Admin have been alerted to complete the pending fields.`,
       recipientName: assignedName,
       greetingMessage: isClosed
-        ? `You have successfully verified and marked IHLR Report <strong>${reqNo}</strong> as <strong>CLOSED</strong>. Corrective action sign-off is complete.`
-        : `Your submission for IHLR Report <strong>${reqNo}</strong> has been saved with status <strong>${request.status}</strong>.`,
+        ? `You have successfully verified and marked IHLR Report <strong>${reqNo}</strong> as <strong>CLOSED</strong>.`
+        : `Thank you <strong>${assignedName}</strong>. Your 5-Why root cause analysis and corrective actions for IHLR Report <strong>${reqNo}</strong> have been recorded in the quality system.<br><br>The Requester (<strong>${creatorName}</strong>) and Quality Admin have been alerted with notifications and email to complete the pending validation remarks and finalize status.`,
       tableData: tableSummary,
       actionButtonText: 'View Closer Approvals',
       actionButtonUrl: approvalsUrl,
       footerNote: 'Thank you for submitting quality containment measures.',
       badgeColor: isClosed ? '#10b981' : '#2563eb',
-      badgeText: isClosed ? 'CASE CLOSED' : 'SAVED',
+      badgeText: isClosed ? 'CASE CLOSED' : 'SUBMITTED & ACKNOWLEDGED',
     });
 
     results.assigned = await sendEmail({
@@ -485,8 +534,8 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
       recipientRole: 'SELECTED_PERSON',
       subject,
       text: isClosed
-        ? `Defect report #${reqNo} has been marked as CLOSED by ${assignedName}. Containment verified.`
-        : `Your countermeasure submission for IHLR #${reqNo} has been saved with status ${request.status}.`,
+        ? `Defect report #${reqNo} has been marked as CLOSED. Containment verified.`
+        : `Closer Log Acknowledged for #${reqNo}. Requester and Admin have been notified to complete pending remarks and status.`,
       html,
       moduleType: 'IHLR',
       requestId: request.id,

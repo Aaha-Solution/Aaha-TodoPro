@@ -357,11 +357,84 @@ export const createIhlrRequest = async (req, res) => {
 export const updateIhlrRequest = async (req, res) => {
   try {
     const { id } = req.params;
-    let updated = await IhlrRequest.update(id, req.body);
+
+    // 1. Fetch existing request from DB or fallback
+    let existing = null;
+    if (pool) {
+      const [existingRows] = await pool.query('SELECT * FROM ihlr_requests WHERE id = ? LIMIT 1', [id]).catch(() => [[]]);
+      if (existingRows && existingRows.length > 0) {
+        existing = existingRows[0];
+      }
+    }
+    if (!existing) {
+      existing = fallbackRequests.find(r => String(r.id) === String(id));
+    }
+
+    if (!existing) {
+      return errorResponse(res, 'IHLR Request not found to update', 404);
+    }
+
+    const clean = (val) => (val || '').trim().toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s+/i, '');
+    const userRole = (req.user?.role || '').toUpperCase();
+    const userDept = (req.user?.department || '').toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+    const userName = clean(req.user?.name);
+    const userEmail = clean(req.user?.email);
+    const userId = req.user?.id ? String(req.user.id) : null;
+
+    // Guard: Once closed, only Admin can modify closed records
+    const isClosed = String(existing.status || '').toUpperCase() === 'CLOSED';
+    if (isClosed && !isAdmin) {
+      return errorResponse(res, 'This incident is closed. Only Admin can modify closed records.', 403);
+    }
+
+    // Closer & Requester permission checks
+    const respPerson = clean(existing.resp_person);
+    const respEmail = clean(existing.resp_person_email);
+    const isCloser = Boolean(respPerson && (userName === respPerson || (userEmail && userEmail === respEmail)));
+
+    const createdBy = clean(existing.created_by);
+    const createdEmail = clean(existing.created_by_email);
+    const createdId = existing.created_by_id ? String(existing.created_by_id) : null;
+    const isRequester = Boolean(
+      (createdId && userId && createdId === userId) ||
+      (createdBy && userName === createdBy) ||
+      (createdEmail && userEmail && userEmail === createdEmail)
+    );
+
+    if (!isAdmin && !isCloser && !isRequester) {
+      return errorResponse(res, 'You are not authorized to update this IHLR request.', 403);
+    }
+
+    // Role-based field segregation:
+    // - Closer can ONLY update: prod_why_why, action, evidence_attachment, target_date
+    // - Requester / Admin can update: remarks, status
+    // - Admin can update any field
+    let safeUpdates = {};
+    if (isAdmin) {
+      safeUpdates = { ...req.body };
+    } else {
+      if (isCloser) {
+        if (req.body.prod_why_why !== undefined) safeUpdates.prod_why_why = req.body.prod_why_why;
+        if (req.body.action !== undefined) safeUpdates.action = req.body.action;
+        if (req.body.evidence_attachment !== undefined) safeUpdates.evidence_attachment = req.body.evidence_attachment;
+        if (req.body.target_date !== undefined) safeUpdates.target_date = req.body.target_date;
+      }
+      if (isRequester) {
+        if (req.body.remarks !== undefined) safeUpdates.remarks = req.body.remarks;
+        if (req.body.status !== undefined) safeUpdates.status = req.body.status;
+      }
+    }
+
+    if (Object.keys(safeUpdates).length === 0) {
+      return errorResponse(res, 'No permissible fields provided for update based on your role.', 400);
+    }
+
+    let updated = await IhlrRequest.update(id, safeUpdates);
     if (!updated) {
       const idx = fallbackRequests.findIndex(r => String(r.id) === String(id));
       if (idx !== -1) {
-        fallbackRequests[idx] = { ...fallbackRequests[idx], ...req.body, updated_at: new Date().toISOString() };
+        fallbackRequests[idx] = { ...fallbackRequests[idx], ...safeUpdates, updated_at: new Date().toISOString() };
         updated = fallbackRequests[idx];
       }
     }
@@ -370,38 +443,80 @@ export const updateIhlrRequest = async (req, res) => {
       return errorResponse(res, 'IHLR Request not found to update', 404);
     }
 
-    // 1. Trigger Closer In-App Notification to BOTH Raised Person AND Closer Person
+    // 1. Trigger In-App Notifications and Email Dispatch
     if (pool && updated) {
       try {
         const reqNo = updated.req_no || `IHLR-${updated.id || id}`;
         const isClosed = String(updated.status || '').toUpperCase() === 'CLOSED';
         const closerName = req.user?.name || updated.resp_person || 'Assigned Officer';
-        const notifType = isClosed ? 'case_closed' : 'countermeasure_updated';
-        const notifTitle = isClosed ? `IHLR Case Closed: #${reqNo}` : `Countermeasure Submitted: #${reqNo}`;
-        const notifMsg = isClosed
-          ? `Defect report #${reqNo} (${updated.model || 'Model'}) has been verified and marked as CLOSED by ${closerName}.`
-          : `5-Why root cause countermeasure submitted for #${reqNo} (${updated.model || 'Model'}) by ${closerName} (${updated.resp || 'Production'}). Status: ${updated.status || 'IN_PROGRESS'}.`;
+        const closerDept = updated.resp || req.user?.department || 'PRODUCTION';
 
-        // Notification A: For Raised Person
+        // Fetch Quality Admin users from DB
+        let adminUsers = [];
+        const [aRows] = await pool.query(
+          "SELECT id, name, email FROM users WHERE UPPER(role) = 'ADMIN' OR UPPER(department) = 'INCOMING QUALITY'"
+        ).catch(() => [[]]);
+        if (aRows && aRows.length > 0) {
+          adminUsers = aRows;
+        } else {
+          adminUsers = [{ id: null, name: 'Quality Admin', email: 'admin@gmail.com' }];
+        }
+
+        // Notification A: For Raised Person (Requester) to complete pending fields
         if (updated.created_by_id || updated.created_by || updated.created_by_email) {
+          const reqNotifType = isClosed ? 'case_closed' : 'closer_completed_pending_review';
+          const reqNotifTitle = isClosed ? `IHLR Case Closed: #${reqNo}` : `Action Required: Complete Pending Fields #${reqNo}`;
+          const reqNotifMsg = isClosed
+            ? `Defect report #${reqNo} (${updated.model || 'Model'}) has been verified and marked as CLOSED by ${closerName}.`
+            : `Closer ${closerName} (${closerDept}) has completed 5-Why root cause analysis and corrective action for #${reqNo} (${updated.model || 'Model'}). Action required: Please review, enter remarks, and sign off the status.`;
+
           await pool.query(
             `INSERT INTO ihlr_notifications 
              (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, '/ihlr/my-requests', 0)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, '/ihlr/approvals', 0)`,
             [
               updated.created_by_id || null,
-              updated.created_by || 'Quality Admin',
+              updated.created_by || 'Quality Requester',
               updated.created_by_email || '',
               updated.id || id,
               reqNo,
-              notifType,
-              notifTitle,
-              notifMsg
+              reqNotifType,
+              reqNotifTitle,
+              reqNotifMsg
             ]
           );
         }
 
-        // Notification B: For Closer / Assigned Person (Acknowledgment)
+        // Notification B: For Quality Admins to review and sign-off pending fields
+        for (const admin of adminUsers) {
+          // Avoid duplicate notification if requester is this admin
+          if (updated.created_by_email && admin.email && updated.created_by_email.toLowerCase() === admin.email.toLowerCase()) {
+            continue;
+          }
+          const adminNotifType = isClosed ? 'case_closed' : 'closer_completed_pending_admin_signoff';
+          const adminNotifTitle = isClosed ? `IHLR Case Closed: #${reqNo}` : `Admin Action Required: Pending Sign-Off #${reqNo}`;
+          const adminNotifMsg = isClosed
+            ? `Defect report #${reqNo} (${updated.model || 'Model'}) has been signed off and closed.`
+            : `Closer ${closerName} (${closerDept}) has completed countermeasures for #${reqNo} (${updated.model || 'Model'}). Action required: Please enter validation remarks and update status to finalize closure.`;
+
+          await pool.query(
+            `INSERT INTO ihlr_notifications 
+             (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, '/ihlr/approvals', 0)`,
+            [
+              admin.id || null,
+              admin.name || 'Admin',
+              admin.email || 'admin@gmail.com',
+              updated.id || id,
+              reqNo,
+              adminNotifType,
+              adminNotifTitle,
+              adminNotifMsg
+            ]
+          ).catch((e) => console.warn('[Admin Notif Error]:', e.message));
+        }
+
+        // Notification C: For Closer / Assigned Person (Acknowledgment)
         let closerUserId = null;
         let closerEmail = updated.resp_person_email || '';
         let closerPersonName = updated.resp_person || closerName;
@@ -419,10 +534,10 @@ export const updateIhlrRequest = async (req, res) => {
         }
 
         const closerNotifType = isClosed ? 'closure_confirmed' : 'countermeasure_saved';
-        const closerNotifTitle = isClosed ? `IHLR Case Closed: #${reqNo}` : `Closer Log Saved: #${reqNo}`;
+        const closerNotifTitle = isClosed ? `IHLR Case Closed: #${reqNo}` : `Closer Submission Acknowledged: #${reqNo}`;
         const closerNotifMsg = isClosed
           ? `You have closed defect report #${reqNo} (${updated.model || 'Model'}). Containment and root cause countermeasures have been signed off.`
-          : `Your 5-Why root cause countermeasure for #${reqNo} (${updated.model || 'Model'}) has been saved successfully.`;
+          : `Your 5-Why root cause analysis and corrective action for #${reqNo} (${updated.model || 'Model'}) have been submitted. The Requester and Quality Admin have been alerted with notification & email to complete the pending validation remarks and status sign-off.`;
 
         await pool.query(
           `INSERT INTO ihlr_notifications 
@@ -439,32 +554,34 @@ export const updateIhlrRequest = async (req, res) => {
             closerNotifMsg
           ]
         );
+
+        // 2. Trigger Closer Email Dispatch to Requester, Quality Admins, and Closer
+        try {
+          sendIhlrCloserEmails({
+            request: updated,
+            closerUser: req.user,
+            creatorUser: {
+              id: updated.created_by_id,
+              name: updated.created_by,
+              email: updated.created_by_email
+            },
+            assignedUser: {
+              name: updated.resp_person,
+              email: updated.resp_person_email,
+              department: updated.resp
+            },
+            adminUsers
+          }).catch(mailErr => console.warn('[IHLR Mailer] Closer email dispatch warning:', mailErr.message));
+        } catch (mailSyncErr) {
+          console.warn('[IHLR Mailer] Sync closer email dispatch warning:', mailSyncErr.message);
+        }
+
       } catch (notifErr) {
         console.warn('[IHLR Closer Notification Warning]:', notifErr.message);
       }
     }
 
-    // 2. Trigger Closer Email Dispatch
-    try {
-      sendIhlrCloserEmails({
-        request: updated,
-        closerUser: req.user,
-        creatorUser: {
-          id: updated.created_by_id,
-          name: updated.created_by,
-          email: updated.created_by_email
-        },
-        assignedUser: {
-          name: updated.resp_person,
-          email: updated.resp_person_email,
-          department: updated.resp
-        }
-      }).catch(mailErr => console.warn('[IHLR Mailer] Closer email dispatch warning:', mailErr.message));
-    } catch (mailSyncErr) {
-      console.warn('[IHLR Mailer] Sync closer email dispatch warning:', mailSyncErr.message);
-    }
-
-    return successResponse(res, updated, 'IHLR closer log updated successfully. Notifications and emails dispatched.');
+    return successResponse(res, updated, 'IHLR closer log updated successfully. Notifications and emails dispatched to Requester and Admin to complete pending fields.');
   } catch (error) {
     return errorResponse(res, error.message, 500);
   }
@@ -490,6 +607,9 @@ export const getIhlrNotifications = async (req, res) => {
     const userEmail = (req.query.user_email || req.query.email || req.user?.email || '').trim().toLowerCase();
     const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
 
+    const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+
     let notifRows = [];
     if (pool) {
       let query = 'SELECT * FROM ihlr_notifications';
@@ -508,6 +628,11 @@ export const getIhlrNotifications = async (req, res) => {
         conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
         params.push(userEmail);
       }
+      if (isAdmin) {
+        conditions.push("LOWER(TRIM(user_name)) = 'admin'");
+        conditions.push("LOWER(TRIM(user_email)) LIKE '%admin%'");
+        conditions.push("type LIKE '%admin%'");
+      }
 
       if (conditions.length > 0) {
         query += ` WHERE (${conditions.join(' OR ')})`;
@@ -520,8 +645,6 @@ export const getIhlrNotifications = async (req, res) => {
     // Also include synthetic recent request stream if notifications table is empty
     if (notifRows.length === 0) {
       let requests = (await IhlrRequest.getAll()) || [];
-      const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
-      const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
       if (!isAdmin && (userName || userId)) {
         requests = requests.filter(r => {
           const rPerson = (r.resp_person || '').trim().toLowerCase();
@@ -554,7 +677,7 @@ export const getIhlrNotifications = async (req, res) => {
           date: r.created_at ? new Date(r.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent Today',
           status: r.status || 'OPEN',
           read: false,
-          link: '/ihlr/my-requests'
+          link: '/ihlr/approvals'
         };
       });
       return successResponse(res, notifications, 'IHLR notifications retrieved');
@@ -564,13 +687,19 @@ export const getIhlrNotifications = async (req, res) => {
       const isConfirmed = n.type === 'submission_confirmed';
       const isClosed = n.type === 'case_closed' || n.type === 'closure_confirmed' || n.type === 'closed';
       const isUpdated = n.type === 'countermeasure_updated' || n.type === 'countermeasure_saved';
+      const isPendingSignoff = n.type === 'closer_completed_pending_review' || n.type === 'closer_completed_pending_admin_signoff' || n.type === 'pending_requester_signoff';
 
       let badgeLabel = 'ACTION REQUIRED';
       let accentColor = 'amber';
       let footerFlag = 'ACTION_REQUIRED';
       let dept = 'PRODUCTION';
 
-      if (isConfirmed) {
+      if (isPendingSignoff) {
+        badgeLabel = 'PENDING SIGN-OFF';
+        accentColor = 'amber';
+        footerFlag = 'ACTION_REQUIRED';
+        dept = 'QUALITY SIGN-OFF';
+      } else if (isConfirmed) {
         badgeLabel = 'REPORT LOGGED';
         accentColor = 'blue';
         footerFlag = 'SYSTEM_LOGS';
@@ -602,7 +731,7 @@ export const getIhlrNotifications = async (req, res) => {
         footerFlag,
         read: Boolean(n.is_read),
         type: n.type,
-        link: n.link || '/ihlr/my-requests'
+        link: n.link || '/ihlr/approvals'
       };
     });
 
