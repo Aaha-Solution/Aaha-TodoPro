@@ -24,5 +24,12 @@ export const userService = {
   deleteUser: async (id) => {
     const response = await api.delete(`/users/${id}`);
     return response.data?.data;
+  },
+
+  checkEmployeeId: async (employeeId, excludeId = null) => {
+    const params = new URLSearchParams({ employeeId });
+    if (excludeId) params.append('excludeId', excludeId);
+    const response = await api.get(`/users/check-emp-id?${params.toString()}`);
+    return response.data?.data;
   }
 };

@@ -4,12 +4,14 @@ import {
   getUserById,
   createUser,
   updateUser,
-  deleteUser
+  deleteUser,
+  checkEmployeeIdExists
 } from '../controllers/userController.js';
 
 const router = Router();
 
 router.get('/', getUsers);
+router.get('/check-emp-id', checkEmployeeIdExists);
 router.get('/:id', getUserById);
 router.post('/', createUser);
 router.put('/:id', updateUser);

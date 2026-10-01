@@ -22,11 +22,49 @@ export const getUserById = async (req, res) => {
   }
 };
 
+export const checkEmployeeIdExists = async (req, res) => {
+  try {
+    const { employeeId, excludeId } = req.query;
+    if (!employeeId || !String(employeeId).trim()) {
+      return successResponse(res, { exists: false });
+    }
+
+    const trimmed = String(employeeId).trim();
+    let existing;
+    if (excludeId) {
+      existing = await User.findByEmployeeIdExcludingUser(trimmed, excludeId);
+    } else {
+      existing = await User.findByEmployeeId(trimmed);
+    }
+
+    return successResponse(res, {
+      exists: !!existing,
+      employeeId: trimmed,
+      userName: existing ? existing.name : null
+    });
+  } catch (error) {
+    return errorResponse(res, error.message, 500);
+  }
+};
+
 export const createUser = async (req, res) => {
   try {
     const { name, email, password, role, department, status, systems, employeeId } = req.body;
     if (!name || !email) {
       return errorResponse(res, 'Name and Email are required', 400);
+    }
+
+    if (employeeId && String(employeeId).trim()) {
+      const trimmedEmpId = String(employeeId).trim();
+      const existingEmp = await User.findByEmployeeId(trimmedEmpId);
+      if (existingEmp) {
+        return errorResponse(res, `Employee ID "${trimmedEmpId}" already exists in database (assigned to ${existingEmp.name})`, 400);
+      }
+    }
+
+    const existingEmail = await User.findByEmail(email.trim());
+    if (existingEmail) {
+      return errorResponse(res, `Email "${email.trim()}" is already registered in database`, 400);
     }
 
     const normalizedRole = (role && role.toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
@@ -44,6 +82,12 @@ export const createUser = async (req, res) => {
 
     return successResponse(res, newUser, 'User created successfully', 201);
   } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      if (error.message.includes('employee_id') || error.message.includes('idx_user_employee_id')) {
+        return errorResponse(res, 'Employee ID is already registered in database', 400);
+      }
+      return errorResponse(res, 'Email or Employee ID is already registered in database', 400);
+    }
     return errorResponse(res, error.message, 500);
   }
 };
@@ -51,12 +95,28 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const { employeeId } = req.body;
+
+    if (employeeId && String(employeeId).trim()) {
+      const trimmedEmpId = String(employeeId).trim();
+      const duplicateEmp = await User.findByEmployeeIdExcludingUser(trimmedEmpId, id);
+      if (duplicateEmp) {
+        return errorResponse(res, `Employee ID "${trimmedEmpId}" already exists in database (assigned to ${duplicateEmp.name})`, 400);
+      }
+    }
+
     const updated = await User.update(id, req.body);
     if (!updated) {
       return errorResponse(res, 'User not found', 404);
     }
     return successResponse(res, updated, 'User updated successfully');
   } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      if (error.message.includes('employee_id') || error.message.includes('idx_user_employee_id')) {
+        return errorResponse(res, 'Employee ID is already registered in database', 400);
+      }
+      return errorResponse(res, 'Duplicate entry in database', 400);
+    }
     return errorResponse(res, error.message, 500);
   }
 };

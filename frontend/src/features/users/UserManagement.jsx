@@ -74,6 +74,25 @@ const UserManagement = () => {
     password: ''
   });
 
+  const isAddEmpDuplicate = Boolean(
+    formData.employeeId?.trim() &&
+    users.some(
+      (u) =>
+        (u.employeeId || u.employee_id || String(u.id)).trim().toLowerCase() ===
+        formData.employeeId.trim().toLowerCase()
+    )
+  );
+
+  const isEditEmpDuplicate = Boolean(
+    editingUser?.employeeId?.trim() &&
+    users.some(
+      (u) =>
+        String(u.id) !== String(editingUser.id) &&
+        (u.employeeId || u.employee_id || String(u.id)).trim().toLowerCase() ===
+          editingUser.employeeId.trim().toLowerCase()
+    )
+  );
+
   // Load users from backend / local storage on mount
   useEffect(() => {
     const fetchUsers = async () => {
@@ -104,7 +123,7 @@ const UserManagement = () => {
       email: '',
       role: 'USER',
       department: 'PRODUCTION',
-      status: 'ACTIVE',
+      status: 'Active',
       systems: ['processAudit', 'ihlr', 'tryOutStatus'],
       password: ''
     });
@@ -136,8 +155,22 @@ const UserManagement = () => {
       return;
     }
 
+    const trimmedEmpId = (formData.employeeId || '').trim();
+    if (!trimmedEmpId) {
+      alert('Please provide an Employee ID.');
+      return;
+    }
+
+    if (isAddEmpDuplicate) {
+      alert(`Employee ID "${trimmedEmpId}" already exists in the database. Please provide a unique Employee ID.`);
+      return;
+    }
+
     try {
-      const created = await userService.createUser(formData);
+      const created = await userService.createUser({
+        ...formData,
+        employeeId: trimmedEmpId
+      });
       const freshData = await userService.getUsers();
       dispatch(setUsers(freshData));
       setShowAddModal(false);
@@ -150,8 +183,9 @@ const UserManagement = () => {
   const handleOpenEditModal = (userToEdit) => {
     setEditingUser({
       ...userToEdit,
+      employeeId: userToEdit.employeeId || userToEdit.employee_id || String(userToEdit.id),
       password: '',
-      status: userToEdit.status || 'ACTIVE'
+      status: (userToEdit.status && userToEdit.status.toUpperCase() === 'INACTIVE') ? 'Inactive' : 'Active'
     });
     setShowEditPassword(false);
     setShowEditModal(true);
@@ -161,9 +195,21 @@ const UserManagement = () => {
     e.preventDefault();
     if (!editingUser.name.trim()) return;
 
+    const trimmedEmpId = (editingUser.employeeId || '').trim();
+    if (!trimmedEmpId) {
+      alert('Please provide an Employee ID.');
+      return;
+    }
+
+    if (isEditEmpDuplicate) {
+      alert(`Employee ID "${trimmedEmpId}" already exists in the database for another user.`);
+      return;
+    }
+
     try {
       const payload = {
         name: editingUser.name,
+        employeeId: trimmedEmpId,
         role: editingUser.role,
         department: editingUser.department,
         status: editingUser.status
@@ -227,9 +273,11 @@ const UserManagement = () => {
 
   // Filter logic - users are common for all tabs
   const filteredUsers = users.filter((u) => {
+    const userEmpId = String(u.employeeId || u.employee_id || u.id || '');
     const matchesSearch =
       u.name?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
+      userEmpId.toLowerCase().includes(search.toLowerCase()) ||
       String(u.id)?.toLowerCase().includes(search.toLowerCase());
 
     const matchesDept = selectedDept === 'ALL' || u.department === selectedDept;
@@ -331,7 +379,7 @@ const UserManagement = () => {
         idx + 1,
         u.name || '—',
         u.email || '—',
-        String(u.id || u.employeeId || '—'),
+        String(u.employeeId || u.employee_id || u.id || '—'),
         (u.role || 'USER').toUpperCase(),
         u.department || '—',
         Array.isArray(u.systems) && u.systems.length > 0 
@@ -477,11 +525,11 @@ const UserManagement = () => {
 
           <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Active Status</span>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Active Users</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             </div>
             <p className="text-2xl font-extrabold text-emerald-600">{activeCount}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">{totalCount - activeCount} inactive</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">{totalCount - activeCount} inactive users</p>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
@@ -660,7 +708,7 @@ const UserManagement = () => {
 
                         {/* Employee ID */}
                         <td className="py-4 px-4 font-mono font-bold text-slate-700">
-                          {u.id}
+                          {u.employeeId || u.employee_id || u.id}
                         </td>
 
                         {/* Role */}
@@ -782,8 +830,13 @@ const UserManagement = () => {
 
                 {/* Employee ID */}
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Employee ID *
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Employee ID *</span>
+                    {isAddEmpDuplicate && (
+                      <span className="text-[10px] text-red-600 font-semibold lowercase tracking-normal flex items-center gap-0.5">
+                        <XCircle className="w-3 h-3 inline" /> already in DB
+                      </span>
+                    )}
                   </label>
                   <input
                     type="text"
@@ -791,8 +844,17 @@ const UserManagement = () => {
                     value={formData.employeeId}
                     onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
                     placeholder="e.g. USR-008"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 font-mono focus:bg-white focus:ring-2 outline-none transition ${
+                      isAddEmpDuplicate
+                        ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
                   />
+                  {isAddEmpDuplicate && (
+                    <p className="text-[10px] text-red-500 font-medium mt-1">
+                      Employee ID &quot;{formData.employeeId}&quot; is already registered in DB.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -885,7 +947,6 @@ const UserManagement = () => {
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                   >
                     <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
                   </select>
                 </div>
               </div>
@@ -943,7 +1004,7 @@ const UserManagement = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Edit User Details</h3>
-                  <p className="text-[11px] text-slate-400">Employee ID: {editingUser.id}</p>
+                  <p className="text-[11px] text-slate-400">Update personnel profile &amp; employee ID</p>
                 </div>
               </div>
               <button
@@ -955,17 +1016,49 @@ const UserManagement = () => {
             </div>
 
             <form onSubmit={handleEditUserSubmit} className="mt-5 space-y-4">
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editingUser.name}
-                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Full Name */}
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editingUser.name}
+                    onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  />
+                </div>
+
+                {/* Employee ID (Editable & Validated) */}
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center justify-between">
+                    <span>Employee ID *</span>
+                    {isEditEmpDuplicate && (
+                      <span className="text-[10px] text-red-600 font-semibold lowercase tracking-normal flex items-center gap-0.5">
+                        <XCircle className="w-3 h-3 inline" /> already in DB
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editingUser.employeeId || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, employeeId: e.target.value })}
+                    placeholder="e.g. USR-008"
+                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 font-mono focus:bg-white focus:ring-2 outline-none transition ${
+                      isEditEmpDuplicate
+                        ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
+                  />
+                  {isEditEmpDuplicate && (
+                    <p className="text-[10px] text-red-500 font-medium mt-1">
+                      Employee ID &quot;{editingUser.employeeId}&quot; is already taken by another user.
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -1020,9 +1113,9 @@ const UserManagement = () => {
                   Account Status
                 </label>
                 <select
-                  value={editingUser.status}
+                  value={editingUser.status && editingUser.status.toUpperCase() === 'INACTIVE' ? 'Inactive' : 'Active'}
                   onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>

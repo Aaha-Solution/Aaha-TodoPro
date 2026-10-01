@@ -25,6 +25,7 @@ DROP TABLE IF EXISTS users;
 -- ==============================================================================
 CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  employee_id VARCHAR(50) UNIQUE NULL,
   name VARCHAR(100) NOT NULL,
   email VARCHAR(150) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
@@ -33,6 +34,7 @@ CREATE TABLE users (
   status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_user_employee_id (employee_id),
   INDEX idx_user_email (email),
   INDEX idx_user_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
