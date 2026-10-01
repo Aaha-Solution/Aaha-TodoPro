@@ -128,6 +128,15 @@ export const ModalProvider = ({ children }) => {
     modal.warning = warning;
     modal.info = info;
     modal.close = closeModal;
+
+    const originalAlert = window.alert;
+    window.alert = (msg) => {
+      alert(msg);
+    };
+
+    return () => {
+      window.alert = originalAlert;
+    };
   }, [alert, confirm, success, error, warning, info, closeModal]);
 
   return (

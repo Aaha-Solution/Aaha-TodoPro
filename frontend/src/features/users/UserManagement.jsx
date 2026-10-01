@@ -27,6 +27,7 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useAuth } from '../../hooks/useAuth';
+import { useModal } from '../../context/ModalContext';
 import {
   setUsers,
   addUser,
@@ -49,6 +50,7 @@ const UserManagement = () => {
   const dispatch = useDispatch();
   const isIhlr = location.pathname.startsWith('/ihlr');
   const { user: currentAuthUser, login: updateAuthUser } = useAuth();
+  const { alert: modalAlert, confirm: modalConfirm, error: modalError } = useModal();
   const { users } = useSelector((state) => state.user);
 
   const [search, setSearch] = useState('');
@@ -240,7 +242,7 @@ const UserManagement = () => {
       } else if (msg.toLowerCase().includes('email')) {
         setAddFormErrors((prev) => ({ ...prev, email: msg }));
       } else {
-        alert('Failed to save user in DB: ' + msg);
+        modalError('Failed to save user in DB: ' + msg);
       }
     }
   };
@@ -323,20 +325,21 @@ const UserManagement = () => {
       if (msg.toLowerCase().includes('employee id') || msg.toLowerCase().includes('employee_id')) {
         setEditFormErrors((prev) => ({ ...prev, employeeId: msg }));
       } else {
-        alert('Failed to update user in DB: ' + msg);
+        modalError('Failed to update user in DB: ' + msg);
       }
     }
   };
 
   const handleDelete = async (userId, userName) => {
-    if (window.confirm(`Are you sure you want to delete user "${userName}" from the database?`)) {
+    const isConfirmed = await modalConfirm(`Are you sure you want to delete user "${userName}" from the database?`);
+    if (isConfirmed) {
       try {
         await userService.deleteUser(userId);
         const freshData = await userService.getUsers();
         dispatch(setUsers(freshData));
         showToast(`User "${userName}" was deleted from Database.`);
       } catch (err) {
-        alert('Failed to delete user from DB: ' + (err.response?.data?.message || err.message));
+        modalError('Failed to delete user from DB: ' + (err.response?.data?.message || err.message));
       }
     }
   };
@@ -349,7 +352,7 @@ const UserManagement = () => {
       dispatch(setUsers(freshData));
       showToast(`Status updated to ${newStatus} for ${userItem.name}`);
     } catch (err) {
-      alert('Failed to toggle status: ' + (err.response?.data?.message || err.message));
+      modalError('Failed to toggle status: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -523,7 +526,7 @@ const UserManagement = () => {
       showToast(`User directory PDF exported successfully (${filteredUsers.length} records)`);
     } catch (err) {
       console.error('Failed to export users to PDF:', err);
-      alert('Failed to export to PDF: ' + err.message);
+      modalError('Failed to export to PDF: ' + err.message);
     }
   };
 

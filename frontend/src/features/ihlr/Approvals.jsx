@@ -35,7 +35,7 @@ import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 
 const IhlrApprovals = () => {
-  const { error: modalError } = useModal();
+  const { success: modalSuccess, error: modalError } = useModal();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -176,6 +176,7 @@ const IhlrApprovals = () => {
         populateForm(updated);
       }
       await fetchRequests();
+      modalSuccess(`Closer log updated successfully for ${selectedRequest.req_no}!`);
 
       setTimeout(() => {
         setSuccessMessage('');
@@ -183,6 +184,7 @@ const IhlrApprovals = () => {
     } catch (err) {
       console.error('Failed to update closer log:', err);
       setErrorMessage(err.message || 'Failed to update closer fields');
+      modalError(err.message || 'Failed to update closer fields');
     } finally {
       setIsSaving(false);
     }
