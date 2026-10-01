@@ -256,7 +256,8 @@ export const ihlrService = {
 
   markAllNotificationsAsRead: async (user = '') => {
     try {
-      const res = await api.patch('/ihlr/notifications/mark-all-read', { user });
+      const payload = typeof user === 'object' && user !== null ? user : { user };
+      const res = await api.patch('/ihlr/notifications/mark-all-read', payload);
       return res.data?.data || res.data;
     } catch {
       return null;

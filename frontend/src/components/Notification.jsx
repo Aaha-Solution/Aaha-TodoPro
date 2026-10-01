@@ -9,6 +9,7 @@ import {
   markAllNotificationsReadForTab
 } from '../services/notificationFeedService';
 import { useAuth } from '../hooks/useAuth';
+import { storage } from '../utils/storage';
 
 const Notification = () => {
   const [open, setOpen] = useState(false);
@@ -24,8 +25,9 @@ const Notification = () => {
 
   const fetchLiveNotifications = async () => {
     try {
+      const activeUser = user || storage.getUser();
       // Get live data specifically for the current active tab
-      const data = await fetchNotificationsForTab(tabMode, user);
+      const data = await fetchNotificationsForTab(tabMode, activeUser);
       if (Array.isArray(data)) {
         dispatch(setNotifications(data));
       }
@@ -41,7 +43,11 @@ const Notification = () => {
     window.addEventListener('refreshNotifications', handleRefresh);
     window.addEventListener('focus', handleRefresh);
 
+    // Auto-poll notifications every 4 seconds to reflect live alerts immediately
+    const pollInterval = setInterval(fetchLiveNotifications, 4000);
+
     return () => {
+      clearInterval(pollInterval);
       window.removeEventListener('refreshNotifications', handleRefresh);
       window.removeEventListener('focus', handleRefresh);
     };
@@ -59,7 +65,8 @@ const Notification = () => {
 
   const handleItemClick = async (item) => {
     if (!item.read) {
-      await markNotificationReadForTab(tabMode, item.notifId, item.rawId);
+      const activeUser = user || storage.getUser();
+      await markNotificationReadForTab(tabMode, item.notifId, item.rawId, true, activeUser, item.id);
       dispatch(markAsRead(item.id));
     }
     setOpen(false);
@@ -67,7 +74,8 @@ const Notification = () => {
   };
 
   const handleMarkAllRead = async () => {
-    await markAllNotificationsReadForTab(tabMode, user?.name);
+    const activeUser = user || storage.getUser();
+    await markAllNotificationsReadForTab(tabMode, activeUser?.name, activeUser);
     dispatch(markAllAsRead());
     window.dispatchEvent(new Event('refreshNotifications'));
   };
@@ -84,15 +92,17 @@ const Notification = () => {
         aria-label="Notifications"
         title="Notifications Centre"
       >
-        <Bell className="w-5 h-5 text-slate-700 hover:text-slate-900 stroke-[2.2] transition-colors" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-80" />
-            <span className="relative inline-flex rounded-full h-4 w-4 bg-red-600 text-white text-[9px] font-extrabold items-center justify-center ring-2 ring-white shadow-xs">
-              {unreadCount > 9 ? '9+' : unreadCount}
+        <div className="relative flex items-center justify-center">
+          <Bell className="w-5 h-5 text-slate-700 hover:text-slate-900 stroke-[2.2] transition-colors" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1.5 -right-2.5 flex items-center justify-center">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-black leading-none ring-2 ring-white shadow-xs">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
             </span>
-          </span>
-        )}
+          )}
+        </div>
       </button>
 
       {open && (

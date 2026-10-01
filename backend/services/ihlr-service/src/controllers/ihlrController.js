@@ -487,21 +487,30 @@ export const getIhlrNotifications = async (req, res) => {
   try {
     const userName = (req.query.user || req.query.user_name || req.user?.name || '').trim();
     const userId = req.query.user_id ? Number(req.query.user_id) : (req.user?.id || null);
+    const userEmail = (req.query.user_email || req.query.email || req.user?.email || '').trim().toLowerCase();
     const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
 
     let notifRows = [];
     if (pool) {
       let query = 'SELECT * FROM ihlr_notifications';
       const params = [];
-      if (userName && userId) {
-        query += ' WHERE (LOWER(TRIM(user_name)) = LOWER(TRIM(?)) OR user_id = ?)';
-        params.push(userName, userId);
-      } else if (userName) {
-        query += ' WHERE LOWER(TRIM(user_name)) = LOWER(TRIM(?))';
-        params.push(userName);
-      } else if (userId) {
-        query += ' WHERE user_id = ?';
+      const conditions = [];
+
+      if (userId) {
+        conditions.push('user_id = ?');
         params.push(userId);
+      }
+      if (userName) {
+        conditions.push('LOWER(TRIM(user_name)) = LOWER(TRIM(?))');
+        params.push(userName);
+      }
+      if (userEmail) {
+        conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
+        params.push(userEmail);
+      }
+
+      if (conditions.length > 0) {
+        query += ` WHERE (${conditions.join(' OR ')})`;
       }
       query += ' ORDER BY id DESC LIMIT 50';
       const [rows] = await pool.query(query, params).catch(() => [[]]);
@@ -630,18 +639,31 @@ export const markIhlrNotificationUnread = async (req, res) => {
 
 export const markAllIhlrNotificationsRead = async (req, res) => {
   try {
-    const userName = (req.body?.user || req.query.user || '').trim();
-    const userRole = (req.body?.role || req.query.role || req.user?.role || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || !userName || userName.toLowerCase() === 'admin';
+    const userName = (req.body?.user || req.body?.user_name || req.query.user || req.query.user_name || req.user?.name || '').trim();
+    const userId = req.body?.user_id || req.query.user_id || req.user?.id;
+    const userEmail = (req.body?.user_email || req.query.user_email || req.user?.email || '').trim().toLowerCase();
 
     if (pool) {
-      if (isAdmin) {
-        await pool.query('UPDATE ihlr_notifications SET is_read = 1');
-      } else {
-        await pool.query('UPDATE ihlr_notifications SET is_read = 1 WHERE LOWER(TRIM(user_name)) = LOWER(TRIM(?))', [userName]);
+      const conditions = [];
+      const params = [];
+      if (userId) {
+        conditions.push('user_id = ?');
+        params.push(userId);
+      }
+      if (userName) {
+        conditions.push('LOWER(TRIM(user_name)) = LOWER(TRIM(?))');
+        params.push(userName);
+      }
+      if (userEmail) {
+        conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
+        params.push(userEmail);
+      }
+
+      if (conditions.length > 0) {
+        await pool.query(`UPDATE ihlr_notifications SET is_read = 1 WHERE ${conditions.join(' OR ')}`, params);
       }
     }
-    return successResponse(res, null, 'All notifications marked as read');
+    return successResponse(res, null, 'Notifications marked as read');
   } catch (error) {
     return errorResponse(res, error.message, 500);
   }

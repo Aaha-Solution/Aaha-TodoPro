@@ -1,5 +1,6 @@
 import { ihlrService } from './ihlrService';
 import { processAuditService } from './processAuditService';
+import { storage } from '../utils/storage';
 
 /**
  * Helper to safely format ISO/timestamp dates into human-readable strings.
@@ -52,21 +53,24 @@ export const setReadOverride = (tab, user, notifKey, isRead) => {
  */
 export const fetchIhlrNotificationsFeed = async (user) => {
   try {
+    const resolvedUser = user || storage.getUser();
     const [apiNotifs, requests] = await Promise.all([
       ihlrService
         .getNotifications({
-          user: user?.name,
-          user_id: user?.id,
-          role: user?.role,
+          user: resolvedUser?.name,
+          user_name: resolvedUser?.name,
+          user_id: resolvedUser?.id,
+          user_email: resolvedUser?.email,
+          role: resolvedUser?.role,
         })
         .catch(() => []),
       ihlrService.getRequests().catch(() => []),
     ]);
 
-    const overrides = getReadOverrides('ihlr', user);
+    const overrides = getReadOverrides('ihlr', resolvedUser);
     const streamList = [];
 
-    if (Array.isArray(apiNotifs)) {
+    if (Array.isArray(apiNotifs) && apiNotifs.length > 0) {
       apiNotifs.forEach((n) => {
         const isClosedNotif =
           ['case_closed', 'closure_confirmed', 'closed'].includes(n.type) ||
@@ -78,11 +82,19 @@ export const fetchIhlrNotificationsFeed = async (user) => {
         const isConfirmedNotif = n.type === 'submission_confirmed';
 
         const notifIdStr = `notif-${n.id}`;
-        let isItemRead = Boolean(n.read || n.is_read);
-        if (overrides[notifIdStr] !== undefined) {
-          isItemRead = overrides[notifIdStr];
+
+        // Authoritative read status from DB:
+        // When server explicitly returns read / is_read, that is the single source of truth.
+        // Stale localStorage overrides must NOT silence unread database notifications.
+        let isItemRead = false;
+        if (n.read !== undefined) {
+          isItemRead = Boolean(n.read);
+        } else if (n.is_read !== undefined) {
+          isItemRead = Boolean(Number(n.is_read) === 1);
+        } else if (overrides[notifIdStr] !== undefined) {
+          isItemRead = Boolean(overrides[notifIdStr]);
         } else if (overrides[n.id] !== undefined) {
-          isItemRead = overrides[n.id];
+          isItemRead = Boolean(overrides[n.id]);
         }
 
         streamList.push({
@@ -370,10 +382,21 @@ export const markNotificationReadForTab = async (tab, notifId, rawId, isRead = t
  * Tab-aware mark all notifications as read
  */
 export const markAllNotificationsReadForTab = async (tab, userName, user = null, allIds = []) => {
+  const resolvedUser = user || storage.getUser();
+  const payload =
+    typeof userName === 'object' && userName !== null
+      ? userName
+      : {
+          user: userName || resolvedUser?.name,
+          user_name: userName || resolvedUser?.name,
+          user_id: resolvedUser?.id,
+          user_email: resolvedUser?.email,
+        };
+
   if (Array.isArray(allIds) && allIds.length > 0) {
-    allIds.forEach((id) => setReadOverride(tab, user, id, true));
+    allIds.forEach((id) => setReadOverride(tab, resolvedUser, id, true));
   }
   return tab === 'ihlr'
-    ? ihlrService.markAllNotificationsAsRead(userName).catch(() => {})
-    : processAuditService.markAllNotificationsAsRead(userName).catch(() => {});
+    ? ihlrService.markAllNotificationsAsRead(payload).catch(() => {})
+    : processAuditService.markAllNotificationsAsRead(userName || resolvedUser?.name).catch(() => {});
 };
