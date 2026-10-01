@@ -2,38 +2,101 @@ const TOKEN_KEY = 'todo_token';
 const USER_KEY = 'todo_user';
 
 export const storage = {
-  getToken: () => localStorage.getItem(TOKEN_KEY) || localStorage.getItem('4m_todo_token') || localStorage.getItem('4m_cms_token'),
-  setToken: (token) => {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem('4m_todo_token', token);
+  getToken: () => {
+    try {
+      return (
+        sessionStorage.getItem(TOKEN_KEY) ||
+        sessionStorage.getItem('4m_todo_token') ||
+        sessionStorage.getItem('4m_cms_token') ||
+        localStorage.getItem(TOKEN_KEY) ||
+        localStorage.getItem('4m_todo_token') ||
+        localStorage.getItem('4m_cms_token')
+      );
+    } catch {
+      return null;
+    }
   },
+
+  setToken: (token) => {
+    try {
+      sessionStorage.setItem(TOKEN_KEY, token);
+      sessionStorage.setItem('4m_todo_token', token);
+      // Clean up legacy localStorage tokens so login remains session-scoped
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('4m_todo_token');
+      localStorage.removeItem('4m_cms_token');
+    } catch (e) {
+      console.warn('Failed to set token in sessionStorage:', e);
+    }
+  },
+
   removeToken: () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem('4m_todo_token');
-    localStorage.removeItem('4m_cms_token');
+    try {
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem('4m_todo_token');
+      sessionStorage.removeItem('4m_cms_token');
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('4m_todo_token');
+      localStorage.removeItem('4m_cms_token');
+    } catch (e) {
+      console.warn('Failed to remove token:', e);
+    }
   },
 
   getUser: () => {
     try {
-      const user = localStorage.getItem(USER_KEY) || localStorage.getItem('4m_cms_user');
+      const user =
+        sessionStorage.getItem(USER_KEY) ||
+        sessionStorage.getItem('4m_cms_user') ||
+        localStorage.getItem(USER_KEY) ||
+        localStorage.getItem('4m_cms_user');
       return user ? JSON.parse(user) : null;
     } catch {
       return null;
     }
   },
-  setUser: (user) => localStorage.setItem(USER_KEY, JSON.stringify(user)),
+
+  setUser: (user) => {
+    try {
+      sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+      // Remove from localStorage so user session is strictly in sessionStorage
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem('4m_cms_user');
+    } catch (e) {
+      console.warn('Failed to set user in sessionStorage:', e);
+    }
+  },
+
   removeUser: () => {
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem('4m_cms_user');
+    try {
+      sessionStorage.removeItem(USER_KEY);
+      sessionStorage.removeItem('4m_cms_user');
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem('4m_cms_user');
+    } catch (e) {
+      console.warn('Failed to remove user:', e);
+    }
   },
 
   clear: () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem('4m_todo_token');
-    localStorage.removeItem('4m_cms_token');
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem('4m_cms_user');
-    clearIhlrDraft();
+    try {
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem('4m_todo_token');
+      sessionStorage.removeItem('4m_cms_token');
+      sessionStorage.removeItem(USER_KEY);
+      sessionStorage.removeItem('4m_cms_user');
+      sessionStorage.removeItem('4m_selected_system');
+
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('4m_todo_token');
+      localStorage.removeItem('4m_cms_token');
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem('4m_cms_user');
+      localStorage.removeItem('4m_selected_system');
+      clearIhlrDraft();
+    } catch (e) {
+      console.warn('Failed to clear storage:', e);
+    }
   }
 };
 

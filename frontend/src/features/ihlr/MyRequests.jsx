@@ -32,6 +32,7 @@ import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import { useAuth } from '../../hooks/useAuth';
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
+import { isIhlrRequestVisibleToUser } from '../../utils/ihlrAuthUtils';
 
 const IhlrMyRequests = () => {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ const IhlrMyRequests = () => {
 
   const userDept = (user?.department || (() => {
     try {
-      const u = localStorage.getItem('todo_user');
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
       return u ? JSON.parse(u)?.department : '';
     } catch {
       return '';
@@ -266,7 +267,9 @@ const IhlrMyRequests = () => {
         fourM: selected4M !== 'All' ? selected4M : undefined,
         status: selectedStatus !== 'All' ? selectedStatus : undefined
       });
-      setRequests(data);
+      // Enforce that closer non-admins only see requests where they are the selected person (resp_person) or creator
+      const visibleData = isAdmin ? data : data.filter((r) => isIhlrRequestVisibleToUser(r, user));
+      setRequests(visibleData);
     } catch (err) {
       console.error('Failed to fetch IHLR requests:', err);
     } finally {
@@ -276,7 +279,7 @@ const IhlrMyRequests = () => {
 
   useEffect(() => {
     fetchRequests();
-  }, [search, selectedShift, selected4M, selectedStatus]);
+  }, [search, selectedShift, selected4M, selectedStatus, user?.name, user?.email, user?.role, user?.department]);
 
   const handleUpdateStatus = async (id, newStatus, actionUpdate) => {
     try {
@@ -343,11 +346,21 @@ const IhlrMyRequests = () => {
             <span>/</span>
             <span>Analysis Reports</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            IHLR Analysis Log &amp; Reports
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {isAdmin ? 'IHLR Master Log & Reports' : 'My Assigned Requests'}
+            </h1>
+            {!isAdmin && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                Assigned to: <strong>{user?.name || user?.email}</strong>
+              </span>
+            )}
+          </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Comprehensive spreadsheet view of in-house line rejections, 5-Why root-causes, and containment actions.
+            {isAdmin
+              ? 'Comprehensive spreadsheet view of in-house line rejections, 5-Why root-causes, and containment actions.'
+              : `Viewing requests where you (${user?.name || user?.email}) are the selected responsible person.`}
           </p>
         </div>
 
@@ -484,8 +497,12 @@ const IhlrMyRequests = () => {
                 <tr>
                   <td colSpan={15} className="py-12 text-center text-slate-400">
                     <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <p className="font-semibold text-slate-600">No IHLR Reports match your filter</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Try resetting search parameters or create a new request.</p>
+                    <p className="font-semibold text-slate-600">
+                      {isAdmin ? 'No IHLR Reports match your filter' : 'No IHLR Reports assigned to you match your filter'}
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {isAdmin ? 'Try resetting search parameters or create a new request.' : `When a requester assigns an IHLR report to ${user?.name || 'you'}, it will appear here.`}
+                    </p>
                   </td>
                 </tr>
               ) : (

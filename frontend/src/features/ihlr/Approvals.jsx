@@ -34,6 +34,7 @@ import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
+import { isIhlrRequestVisibleToUser } from '../../utils/ihlrAuthUtils';
 
 const IhlrApprovals = () => {
   const { user } = useAuth();
@@ -41,7 +42,7 @@ const IhlrApprovals = () => {
 
   const userDept = (user?.department || (() => {
     try {
-      const u = localStorage.getItem('todo_user');
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
       return u ? JSON.parse(u)?.department : '';
     } catch {
       return '';
@@ -86,12 +87,24 @@ const IhlrApprovals = () => {
     setLoading(true);
     try {
       const data = await ihlrService.getRequests();
-      setRequests(data);
+      // Enforce that closer non-admins only see requests where they are the selected person (resp_person) or creator
+      const visibleData = isAdmin ? data : data.filter((r) => isIhlrRequestVisibleToUser(r, user));
+      setRequests(visibleData);
 
-      // If a request was already selected, update it with fresh data
+      // If a request was already selected, update it with fresh data if visible
       if (selectedRequest) {
-        const fresh = data.find((r) => r.id === selectedRequest.id);
-        if (fresh) populateForm(fresh);
+        const fresh = visibleData.find((r) => r.id === selectedRequest.id);
+        if (fresh) {
+          populateForm(fresh);
+        } else if (visibleData.length > 0) {
+          populateForm(visibleData[0]);
+        } else {
+          setSelectedRequest(null);
+        }
+      } else if (visibleData.length > 0) {
+        populateForm(visibleData[0]);
+      } else {
+        setSelectedRequest(null);
       }
     } catch (err) {
       console.error('Failed to load IHLR requests for approval:', err);
@@ -102,7 +115,7 @@ const IhlrApprovals = () => {
 
   useEffect(() => {
     fetchRequests();
-  }, []);
+  }, [user?.name, user?.email, user?.role, user?.department]);
 
   // Populate Closer form fields when a row is clicked
   const populateForm = (req) => {
@@ -207,13 +220,17 @@ const IhlrApprovals = () => {
 
   // Filter requests
   const filtered = requests.filter((r) => {
+    // Restrict visibility for closer non-admins strictly to their assigned requests (or created)
+    if (!isAdmin && !isIhlrRequestVisibleToUser(r, user)) return false;
+
     const matchesSearch =
       (r.req_no || '').toLowerCase().includes(search.toLowerCase()) ||
       (r.problem || '').toLowerCase().includes(search.toLowerCase()) ||
       (r.model || '').toLowerCase().includes(search.toLowerCase()) ||
       (r.received_from || '').toLowerCase().includes(search.toLowerCase()) ||
       (r.remarks || '').toLowerCase().includes(search.toLowerCase()) ||
-      (r.analysis_done_by || '').toLowerCase().includes(search.toLowerCase());
+      (r.analysis_done_by || '').toLowerCase().includes(search.toLowerCase()) ||
+      (r.resp_person || '').toLowerCase().includes(search.toLowerCase());
     const matchesStatus = selectedStatus === 'All' || r.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
@@ -371,11 +388,21 @@ const IhlrApprovals = () => {
             <span>/</span>
             <span>Approvals &amp; Closer Management</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            IHLR Approvals &amp; Closer Log
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {isAdmin ? 'IHLR Approvals & Closer Log' : 'My Approvals & Closer Log'}
+            </h1>
+            {!isAdmin && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                Assigned to: <strong>{user?.name || user?.email}</strong>
+              </span>
+            )}
+          </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Update 5-Why occurrence causes, corrective actions, evidence attachments, and sign off incident closures.
+            {isAdmin
+              ? 'Update 5-Why occurrence causes, corrective actions, evidence attachments, and sign off incident closures.'
+              : `Review and submit 5-Why root cause and corrective actions for requests assigned to you (${user?.name || user?.email}).`}
           </p>
         </div>
       </div>
@@ -760,7 +787,12 @@ const IhlrApprovals = () => {
                     <tr>
                       <td colSpan={8} className="py-12 text-center text-slate-400">
                         <ClipboardCheck className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                        <p className="font-semibold text-slate-600">No requests found matching criteria</p>
+                        <p className="font-semibold text-slate-600">
+                          {isAdmin ? 'No requests found matching criteria' : 'No IHLR requests assigned to you found matching criteria'}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          {isAdmin ? 'Try clearing filters or search parameters.' : `When a requester assigns a request to ${user?.name || 'you'}, it will appear here.`}
+                        </p>
                       </td>
                     </tr>
                   ) : (

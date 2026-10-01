@@ -396,7 +396,7 @@ const UserManagement = () => {
   const standardUserCount = users.filter((u) => (u.role || '').toLowerCase() === 'user').length;
   const userDept = (currentAuthUser?.department || (() => {
     try {
-      const u = localStorage.getItem('todo_user');
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
       return u ? JSON.parse(u)?.department : '';
     } catch {
       return '';

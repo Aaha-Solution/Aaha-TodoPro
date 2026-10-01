@@ -1,4 +1,6 @@
 import api from './api';
+import { storage } from '../utils/storage';
+import { isIhlrRequestVisibleToUser } from '../utils/ihlrAuthUtils';
 
 // Fallback initial data
 const initialMockRequests = [];
@@ -24,42 +26,78 @@ export const ihlrService = {
   },
   getDashboardStats: async () => {
     try {
-      const res = await api.get('/ihlr/dashboard');
-      return res.data?.data || res.data;
+      const currentUser = storage.getUser();
+      const userParams = currentUser ? {
+        user_name: currentUser.name,
+        user_email: currentUser.email,
+        user_id: currentUser.id,
+        role: currentUser.role,
+        department: currentUser.department
+      } : {};
+      const res = await api.get('/ihlr/dashboard', { params: userParams });
+      const stats = res.data?.data || res.data;
+      if (currentUser && currentUser.role?.toUpperCase() !== 'ADMIN' && currentUser.department?.toUpperCase() !== 'INCOMING QUALITY') {
+        if (Array.isArray(stats?.recentRequests)) {
+          stats.recentRequests = stats.recentRequests.filter(r => isIhlrRequestVisibleToUser(r, currentUser));
+        }
+      }
+      return stats;
     } catch {
-      const total = localIhlrStore.length;
-      const open = localIhlrStore.filter(r => r.status === 'OPEN').length;
-      const inProgress = localIhlrStore.filter(r => r.status === 'IN_PROGRESS').length;
-      const closed = localIhlrStore.filter(r => r.status === 'CLOSED').length;
+      let scopedStore = [...localIhlrStore];
+      const currentUser = storage.getUser();
+      if (currentUser && currentUser.role?.toUpperCase() !== 'ADMIN' && currentUser.department?.toUpperCase() !== 'INCOMING QUALITY') {
+        scopedStore = scopedStore.filter(r => isIhlrRequestVisibleToUser(r, currentUser));
+      }
+      const total = scopedStore.length;
+      const open = scopedStore.filter(r => r.status === 'OPEN').length;
+      const inProgress = scopedStore.filter(r => r.status === 'IN_PROGRESS').length;
+      const closed = scopedStore.filter(r => r.status === 'CLOSED').length;
       return {
         total,
         open,
         inProgress,
         closed,
         fourMBreakdown: {
-          MAN: localIhlrStore.filter(r => r.four_m === 'MAN').length,
-          MACHINE: localIhlrStore.filter(r => r.four_m === 'MACHINE').length,
-          METHOD: localIhlrStore.filter(r => r.four_m === 'METHOD').length,
-          MATERIAL: localIhlrStore.filter(r => r.four_m === 'MATERIAL').length,
+          MAN: scopedStore.filter(r => r.four_m === 'MAN').length,
+          MACHINE: scopedStore.filter(r => r.four_m === 'MACHINE').length,
+          METHOD: scopedStore.filter(r => r.four_m === 'METHOD').length,
+          MATERIAL: scopedStore.filter(r => r.four_m === 'MATERIAL').length,
         },
-        recentRequests: localIhlrStore.slice(0, 5)
+        recentRequests: scopedStore.slice(0, 5)
       };
     }
   },
 
   getRequests: async (filters = {}) => {
     try {
-      const res = await api.get('/ihlr/requests', { params: filters });
-      return res.data?.data || res.data;
+      const currentUser = storage.getUser();
+      const userParams = currentUser ? {
+        user_name: currentUser.name,
+        user_email: currentUser.email,
+        user_id: currentUser.id,
+        role: currentUser.role,
+        department: currentUser.department
+      } : {};
+      const res = await api.get('/ihlr/requests', { params: { ...userParams, ...filters } });
+      const data = res.data?.data || res.data || [];
+      if (currentUser && currentUser.role?.toUpperCase() !== 'ADMIN' && currentUser.department?.toUpperCase() !== 'INCOMING QUALITY') {
+        return data.filter(r => isIhlrRequestVisibleToUser(r, currentUser));
+      }
+      return data;
     } catch {
       let data = [...localIhlrStore];
+      const currentUser = storage.getUser();
+      if (currentUser && currentUser.role?.toUpperCase() !== 'ADMIN' && currentUser.department?.toUpperCase() !== 'INCOMING QUALITY') {
+        data = data.filter(r => isIhlrRequestVisibleToUser(r, currentUser));
+      }
       if (filters.search) {
         const q = filters.search.toLowerCase();
         data = data.filter(r => 
           (r.problem && r.problem.toLowerCase().includes(q)) ||
           (r.model && r.model.toLowerCase().includes(q)) ||
           (r.received_from && r.received_from.toLowerCase().includes(q)) ||
-          (r.analysis_done_by && r.analysis_done_by.toLowerCase().includes(q))
+          (r.analysis_done_by && r.analysis_done_by.toLowerCase().includes(q)) ||
+          (r.resp_person && r.resp_person.toLowerCase().includes(q))
         );
       }
       if (filters.shift && filters.shift !== 'All') {

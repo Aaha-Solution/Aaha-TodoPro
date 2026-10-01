@@ -6,7 +6,9 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => storage.getUser());
   const [token, setToken] = useState(() => storage.getToken());
-  const [selectedSystem, setSelectedSystem] = useState(() => localStorage.getItem('4m_selected_system') || 'processAudit');
+  const [selectedSystem, setSelectedSystem] = useState(
+    () => sessionStorage.getItem('4m_selected_system') || localStorage.getItem('4m_selected_system') || 'processAudit'
+  );
   const [loading, setLoading] = useState(false);
 
   const login = (userData, authToken) => {
@@ -25,7 +27,8 @@ export const AuthProvider = ({ children }) => {
 
   const switchSystem = (systemId) => {
     setSelectedSystem(systemId);
-    localStorage.setItem('4m_selected_system', systemId);
+    sessionStorage.setItem('4m_selected_system', systemId);
+    localStorage.removeItem('4m_selected_system');
     if (systemId !== 'ihlr') {
       clearIhlrDraft();
     }

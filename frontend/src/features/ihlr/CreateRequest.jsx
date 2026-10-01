@@ -31,7 +31,7 @@ const IhlrCreateRequest = () => {
 
   const userDept = (user?.department || (() => {
     try {
-      const u = localStorage.getItem('todo_user');
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
       return u ? JSON.parse(u)?.department : '';
     } catch {
       return '';
@@ -52,7 +52,7 @@ const IhlrCreateRequest = () => {
     let uid = user?.id || user?.email;
     if (!uid) {
       try {
-        const u = localStorage.getItem('todo_user');
+        const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
         if (u) {
           const parsed = JSON.parse(u);
           uid = parsed?.id || parsed?.email;
@@ -81,7 +81,11 @@ const IhlrCreateRequest = () => {
   const getSavedDraft = () => {
     try {
       const key = getDraftKey();
-      const raw = localStorage.getItem(key) || localStorage.getItem('ihlr_create_request_draft');
+      const raw =
+        sessionStorage.getItem(key) ||
+        sessionStorage.getItem('ihlr_create_request_draft') ||
+        localStorage.getItem(key) ||
+        localStorage.getItem('ihlr_create_request_draft');
       if (raw) {
         return JSON.parse(raw);
       }
@@ -124,7 +128,7 @@ const IhlrCreateRequest = () => {
     return false;
   });
 
-  // Auto-save form inputs to localStorage so data is maintained across tab switches
+  // Auto-save form inputs to sessionStorage so data is maintained across tab switches
   useEffect(() => {
     const key = getDraftKey();
     const isDirty = Boolean(
@@ -143,7 +147,7 @@ const IhlrCreateRequest = () => {
 
     if (isDirty) {
       try {
-        localStorage.setItem(key, JSON.stringify({ formData, qaWhyWhy, updatedAt: new Date().toISOString() }));
+        sessionStorage.setItem(key, JSON.stringify({ formData, qaWhyWhy, updatedAt: new Date().toISOString() }));
       } catch (err) {
         console.warn('IHLR draft save error:', err);
       }
@@ -153,6 +157,8 @@ const IhlrCreateRequest = () => {
   const handleResetForm = () => {
     const key = getDraftKey();
     try {
+      sessionStorage.removeItem(key);
+      sessionStorage.removeItem('ihlr_create_request_draft');
       localStorage.removeItem(key);
       localStorage.removeItem('ihlr_create_request_draft');
     } catch {}
@@ -384,6 +390,8 @@ const IhlrCreateRequest = () => {
       window.dispatchEvent(new Event('refreshNotifications'));
       const draftKey = getDraftKey();
       try {
+        sessionStorage.removeItem(draftKey);
+        sessionStorage.removeItem('ihlr_create_request_draft');
         localStorage.removeItem(draftKey);
         localStorage.removeItem('ihlr_create_request_draft');
       } catch {}

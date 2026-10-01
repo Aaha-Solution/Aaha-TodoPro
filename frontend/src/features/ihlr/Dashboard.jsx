@@ -21,7 +21,7 @@ const IhlrDashboard = () => {
 
   const userDept = (user?.department || (() => {
     try {
-      const u = localStorage.getItem('todo_user');
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
       return u ? JSON.parse(u)?.department : '';
     } catch {
       return '';
@@ -59,7 +59,7 @@ const IhlrDashboard = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user?.name, user?.email, user?.role, user?.department]);
 
   const kpis = [
     {
@@ -124,11 +124,21 @@ const IhlrDashboard = () => {
             <span>/</span>
             <span>Overview Dashboard</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            IHLR Analysis Dashboard
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {isAdmin ? 'IHLR Analysis Dashboard' : 'My IHLR Dashboard'}
+            </h1>
+            {!isAdmin && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                Assigned to: <strong>{user?.name || user?.email}</strong>
+              </span>
+            )}
+          </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            In-House Line Rejection monitoring, 4M root-cause Why-Why tracking, and corrective action containment.
+            {isAdmin
+              ? 'In-House Line Rejection monitoring, 4M root-cause Why-Why tracking, and corrective action containment.'
+              : `Overview of IHLR requests assigned to you (${user?.name || user?.email}).`}
           </p>
         </div>
 
@@ -240,8 +250,12 @@ const IhlrDashboard = () => {
                 <tr>
                   <td colSpan={10} className="py-12 text-center text-slate-400">
                     <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <p className="font-semibold text-slate-600">No IHLR Reports recorded yet</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Click "Create IHLR Request" to file your first rejection report.</p>
+                    <p className="font-semibold text-slate-600">
+                      {isAdmin ? 'No IHLR Reports recorded yet' : 'No IHLR Reports assigned to you recorded yet'}
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {isAdmin ? 'Click "Create IHLR Request" to file your first rejection report.' : `When an IHLR report is assigned to ${user?.name || 'you'}, it will appear here.`}
+                    </p>
                   </td>
                 </tr>
               ) : (

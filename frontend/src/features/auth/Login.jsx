@@ -62,8 +62,12 @@ export const Login = () => {
       const token = res.data?.token || res.token || 'todo_jwt_token_sample_2026';
 
       login(user, token);
-      localStorage.setItem('todo_token', token);
-      localStorage.setItem('4m_todo_token', token);
+      sessionStorage.setItem('todo_token', token);
+      sessionStorage.setItem('4m_todo_token', token);
+      sessionStorage.setItem('todo_user', JSON.stringify(user));
+      localStorage.removeItem('todo_token');
+      localStorage.removeItem('4m_todo_token');
+      localStorage.removeItem('todo_user');
 
       if (rememberMe) {
         localStorage.setItem('todo_remembered_email', email);

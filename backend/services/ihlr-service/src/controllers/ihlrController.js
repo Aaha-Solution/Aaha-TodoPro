@@ -35,6 +35,34 @@ export const getDashboardStats = async (req, res) => {
     let requests = await IhlrRequest.getAll();
     if (!requests) requests = fallbackRequests;
 
+    // Filter requests for non-admin users so they only see their assigned stats
+    const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
+    const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+
+    const userName = (req.query.user_name || req.query.userName || req.user?.name || '').trim().toLowerCase();
+    const userEmail = (req.query.user_email || req.query.userEmail || req.user?.email || '').trim().toLowerCase();
+    const userId = req.query.user_id || req.query.userId || req.user?.id;
+
+    if (!isAdmin && (userName || userEmail || userId)) {
+      const clean = (val) => (val || '').trim().toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s+/i, '');
+      requests = requests.filter(r => {
+        const rPerson = clean(r.resp_person);
+        const rPersonEmail = clean(r.resp_person_email);
+        const rCreatedBy = clean(r.created_by);
+        const rCreatedEmail = clean(r.created_by_email);
+        const rCreatedId = String(r.created_by_id || '');
+
+        const isAssigned = (userName && rPerson && (rPerson === clean(userName) || clean(userName) === rPerson)) ||
+                           (userEmail && rPersonEmail && rPersonEmail === clean(userEmail));
+        const isCreator = (userId && rCreatedId && rCreatedId === String(userId)) ||
+                          (userName && rCreatedBy && (rCreatedBy === clean(userName) || clean(userName) === rCreatedBy)) ||
+                          (userEmail && rCreatedEmail && rCreatedEmail === clean(userEmail));
+
+        return isAssigned || isCreator;
+      });
+    }
+
     const total = requests.length;
     const open = requests.filter(r => {
       const s = (r.status || '').toUpperCase();
@@ -74,6 +102,34 @@ export const getIhlrRequests = async (req, res) => {
     let requests = await IhlrRequest.getAll();
     if (!requests) requests = fallbackRequests;
 
+    // Filter requests for non-admin users so they only see requests where they are the selected person (resp_person) or creator
+    const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
+    const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+
+    const userName = (req.query.user_name || req.query.userName || req.user?.name || '').trim().toLowerCase();
+    const userEmail = (req.query.user_email || req.query.userEmail || req.user?.email || '').trim().toLowerCase();
+    const userId = req.query.user_id || req.query.userId || req.user?.id;
+
+    if (!isAdmin && (userName || userEmail || userId)) {
+      const clean = (val) => (val || '').trim().toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s+/i, '');
+      requests = requests.filter(r => {
+        const rPerson = clean(r.resp_person);
+        const rPersonEmail = clean(r.resp_person_email);
+        const rCreatedBy = clean(r.created_by);
+        const rCreatedEmail = clean(r.created_by_email);
+        const rCreatedId = String(r.created_by_id || '');
+
+        const isAssigned = (userName && rPerson && (rPerson === clean(userName) || clean(userName) === rPerson)) ||
+                           (userEmail && rPersonEmail && rPersonEmail === clean(userEmail));
+        const isCreator = (userId && rCreatedId && rCreatedId === String(userId)) ||
+                          (userName && rCreatedBy && (rCreatedBy === clean(userName) || clean(userName) === rCreatedBy)) ||
+                          (userEmail && rCreatedEmail && rCreatedEmail === clean(userEmail));
+
+        return isAssigned || isCreator;
+      });
+    }
+
     const { search, shift, fourM, status } = req.query;
 
     if (search) {
@@ -83,7 +139,8 @@ export const getIhlrRequests = async (req, res) => {
         (r.model && r.model.toLowerCase().includes(q)) ||
         (r.received_from && r.received_from.toLowerCase().includes(q)) ||
         (r.analysis_done_by && r.analysis_done_by.toLowerCase().includes(q)) ||
-        (String(r.req_no) && String(r.req_no).toLowerCase().includes(q))
+        (String(r.req_no) && String(r.req_no).toLowerCase().includes(q)) ||
+        (r.resp_person && r.resp_person.toLowerCase().includes(q))
       );
     }
 
@@ -453,7 +510,17 @@ export const getIhlrNotifications = async (req, res) => {
 
     // Also include synthetic recent request stream if notifications table is empty
     if (notifRows.length === 0) {
-      const requests = (await IhlrRequest.getAll()) || [];
+      let requests = (await IhlrRequest.getAll()) || [];
+      const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
+      const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+      if (!isAdmin && (userName || userId)) {
+        requests = requests.filter(r => {
+          const rPerson = (r.resp_person || '').trim().toLowerCase();
+          const rCreatedBy = (r.created_by || '').trim().toLowerCase();
+          return (userName && (rPerson === userName.toLowerCase() || rCreatedBy === userName.toLowerCase())) ||
+                 (userId && String(r.created_by_id) === String(userId));
+        });
+      }
       const notifications = requests.slice(0, 15).map((r) => {
         const isClosed = (r.status || '').toUpperCase() === 'CLOSED';
         const isInProgress = (r.status || '').toUpperCase() === 'IN_PROGRESS';

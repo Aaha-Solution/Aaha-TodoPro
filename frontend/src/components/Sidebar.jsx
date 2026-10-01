@@ -21,7 +21,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
 
   const userDept = (user?.department || (() => {
     try {
-      const u = localStorage.getItem('todo_user');
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
       return u ? JSON.parse(u)?.department : '';
     } catch {
       return '';
