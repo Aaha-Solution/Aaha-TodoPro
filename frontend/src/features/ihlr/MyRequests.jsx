@@ -38,7 +38,7 @@ const IhlrMyRequests = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { confirm: modalConfirm, error: modalError } = useModal();
+  const { confirm: modalConfirm, error: modalError, warning: modalWarning } = useModal();
 
   const userDept = (user?.department || (() => {
     try {
@@ -80,9 +80,23 @@ const IhlrMyRequests = () => {
   // Export State
   const [showExportModal, setShowExportModal] = useState(false);
 
+  // Open Export Modal with empty check
+  const handleOpenExportModal = () => {
+    if (!requests || requests.length === 0) {
+      modalWarning('No data available to export. Please adjust your filters or search criteria.', 'No Data Available');
+      return;
+    }
+    setShowExportModal(true);
+  };
+
   // Export to Excel (.xlsx)
   const handleExportExcel = () => {
     try {
+      if (!requests || requests.length === 0) {
+        modalWarning('No data available to export. Cannot download an empty file.', 'No Data Available');
+        setShowExportModal(false);
+        return;
+      }
       const exportData = requests.map((r, index) => ({
         'SL NO': index + 1,
         'REQ NO': String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
@@ -144,6 +158,11 @@ const IhlrMyRequests = () => {
   // Export to PDF (.pdf)
   const handleExportPdf = () => {
     try {
+      if (!requests || requests.length === 0) {
+        modalWarning('No data available to export. Cannot download an empty file.', 'No Data Available');
+        setShowExportModal(false);
+        return;
+      }
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'pt',
@@ -461,11 +480,11 @@ const IhlrMyRequests = () => {
             </span>
           </div>
           <button
-            onClick={() => setShowExportModal(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-2xs hover:shadow-xs transition transform active:scale-95 cursor-pointer"
+            onClick={handleOpenExportModal}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow transition transform active:scale-95 cursor-pointer"
             id="export-view-btn"
           >
-            <Download className="w-4 h-4 text-blue-600" />
+            <Download className="w-4 h-4" />
             <span>Export View</span>
           </button>
         </div>

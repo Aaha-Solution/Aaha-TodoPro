@@ -4,8 +4,10 @@ import {
   X, 
   FileSpreadsheet, 
   FileText, 
-  Check 
+  Check,
+  AlertCircle
 } from 'lucide-react';
+import { useModal } from '../../context/ModalContext';
 
 /**
  * Universal Export Selection Modal (Excel .xlsx vs PDF .pdf)
@@ -22,10 +24,17 @@ const ExportSelectionModal = ({
   onExportPdf
 }) => {
   const [format, setFormat] = useState('excel'); // 'excel' | 'pdf'
+  const { warning: modalWarning } = useModal();
 
   if (!isOpen) return null;
 
   const handleDownload = () => {
+    if (recordCount !== null && recordCount <= 0) {
+      if (modalWarning) {
+        modalWarning('No data available to export. Cannot download an empty file.', 'No Data Available');
+      }
+      return;
+    }
     if (format === 'excel') {
       onExportExcel && onExportExcel();
     } else {
@@ -71,10 +80,22 @@ const ExportSelectionModal = ({
         {/* Scope Pill */}
         <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
           <span className="text-slate-500 font-medium">Export Scope</span>
-          <span className="font-extrabold text-blue-600 font-mono">
+          <span className={`font-extrabold font-mono ${recordCount === 0 ? 'text-rose-600' : 'text-blue-600'}`}>
             {recordCount !== null ? `${recordCount} Records (${scopeText})` : scopeText}
           </span>
         </div>
+
+        {recordCount !== null && recordCount <= 0 && (
+          <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold">No Records Available: </span>
+              <span className="text-amber-800">
+                There are 0 records matching your current criteria. Please clear or adjust filters before exporting.
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Format Selection Cards */}
         <div className="space-y-3">

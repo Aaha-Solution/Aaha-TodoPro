@@ -31,7 +31,7 @@ import { isIhlrRequestVisibleToUser } from '../../utils/ihlrAuthUtils';
 
 const IhlrApprovals = () => {
   const { user } = useAuth();
-  const { success: modalSuccess, error: modalError } = useModal();
+  const { success: modalSuccess, error: modalError, warning: modalWarning } = useModal();
 
   const userDept = (user?.department || (() => {
     try {
@@ -307,9 +307,24 @@ const IhlrApprovals = () => {
   const endIndex = Math.min(startIndex + rowsPerPage, totalRecords);
   const paginatedRequests = filtered.slice(startIndex, endIndex);
 
+  // Open Export Modal with validation check
+  const handleOpenExportModal = () => {
+    if (!filtered || filtered.length === 0) {
+      modalWarning('No data available to export. Please adjust your search or status filter.', 'No Data Available');
+      return;
+    }
+    setShowExportModal(true);
+  };
+
   // Export to Excel (.xlsx)
   const handleExportExcel = () => {
     try {
+      if (!filtered || filtered.length === 0) {
+        modalWarning('No data available to export. Cannot download an empty file.', 'No Data Available');
+        setShowExportModal(false);
+        return;
+      }
+
       const exportData = filtered.map((r, index) => ({
         'SL NO': index + 1,
         'REQ NO': String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
@@ -355,6 +370,12 @@ const IhlrApprovals = () => {
   // Export to PDF (.pdf)
   const handleExportPdf = () => {
     try {
+      if (!filtered || filtered.length === 0) {
+        modalWarning('No data available to export. Cannot download an empty file.', 'No Data Available');
+        setShowExportModal(false);
+        return;
+      }
+
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'pt',
@@ -938,12 +959,12 @@ const IhlrApprovals = () => {
             </div>
 
             <button
-              onClick={() => setShowExportModal(true)}
+              onClick={handleOpenExportModal}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow transition transform active:scale-95 cursor-pointer shrink-0"
-              id="approvals-export-pdf-btn"
+              id="approvals-export-view-btn"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Export PDF</span>
+              <span>Export View</span>
             </button>
           </div>
 
