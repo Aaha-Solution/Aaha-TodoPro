@@ -158,18 +158,22 @@ export const IhlrRequest = {
         for (const key of allowed) {
           if (updates[key] !== undefined) {
             fields.push(`${key} = ?`);
-            values.push(updates[key]);
+            let val = updates[key];
+            if ((key === 'target_date' || key === 'batch_date') && (val === '' || !val)) {
+              val = null;
+            }
+            values.push(val);
           }
         }
 
         if (updates.qa_why_why !== undefined) {
           fields.push('qa_why_why = ?');
-          values.push(JSON.stringify(updates.qa_why_why));
+          values.push(typeof updates.qa_why_why === 'string' ? updates.qa_why_why : JSON.stringify(updates.qa_why_why));
         }
 
         if (updates.prod_why_why !== undefined) {
           fields.push('prod_why_why = ?');
-          values.push(JSON.stringify(updates.prod_why_why));
+          values.push(typeof updates.prod_why_why === 'string' ? updates.prod_why_why : JSON.stringify(updates.prod_why_why));
         }
 
         if (fields.length > 0) {

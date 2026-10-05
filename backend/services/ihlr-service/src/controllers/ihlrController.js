@@ -375,12 +375,12 @@ export const updateIhlrRequest = async (req, res) => {
     }
 
     const clean = (val) => (val || '').trim().toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s+/i, '');
-    const userRole = (req.user?.role || '').toUpperCase();
-    const userDept = (req.user?.department || '').toUpperCase();
+    const userRole = (req.user?.role || req.body?.user?.role || req.body?.role || '').toUpperCase();
+    const userDept = (req.user?.department || req.body?.user?.department || req.body?.department || '').toUpperCase();
     const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
-    const userName = clean(req.user?.name);
-    const userEmail = clean(req.user?.email);
-    const userId = req.user?.id ? String(req.user.id) : null;
+    const userName = clean(req.user?.name || req.body?.user?.name || req.body?.user_name);
+    const userEmail = clean(req.user?.email || req.body?.user?.email || req.body?.user_email);
+    const userId = req.user?.id ? String(req.user.id) : (req.body?.user?.id ? String(req.body.user.id) : null);
 
     // Guard: Once closed, only Admin can modify closed records
     const isClosed = String(existing.status || '').toUpperCase() === 'CLOSED';
@@ -391,14 +391,19 @@ export const updateIhlrRequest = async (req, res) => {
     // Closer & Requester permission checks
     const respPerson = clean(existing.resp_person);
     const respEmail = clean(existing.resp_person_email);
-    const isCloser = Boolean(respPerson && (userName === respPerson || (userEmail && userEmail === respEmail)));
+    const respDept = clean(existing.resp);
+    const isCloser = Boolean(
+      (respPerson && (userName === respPerson || userName.includes(respPerson) || respPerson.includes(userName))) ||
+      (respEmail && userEmail && userEmail === respEmail) ||
+      (respDept && userDept && clean(userDept) === respDept)
+    );
 
     const createdBy = clean(existing.created_by);
     const createdEmail = clean(existing.created_by_email);
     const createdId = existing.created_by_id ? String(existing.created_by_id) : null;
     const isRequester = Boolean(
       (createdId && userId && createdId === userId) ||
-      (createdBy && userName === createdBy) ||
+      (createdBy && (userName === createdBy || userName.includes(createdBy) || createdBy.includes(userName))) ||
       (createdEmail && userEmail && userEmail === createdEmail)
     );
 
@@ -412,7 +417,15 @@ export const updateIhlrRequest = async (req, res) => {
     // - Admin can update any field
     let safeUpdates = {};
     if (isAdmin) {
-      safeUpdates = { ...req.body };
+      const allowed = [
+        'req_no', 'batch_date', 'shift', 'problem', 'model', 
+        'problem_detected_at', 'received_from', 'analysis_done_by', 
+        'defect_image', 'actual_qty', 'four_m', 'resp', 'resp_person',
+        'prod_why_why', 'action', 'evidence_attachment', 'target_date', 'remarks', 'status'
+      ];
+      for (const k of allowed) {
+        if (req.body[k] !== undefined) safeUpdates[k] = req.body[k];
+      }
     } else {
       if (isCloser) {
         if (req.body.prod_why_why !== undefined) safeUpdates.prod_why_why = req.body.prod_why_why;
@@ -423,6 +436,18 @@ export const updateIhlrRequest = async (req, res) => {
       if (isRequester) {
         if (req.body.remarks !== undefined) safeUpdates.remarks = req.body.remarks;
         if (req.body.status !== undefined) safeUpdates.status = req.body.status;
+      }
+    }
+
+    // Clean dates and JSON structures safely
+    if (safeUpdates.target_date !== undefined) {
+      safeUpdates.target_date = safeUpdates.target_date ? String(safeUpdates.target_date).split('T')[0] : null;
+    }
+    if (safeUpdates.prod_why_why !== undefined && typeof safeUpdates.prod_why_why === 'string') {
+      try {
+        safeUpdates.prod_why_why = JSON.parse(safeUpdates.prod_why_why);
+      } catch {
+        safeUpdates.prod_why_why = [safeUpdates.prod_why_why];
       }
     }
 
@@ -525,7 +550,7 @@ export const updateIhlrRequest = async (req, res) => {
           const [uRows] = await pool.query(
             'SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
             [closerPersonName || '', closerEmail || closerPersonName || '']
-          );
+          ).catch(() => [[]]);
           if (uRows && uRows.length > 0) {
             closerUserId = uRows[0].id;
             closerEmail = closerEmail || uRows[0].email;
@@ -553,7 +578,7 @@ export const updateIhlrRequest = async (req, res) => {
             closerNotifTitle,
             closerNotifMsg
           ]
-        );
+        ).catch((e) => console.warn('[Closer Notif Error]:', e.message));
 
         // 2. Trigger Closer Email Dispatch to Requester, Quality Admins, and Closer
         try {

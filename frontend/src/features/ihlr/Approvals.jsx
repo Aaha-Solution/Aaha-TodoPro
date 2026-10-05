@@ -2,18 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   ClipboardCheck,
   CheckCircle2,
-  Clock,
   Search,
-  Filter,
   Eye,
-  X,
-  FileText,
   ShieldAlert,
   Download,
-  FileSpreadsheet,
   Check,
-  Paperclip,
-  UploadCloud,
   Save,
   Loader2,
   ChevronLeft,
@@ -63,12 +56,16 @@ const IhlrApprovals = () => {
   const cleanStr = (val) => (val || '').trim().toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s+/i, '');
   const uName = cleanStr(user?.name);
   const uEmail = cleanStr(user?.email);
+  const uDept = cleanStr(user?.department);
   const uId = String(user?.id || '');
 
   const rRespPerson = cleanStr(selectedRequest?.resp_person);
   const rRespEmail = cleanStr(selectedRequest?.resp_person_email);
+  const rRespDept = cleanStr(selectedRequest?.resp);
   const isCloser = Boolean(
-    rRespPerson && (uName === rRespPerson || (uEmail && uEmail === rRespEmail))
+    (rRespPerson && (uName === rRespPerson || uName.includes(rRespPerson) || rRespPerson.includes(uName))) ||
+    (rRespEmail && uEmail && uEmail === rRespEmail) ||
+    (rRespDept && uDept && uDept === rRespDept)
   );
 
   const rCreatedBy = cleanStr(selectedRequest?.created_by);
@@ -243,6 +240,17 @@ const IhlrApprovals = () => {
       if (canUpdateRequesterFields) {
         payload.remarks = closerRemarks;
         payload.status = closerStatus;
+      }
+
+      // 3. User Context for resilient backend permission checking
+      if (user) {
+        payload.user = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          department: user.department
+        };
       }
 
       const updated = await ihlrService.updateRequest(selectedRequest.id, payload);

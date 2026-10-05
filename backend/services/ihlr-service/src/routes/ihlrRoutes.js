@@ -16,8 +16,10 @@ import {
   getBinaryAttachmentByFilename
 } from '../controllers/ihlrController.js';
 import { uploadMemory } from '../../../shared/binaryStorage.js';
+import { authenticateUser } from '../middleware/authMiddleware.js';
 
 const router = Router();
+router.use(authenticateUser);
 
 // File Uploads (Binary Database Storage in MySQL LONGBLOB via Shared Module)
 router.post('/upload', uploadMemory.array('files', 30), uploadAttachments);

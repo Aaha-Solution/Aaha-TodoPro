@@ -290,7 +290,14 @@ const IhlrMyRequests = () => {
       }
       await ihlrService.updateRequest(id, {
         status: newStatus,
-        action: actionUpdate !== undefined ? actionUpdate : undefined
+        action: actionUpdate !== undefined ? actionUpdate : undefined,
+        user: user ? {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          department: user.department
+        } : undefined
       });
       fetchRequests();
       if (activeModalRequest && activeModalRequest.id === id) {
