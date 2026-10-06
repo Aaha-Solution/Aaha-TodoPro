@@ -11,7 +11,8 @@ import {
   Calendar,
   Building2,
   RotateCcw,
-  X
+  X,
+  Clock
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
 import { IhlrAttachmentThumbnail } from './IhlrAttachmentView';
@@ -114,12 +115,22 @@ const IhlrDashboard = () => {
     },
     {
       title: 'Pending',
-      value: stats.pending !== undefined ? stats.pending : (stats.open || 0),
+      value: !isAdmin 
+        ? ((stats.open || 0) + (stats.inProgress || 0))
+        : (stats.pending !== undefined ? stats.pending : (stats.open || 0)),
       subtitle: hasActiveFilters ? 'Filtered pending closures' : 'Awaiting root cause closure',
       icon: AlertCircle,
       iconBg: 'bg-rose-50 text-rose-600',
       filterStatus: 'OPEN',
     },
+    ...(isAdmin ? [{
+      title: 'In Progress',
+      value: stats.inProgress || 0,
+      subtitle: hasActiveFilters ? 'Filtered in progress' : 'Containment & RCA in work',
+      icon: Clock,
+      iconBg: 'bg-amber-50 text-amber-600',
+      filterStatus: 'IN_PROGRESS',
+    }] : []),
     {
       title: 'Closed',
       value: stats.closed || 0,
@@ -132,14 +143,24 @@ const IhlrDashboard = () => {
 
   const getStatusBadge = (status) => {
     const s = (status || '').toUpperCase();
-    if (s === 'OPEN' || s === 'PENDING') {
+    if (s === 'CLOSED') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-          {s === 'PENDING' ? 'PENDING' : 'OPEN'}
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          CLOSED
         </span>
       );
     }
+    // For regular users, non-closed issues show as PENDING
+    if (!isAdmin) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+          PENDING
+        </span>
+      );
+    }
+    // For Admin:
     if (s === 'IN_PROGRESS' || s === 'IN-PROGRESS') {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
@@ -149,9 +170,9 @@ const IhlrDashboard = () => {
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-        CLOSED
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+        OPEN
       </span>
     );
   };
@@ -358,7 +379,7 @@ const IhlrDashboard = () => {
       </div>
 
       {/* KPI Cards Row (Display only - No navigation) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 ${isAdmin ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'} gap-4`}>
         {kpis.map((kpi, index) => {
           const Icon = kpi.icon;
           return (

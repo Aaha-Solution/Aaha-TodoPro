@@ -140,7 +140,7 @@ export const getDashboardStats = async (req, res) => {
     return successResponse(res, {
       total,
       open,
-      pending: open,
+      pending: isAdmin ? open : (open + inProgress),
       inProgress,
       closed,
       fourMBreakdown,
@@ -505,6 +505,19 @@ export const updateIhlrRequest = async (req, res) => {
         if (req.body.action !== undefined) safeUpdates.action = req.body.action;
         if (req.body.evidence_attachment !== undefined) safeUpdates.evidence_attachment = req.body.evidence_attachment;
         if (req.body.target_date !== undefined) safeUpdates.target_date = req.body.target_date;
+
+        // Automatically transition status to IN_PROGRESS when closer updates their fields
+        const currentStatus = String(existing.status || '').toUpperCase();
+        if (currentStatus !== 'CLOSED') {
+          safeUpdates.status = 'IN_PROGRESS';
+        }
+      }
+    }
+
+    if (!safeUpdates.status && String(existing.status || '').toUpperCase() === 'OPEN') {
+      const hasCloserUpdates = safeUpdates.prod_why_why !== undefined || safeUpdates.action !== undefined || safeUpdates.evidence_attachment !== undefined || safeUpdates.target_date !== undefined;
+      if (hasCloserUpdates) {
+        safeUpdates.status = 'IN_PROGRESS';
       }
     }
 

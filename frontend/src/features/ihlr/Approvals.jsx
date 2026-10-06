@@ -290,6 +290,11 @@ const IhlrApprovals = () => {
         payload.action = closerAction;
         payload.evidence_attachment = JSON.stringify(combinedEvidence);
         payload.target_date = closerTargetDate || null;
+
+        // When closer (non-admin) updates their fields, automatically set status to IN_PROGRESS unless already CLOSED
+        if (!isAdmin && (selectedRequest.status || '').toUpperCase() !== 'CLOSED') {
+          payload.status = 'IN_PROGRESS';
+        }
       }
 
       // 2. Admin Only Fields (Remarks, Status, Optional Reassignment)
@@ -1204,19 +1209,21 @@ const IhlrApprovals = () => {
                             />
                           </td>
                           <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                            {r.status === 'OPEN' && (
-                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                OPEN
+                            {r.status === 'CLOSED' ? (
+                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                CLOSED
                               </span>
-                            )}
-                            {r.status === 'IN_PROGRESS' && (
+                            ) : !isAdmin ? (
+                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                PENDING
+                              </span>
+                            ) : r.status === 'IN_PROGRESS' ? (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                                 IN PROGRESS
                               </span>
-                            )}
-                            {r.status === 'CLOSED' && (
-                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                CLOSED
+                            ) : (
+                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                OPEN
                               </span>
                             )}
                           </td>

@@ -92,6 +92,14 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
         </span>
       );
     }
+    if (!isAdmin) {
+      return (
+        <span className="px-3 py-0.5 rounded-full text-xs font-semibold border border-rose-400 text-rose-700 bg-rose-50/70 inline-flex items-center gap-1">
+          <AlertCircle className="w-3 h-3 text-rose-600" />
+          <span>Pending</span>
+        </span>
+      );
+    }
     if (s === 'IN_PROGRESS' || s === 'UNDER_REVIEW') {
       return (
         <span className="px-3 py-0.5 rounded-full text-xs font-semibold border border-blue-400 text-blue-700 bg-blue-50/70 inline-flex items-center gap-1">
@@ -101,8 +109,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
       );
     }
     return (
-      <span className="px-3 py-0.5 rounded-full text-xs font-semibold border border-amber-400 text-amber-800 bg-amber-50/70 inline-flex items-center gap-1">
-        <AlertCircle className="w-3 h-3 text-amber-600" />
+      <span className="px-3 py-0.5 rounded-full text-xs font-semibold border border-rose-400 text-rose-800 bg-rose-50/70 inline-flex items-center gap-1">
+        <AlertCircle className="w-3 h-3 text-rose-600" />
         <span>Open</span>
       </span>
     );

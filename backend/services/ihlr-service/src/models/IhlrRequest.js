@@ -1,5 +1,24 @@
 import pool from '../../../shared/db.js';
 
+const resolveIhlrStatus = (r) => {
+  const currentStatus = String(r.status || '').trim().toUpperCase();
+  if (currentStatus === 'CLOSED') return 'CLOSED';
+  if (currentStatus === 'IN_PROGRESS' || currentStatus === 'IN-PROGRESS') return 'IN_PROGRESS';
+
+  const prodWhys = typeof r.prod_why_why === 'string'
+    ? (() => { try { return JSON.parse(r.prod_why_why); } catch { return []; } })()
+    : (r.prod_why_why || []);
+  const hasWhys = Array.isArray(prodWhys) && prodWhys.some(w => Boolean(w && String(w).trim()));
+  const hasAction = Boolean(r.action && String(r.action).trim());
+  const hasEvidence = Boolean(r.evidence_attachment && String(r.evidence_attachment).trim() && r.evidence_attachment !== '[]');
+  const hasTargetDate = Boolean(r.target_date);
+
+  if (hasWhys || hasAction || hasEvidence || hasTargetDate) {
+    return 'IN_PROGRESS';
+  }
+  return currentStatus || 'OPEN';
+};
+
 export const IhlrRequest = {
   getAll: async () => {
     try {
@@ -7,6 +26,7 @@ export const IhlrRequest = {
         const [rows] = await pool.query('SELECT * FROM ihlr_requests ORDER BY id DESC');
         return rows.map(r => ({
           ...r,
+          status: resolveIhlrStatus(r),
           qa_why_why: typeof r.qa_why_why === 'string' ? JSON.parse(r.qa_why_why) : (r.qa_why_why || []),
           prod_why_why: typeof r.prod_why_why === 'string' ? JSON.parse(r.prod_why_why) : (r.prod_why_why || [])
         }));
@@ -25,6 +45,7 @@ export const IhlrRequest = {
           const r = rows[0];
           return {
             ...r,
+            status: resolveIhlrStatus(r),
             qa_why_why: typeof r.qa_why_why === 'string' ? JSON.parse(r.qa_why_why) : (r.qa_why_why || []),
             prod_why_why: typeof r.prod_why_why === 'string' ? JSON.parse(r.prod_why_why) : (r.prod_why_why || [])
           };

@@ -75,11 +75,11 @@ export const ihlrService = {
         const s = (r.status || '').toUpperCase();
         return s === 'IN_PROGRESS' || s === 'IN-PROGRESS';
       }).length;
-      const closed = scopedStore.filter(r => (r.status || '').toUpperCase() === 'CLOSED').length;
+      const isUserAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.department?.toUpperCase() === 'INCOMING QUALITY';
       return {
         total,
         open,
-        pending: open,
+        pending: isUserAdmin ? open : (open + inProgress),
         inProgress,
         closed,
         fourMBreakdown: {
@@ -235,7 +235,10 @@ export const ihlrService = {
     } catch {
       const idx = localIhlrStore.findIndex(r => String(r.id) === String(id));
       if (idx !== -1) {
-        localIhlrStore[idx] = { ...localIhlrStore[idx], ...updates, updated_at: new Date().toISOString() };
+        const hasCloserUpdates = updates.prod_why_why || updates.action || updates.evidence_attachment || updates.target_date;
+        const currentStatus = String(localIhlrStore[idx].status || '').toUpperCase();
+        const nextStatus = updates.status || (hasCloserUpdates && currentStatus !== 'CLOSED' ? 'IN_PROGRESS' : localIhlrStore[idx].status);
+        localIhlrStore[idx] = { ...localIhlrStore[idx], ...updates, status: nextStatus, updated_at: new Date().toISOString() };
         return localIhlrStore[idx];
       }
       return null;
