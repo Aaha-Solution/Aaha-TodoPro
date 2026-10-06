@@ -18,7 +18,8 @@ export const DEPARTMENTS = [
 export const SHIFTS = [
   'Shift 1',
   'Shift 2',
-  'Shift 3'
+  'Shift 3',
+  'General'
 ];
 
 export const SYSTEMS = [

@@ -532,6 +532,7 @@ const IhlrCreateRequest = () => {
                 <option value="Shift 1">Shift 1</option>
                 <option value="Shift 2">Shift 2</option>
                 <option value="Shift 3">Shift 3</option>
+                <option value="General">General</option>
               </select>
             </div>
 

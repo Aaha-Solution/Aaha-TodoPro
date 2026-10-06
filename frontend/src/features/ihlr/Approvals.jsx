@@ -403,7 +403,7 @@ const IhlrApprovals = () => {
         'SL NO': index + 1,
         'REQ NO': String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
         'DATE': formatDateDDMMYYYY(r.batch_date),
-        'SHIFT': String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`,
+        'SHIFT': String(r.shift || '').toLowerCase().includes('gen') ? r.shift : String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`,
         'PROBLEM': r.problem || '—',
         'MODEL': r.model || '—',
         'DETECTED AT': r.problem_detected_at || '—',

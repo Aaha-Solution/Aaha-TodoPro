@@ -101,7 +101,7 @@ const IhlrMyRequests = () => {
         'SL NO': index + 1,
         'REQ NO': String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
         'DATE': formatDateDDMMYYYY(r.batch_date),
-        'SHIFT': String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`,
+        'SHIFT': String(r.shift || '').toLowerCase().includes('gen') ? r.shift : String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`,
         'PROBLEM': r.problem || '—',
         'MODEL': r.model || '—',
         'DETECTED AT': r.problem_detected_at || '—',
@@ -209,7 +209,7 @@ const IhlrMyRequests = () => {
       const tableRows = requests.map((r, idx) => [
         idx + 1,
         String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
-        `${formatDateDDMMYYYY(r.batch_date)}\n${String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}`,
+        `${formatDateDDMMYYYY(r.batch_date)}\n${String(r.shift || '').toLowerCase().includes('gen') ? r.shift : String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}`,
         r.problem || '—',
         r.model || '—',
         r.problem_detected_at || '—',
@@ -434,6 +434,7 @@ const IhlrMyRequests = () => {
               <option value="Shift 1">Shift 1</option>
               <option value="Shift 2">Shift 2</option>
               <option value="Shift 3">Shift 3</option>
+              <option value="General">General</option>
             </select>
           </div>
 
@@ -555,7 +556,7 @@ const IhlrMyRequests = () => {
                         {formatDateDDMMYYYY(r.batch_date)}
                       </div>
                       <span className="text-[10px] font-bold text-slate-400 font-mono">
-                        {String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}
+                        {String(r.shift || '').toLowerCase().includes('gen') ? r.shift : String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}
                       </span>
                     </td>
 

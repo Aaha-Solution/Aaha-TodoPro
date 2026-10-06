@@ -63,7 +63,7 @@ const IhlrDashboard = () => {
 
   const kpis = [
     {
-      title: 'Total Requests',
+      title: 'Total Issues',
       value: stats.total || 0,
       subtitle: 'Recorded line rejections',
       icon: Layers,
@@ -138,7 +138,7 @@ const IhlrDashboard = () => {
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             {isAdmin
               ? 'In-House Line Rejection monitoring, 4M root-cause Why-Why tracking, and corrective action containment.'
-              : `Overview of IHLR requests assigned to you (${user?.name || user?.email}).`}
+              : `Overview of IHLR issues assigned to you (${user?.name || user?.email}).`}
           </p>
         </div>
 
@@ -157,7 +157,7 @@ const IhlrDashboard = () => {
               className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Create IHLR Request</span>
+              <span>Create IHLR Issue</span>
             </button>
           )}
         </div>
@@ -222,7 +222,7 @@ const IhlrDashboard = () => {
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="p-5 sm:p-6 border-b border-slate-100">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Recent 5 Requests</h2>
+            <h2 className="text-base font-bold text-slate-900">Recent 5 Issues</h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Live manufacturing rejection cases with Why-Why analysis & closure actions.
             </p>
@@ -234,7 +234,7 @@ const IhlrDashboard = () => {
             <thead>
               <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 <th className="py-3.5 px-4 text-center w-14">SL NO</th>
-                <th className="py-3.5 px-4">REQ NO</th>
+                <th className="py-3.5 px-4">ISSUE NO</th>
                 <th className="py-3.5 px-4">DATE / SHIFT</th>
                 <th className="py-3.5 px-6">PROBLEM &amp; MODEL</th>
                 <th className="py-3.5 px-4">STAGE &amp; LINE</th>
@@ -254,7 +254,7 @@ const IhlrDashboard = () => {
                       {isAdmin ? 'No IHLR Reports recorded yet' : 'No IHLR Reports assigned to you recorded yet'}
                     </p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      {isAdmin ? 'Click "Create IHLR Request" to file your first rejection report.' : `When an IHLR report is assigned to ${user?.name || 'you'}, it will appear here.`}
+                      {isAdmin ? 'Click "Create IHLR Issue" to file your first rejection report.' : `When an IHLR report is assigned to ${user?.name || 'you'}, it will appear here.`}
                     </p>
                   </td>
                 </tr>
@@ -266,7 +266,7 @@ const IhlrDashboard = () => {
                       {index + 1}
                     </td>
 
-                    {/* Req NO */}
+                    {/* Issue NO */}
                     <td className="py-4 px-4 font-mono font-bold text-blue-600">
                       {String(req.req_no).startsWith('IHLR-') ? req.req_no : `#${req.req_no}`}
                     </td>
@@ -277,7 +277,7 @@ const IhlrDashboard = () => {
                         {formatDateDDMMYYYY(req.batch_date)}
                       </div>
                       <span className="text-[10px] font-bold text-slate-400 font-mono">
-                        {String(req.shift || '').startsWith('Shift') ? req.shift : `Shift ${req.shift}`}
+                        {String(req.shift || '').toLowerCase().includes('gen') ? req.shift : String(req.shift || '').startsWith('Shift') ? req.shift : `Shift ${req.shift}`}
                       </span>
                     </td>
 

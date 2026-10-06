@@ -78,7 +78,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
   const formatShift = (shift) => {
     if (!shift) return 'Shift 1';
     const str = String(shift).trim();
-    if (str.toLowerCase().startsWith('shift')) return str;
+    if (str.toLowerCase().startsWith('shift') || str.toLowerCase().includes('gen')) return str;
     return `Shift ${str}`;
   };
 
