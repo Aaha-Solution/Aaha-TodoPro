@@ -4,7 +4,28 @@ import { successResponse, errorResponse } from '../../../shared/response.js';
 export const getDashboardMetrics = async (req, res) => {
   try {
     if (!pool) throw new Error('Database pool not available');
-    const [rows] = await pool.query('SELECT status, COUNT(*) as count FROM process_audit_requests GROUP BY status');
+    const { department, month } = req.query;
+
+    let query = 'SELECT status, COUNT(*) as count FROM process_audit_requests';
+    const conditions = [];
+    const params = [];
+
+    if (department && department !== 'All') {
+      conditions.push('UPPER(TRIM(department)) = UPPER(TRIM(?))');
+      params.push(department);
+    }
+
+    if (month && month !== 'All') {
+      conditions.push("(DATE_FORMAT(escalation_date, '%Y-%m') = ? OR DATE_FORMAT(created_at, '%Y-%m') = ?)");
+      params.push(month, month);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    query += ' GROUP BY status';
+
+    const [rows] = await pool.query(query, params);
     
     let totalRequests = 0;
     let pendingExecution = 0;

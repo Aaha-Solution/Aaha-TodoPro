@@ -1,9 +1,9 @@
 import api from './api';
 
 export const processAuditService = {
-  getDashboardStats: async () => {
+  getDashboardStats: async (params) => {
     try {
-      const res = await api.get('/process-audit/dashboard');
+      const res = await api.get('/process-audit/dashboard', { params });
       return res.data?.data || res.data || {};
     } catch (err) {
       console.error('Failed to fetch dashboard metrics:', err);

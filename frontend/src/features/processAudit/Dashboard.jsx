@@ -17,12 +17,17 @@ import {
   FileSpreadsheet,
   Presentation,
   File as FileIcon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Filter,
+  Calendar,
+  Building2,
+  RotateCcw
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
 import { triggerDirectDownload, resolveAttachmentUrl } from '../../components/common/attachmentUtils';
+import { DEPARTMENTS } from '../../utils/constants';
 
 const ProcessAuditDashboard = () => {
   const navigate = useNavigate();
@@ -45,6 +50,10 @@ const ProcessAuditDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [previewAttachment, setPreviewAttachment] = useState(null);
+
+  // Department and Monthly Filter State
+  const [selectedDept, setSelectedDept] = useState('All');
+  const [selectedMonth, setSelectedMonth] = useState('All');
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -190,26 +199,122 @@ const ProcessAuditDashboard = () => {
     };
   };
 
-  const total = metrics.totalRequests !== undefined ? metrics.totalRequests : requests.length;
-  const pendingExec = metrics.pendingExecution !== undefined ? metrics.pendingExecution : requests.filter(r => {
-    const s = (r.status || '').toLowerCase();
-    return (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject'))) && !s.includes('progress');
-  }).length;
-  const inProgress = metrics.inProgress !== undefined
-    ? metrics.inProgress
-    : requests.filter(r => (r.status || '').toLowerCase().includes('progress')).length;
-  const closed = metrics.closed !== undefined ? metrics.closed : requests.filter(r => (r.status || '').toLowerCase().includes('close')).length;
+  const handleResetFilters = () => {
+    setSelectedDept('All');
+    setSelectedMonth('All');
+  };
+
+  const hasActiveFilters = selectedDept !== 'All' || selectedMonth !== 'All';
+
+  // Build department options from constants and loaded requests
+  const departmentOptions = React.useMemo(() => {
+    return Array.from(
+      new Set([
+        ...DEPARTMENTS,
+        ...requests.map((r) => (r.department || '').trim().toUpperCase()).filter(Boolean)
+      ])
+    ).sort();
+  }, [requests]);
+
+  // Build month options dynamically (recent 12 months + any months present in data)
+  const monthOptions = React.useMemo(() => {
+    const map = new Map();
+
+    requests.forEach((r) => {
+      const dVal = r.escalation_date || r.created_at || r.createdAt;
+      if (!dVal) return;
+      const d = new Date(dVal);
+      if (!isNaN(d.getTime())) {
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        map.set(ym, label);
+      }
+    });
+
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      if (!map.has(ym)) {
+        map.set(ym, label);
+      }
+    }
+
+    return Array.from(map.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([value, label]) => ({ value, label }));
+  }, [requests]);
+
+  // Filter requests based on selected department and month
+  const filteredRequests = React.useMemo(() => {
+    return requests.filter((r) => {
+      // Department filter
+      if (selectedDept !== 'All') {
+        const dept = (r.department || '').trim().toUpperCase();
+        if (dept !== selectedDept.toUpperCase()) return false;
+      }
+
+      // Monthly filter (e.g. '2026-10')
+      if (selectedMonth !== 'All') {
+        const dateVal = r.escalation_date || r.created_at || r.createdAt;
+        if (!dateVal) return false;
+        const d = new Date(dateVal);
+        if (isNaN(d.getTime())) {
+          const str = String(dateVal).slice(0, 7);
+          if (str !== selectedMonth) return false;
+        } else {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const ym = `${year}-${month}`;
+          if (ym !== selectedMonth) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [requests, selectedDept, selectedMonth]);
+
+  const total = hasActiveFilters
+    ? filteredRequests.length
+    : (metrics.totalRequests !== undefined ? metrics.totalRequests : requests.length);
+
+  const pendingExec = hasActiveFilters
+    ? filteredRequests.filter((r) => {
+        const s = (r.status || '').toLowerCase();
+        return (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject'))) && !s.includes('progress');
+      }).length
+    : (metrics.pendingExecution !== undefined
+        ? metrics.pendingExecution
+        : requests.filter((r) => {
+            const s = (r.status || '').toLowerCase();
+            return (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject'))) && !s.includes('progress');
+          }).length);
+
+  const inProgress = hasActiveFilters
+    ? filteredRequests.filter((r) => (r.status || '').toLowerCase().includes('progress')).length
+    : (metrics.inProgress !== undefined
+        ? metrics.inProgress
+        : requests.filter((r) => (r.status || '').toLowerCase().includes('progress')).length);
+
+  const closed = hasActiveFilters
+    ? filteredRequests.filter((r) => (r.status || '').toLowerCase().includes('close')).length
+    : (metrics.closed !== undefined
+        ? metrics.closed
+        : requests.filter((r) => (r.status || '').toLowerCase().includes('close')).length);
 
   const kpis = [
     {
       title: 'Total Issues',
       value: String(total),
+      subtitle: hasActiveFilters ? 'Filtered issues' : undefined,
       icon: BarChart3,
       iconBg: 'bg-blue-50 text-blue-600',
     },
     {
       title: 'Pending',
       value: String(pendingExec),
+      subtitle: hasActiveFilters ? 'Filtered pending' : undefined,
       icon: Hourglass,
       iconBg: 'bg-amber-50 text-amber-600',
     },
@@ -218,6 +323,7 @@ const ProcessAuditDashboard = () => {
           {
             title: 'In Progress',
             value: String(inProgress),
+            subtitle: hasActiveFilters ? 'Filtered in progress' : undefined,
             icon: Clock,
             iconBg: 'bg-indigo-50 text-indigo-600',
           },
@@ -226,6 +332,7 @@ const ProcessAuditDashboard = () => {
     {
       title: 'Closed',
       value: String(closed),
+      subtitle: hasActiveFilters ? 'Filtered closed' : undefined,
       icon: CheckCircle2,
       iconBg: 'bg-teal-50 text-teal-600',
     },
@@ -310,17 +417,19 @@ const ProcessAuditDashboard = () => {
     return tokens.includes(u);
   };
 
-  // Show only the 10 most recently created requests (newest creation date & ID first)
-  const recentRequests = [...requests]
-    .sort((a, b) => {
-      const timeA = new Date(a.created_at || a.createdAt || a.escalation_date || 0).getTime();
-      const timeB = new Date(b.created_at || b.createdAt || b.escalation_date || 0).getTime();
-      if (timeB !== timeA) return timeB - timeA;
-      const idA = typeof a.id === 'number' ? a.id : parseInt(String(a.id || a.issue_no || '').replace(/\D/g, ''), 10) || 0;
-      const idB = typeof b.id === 'number' ? b.id : parseInt(String(b.id || b.issue_no || '').replace(/\D/g, ''), 10) || 0;
-      return idB - idA;
-    })
-    .slice(0, 10);
+  // Sort and display the most recent filtered requests
+  const displayRequests = React.useMemo(() => {
+    return [...filteredRequests]
+      .sort((a, b) => {
+        const timeA = new Date(a.created_at || a.createdAt || a.escalation_date || 0).getTime();
+        const timeB = new Date(b.created_at || b.createdAt || b.escalation_date || 0).getTime();
+        if (timeB !== timeA) return timeB - timeA;
+        const idA = typeof a.id === 'number' ? a.id : parseInt(String(a.id || a.issue_no || '').replace(/\D/g, ''), 10) || 0;
+        const idB = typeof b.id === 'number' ? b.id : parseInt(String(b.id || b.issue_no || '').replace(/\D/g, ''), 10) || 0;
+        return idB - idA;
+      })
+      .slice(0, 15);
+  }, [filteredRequests]);
 
   return (
     <div className="space-y-7 pb-12">
@@ -356,6 +465,89 @@ const ProcessAuditDashboard = () => {
         </div>
       </div>
 
+      {/* Filter Bar: Department-wise & Monthly Filters */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+              <Filter className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 font-mono">
+                  Filter Dashboard
+                </h2>
+                {hasActiveFilters && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                    Filtered ({filteredRequests.length} results)
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Filter metrics and production requests by department and month
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Department Filter */}
+            <div className="flex-1 sm:flex-initial min-w-[190px]">
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                <span>Department</span>
+              </label>
+              <select
+                value={selectedDept}
+                onChange={(e) => setSelectedDept(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition cursor-pointer"
+              >
+                <option value="All">All Departments</option>
+                {departmentOptions.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Monthly Filter */}
+            <div className="flex-1 sm:flex-initial min-w-[190px]">
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                <span>Month</span>
+              </label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition cursor-pointer"
+              >
+                <option value="All">All Months</option>
+                {monthOptions.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Reset Filters Button */}
+            {hasActiveFilters && (
+              <div className="self-end pt-5">
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/80 border border-rose-200 rounded-xl transition cursor-pointer shadow-2xs"
+                  title="Clear active filters"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Top Metric Cards Grid */}
       <div className={`grid ${kpis.length === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'} gap-3 sm:gap-4`}>
         {kpis.map((kpi, idx) => {
@@ -388,16 +580,27 @@ const ProcessAuditDashboard = () => {
       {/* Recent Production Requests Card */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
         {/* Card Header */}
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              Recent Production Requests
-            </h2>
-           
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                Recent Production Requests
+              </h2>
+              {hasActiveFilters && (
+                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[11px] font-semibold rounded-full border border-blue-200">
+                  Filtered ({displayRequests.length})
+                </span>
+              )}
+            </div>
+            {hasActiveFilters && (
+              <p className="text-xs text-slate-500 mt-0.5">
+                Showing results for {selectedDept !== 'All' ? `Dept: ${selectedDept}` : ''}{selectedDept !== 'All' && selectedMonth !== 'All' ? ' • ' : ''}{selectedMonth !== 'All' ? `Month: ${monthOptions.find(m => m.value === selectedMonth)?.label || selectedMonth}` : ''}
+              </p>
+            )}
           </div>
           <button
             onClick={() => navigate('/process-audit/my-requests')}
-            className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 shadow-2xs transition cursor-pointer"
+            className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 shadow-2xs transition cursor-pointer self-start sm:self-auto"
           >
             View All Tracking
           </button>
@@ -410,28 +613,46 @@ const ProcessAuditDashboard = () => {
               <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
               Loading production requests from database...
             </div>
-          ) : recentRequests.length === 0 ? (
-            <div className="py-16 text-center text-slate-400 text-xs">
-              <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-              <p className="font-semibold text-slate-600 mb-1">No Issues recorded yet</p>
-              {canCreate && (
-                <>
-                  <p className="text-slate-400 mb-4">Click below to create your first production audit Issues.</p>
-                  <button
-                    onClick={() => navigate('/process-audit/create-request')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition"
-                  >
-                    Create First Issue
-                  </button>
-                </>
-              )}
-            </div>
+          ) : displayRequests.length === 0 ? (
+            hasActiveFilters ? (
+              <div className="py-16 text-center text-slate-400 text-xs">
+                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                <p className="font-semibold text-slate-700 text-sm mb-1">No requests match current filters</p>
+                <p className="text-slate-400 mb-4 max-w-sm mx-auto">
+                  There are no issues found matching {selectedDept !== 'All' ? `department "${selectedDept}"` : ''} {selectedDept !== 'All' && selectedMonth !== 'All' ? 'and ' : ''} {selectedMonth !== 'All' ? `month "${monthOptions.find(m => m.value === selectedMonth)?.label || selectedMonth}"` : ''}.
+                </p>
+                <button
+                  onClick={handleResetFilters}
+                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Reset Filters
+                </button>
+              </div>
+            ) : (
+              <div className="py-16 text-center text-slate-400 text-xs">
+                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                <p className="font-semibold text-slate-600 mb-1">No Issues recorded yet</p>
+                {canCreate && (
+                  <>
+                    <p className="text-slate-400 mb-4">Click below to create your first production audit Issues.</p>
+                    <button
+                      onClick={() => navigate('/process-audit/create-request')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition"
+                    >
+                      Create First Issue
+                    </button>
+                  </>
+                )}
+              </div>
+            )
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   <th className="py-3.5 px-6 whitespace-nowrap align-middle">REQUEST ID</th>
-                  <th className="py-3.5 px-6 whitespace-nowrap align-middle">Escalation Date </th>
+                  <th className="py-3.5 px-6 whitespace-nowrap align-middle">DEPARTMENT</th>
+                  <th className="py-3.5 px-6 whitespace-nowrap align-middle">Escalation Date</th>
                   <th className="py-3.5 px-6 whitespace-nowrap align-middle">SHIFT</th>
                   <th className="py-3.5 px-6 whitespace-nowrap align-middle">PRODUCT</th>
                   <th className="py-3.5 px-6 whitespace-nowrap align-middle">MODEL</th>
@@ -441,7 +662,7 @@ const ProcessAuditDashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {recentRequests.map((req) => {
+                {displayRequests.map((req) => {
                   const reqId = req.issue_no || (req.id ? `PA-${req.id}` : 'PA-1');
                   const dateStr = formatDate(req.escalation_date || req.created_at);
                   const prodStr = req.product || '-';
@@ -449,10 +670,17 @@ const ProcessAuditDashboard = () => {
                   const statusStr = req.status || 'Pending Execution';
                   const meta = getStatusMeta(statusStr);
                   const createdDateStr = formatDate(req.created_at);
+                  const deptStr = req.department || '-';
 
                   return (
                     <tr key={req.id} className="hover:bg-slate-50/70 transition">
                       <td className="py-4 px-6 font-bold text-blue-600 align-middle whitespace-nowrap">{reqId}</td>
+                      <td className="py-4 px-6 font-semibold text-slate-700 align-middle whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs">
+                          <Building2 className="w-3 h-3 text-slate-500" />
+                          {deptStr}
+                        </span>
+                      </td>
                       <td className="py-4 px-6 text-slate-600 font-medium align-middle whitespace-nowrap">{dateStr}</td>
                       <td className="py-4 px-6 text-slate-600 font-medium align-middle whitespace-nowrap">{req.shift}</td>
                       <td className="py-4 px-6 text-slate-800 font-semibold align-middle whitespace-nowrap">{prodStr}</td>

@@ -818,12 +818,12 @@ const ProcessAuditApprovals = () => {
                   {isSaving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Saving ....</span>
+                      <span>Submitting ....</span>
                     </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      <span>Save</span>
+                      <span>Submit</span>
                     </>
                   )}
                 </button>
