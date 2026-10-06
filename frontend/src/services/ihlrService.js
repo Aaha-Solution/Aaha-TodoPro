@@ -24,7 +24,7 @@ export const ihlrService = {
       return `IHLR-${max + 1}`;
     }
   },
-  getDashboardStats: async () => {
+  getDashboardStats: async (filters = {}) => {
     try {
       const currentUser = storage.getUser();
       const userParams = currentUser ? {
@@ -32,9 +32,10 @@ export const ihlrService = {
         user_email: currentUser.email,
         user_id: currentUser.id,
         role: currentUser.role,
+        user_department: currentUser.department,
         department: currentUser.department
       } : {};
-      const res = await api.get('/ihlr/dashboard', { params: userParams });
+      const res = await api.get('/ihlr/dashboard', { params: { ...userParams, ...filters } });
       const stats = res.data?.data || res.data;
       if (currentUser && currentUser.role?.toUpperCase() !== 'ADMIN' && currentUser.department?.toUpperCase() !== 'INCOMING QUALITY') {
         if (Array.isArray(stats?.recentRequests)) {
@@ -48,20 +49,44 @@ export const ihlrService = {
       if (currentUser && currentUser.role?.toUpperCase() !== 'ADMIN' && currentUser.department?.toUpperCase() !== 'INCOMING QUALITY') {
         scopedStore = scopedStore.filter(r => isIhlrRequestVisibleToUser(r, currentUser));
       }
+      // Apply department filter
+      const deptFilter = (filters.resp || filters.filter_dept || '').trim().toUpperCase();
+      if (deptFilter && deptFilter !== 'ALL') {
+        scopedStore = scopedStore.filter(r => (r.resp || '').trim().toUpperCase() === deptFilter);
+      }
+      // Apply date filter
+      const startDate = (filters.startDate || filters.start_date || '').trim();
+      const endDate = (filters.endDate || filters.end_date || '').trim();
+      if (startDate || endDate) {
+        scopedStore = scopedStore.filter(r => {
+          const dStr = (r.batch_date || r.created_at || '').split('T')[0];
+          if (!dStr) return false;
+          if (startDate && dStr < startDate) return false;
+          if (endDate && dStr > endDate) return false;
+          return true;
+        });
+      }
       const total = scopedStore.length;
-      const open = scopedStore.filter(r => r.status === 'OPEN').length;
-      const inProgress = scopedStore.filter(r => r.status === 'IN_PROGRESS').length;
-      const closed = scopedStore.filter(r => r.status === 'CLOSED').length;
+      const open = scopedStore.filter(r => {
+        const s = (r.status || '').toUpperCase();
+        return s === 'OPEN' || s === 'PENDING';
+      }).length;
+      const inProgress = scopedStore.filter(r => {
+        const s = (r.status || '').toUpperCase();
+        return s === 'IN_PROGRESS' || s === 'IN-PROGRESS';
+      }).length;
+      const closed = scopedStore.filter(r => (r.status || '').toUpperCase() === 'CLOSED').length;
       return {
         total,
         open,
+        pending: open,
         inProgress,
         closed,
         fourMBreakdown: {
-          MAN: scopedStore.filter(r => r.four_m === 'MAN').length,
-          MACHINE: scopedStore.filter(r => r.four_m === 'MACHINE').length,
-          METHOD: scopedStore.filter(r => r.four_m === 'METHOD').length,
-          MATERIAL: scopedStore.filter(r => r.four_m === 'MATERIAL').length,
+          MAN: scopedStore.filter(r => (r.four_m || '').toUpperCase() === 'MAN').length,
+          MACHINE: scopedStore.filter(r => (r.four_m || '').toUpperCase() === 'MACHINE').length,
+          METHOD: scopedStore.filter(r => (r.four_m || '').toUpperCase() === 'METHOD').length,
+          MATERIAL: scopedStore.filter(r => (r.four_m || '').toUpperCase() === 'MATERIAL').length,
         },
         recentRequests: scopedStore.slice(0, 5)
       };

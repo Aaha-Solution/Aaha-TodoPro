@@ -30,6 +30,40 @@ export const getNextReqNo = async (req, res) => {
   }
 };
 
+const parseToDateStr = (val) => {
+  if (!val) return '';
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return '';
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const d = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const str = String(val).trim();
+  if (!str) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    return str.substring(0, 10);
+  }
+  const slashParts = str.split('/');
+  if (slashParts.length === 3 && slashParts[2].length === 4) {
+    return `${slashParts[2]}-${slashParts[1].padStart(2, '0')}-${slashParts[0].padStart(2, '0')}`;
+  }
+  const hyphenParts = str.split('-');
+  if (hyphenParts.length === 3 && hyphenParts[2].length === 4) {
+    return `${hyphenParts[2]}-${hyphenParts[1].padStart(2, '0')}-${hyphenParts[0].padStart(2, '0')}`;
+  }
+  try {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+  } catch {}
+  return '';
+};
+
 export const getDashboardStats = async (req, res) => {
   try {
     let requests = await IhlrRequest.getAll();
@@ -37,7 +71,7 @@ export const getDashboardStats = async (req, res) => {
 
     // Filter requests for non-admin users so they only see their assigned stats
     const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
-    const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
+    const userDept = (req.query.user_department || req.user?.department || (req.query.filter_dept || req.query.resp ? '' : req.query.department) || '').trim().toUpperCase();
     const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
 
     const userName = (req.query.user_name || req.query.userName || req.user?.name || '').trim().toLowerCase();
@@ -60,6 +94,26 @@ export const getDashboardStats = async (req, res) => {
                           (userEmail && rCreatedEmail && rCreatedEmail === clean(userEmail));
 
         return isAssigned || isCreator;
+      });
+    }
+
+    // 1. Department-wise filter (by responsible department: resp / filter_dept)
+    const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
+    if (targetDept && targetDept !== 'ALL') {
+      requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === targetDept);
+    }
+
+    // 2. Date filter (by incident batch_date or created_at)
+    const startDate = (req.query.startDate || req.query.start_date || req.query.from_date || '').trim();
+    const endDate = (req.query.endDate || req.query.end_date || req.query.to_date || '').trim();
+
+    if (startDate || endDate) {
+      requests = requests.filter(r => {
+        const itemDateStr = parseToDateStr(r.batch_date || r.created_at);
+        if (!itemDateStr) return false;
+        if (startDate && itemDateStr < startDate) return false;
+        if (endDate && itemDateStr > endDate) return false;
+        return true;
       });
     }
 
@@ -171,6 +225,25 @@ export const getIhlrRequests = async (req, res) => {
       } else {
         requests = requests.filter(r => (r.status || '').toUpperCase() === targetStatus);
       }
+    }
+
+    // Department filter (resp / filter_dept)
+    const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
+    if (targetDept && targetDept !== 'ALL') {
+      requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === targetDept);
+    }
+
+    // Date filter
+    const startDate = (req.query.startDate || req.query.start_date || req.query.from_date || '').trim();
+    const endDate = (req.query.endDate || req.query.end_date || req.query.to_date || '').trim();
+    if (startDate || endDate) {
+      requests = requests.filter(r => {
+        const itemDateStr = parseToDateStr(r.batch_date || r.created_at);
+        if (!itemDateStr) return false;
+        if (startDate && itemDateStr < startDate) return false;
+        if (endDate && itemDateStr > endDate) return false;
+        return true;
+      });
     }
 
     return successResponse(res, requests, 'IHLR requests retrieved successfully');
