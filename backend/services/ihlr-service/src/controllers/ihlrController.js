@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from '../../../shared/response.js';
 import { IhlrRequest } from '../models/IhlrRequest.js';
 import { saveBinaryFiles, streamBinaryFile } from '../../../shared/binaryStorage.js';
 import pool from '../../../shared/db.js';
-import { sendIhlrRequestEmails, sendIhlrCloserEmails } from '../../../../shared/mailer.js';
+import { sendIhlrRequestEmails, sendIhlrCloserEmails, sendEmail } from '../../../../shared/mailer.js';
 
 
 
@@ -413,13 +413,13 @@ export const updateIhlrRequest = async (req, res) => {
 
     // Role-based field segregation:
     // - Closer can ONLY update: prod_why_why, action, evidence_attachment, target_date
-    // - Admin can update any field (including remarks, status)
+    // - Admin can update any field (including remarks, status, resp, resp_person)
     let safeUpdates = {};
     if (isAdmin) {
       const allowed = [
         'req_no', 'batch_date', 'shift', 'problem', 'model', 
         'problem_detected_at', 'received_from', 'analysis_done_by', 
-        'defect_image', 'actual_qty', 'four_m', 'resp', 'resp_person',
+        'defect_image', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
         'prod_why_why', 'action', 'evidence_attachment', 'target_date', 'remarks', 'status'
       ];
       for (const k of allowed) {
@@ -433,6 +433,23 @@ export const updateIhlrRequest = async (req, res) => {
         if (req.body.target_date !== undefined) safeUpdates.target_date = req.body.target_date;
       }
     }
+
+    // Auto-resolve new assigned closer email from users table if reassigned
+    if (safeUpdates.resp_person && pool && !safeUpdates.resp_person_email) {
+      const [uRows] = await pool.query(
+        'SELECT email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1',
+        [String(safeUpdates.resp_person)]
+      ).catch(() => [[]]);
+      if (uRows && uRows.length > 0 && uRows[0].email) {
+        safeUpdates.resp_person_email = uRows[0].email;
+      }
+    }
+
+    const prevRespPerson = existing.resp_person;
+    const isReassigned = Boolean(
+      safeUpdates.resp_person &&
+      clean(safeUpdates.resp_person) !== clean(prevRespPerson)
+    );
 
     // Clean dates and JSON structures safely
     if (safeUpdates.target_date !== undefined) {
@@ -594,6 +611,53 @@ export const updateIhlrRequest = async (req, res) => {
           }).catch(mailErr => console.warn('[IHLR Mailer] Closer email dispatch warning:', mailErr.message));
         } catch (mailSyncErr) {
           console.warn('[IHLR Mailer] Sync closer email dispatch warning:', mailSyncErr.message);
+        }
+
+        // 3. If Reassigned, send distinct notification and email to newly assigned closer
+        if (isReassigned && updated.resp_person) {
+          let newCloserId = null;
+          let newCloserEmail = updated.resp_person_email || '';
+          if (pool) {
+            const [nuRows] = await pool.query(
+              'SELECT id, email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1',
+              [String(updated.resp_person)]
+            ).catch(() => [[]]);
+            if (nuRows && nuRows.length > 0) {
+              newCloserId = nuRows[0].id;
+              newCloserEmail = newCloserEmail || nuRows[0].email;
+            }
+
+            await pool.query(
+              `INSERT INTO ihlr_notifications 
+               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, 'assigned_to_ihlr', ?, ?, '/ihlr/approvals', 0)`,
+              [
+                newCloserId,
+                updated.resp_person,
+                newCloserEmail,
+                updated.id || id,
+                reqNo,
+                `IHLR Defect Report Assigned: #${reqNo}`,
+                `You have been assigned to IHLR defect report #${reqNo} (${updated.model || 'Model'}) for ${updated.resp || 'Department'}. Please submit 5-Why root cause analysis and corrective countermeasures.`
+              ]
+            ).catch((e) => console.warn('[Reassign Notif Error]:', e.message));
+          }
+
+          if (newCloserEmail) {
+            try {
+              sendEmail({
+                to: newCloserEmail,
+                recipientName: updated.resp_person,
+                recipientRole: 'ASSIGNED_CLOSER',
+                subject: `[IHLR Action Required] Defect Report Assigned to You: #${reqNo}`,
+                text: `Dear ${updated.resp_person},\n\nIHLR incident #${reqNo} (${updated.model || 'Model'}) has been assigned to you (${updated.resp}).\n\nPlease review and submit 5-Why root cause analysis and containment actions at: http://localhost:5173/ihlr/approvals\n\nThank you,\nQuality Portal`,
+                referenceNo: reqNo,
+                moduleType: 'IHLR'
+              }).catch((err) => console.warn('[Reassign Mail Warning]:', err.message));
+            } catch (mErr) {
+              console.warn('[Reassign Mail Sync Warning]:', mErr.message);
+            }
+          }
         }
 
       } catch (notifErr) {
