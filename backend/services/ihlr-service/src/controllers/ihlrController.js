@@ -407,14 +407,13 @@ export const updateIhlrRequest = async (req, res) => {
       (createdEmail && userEmail && userEmail === createdEmail)
     );
 
-    if (!isAdmin && !isCloser && !isRequester) {
-      return errorResponse(res, 'You are not authorized to update this IHLR request.', 403);
+    if (!isAdmin && !isCloser) {
+      return errorResponse(res, 'You are not authorized to update this IHLR request. Only the assigned closer or admin can submit updates.', 403);
     }
 
     // Role-based field segregation:
     // - Closer can ONLY update: prod_why_why, action, evidence_attachment, target_date
-    // - Requester / Admin can update: remarks, status
-    // - Admin can update any field
+    // - Admin can update any field (including remarks, status)
     let safeUpdates = {};
     if (isAdmin) {
       const allowed = [
@@ -432,10 +431,6 @@ export const updateIhlrRequest = async (req, res) => {
         if (req.body.action !== undefined) safeUpdates.action = req.body.action;
         if (req.body.evidence_attachment !== undefined) safeUpdates.evidence_attachment = req.body.evidence_attachment;
         if (req.body.target_date !== undefined) safeUpdates.target_date = req.body.target_date;
-      }
-      if (isRequester) {
-        if (req.body.remarks !== undefined) safeUpdates.remarks = req.body.remarks;
-        if (req.body.status !== undefined) safeUpdates.status = req.body.status;
       }
     }
 
@@ -490,10 +485,10 @@ export const updateIhlrRequest = async (req, res) => {
         // Notification A: For Raised Person (Requester) to complete pending fields
         if (updated.created_by_id || updated.created_by || updated.created_by_email) {
           const reqNotifType = isClosed ? 'case_closed' : 'closer_completed_pending_review';
-          const reqNotifTitle = isClosed ? `IHLR Case Closed: #${reqNo}` : `Action Required: Complete Pending Fields #${reqNo}`;
+          const reqNotifTitle = isClosed ? `IHLR Case Closed: #${reqNo}` : `Closer Countermeasures Submitted #${reqNo}`;
           const reqNotifMsg = isClosed
-            ? `Defect report #${reqNo} (${updated.model || 'Model'}) has been verified and marked as CLOSED by ${closerName}.`
-            : `Closer ${closerName} (${closerDept}) has completed 5-Why root cause analysis and corrective action for #${reqNo} (${updated.model || 'Model'}). Action required: Please review, enter remarks, and sign off the status.`;
+            ? `Defect report #${reqNo} (${updated.model || 'Model'}) has been verified and marked as CLOSED.`
+            : `Closer ${closerName} (${closerDept}) has completed 5-Why root cause analysis and corrective action for #${reqNo} (${updated.model || 'Model'}). Quality Admin review and closure sign-off pending.`;
 
           await pool.query(
             `INSERT INTO ihlr_notifications 

@@ -80,16 +80,15 @@ const IhlrApprovals = () => {
   const isSelectedClosed = String(selectedRequest?.status || '').toUpperCase() === 'CLOSED';
 
   // 1. Closer Fields (Occurrence Cause 5-Why: W1-W5, Action, Evidence Attachment, Target Date):
-  //    Only the assigned Closer (or Admin) can update. Disabled for requester.
+  //    Only the assigned Closer (or Admin) can update. Disabled for others.
   const canUpdateCloserFields = Boolean(
     selectedRequest && (isAdmin || isCloser) && (!isSelectedClosed || isAdmin)
   );
 
-  // 2. Requester / Admin Fields (Remarks, Status):
-  //    "these fields only to update the closer and the next two fields are requester or admin to update"
-  //    Only the Requester (or Admin) can update. Disabled for closer!
-  const canUpdateRequesterFields = Boolean(
-    selectedRequest && (isAdmin || isRequester) && (!isSelectedClosed || isAdmin)
+  // 2. Admin Only Fields (Remarks, Status):
+  //    Strictly for Admins only. Hidden for regular users.
+  const canUpdateAdminFields = Boolean(
+    selectedRequest && isAdmin
   );
 
   const isLockedForCloserUser = !isAdmin && isSelectedClosed;
@@ -210,7 +209,7 @@ const IhlrApprovals = () => {
       return;
     }
 
-    if (!canUpdateCloserFields && !canUpdateRequesterFields) {
+    if (!canUpdateCloserFields && !isAdmin) {
       modalError('You do not have permission to update fields on this request.');
       return;
     }
@@ -223,7 +222,7 @@ const IhlrApprovals = () => {
       const payload = {};
 
       // 1. Closer Fields (Occurrence Cause 5-Why: W1-W5, Action, Evidence, Target Date)
-      if (canUpdateCloserFields) {
+      if (canUpdateCloserFields || isAdmin) {
         let uploadedList = [];
         if (newEvidenceFiles.length > 0) {
           uploadedList = await ihlrService.uploadAttachments(newEvidenceFiles);
@@ -236,8 +235,8 @@ const IhlrApprovals = () => {
         payload.target_date = closerTargetDate || null;
       }
 
-      // 2. Requester / Admin Fields (Remarks, Status)
-      if (canUpdateRequesterFields) {
+      // 2. Admin Only Fields (Remarks, Status)
+      if (isAdmin) {
         payload.remarks = closerRemarks;
         payload.status = closerStatus;
       }
@@ -256,12 +255,9 @@ const IhlrApprovals = () => {
       const updated = await ihlrService.updateRequest(selectedRequest.id, payload);
       window.dispatchEvent(new Event('refreshNotifications'));
 
-      const msg =
-        canUpdateCloserFields && canUpdateRequesterFields
-          ? `Report & sign-off updated successfully for ${selectedRequest.req_no}!`
-          : canUpdateCloserFields
-          ? `Closer details submitted! Requester and Admin have been alerted via notification & email to complete pending remarks and status sign-off.`
-          : `Status & Remarks updated successfully for ${selectedRequest.req_no}!`;
+      const msg = isAdmin
+        ? `Report & status sign-off updated successfully for ${selectedRequest.req_no}!`
+        : `Closer details submitted successfully for ${selectedRequest.req_no}! Admin will review and sign off status.`;
 
       setSuccessMessage(msg);
       setNewEvidenceFiles([]);
@@ -758,124 +754,87 @@ const IhlrApprovals = () => {
               <div className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/70 text-amber-900 text-[11px] flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div className="leading-tight">
-                  <span className="font-bold">Pending Fields Sign-off: </span>
+                  <span className="font-bold">
+                    {isAdmin ? 'Admin Review & Sign-Off: ' : 'Closer Action: '}
+                  </span>
                   <span className="text-amber-800">
-                    {canUpdateRequesterFields
-                      ? 'Closer has submitted containment countermeasures. Please review, provide remarks, and sign off the status below.'
-                      : 'Closer details submitted. Requester or Admin must complete validation remarks and finalize status.'}
+                    {isAdmin
+                      ? 'Closer countermeasures review. Provide validation remarks and finalize status below.'
+                      : 'Submit 5-Why root cause and corrective countermeasures. Quality Admin will review remarks and finalize status.'}
                   </span>
                 </div>
               </div>
             )}
 
-            {/* Remarks (Image 1: REMARKS Word) */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>REMARKS</span>
-                  <span className="text-rose-500">*</span>
-                  {selectedRequest && (
-                    canUpdateRequesterFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded border border-amber-200">
-                        Requester / Admin
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        Requester / Admin Only (Read-Only)
-                      </span>
-                    )
-                  )}
-                </label>
-                {canUpdateRequesterFields && (
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {1000 - closerRemarks.length} chars left
-                  </span>
-                )}
-              </div>
-              <textarea
-                rows={2}
-                maxLength={1000}
-                disabled={!canUpdateRequesterFields}
-                value={closerRemarks}
-                onChange={(e) => setCloserRemarks(e.target.value)}
-                placeholder={
-                  !selectedRequest
-                    ? 'Click a row on the right to select'
-                    : canUpdateRequesterFields
-                    ? 'Enter remarks and validation summary...'
-                    : 'Remarks can only be updated by the Requester or Admin.'
-                }
-                className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none ${
-                  !canUpdateRequesterFields
-                    ? 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none'
-                    : 'bg-white border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
-              />
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                {canUpdateRequesterFields
-                  ? 'Provide requester sign-off or admin review remarks.'
-                  : 'Only the Requester or Admin can enter remarks.'}
-              </p>
-            </div>
-
-            {/* Status */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>STATUS</span>
-                  <span className="text-rose-500">*</span>
-                  {selectedRequest && (
-                    canUpdateRequesterFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded border border-amber-200">
-                        Requester / Admin
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        Requester / Admin Only (Read-Only)
-                      </span>
-                    )
-                  )}
-                  {isSelectedClosed && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200">
-                      Closed
+            {/* Remarks & Status - ONLY FOR ADMINS */}
+            {isAdmin && (
+              <>
+                {/* Remarks */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                      <span>REMARKS</span>
+                      <span className="text-rose-500">*</span>
+                      {selectedRequest && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                          Admin
+                        </span>
+                      )}
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {1000 - closerRemarks.length} chars left
                     </span>
-                  )}
-                </label>
-              </div>
-              <select
-                disabled={!canUpdateRequesterFields}
-                value={closerStatus}
-                onChange={(e) => setCloserStatus(e.target.value)}
-                className={`w-full px-3.5 py-2.5 border rounded-xl font-bold text-slate-800 outline-none transition ${
-                  !canUpdateRequesterFields
-                    ? 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed select-none'
-                    : 'bg-white border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
-                }`}
-              >
-                {isAdmin ? (
-                  <>
+                  </div>
+                  <textarea
+                    rows={2}
+                    maxLength={1000}
+                    value={closerRemarks}
+                    onChange={(e) => setCloserRemarks(e.target.value)}
+                    placeholder={
+                      !selectedRequest
+                        ? 'Click a row on the right to select'
+                        : 'Enter remarks and validation summary...'
+                    }
+                    className="w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none bg-white border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Provide admin sign-off or review remarks.
+                  </p>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                      <span>STATUS</span>
+                      <span className="text-rose-500">*</span>
+                      {selectedRequest && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                          Admin
+                        </span>
+                      )}
+                      {isSelectedClosed && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200">
+                          Closed
+                        </span>
+                      )}
+                    </label>
+                  </div>
+                  <select
+                    value={closerStatus}
+                    onChange={(e) => setCloserStatus(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border rounded-xl font-bold text-slate-800 outline-none transition bg-white border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                  >
                     <option value="OPEN">OPEN</option>
                     <option value="IN_PROGRESS">IN PROGRESS</option>
                     <option value="CLOSED">CLOSED</option>
-                  </>
-                ) : isSelectedClosed ? (
-                  <option value="CLOSED">CLOSED (FINALIZED)</option>
-                ) : (
-                  <>
-                    <option value="OPEN">OPEN</option>
-                    <option value="IN_PROGRESS">IN PROGRESS</option>
-                    <option value="CLOSED">CLOSED</option>
-                  </>
-                )}
-              </select>
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                {isLockedForCloserUser
-                  ? 'Status is Closed. Only Admin can update status again.'
-                  : canUpdateRequesterFields
-                  ? 'Select OPEN, IN PROGRESS, or CLOSED. Once closed, non-admin users cannot update again.'
-                  : 'Only the Requester or Admin can update status.'}
-              </p>
-            </div>
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Select OPEN, IN PROGRESS, or CLOSED to finalize status.
+                  </p>
+                </div>
+              </>
+            )}
 
             {/* Action Submit Button */}
             <div className="pt-2">
@@ -892,10 +851,10 @@ const IhlrApprovals = () => {
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   <span>Incident Closed — Updates Locked for Users (Admin Only)</span>
                 </div>
-              ) : !canUpdateCloserFields && !canUpdateRequesterFields ? (
+              ) : !canUpdateCloserFields && !isAdmin ? (
                 <div className="w-full py-3 px-4 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-slate-500" />
-                  <span>Read Only Access — Closer or Requester Only</span>
+                  <span>Read Only Access — Assigned Closer or Admin Only</span>
                 </div>
               ) : (
                 <button
@@ -912,11 +871,9 @@ const IhlrApprovals = () => {
                     <>
                       <Save className="w-4 h-4" />
                       <span>
-                        {canUpdateCloserFields && canUpdateRequesterFields
+                        {isAdmin
                           ? 'Save & Update Report'
-                          : canUpdateCloserFields
-                          ? 'Update Closer Log'
-                          : 'Update Status & Remarks'}
+                          : 'Update Closer Log'}
                       </span>
                     </>
                   )}
