@@ -213,12 +213,16 @@ const ProcessAuditDashboard = () => {
       icon: Hourglass,
       iconBg: 'bg-amber-50 text-amber-600',
     },
-    {
-      title: 'In Progress',
-      value: String(inProgress),
-      icon: Clock,
-      iconBg: 'bg-indigo-50 text-indigo-600',
-    },
+    ...(isAdmin
+      ? [
+          {
+            title: 'In Progress',
+            value: String(inProgress),
+            icon: Clock,
+            iconBg: 'bg-indigo-50 text-indigo-600',
+          },
+        ]
+      : []),
     {
       title: 'Closed',
       value: String(closed),
@@ -353,7 +357,7 @@ const ProcessAuditDashboard = () => {
       </div>
 
       {/* Top Metric Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className={`grid ${kpis.length === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'} gap-3 sm:gap-4`}>
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
@@ -391,14 +395,12 @@ const ProcessAuditDashboard = () => {
             </h2>
            
           </div>
-          {canCreate && (
-            <button
-              onClick={() => navigate('/process-audit/my-requests')}
-              className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 shadow-2xs transition cursor-pointer"
-            >
-              View All Tracking
-            </button>
-          )}
+          <button
+            onClick={() => navigate('/process-audit/my-requests')}
+            className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 shadow-2xs transition cursor-pointer"
+          >
+            View All Tracking
+          </button>
         </div>
 
         {/* Requests Table */}

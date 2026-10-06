@@ -45,7 +45,7 @@ const MyRequests = () => {
   const userRole = (user?.role || '').trim().toUpperCase();
   const isAdmin = userRole === 'ADMIN';
   const isIncomingQuality = currentDept.toUpperCase() === 'INCOMING QUALITY';
-  const canTrack = isIncomingQuality || isAdmin;
+  const canEdit = isIncomingQuality || isAdmin;
 
   const [searchParams] = useSearchParams();
   const queryRequestId = searchParams.get('requestId') || searchParams.get('id');
@@ -248,13 +248,7 @@ const MyRequests = () => {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (!isAdmin) {
-        if (user?.name) params.created_by = user.name;
-        if (user?.id) params.created_by_id = user.id;
-        params.role = user?.role;
-      }
-      const data = await processAuditService.getRequests(params);
+      const data = await processAuditService.getRequests();
       setRequests(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load requests from DB:', err);
@@ -607,75 +601,26 @@ const MyRequests = () => {
 
   const modalAttachments = activeModalRequest ? getAttachmentsList(activeModalRequest.attachments) : [];
 
-  if (!canTrack) {
-    return (
-      <div className="space-y-6 w-full pb-12">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Request Tracking
-            </h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Process Audit Observation • Departmental Access Control
-            </p>
-          </div>
-        </div>
-
-        <div className="max-w-2xl mx-auto my-8 bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/90 shadow-sm text-center">
-          <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-4">
-            <ShieldAlert className="w-8 h-8" />
-          </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">
-            Department Authorization Required
-          </h2>
-          <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-            In <strong>Process Audit Observation</strong>, Request Tracking is reserved for the{' '}
-            <span className="font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 inline-block my-1">
-              INCOMING QUALITY
-            </span>{' '}
-            department. Personnel from <strong>{currentDept || 'other departments'}</strong> can review and execute their assigned audits in <strong>Approvals</strong>.
-          </p>
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/70 text-xs text-slate-600 mb-6 max-w-md mx-auto text-left space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">Logged-in User:</span>
-              <strong className="text-slate-800">{user?.name || user?.email || 'Unknown'}</strong>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">Your Department:</span>
-              <strong className="text-rose-600 font-semibold">{currentDept || 'Not Assigned / Other Department'}</strong>
-            </div>
-          </div>
-          <div className="flex items-center justify-center gap-3">
-            <button
-              onClick={() => navigate('/process-audit/dashboard')}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
-            >
-              Go to Dashboard
-            </button>
-            <button
-              onClick={() => navigate('/process-audit/approvals')}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
-            >
-              Go to Approvals
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            {isAdmin ? 'All Requests' : 'My Requests'}
-          </h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {isAdmin ? 'All Requests' : 'My Requests'}
+            </h1>
+            {!canEdit && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                <Eye className="w-3.5 h-3.5 text-slate-500" />
+                <span>View Only</span>
+              </span>
+            )}
+          </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {isAdmin
-              ? 'Complete organization-wide audit observation records across all departments.'
-              : 'Live database records with dynamic search, stage, executor, and shift filtering.'}
+            {canEdit
+              ? 'Track, monitor, reassign, and verify auditor sign-off for shopfloor audit observations.'
+              : 'View and track all shopfloor process audit requests in read-only mode.'}
           </p>
         </div>
 
@@ -791,7 +736,7 @@ const MyRequests = () => {
             >
               <option value="All Statuses">All Statuses</option>
               <option value="Pending Execution">Pending Execution</option>
-              <option value="In Progress">In Progress</option>
+              {isAdmin && <option value="In Progress">In Progress</option>}
               <option value="Closed">Closed</option>
             </select>
           </div>
@@ -881,7 +826,7 @@ const MyRequests = () => {
                       </td>
                       <td className="py-4 px-6 text-center align-middle whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
-                          {statusStr.toLowerCase().includes('approved') && !statusStr.toLowerCase().includes('close') ? (
+                          {canEdit && statusStr.toLowerCase().includes('approved') && !statusStr.toLowerCase().includes('close') ? (
                             <button
                               onClick={() => setActiveModalRequest(req)}
                               className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5"
@@ -901,7 +846,7 @@ const MyRequests = () => {
                             </button>
                           )}
 
-                          {canTrack && !statusStr.toLowerCase().includes('close') && (
+                          {canEdit && !statusStr.toLowerCase().includes('close') && (
                             <button
                               type="button"
                               onClick={() => handleOpenReassignModal(req)}
@@ -994,7 +939,7 @@ const MyRequests = () => {
                   <span className="text-slate-400 block text-[10px] uppercase font-bold">Assigned Executor</span>
                   <span className="font-bold text-slate-800">{activeModalRequest.executor}</span>
                 </div>
-                {canTrack && !activeModalRequest.status?.toLowerCase().includes('close') && (
+                {canEdit && !activeModalRequest.status?.toLowerCase().includes('close') && (
                   <button
                     type="button"
                     onClick={() => handleOpenReassignModal(activeModalRequest)}
@@ -1340,47 +1285,49 @@ const MyRequests = () => {
                       </div>
                     )}
 
-                    <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3 border-t border-slate-200/80">
-                      <div className="w-full sm:w-60">
-                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                          Change Status
-                        </label>
-                        <div className="relative">
-                          <select
-                            value={selectedClosureStatus}
-                            onChange={(e) => setSelectedClosureStatus(e.target.value)}
-                            className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer shadow-2xs appearance-none pr-8"
-                          >
-                            <option value="Closed">Close</option>
-                            <option value="Open">Open</option>
-                          </select>
-                          <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                    {canEdit && (
+                      <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3 border-t border-slate-200/80">
+                        <div className="w-full sm:w-60">
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Change Status
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={selectedClosureStatus}
+                              onChange={(e) => setSelectedClosureStatus(e.target.value)}
+                              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer shadow-2xs appearance-none pr-8"
+                            >
+                              <option value="Closed">Close</option>
+                              <option value="Open">Open</option>
+                            </select>
+                            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                          </div>
                         </div>
-                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateClosureStatus(selectedClosureStatus)}
-                        disabled={actionLoading}
-                        className={`px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 ${
-                          selectedClosureStatus === 'Open'
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'
-                            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
-                        }`}
-                        title="Update status"
-                      >
-                        {actionLoading ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : selectedClosureStatus === 'Open' ? (
-                          <RotateCcw className="w-3.5 h-3.5" />
-                        ) : (
-                          <CheckCheck className="w-3.5 h-3.5" />
-                        )}
-                        <span>{selectedClosureStatus === 'Open' ? 'Reopen Request' : 'Save Status'}</span>
-                      </button>
-                    </div>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateClosureStatus(selectedClosureStatus)}
+                          disabled={actionLoading}
+                          className={`px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 ${
+                            selectedClosureStatus === 'Open'
+                              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                          }`}
+                          title="Update status"
+                        >
+                          {actionLoading ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : selectedClosureStatus === 'Open' ? (
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          ) : (
+                            <CheckCheck className="w-3.5 h-3.5" />
+                          )}
+                          <span>{selectedClosureStatus === 'Open' ? 'Reopen Request' : 'Save Status'}</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
-                ) : (
+                ) : canEdit ? (
                   /* Form for adding remark and selecting Open / Close */
                   <div className="space-y-3">
                     <p className="text-[11px] text-slate-600 leading-relaxed">
@@ -1438,6 +1385,21 @@ const MyRequests = () => {
                         <span>{selectedClosureStatus === 'Closed' ? 'Save as Closed' : 'Save as Open'}</span>
                       </button>
                     </div>
+                  </div>
+                ) : (
+                  /* Read-only note for user roles */
+                  <div className="space-y-3">
+                    {activeModalRequest.creator_remark ? (
+                      <div className="p-3 bg-white rounded-xl border border-slate-200">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Auditor Remark</span>
+                        <p className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">{activeModalRequest.creator_remark}</p>
+                      </div>
+                    ) : (
+                      <div className="p-3.5 bg-slate-100/80 rounded-xl border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span>Awaiting auditor verification and final sign-off from Incoming Quality.</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
