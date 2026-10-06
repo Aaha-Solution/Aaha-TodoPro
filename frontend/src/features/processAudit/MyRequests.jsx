@@ -335,6 +335,12 @@ const MyRequests = () => {
         dotColor: 'bg-emerald-600',
       };
     }
+    if (s.includes('progress')) {
+      return {
+        statusColor: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
+        dotColor: 'bg-indigo-500',
+      };
+    }
     if (s.includes('approved') && !s.includes('partially') && !s.includes('pending')) {
       return {
         statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
@@ -498,7 +504,8 @@ const MyRequests = () => {
       (selectedStatus === 'Closed' && s.includes('close')) ||
       (selectedStatus === 'Open' && (s === 'open' || s.includes('open') || s.includes('reopen'))) ||
       (selectedStatus === 'Approved' && s.includes('approved') && !s.includes('partially') && !s.includes('pending')) ||
-      (selectedStatus === 'Pending Execution' && (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject')))) ||
+      (selectedStatus === 'Pending Execution' && (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject') && !s.includes('progress')))) ||
+      (selectedStatus === 'In Progress' && s.includes('progress')) ||
       (selectedStatus === 'Rejected' && s.includes('reject')) ||
       s === selectedStatus.toLowerCase();
 
@@ -784,9 +791,8 @@ const MyRequests = () => {
             >
               <option value="All Statuses">All Statuses</option>
               <option value="Pending Execution">Pending Execution</option>
-            
+              <option value="In Progress">In Progress</option>
               <option value="Closed">Closed</option>
-             
             </select>
           </div>
         </div>

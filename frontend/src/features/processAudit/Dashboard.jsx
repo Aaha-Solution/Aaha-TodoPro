@@ -5,6 +5,7 @@ import {
   Plus,
   BarChart3,
   Hourglass,
+  Clock,
   CheckCircle2,
   X,
   Eye,
@@ -98,6 +99,12 @@ const ProcessAuditDashboard = () => {
         dotColor: 'bg-teal-500',
       };
     }
+    if (s.includes('progress')) {
+      return {
+        statusColor: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
+        dotColor: 'bg-indigo-500',
+      };
+    }
     if (s.includes('approved') && !s.includes('partially') && !s.includes('pending')) {
       return {
         statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
@@ -186,8 +193,11 @@ const ProcessAuditDashboard = () => {
   const total = metrics.totalRequests !== undefined ? metrics.totalRequests : requests.length;
   const pendingExec = metrics.pendingExecution !== undefined ? metrics.pendingExecution : requests.filter(r => {
     const s = (r.status || '').toLowerCase();
-    return s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject'));
+    return (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject'))) && !s.includes('progress');
   }).length;
+  const inProgress = metrics.inProgress !== undefined
+    ? metrics.inProgress
+    : requests.filter(r => (r.status || '').toLowerCase().includes('progress')).length;
   const closed = metrics.closed !== undefined ? metrics.closed : requests.filter(r => (r.status || '').toLowerCase().includes('close')).length;
 
   const kpis = [
@@ -202,6 +212,12 @@ const ProcessAuditDashboard = () => {
       value: String(pendingExec),
       icon: Hourglass,
       iconBg: 'bg-amber-50 text-amber-600',
+    },
+    {
+      title: 'In Progress',
+      value: String(inProgress),
+      icon: Clock,
+      iconBg: 'bg-indigo-50 text-indigo-600',
     },
     {
       title: 'Closed',
@@ -337,7 +353,7 @@ const ProcessAuditDashboard = () => {
       </div>
 
       {/* Top Metric Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
