@@ -46,9 +46,18 @@ export const ihlrService = {
       if (deptFilter && deptFilter !== 'ALL') {
         scopedStore = scopedStore.filter(r => (r.resp || '').trim().toUpperCase() === deptFilter);
       }
-      // Apply date filter
-      const startDate = (filters.startDate || filters.start_date || '').trim();
-      const endDate = (filters.endDate || filters.end_date || '').trim();
+      // Apply date filter (defaults to current year)
+      const currentYear = new Date().getFullYear();
+      const isAllTime = filters.allTime === true || filters.all_time === true;
+      let startDate = (filters.startDate || filters.start_date || '').trim();
+      let endDate = (filters.endDate || filters.end_date || '').trim();
+
+      if (!isAllTime && !startDate && !endDate) {
+        const year = filters.year || currentYear;
+        startDate = `${year}-01-01`;
+        endDate = `${year}-12-31`;
+      }
+
       if (startDate || endDate) {
         scopedStore = scopedStore.filter(r => {
           const dStr = (r.batch_date || r.created_at || '').split('T')[0];

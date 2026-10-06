@@ -79,9 +79,19 @@ export const getDashboardStats = async (req, res) => {
       requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === targetDept);
     }
 
-    // 2. Date filter (by incident batch_date or created_at)
-    const startDate = (req.query.startDate || req.query.start_date || req.query.from_date || '').trim();
-    const endDate = (req.query.endDate || req.query.end_date || req.query.to_date || '').trim();
+    // 2. Date filter (by incident batch_date or created_at - defaults to current year)
+    const currentYear = new Date().getFullYear();
+    const isAllTime = req.query.allTime === 'true' || req.query.all_time === 'true';
+
+    let startDate = (req.query.startDate || req.query.start_date || req.query.from_date || '').trim();
+    let endDate = (req.query.endDate || req.query.end_date || req.query.to_date || '').trim();
+
+    // By default for dashboard, fetch current year data unless allTime or custom range is given
+    if (!isAllTime && !startDate && !endDate) {
+      const year = req.query.year || currentYear;
+      startDate = `${year}-01-01`;
+      endDate = `${year}-12-31`;
+    }
 
     if (startDate || endDate) {
       requests = requests.filter(r => {
@@ -120,7 +130,14 @@ export const getDashboardStats = async (req, res) => {
       inProgress,
       closed,
       fourMBreakdown,
-      recentRequests: sortedRequests.slice(0, 5)
+      recentRequests: sortedRequests.slice(0, 5),
+      currentYear,
+      filter: {
+        startDate,
+        endDate,
+        year: req.query.year || currentYear,
+        isDefaultYear: !isAllTime && startDate === `${currentYear}-01-01` && endDate === `${currentYear}-12-31`
+      }
     }, 'IHLR dashboard metrics retrieved successfully');
   } catch (error) {
     return errorResponse(res, error.message, 500);
