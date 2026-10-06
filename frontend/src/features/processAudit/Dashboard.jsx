@@ -192,13 +192,13 @@ const ProcessAuditDashboard = () => {
 
   const kpis = [
     {
-      title: 'Total Requests',
+      title: 'Total Issues',
       value: String(total),
       icon: BarChart3,
       iconBg: 'bg-blue-50 text-blue-600',
     },
     {
-      title: 'Pending Execution',
+      title: 'Pending',
       value: String(pendingExec),
       icon: Hourglass,
       iconBg: 'bg-amber-50 text-amber-600',
@@ -330,7 +330,7 @@ const ProcessAuditDashboard = () => {
               className="px-5 py-2.5 bg-[#2563eb] hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 transition cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Create Production Request</span>
+              <span>Create Issue</span>
             </button>
           )}
         </div>
@@ -395,15 +395,15 @@ const ProcessAuditDashboard = () => {
           ) : recentRequests.length === 0 ? (
             <div className="py-16 text-center text-slate-400 text-xs">
               <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-              <p className="font-semibold text-slate-600 mb-1">No production requests recorded yet</p>
+              <p className="font-semibold text-slate-600 mb-1">No Issues recorded yet</p>
               {canCreate && (
                 <>
-                  <p className="text-slate-400 mb-4">Click below to create your first production audit request.</p>
+                  <p className="text-slate-400 mb-4">Click below to create your first production audit Issues.</p>
                   <button
                     onClick={() => navigate('/process-audit/create-request')}
                     className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition"
                   >
-                    Create First Request
+                    Create First Issue
                   </button>
                 </>
               )}
