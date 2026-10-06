@@ -5,7 +5,6 @@ import {
   Plus,
   BarChart3,
   Hourglass,
-  Check,
   CheckCircle2,
   X,
   Eye,
@@ -189,57 +188,24 @@ const ProcessAuditDashboard = () => {
     const s = (r.status || '').toLowerCase();
     return s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject'));
   }).length;
-  const openCount = metrics.open !== undefined ? metrics.open : requests.filter(r => {
-    const s = (r.status || '').toLowerCase();
-    return s === 'open' || s.includes('open') || s.includes('reopen');
-  }).length;
-  const approved = metrics.approved !== undefined ? metrics.approved : requests.filter(r => {
-    const s = (r.status || '').toLowerCase();
-    return s.includes('approved') && !s.includes('partially') && !s.includes('pending');
-  }).length;
-  const rejected = metrics.rejected !== undefined ? metrics.rejected : requests.filter(r => (r.status || '').toLowerCase().includes('reject')).length;
   const closed = metrics.closed !== undefined ? metrics.closed : requests.filter(r => (r.status || '').toLowerCase().includes('close')).length;
 
   const kpis = [
     {
       title: 'Total Requests',
       value: String(total),
-
       icon: BarChart3,
       iconBg: 'bg-blue-50 text-blue-600',
     },
     {
       title: 'Pending Execution',
       value: String(pendingExec),
-
       icon: Hourglass,
       iconBg: 'bg-amber-50 text-amber-600',
-    },
-
-    {
-      title: 'Approved',
-      value: String(approved),
-      icon: Check,
-      iconBg: 'bg-emerald-50 text-emerald-600',
-    },
-    {
-      title: 'Rejected',
-      value: String(rejected),
-
-      icon: X,
-      iconBg: 'bg-rose-50 text-rose-600',
-    },
-    {
-      title: 'Open',
-      value: String(openCount),
-
-      icon: AlertCircle,
-      iconBg: 'bg-sky-50 text-sky-600',
     },
     {
       title: 'Closed',
       value: String(closed),
-
       icon: CheckCircle2,
       iconBg: 'bg-teal-50 text-teal-600',
     },
@@ -370,8 +336,8 @@ const ProcessAuditDashboard = () => {
         </div>
       </div>
 
-      {/* 6 Top Metric Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+      {/* Top Metric Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (

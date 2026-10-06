@@ -784,10 +784,9 @@ const MyRequests = () => {
             >
               <option value="All Statuses">All Statuses</option>
               <option value="Pending Execution">Pending Execution</option>
-              <option value="Approved">Approved</option>
+            
               <option value="Closed">Closed</option>
-              <option value="Open">Open</option>
-              <option value="Rejected">Rejected</option>
+             
             </select>
           </div>
         </div>
