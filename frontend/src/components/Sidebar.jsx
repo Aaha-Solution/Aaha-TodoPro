@@ -31,6 +31,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   const isIhlr = location.pathname.startsWith('/ihlr');
   const isIncomingQuality = userDept === 'INCOMING QUALITY';
   const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
+  const canCreate = isIncomingQuality || isAdmin;
 
   const handleLogout = () => {
     logout();
@@ -40,8 +41,8 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   const navItems = isIhlr
     ? [
         { name: 'Dashboard', path: '/ihlr/dashboard', icon: LayoutDashboard },
-        ...(isAdmin ? [{ name: 'Create Request', path: '/ihlr/create-request', icon: Plus, isAction: true }] : []),
-        { name: isAdmin ? 'All Requests' : 'My Requests', path: '/ihlr/my-requests', icon: Layers },
+        ...(canCreate ? [{ name: 'Create Request', path: '/ihlr/create-request', icon: Plus, isAction: true }] : []),
+        { name: 'All Requests', path: '/ihlr/my-requests', icon: Layers },
         { name: isAdmin ? 'All Approvals' : 'Approvals', path: '/ihlr/approvals', icon: ClipboardCheck },
         ...(isAdmin ? [{ name: 'User Management', path: '/ihlr/users', icon: Users }] : []),
         { name: 'Notifications', path: '/ihlr/notifications', icon: Bell },

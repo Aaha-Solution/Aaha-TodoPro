@@ -37,18 +37,10 @@ export const ihlrService = {
       } : {};
       const res = await api.get('/ihlr/dashboard', { params: { ...userParams, ...filters } });
       const stats = res.data?.data || res.data;
-      if (currentUser && currentUser.role?.toUpperCase() !== 'ADMIN' && currentUser.department?.toUpperCase() !== 'INCOMING QUALITY') {
-        if (Array.isArray(stats?.recentRequests)) {
-          stats.recentRequests = stats.recentRequests.filter(r => isIhlrRequestVisibleToUser(r, currentUser));
-        }
-      }
       return stats;
     } catch {
       let scopedStore = [...localIhlrStore];
       const currentUser = storage.getUser();
-      if (currentUser && currentUser.role?.toUpperCase() !== 'ADMIN' && currentUser.department?.toUpperCase() !== 'INCOMING QUALITY') {
-        scopedStore = scopedStore.filter(r => isIhlrRequestVisibleToUser(r, currentUser));
-      }
       // Apply department filter
       const deptFilter = (filters.resp || filters.filter_dept || '').trim().toUpperCase();
       if (deptFilter && deptFilter !== 'ALL') {
@@ -105,16 +97,9 @@ export const ihlrService = {
       } : {};
       const res = await api.get('/ihlr/requests', { params: { ...userParams, ...filters } });
       const data = res.data?.data || res.data || [];
-      if (currentUser && currentUser.role?.toUpperCase() !== 'ADMIN' && currentUser.department?.toUpperCase() !== 'INCOMING QUALITY') {
-        return data.filter(r => isIhlrRequestVisibleToUser(r, currentUser));
-      }
       return data;
     } catch {
       let data = [...localIhlrStore];
-      const currentUser = storage.getUser();
-      if (currentUser && currentUser.role?.toUpperCase() !== 'ADMIN' && currentUser.department?.toUpperCase() !== 'INCOMING QUALITY') {
-        data = data.filter(r => isIhlrRequestVisibleToUser(r, currentUser));
-      }
       if (filters.search) {
         const q = filters.search.toLowerCase();
         data = data.filter(r => 
