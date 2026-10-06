@@ -189,19 +189,11 @@ const IhlrDashboard = () => {
           </div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              {isAdmin ? 'IHLR Analysis Dashboard' : 'My IHLR Dashboard'}
+              IHLR Analysis Dashboard
             </h1>
-            {!isAdmin && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                Assigned to: <strong>{user?.name || user?.email}</strong>
-              </span>
-            )}
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {isAdmin
-              ? 'In-House Line Rejection monitoring, 4M root-cause Why-Why tracking, and corrective action containment.'
-              : `Overview of IHLR issues assigned to you (${user?.name || user?.email}).`}
+            In-House Line Rejection monitoring, 4M root-cause Why-Why tracking, and corrective action containment.
           </p>
         </div>
 
@@ -486,16 +478,14 @@ const IhlrDashboard = () => {
                     <p className="font-semibold text-slate-600">
                       {hasActiveFilters
                         ? 'No IHLR Issues match the selected filter criteria'
-                        : isAdmin
-                        ? 'No IHLR Reports recorded yet'
-                        : 'No IHLR Reports assigned to you recorded yet'}
+                        : 'No IHLR Reports recorded yet'}
                     </p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
                       {hasActiveFilters
                         ? 'Try adjusting or clearing the department or date filter criteria.'
-                        : isAdmin
+                        : canCreate
                         ? 'Click "Create IHLR Issue" to file your first rejection report.'
-                        : `When an IHLR report is assigned to ${user?.name || 'you'}, it will appear here.`}
+                        : 'Rejection reports will appear here once recorded.'}
                     </p>
                     {hasActiveFilters && (
                       <button

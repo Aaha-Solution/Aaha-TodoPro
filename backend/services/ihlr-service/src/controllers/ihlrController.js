@@ -69,33 +69,9 @@ export const getDashboardStats = async (req, res) => {
     let requests = await IhlrRequest.getAll();
     if (!requests) requests = fallbackRequests;
 
-    // Filter requests for non-admin users so they only see their assigned stats
     const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
     const userDept = (req.query.user_department || req.user?.department || (req.query.filter_dept || req.query.resp ? '' : req.query.department) || '').trim().toUpperCase();
     const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
-
-    const userName = (req.query.user_name || req.query.userName || req.user?.name || '').trim().toLowerCase();
-    const userEmail = (req.query.user_email || req.query.userEmail || req.user?.email || '').trim().toLowerCase();
-    const userId = req.query.user_id || req.query.userId || req.user?.id;
-
-    if (!isAdmin && (userName || userEmail || userId)) {
-      const clean = (val) => (val || '').trim().toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s+/i, '');
-      requests = requests.filter(r => {
-        const rPerson = clean(r.resp_person);
-        const rPersonEmail = clean(r.resp_person_email);
-        const rCreatedBy = clean(r.created_by);
-        const rCreatedEmail = clean(r.created_by_email);
-        const rCreatedId = String(r.created_by_id || '');
-
-        const isAssigned = (userName && rPerson && (rPerson === clean(userName) || clean(userName) === rPerson)) ||
-                           (userEmail && rPersonEmail && rPersonEmail === clean(userEmail));
-        const isCreator = (userId && rCreatedId && rCreatedId === String(userId)) ||
-                          (userName && rCreatedBy && (rCreatedBy === clean(userName) || clean(userName) === rCreatedBy)) ||
-                          (userEmail && rCreatedEmail && rCreatedEmail === clean(userEmail));
-
-        return isAssigned || isCreator;
-      });
-    }
 
     // 1. Department-wise filter (by responsible department: resp / filter_dept)
     const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
@@ -156,33 +132,7 @@ export const getIhlrRequests = async (req, res) => {
     let requests = await IhlrRequest.getAll();
     if (!requests) requests = fallbackRequests;
 
-    // Filter requests for non-admin users so they only see requests where they are the selected person (resp_person) or creator
-    const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
-    const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
 
-    const userName = (req.query.user_name || req.query.userName || req.user?.name || '').trim().toLowerCase();
-    const userEmail = (req.query.user_email || req.query.userEmail || req.user?.email || '').trim().toLowerCase();
-    const userId = req.query.user_id || req.query.userId || req.user?.id;
-
-    if (!isAdmin && (userName || userEmail || userId)) {
-      const clean = (val) => (val || '').trim().toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s+/i, '');
-      requests = requests.filter(r => {
-        const rPerson = clean(r.resp_person);
-        const rPersonEmail = clean(r.resp_person_email);
-        const rCreatedBy = clean(r.created_by);
-        const rCreatedEmail = clean(r.created_by_email);
-        const rCreatedId = String(r.created_by_id || '');
-
-        const isAssigned = (userName && rPerson && (rPerson === clean(userName) || clean(userName) === rPerson)) ||
-                           (userEmail && rPersonEmail && rPersonEmail === clean(userEmail));
-        const isCreator = (userId && rCreatedId && rCreatedId === String(userId)) ||
-                          (userName && rCreatedBy && (rCreatedBy === clean(userName) || clean(userName) === rCreatedBy)) ||
-                          (userEmail && rCreatedEmail && rCreatedEmail === clean(userEmail));
-
-        return isAssigned || isCreator;
-      });
-    }
 
     const { search, shift, fourM, status } = req.query;
 
