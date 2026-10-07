@@ -201,20 +201,17 @@ const IhlrDashboard = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               IHLR Analysis Dashboard
             </h1>
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-extrabold bg-blue-50 text-blue-700 border border-blue-200/90 shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-              <Calendar className="w-3.5 h-3.5 text-blue-600" />
-              <span>
-                {isDefaultYear
-                  ? `Data on Current Year (${currentYear})`
-                  : startDate && endDate
-                  ? `Data: ${formatDateDDMMYYYY(startDate)} - ${formatDateDDMMYYYY(endDate)}`
-                  : 'Data: All Time'}
+            {!isAdmin && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                Assigned to: <strong>{user?.name || user?.email}</strong>
               </span>
-            </span>
+            )}
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Showing in-house line rejection <strong>Data on Current Year ({currentYear})</strong> · 4M root-cause Why-Why tracking & corrective action containment.
+            {isAdmin
+              ? 'In-House Line Rejection monitoring, 4M root-cause Why-Why tracking, and corrective action containment.'
+              : `Overview of IHLR issues assigned to you (${user?.name || user?.email}).`}
           </p>
         </div>
 
