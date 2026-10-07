@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, LogOut, Shield, ChevronDown, Check } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useModal } from '../context/ModalContext';
 import { useNavigate } from 'react-router-dom';
 
 const ProfileMenu = () => {
   const [open, setOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { confirm } = useModal();
   const navigate = useNavigate();
   const menuRef = useRef(null);
 
@@ -19,9 +21,21 @@ const ProfileMenu = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    setOpen(false);
+    const isConfirmed = await confirm({
+      title: 'Confirm Logout',
+      message: 'Are you sure you want to log out of your session?',
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      isDestructive: true,
+      type: 'warning',
+    });
+
+    if (isConfirmed) {
+      logout();
+      navigate('/login');
+    }
   };
 
   const displayName = user?.name || 'iyyu';
