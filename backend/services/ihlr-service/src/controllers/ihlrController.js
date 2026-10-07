@@ -266,31 +266,49 @@ export const createIhlrRequest = async (req, res) => {
       };
     }
 
-    // 2. Resolve Assigned Person (Selected Person in field) details from DB
-    let assignedUser = null;
-    if (data.resp_person && pool) {
-      const [aRows] = await pool.query(
-        'SELECT id, name, email, department, role FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
-        [String(data.resp_person), String(data.resp_person)]
-      ).catch(() => [[]]);
-      if (aRows && aRows.length > 0) {
-        assignedUser = aRows[0];
+    // 2. Resolve Assigned Person(s) (Selected Person(s) in field) details from DB
+    const assignedNames = String(data.resp_person || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    let assignedUsersList = [];
+    if (assignedNames.length > 0 && pool) {
+      for (const name of assignedNames) {
+        const [aRows] = await pool.query(
+          'SELECT id, name, email, department, role FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
+          [name, name]
+        ).catch(() => [[]]);
+        if (aRows && aRows.length > 0) {
+          assignedUsersList.push(aRows[0]);
+        } else {
+          assignedUsersList.push({
+            id: null,
+            name: name,
+            email: `${name.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
+            department: data.resp || 'PRODUCTION'
+          });
+        }
       }
     }
-    if (!assignedUser) {
-      assignedUser = {
+
+    if (assignedUsersList.length === 0) {
+      assignedUsersList = [{
         id: null,
         name: data.resp_person || 'Assigned Officer',
         email: data.resp_person_email || `${String(data.resp_person || 'user').toLowerCase().replace(/\s+/g, '')}@gmail.com`,
         department: data.resp || 'PRODUCTION'
-      };
+      }];
     }
+
+    const assignedUser = assignedUsersList[0];
+    const combinedAssignedEmails = assignedUsersList.map((u) => u.email).filter(Boolean).join(', ');
 
     // Enrich payload with resolved creator & assigned emails
     data.created_by = creatorUser.name;
     data.created_by_id = creatorUser.id;
     data.created_by_email = creatorUser.email;
-    data.resp_person_email = assignedUser.email;
+    data.resp_person_email = combinedAssignedEmails || assignedUser.email;
 
     let created = await IhlrRequest.create(data);
     if (!created) {
@@ -332,7 +350,7 @@ export const createIhlrRequest = async (req, res) => {
         created_by: creatorUser.name,
         created_by_id: creatorUser.id,
         created_by_email: creatorUser.email,
-        resp_person_email: assignedUser.email,
+        resp_person_email: combinedAssignedEmails || assignedUser.email,
         created_at: new Date().toISOString()
       };
       fallbackRequests.unshift(created);
@@ -340,9 +358,11 @@ export const createIhlrRequest = async (req, res) => {
 
     const reqNo = created.req_no || `IHLR-${created.id || '1'}`;
 
-    // 3. Insert In-App Notifications for BOTH Raised Person & Selected Person
+    // 3. Insert In-App Notifications for Raised Person & All Selected Persons
     if (pool && created) {
       try {
+        const assignedNamesDisplay = assignedUsersList.map((u) => u.name).join(', ') || assignedUser.name;
+
         // Notification A: For Raised Person (Confirmation)
         await pool.query(
           `INSERT INTO ihlr_notifications 
@@ -355,37 +375,41 @@ export const createIhlrRequest = async (req, res) => {
             created.id,
             reqNo,
             `IHLR Defect Report Logged: #${reqNo}`,
-            `Your IHLR defect observation report for "${created.model}" has been logged and assigned to ${assignedUser.name} (${created.resp || 'Production'}).`
+            `Your IHLR defect observation report for "${created.model}" has been logged and assigned to ${assignedNamesDisplay} (${created.resp || 'Production'}).`
           ]
         );
 
-        // Notification B: For Selected Person in the field (Action Required)
-        await pool.query(
-          `INSERT INTO ihlr_notifications 
-           (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-           VALUES (?, ?, ?, ?, ?, 'assignment_required', ?, ?, '/ihlr/approvals', 0)`,
-          [
-            assignedUser.id,
-            assignedUser.name,
-            assignedUser.email,
-            created.id,
-            reqNo,
-            `Action Required: IHLR Report #${reqNo} Assigned`,
-            `Defect report #${reqNo} (${created.model} - "${created.problem}") has been assigned to you by ${creatorUser.name}. Please inspect and submit 5-Why root cause countermeasure.`
-          ]
-        );
+        // Notification B: For Each Selected Person in the field (Action Required)
+        for (const userItem of assignedUsersList) {
+          await pool.query(
+            `INSERT INTO ihlr_notifications 
+             (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+             VALUES (?, ?, ?, ?, ?, 'assignment_required', ?, ?, '/ihlr/approvals', 0)`,
+            [
+              userItem.id,
+              userItem.name,
+              userItem.email,
+              created.id,
+              reqNo,
+              `Action Required: IHLR Report #${reqNo} Assigned`,
+              `Defect report #${reqNo} (${created.model} - "${created.problem}") has been assigned to you by ${creatorUser.name}. Please inspect and submit 5-Why root cause countermeasure.`
+            ]
+          );
+        }
       } catch (notifErr) {
-        console.warn('[IHLR Notifications] Error inserting dual in-app notifications:', notifErr.message);
+        console.warn('[IHLR Notifications] Error inserting multi-user in-app notifications:', notifErr.message);
       }
     }
 
-    // 4. Trigger Dual Emails (to Raised Person AND Selected Person)
+    // 4. Trigger Emails to Raised Person AND All Selected Persons
     try {
-      sendIhlrRequestEmails({
-        request: created,
-        creatorUser,
-        assignedUser
-      }).catch(mailErr => console.warn('[IHLR Mailer] Non-blocking email dispatch warning:', mailErr.message));
+      for (const userItem of assignedUsersList) {
+        sendIhlrRequestEmails({
+          request: created,
+          creatorUser,
+          assignedUser: userItem
+        }).catch(mailErr => console.warn('[IHLR Mailer] Non-blocking email dispatch warning:', mailErr.message));
+      }
     } catch (mailSyncErr) {
       console.warn('[IHLR Mailer] Sync email dispatch warning:', mailSyncErr.message);
     }
@@ -436,11 +460,13 @@ export const updateIhlrRequest = async (req, res) => {
 
     // Closer & Requester permission checks
     const respPerson = clean(existing.resp_person);
+    const respPersonList = respPerson.split(',').map((s) => clean(s)).filter(Boolean);
     const respEmail = clean(existing.resp_person_email);
+    const respEmailList = respEmail.split(',').map((s) => clean(s)).filter(Boolean);
     const respDept = clean(existing.resp);
     const isCloser = Boolean(
-      (respPerson && (userName === respPerson || userName.includes(respPerson) || respPerson.includes(userName))) ||
-      (respEmail && userEmail && userEmail === respEmail) ||
+      (respPerson && (userName === respPerson || respPersonList.includes(userName) || respPersonList.some((p) => p.includes(userName) || userName.includes(p)))) ||
+      (respEmail && userEmail && (userEmail === respEmail || respEmailList.includes(userEmail) || respEmail.includes(userEmail))) ||
       (respDept && userDept && clean(userDept) === respDept)
     );
 
@@ -495,12 +521,19 @@ export const updateIhlrRequest = async (req, res) => {
 
     // Auto-resolve new assigned closer email from users table if reassigned
     if (safeUpdates.resp_person && pool && !safeUpdates.resp_person_email) {
-      const [uRows] = await pool.query(
-        'SELECT email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1',
-        [String(safeUpdates.resp_person)]
-      ).catch(() => [[]]);
-      if (uRows && uRows.length > 0 && uRows[0].email) {
-        safeUpdates.resp_person_email = uRows[0].email;
+      const names = String(safeUpdates.resp_person).split(',').map((s) => s.trim()).filter(Boolean);
+      let emails = [];
+      for (const n of names) {
+        const [uRows] = await pool.query(
+          'SELECT email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1',
+          [n]
+        ).catch(() => [[]]);
+        if (uRows && uRows.length > 0 && uRows[0].email) {
+          emails.push(uRows[0].email);
+        }
+      }
+      if (emails.length > 0) {
+        safeUpdates.resp_person_email = emails.join(', ');
       }
     }
 
@@ -672,49 +705,54 @@ export const updateIhlrRequest = async (req, res) => {
           console.warn('[IHLR Mailer] Sync closer email dispatch warning:', mailSyncErr.message);
         }
 
-        // 3. If Reassigned, send distinct notification and email to newly assigned closer
+        // 3. If Reassigned, send distinct notification and email to newly assigned closer(s)
         if (isReassigned && updated.resp_person) {
-          let newCloserId = null;
-          let newCloserEmail = updated.resp_person_email || '';
-          if (pool) {
-            const [nuRows] = await pool.query(
-              'SELECT id, email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1',
-              [String(updated.resp_person)]
-            ).catch(() => [[]]);
-            if (nuRows && nuRows.length > 0) {
-              newCloserId = nuRows[0].id;
-              newCloserEmail = newCloserEmail || nuRows[0].email;
+          const newNames = String(updated.resp_person).split(',').map((s) => s.trim()).filter(Boolean);
+          for (const nameItem of newNames) {
+            let itemCloserId = null;
+            let itemCloserEmail = '';
+            if (pool) {
+              const [nuRows] = await pool.query(
+                'SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
+                [nameItem, nameItem]
+              ).catch(() => [[]]);
+              if (nuRows && nuRows.length > 0) {
+                itemCloserId = nuRows[0].id;
+                itemCloserEmail = nuRows[0].email;
+              } else {
+                itemCloserEmail = `${nameItem.toLowerCase().replace(/\s+/g, '')}@gmail.com`;
+              }
+
+              await pool.query(
+                `INSERT INTO ihlr_notifications 
+                 (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+                 VALUES (?, ?, ?, ?, ?, 'assigned_to_ihlr', ?, ?, '/ihlr/approvals', 0)`,
+                [
+                  itemCloserId,
+                  nameItem,
+                  itemCloserEmail,
+                  updated.id || id,
+                  reqNo,
+                  `IHLR Defect Report Assigned: #${reqNo}`,
+                  `You have been assigned to IHLR defect report #${reqNo} (${updated.model || 'Model'}) for ${updated.resp || 'Department'}. Please submit 5-Why root cause analysis and corrective countermeasures.`
+                ]
+              ).catch((e) => console.warn('[Reassign Notif Error]:', e.message));
             }
 
-            await pool.query(
-              `INSERT INTO ihlr_notifications 
-               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-               VALUES (?, ?, ?, ?, ?, 'assigned_to_ihlr', ?, ?, '/ihlr/approvals', 0)`,
-              [
-                newCloserId,
-                updated.resp_person,
-                newCloserEmail,
-                updated.id || id,
-                reqNo,
-                `IHLR Defect Report Assigned: #${reqNo}`,
-                `You have been assigned to IHLR defect report #${reqNo} (${updated.model || 'Model'}) for ${updated.resp || 'Department'}. Please submit 5-Why root cause analysis and corrective countermeasures.`
-              ]
-            ).catch((e) => console.warn('[Reassign Notif Error]:', e.message));
-          }
-
-          if (newCloserEmail) {
-            try {
-              sendEmail({
-                to: newCloserEmail,
-                recipientName: updated.resp_person,
-                recipientRole: 'ASSIGNED_CLOSER',
-                subject: `[IHLR Action Required] Defect Report Assigned to You: #${reqNo}`,
-                text: `Dear ${updated.resp_person},\n\nIHLR incident #${reqNo} (${updated.model || 'Model'}) has been assigned to you (${updated.resp}).\n\nPlease review and submit 5-Why root cause analysis and containment actions at: http://localhost:5173/ihlr/approvals\n\nThank you,\nQuality Portal`,
-                referenceNo: reqNo,
-                moduleType: 'IHLR'
-              }).catch((err) => console.warn('[Reassign Mail Warning]:', err.message));
-            } catch (mErr) {
-              console.warn('[Reassign Mail Sync Warning]:', mErr.message);
+            if (itemCloserEmail) {
+              try {
+                sendEmail({
+                  to: itemCloserEmail,
+                  recipientName: nameItem,
+                  recipientRole: 'ASSIGNED_CLOSER',
+                  subject: `[IHLR Action Required] Defect Report Assigned to You: #${reqNo}`,
+                  text: `Dear ${nameItem},\n\nIHLR incident #${reqNo} (${updated.model || 'Model'}) has been assigned to you (${updated.resp}).\n\nPlease review and submit 5-Why root cause analysis and containment actions at: http://localhost:5173/ihlr/approvals\n\nThank you,\nQuality Portal`,
+                  referenceNo: reqNo,
+                  moduleType: 'IHLR'
+                }).catch((err) => console.warn('[Reassign Mail Warning]:', err.message));
+              } catch (mErr) {
+                console.warn('[Reassign Mail Sync Warning]:', mErr.message);
+              }
             }
           }
         }

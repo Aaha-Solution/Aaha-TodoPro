@@ -33,10 +33,11 @@ export const isIhlrRequestVisibleToUser = (request, user) => {
   const rCreatedEmail = clean(request.created_by_email);
   const rCreatedId = String(request.created_by_id || '');
 
-  // Check if current user is the chosen responsible person
+  // Check if current user is among the chosen responsible persons
+  const personList = rPerson.split(',').map((s) => clean(s)).filter(Boolean);
   const isSelectedPerson = Boolean(
-    (uName && rPerson && (rPerson === uName || uName === rPerson)) ||
-    (uEmail && rPersonEmail && rPersonEmail === uEmail)
+    (uName && rPerson && (rPerson === uName || personList.includes(uName) || personList.some((p) => p.includes(uName) || uName.includes(p)))) ||
+    (uEmail && rPersonEmail && (rPersonEmail === uEmail || rPersonEmail.includes(uEmail)))
   );
 
   // Check if current user was the creator

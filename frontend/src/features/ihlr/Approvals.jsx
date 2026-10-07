@@ -61,11 +61,12 @@ const IhlrApprovals = () => {
   const uId = String(user?.id || '');
 
   const rRespPerson = cleanStr(selectedRequest?.resp_person);
+  const rRespPersonList = rRespPerson.split(',').map((s) => cleanStr(s)).filter(Boolean);
   const rRespEmail = cleanStr(selectedRequest?.resp_person_email);
   const rRespDept = cleanStr(selectedRequest?.resp);
   const isCloser = Boolean(
-    (rRespPerson && (uName === rRespPerson || uName.includes(rRespPerson) || rRespPerson.includes(uName))) ||
-    (rRespEmail && uEmail && uEmail === rRespEmail) ||
+    (rRespPerson && (uName === rRespPerson || rRespPersonList.includes(uName) || rRespPersonList.some((p) => p.includes(uName) || uName.includes(p)))) ||
+    (rRespEmail && uEmail && (uEmail === rRespEmail || rRespEmail.includes(uEmail))) ||
     (rRespDept && uDept && uDept === rRespDept)
   );
 
@@ -320,9 +321,13 @@ const IhlrApprovals = () => {
           }
           if (reassignedPerson && reassignedPerson !== selectedRequest.resp_person) {
             payload.resp_person = reassignedPerson;
-            const matched = dbUsers.find((u) => u.name === reassignedPerson);
-            if (matched && matched.email) {
-              payload.resp_person_email = matched.email;
+            const names = reassignedPerson.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+            const matchedEmails = dbUsers
+              .filter((u) => names.includes((u.name || '').trim().toLowerCase()))
+              .map((u) => u.email)
+              .filter(Boolean);
+            if (matchedEmails.length > 0) {
+              payload.resp_person_email = matchedEmails.join(', ');
             }
           }
         }

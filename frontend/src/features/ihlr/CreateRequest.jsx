@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -15,7 +15,11 @@ import {
   Presentation,
   Eye,
   Download,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Check,
+  ChevronDown,
+  Search,
+  Users
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
 import { useAuth } from '../../hooks/useAuth';
@@ -205,6 +209,55 @@ const IhlrCreateRequest = () => {
     });
   };
 
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const userDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target)) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getSelectedUsers = () => {
+    if (!formData.resp_person) return [];
+    return formData.resp_person
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  };
+
+  const handleToggleUser = (userName) => {
+    const current = getSelectedUsers();
+    let updated;
+    if (current.includes(userName)) {
+      updated = current.filter((u) => u !== userName);
+    } else {
+      updated = [...current, userName];
+    }
+    setFormData({ ...formData, resp_person: updated.join(', ') });
+  };
+
+  const handleRemoveUser = (userName, e) => {
+    if (e) e.stopPropagation();
+    const current = getSelectedUsers();
+    const updated = current.filter((u) => u !== userName);
+    setFormData({ ...formData, resp_person: updated.join(', ') });
+  };
+
+  const handleSelectAllUsers = () => {
+    const deptUsers = getDepartmentUsers(formData.resp).map((u) => u.name);
+    setFormData({ ...formData, resp_person: deptUsers.join(', ') });
+  };
+
+  const handleClearAllUsers = () => {
+    setFormData({ ...formData, resp_person: '' });
+  };
+
   const handleQaWhyChange = (index, value) => {
     const updated = [...qaWhyWhy];
     updated[index] = value;
@@ -327,8 +380,8 @@ const IhlrCreateRequest = () => {
       warning('Please select a Responsibility department.');
       return;
     }
-    if (!formData.resp_person) {
-      warning('Please select a User Name (Responsible Person) based on the department.');
+    if (!formData.resp_person || getSelectedUsers().length === 0) {
+      warning('Please select at least one User Name (Responsible Person) based on the department.');
       return;
     }
 
@@ -371,9 +424,14 @@ const IhlrCreateRequest = () => {
       const creatorEmail = user?.email || '';
       const creatorId = user?.id || null;
 
-      const selectedPersonUser = dbUsers.find(
-        (u) => (u.name || '').trim().toLowerCase() === (formData.resp_person || '').trim().toLowerCase()
+      const selectedNames = getSelectedUsers();
+      const selectedPersonUsers = dbUsers.filter((u) =>
+        selectedNames.some((name) => (u.name || '').trim().toLowerCase() === name.toLowerCase())
       );
+      const combinedAssignedEmails = selectedPersonUsers
+        .map((u) => u.email)
+        .filter(Boolean)
+        .join(', ');
 
       await ihlrService.createRequest({
         ...formData,
@@ -385,7 +443,7 @@ const IhlrCreateRequest = () => {
         created_by: creatorName,
         created_by_id: creatorId,
         created_by_email: creatorEmail,
-        resp_person_email: selectedPersonUser?.email || '',
+        resp_person_email: combinedAssignedEmails || '',
       });
       window.dispatchEvent(new Event('refreshNotifications'));
       const draftKey = getDraftKey();
@@ -395,7 +453,7 @@ const IhlrCreateRequest = () => {
         localStorage.removeItem(draftKey);
         localStorage.removeItem('ihlr_create_request_draft');
       } catch {}
-      await success(`IHLR Analysis Report ${formData.req_no} submitted successfully!\n\n✓ In-App notifications sent to both ${creatorName} and ${formData.resp_person}.\n✓ Email notifications triggered to both parties.`);
+      await success(`IHLR Analysis Report ${formData.req_no} submitted successfully!\n\n✓ In-App notifications sent to ${creatorName} and assigned personnel (${formData.resp_person}).\n✓ Email notifications triggered to all assigned parties.`);
       navigate('/ihlr/my-requests');
     } catch (err) {
       error('Failed to submit IHLR Report: ' + err.message);
@@ -649,7 +707,11 @@ const IhlrCreateRequest = () => {
               </label>
               <select
                 value={formData.resp}
-                onChange={(e) => setFormData({ ...formData, resp: e.target.value, resp_person: '' })}
+                onChange={(e) => {
+                  setFormData({ ...formData, resp: e.target.value, resp_person: '' });
+                  setIsUserDropdownOpen(false);
+                  setUserSearchTerm('');
+                }}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold cursor-pointer"
                 required
               >
@@ -663,40 +725,185 @@ const IhlrCreateRequest = () => {
               </select>
             </div>
 
-            {/* Responsible Person / User Name based on Department */}
-            <div className="sm:col-span-1 lg:col-span-2">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                User Name (Based on Dep) *
-              </label>
-              <select
-                value={formData.resp_person}
-                disabled={!formData.resp}
-                onChange={(e) => setFormData({ ...formData, resp_person: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-xl font-medium outline-none transition ${
-                  formData.resp
-                    ? 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
-                    : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                }`}
-                required
-              >
-                <option value="">
-                  {!formData.resp
-                    ? 'Select Department First'
-                    : getDepartmentUsers(formData.resp).length === 0
-                      ? 'Users not found for this department'
-                      : 'Select User Name'}
-                </option>
-                {formData.resp_person && !getDepartmentUsers(formData.resp).some((u) => u.name === formData.resp_person) && (
-                  <option value={formData.resp_person}>
-                    {formData.resp_person}
-                  </option>
+            {/* Responsible Person(s) / User Name based on Department - Multi-Select */}
+            <div className="relative sm:col-span-1 lg:col-span-2" ref={userDropdownRef}>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                  User Name (Based on Dep) *
+                </label>
+                {formData.resp && getDepartmentUsers(formData.resp).length > 0 && (
+                  <div className="flex items-center gap-2 text-[10px]">
+                    {getSelectedUsers().length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllUsers}
+                        className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSelectAllUsers}
+                      className="text-blue-600 hover:text-blue-700 font-semibold hover:underline cursor-pointer"
+                    >
+                      Select all ({getDepartmentUsers(formData.resp).length})
+                    </button>
+                  </div>
                 )}
-                {getDepartmentUsers(formData.resp).map((u) => (
-                  <option key={u.id} value={u.name}>
-                    {u.name}
-                  </option>
-                ))}
-              </select>
+              </div>
+
+              {/* Multi-Select Trigger Box */}
+              <div
+                onClick={() => {
+                  if (formData.resp && getDepartmentUsers(formData.resp).length > 0) {
+                    setIsUserDropdownOpen((prev) => !prev);
+                  }
+                }}
+                className={`w-full min-h-[42px] px-3 py-2 border rounded-xl text-xs font-medium transition flex items-center justify-between gap-2 ${
+                  !formData.resp
+                    ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                    : getDepartmentUsers(formData.resp).length === 0
+                    ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                    : isUserDropdownOpen
+                    ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 cursor-pointer shadow-xs'
+                    : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-800 cursor-pointer'
+                }`}
+              >
+                <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
+                  {!formData.resp ? (
+                    <span className="text-slate-400 font-normal">Select Department First</span>
+                  ) : getDepartmentUsers(formData.resp).length === 0 ? (
+                    <span className="text-slate-400 font-normal">Users not found for this department</span>
+                  ) : getSelectedUsers().length === 0 ? (
+                    <span className="text-slate-400 font-normal">Select User Name(s)...</span>
+                  ) : (
+                    getSelectedUsers().map((userName) => (
+                      <span
+                        key={userName}
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-semibold"
+                      >
+                        <span className="truncate max-w-[140px]">{userName}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemoveUser(userName, e)}
+                          className="p-0.5 hover:bg-blue-200/60 rounded text-blue-600 hover:text-blue-900 transition cursor-pointer"
+                          title={`Remove ${userName}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0 text-slate-400">
+                  {getSelectedUsers().length > 0 && (
+                    <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-md text-[10px] font-bold">
+                      {getSelectedUsers().length}
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform duration-200 ${
+                      isUserDropdownOpen ? 'rotate-180 text-blue-600' : ''
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Hidden input for HTML form validation */}
+              <input
+                type="text"
+                tabIndex={-1}
+                required
+                value={formData.resp_person}
+                onChange={() => {}}
+                className="sr-only"
+                aria-hidden="true"
+              />
+
+              {/* Dropdown Menu */}
+              {isUserDropdownOpen && formData.resp && getDepartmentUsers(formData.resp).length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                  {/* Search box inside dropdown if more than 2 options */}
+                  {getDepartmentUsers(formData.resp).length > 2 && (
+                    <div className="p-2 border-b border-slate-100 bg-slate-50/70">
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={userSearchTerm}
+                          onChange={(e) => setUserSearchTerm(e.target.value)}
+                          placeholder="Search user by name..."
+                          className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="max-h-56 overflow-y-auto p-1.5 divide-y divide-slate-50">
+                    {getDepartmentUsers(formData.resp)
+                      .filter((u) => {
+                        const q = userSearchTerm.toLowerCase();
+                        return (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+                      })
+                      .map((u) => {
+                        const isChecked = getSelectedUsers().includes(u.name);
+                        return (
+                          <div
+                            key={u.id || u.name}
+                            onClick={() => handleToggleUser(u.name)}
+                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition select-none ${
+                              isChecked
+                                ? 'bg-blue-50/80 text-blue-900 font-semibold'
+                                : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                              <div
+                                className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${
+                                  isChecked
+                                    ? 'bg-blue-600 border-blue-600 text-white'
+                                    : 'border-slate-300 bg-white'
+                                }`}
+                              >
+                                {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs truncate">{u.name}</div>
+                                {u.email && (
+                                  <div className="text-[10px] text-slate-400 truncate">
+                                    {u.email}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {isChecked && (
+                              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider shrink-0">
+                                Selected
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  {/* Dropdown footer */}
+                  <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs">
+                    <span className="text-[11px] text-slate-500">
+                      {getSelectedUsers().length} of {getDepartmentUsers(formData.resp).length} selected
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsUserDropdownOpen(false)}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
