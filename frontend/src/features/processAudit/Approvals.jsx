@@ -40,10 +40,33 @@ import AttachmentChipList from '../../components/common/AttachmentChipList';
 import AttachmentThumbnail from '../../components/common/AttachmentThumbnail';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
 import { resolveAttachmentUrl, triggerDirectDownload } from '../../components/common/attachmentUtils';
+import { storage } from '../../utils/storage';
 
 const ProcessAuditApprovals = () => {
   const { user } = useAuth();
-  const isAdmin = (user?.role || '').toUpperCase() === 'ADMIN';
+  const savedUser = storage.getUser();
+  const currentUser = user || savedUser;
+
+  const userDept = (currentUser?.department || (() => {
+    try {
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.department : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
+  const userRole = (currentUser?.role || (() => {
+    try {
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.role : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
+  const isIncomingQuality = userDept === 'INCOMING QUALITY';
+  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
 
   const [searchParams] = useSearchParams();
   const queryRequestId = searchParams.get('requestId') || searchParams.get('id');

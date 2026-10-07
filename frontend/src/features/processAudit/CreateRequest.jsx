@@ -26,6 +26,7 @@ import {
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
+import { storage } from '../../utils/storage';
 
 const DEPARTMENT_EXECUTORS = {
   'MAINTENANCE': [
@@ -340,25 +341,36 @@ const CreateRequest = () => {
     processFiles(e.dataTransfer.files);
   };
 
-  const currentCreator = user?.name || user?.email || (() => {
+  const savedUser = storage.getUser();
+  const currentUser = user || savedUser;
+
+  const currentCreator = currentUser?.name || currentUser?.email || (() => {
     try {
-      const u = localStorage.getItem('todo_user');
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
       return u ? JSON.parse(u)?.name || JSON.parse(u)?.email : '';
     } catch {
       return '';
     }
   })();
 
-  const currentDept = (user?.department || (() => {
+  const currentDept = (currentUser?.department || (() => {
     try {
-      const u = localStorage.getItem('todo_user');
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
       return u ? JSON.parse(u)?.department : '';
     } catch {
       return '';
     }
   })() || '').trim();
 
-  const userRole = (user?.role || '').trim().toUpperCase();
+  const userRole = (currentUser?.role || (() => {
+    try {
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.role : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
   const isIncomingQuality = currentDept.toUpperCase() === 'INCOMING QUALITY';
   const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
   const canCreate = isIncomingQuality || isAdmin;

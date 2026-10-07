@@ -31,21 +31,34 @@ import { triggerDirectDownload, resolveAttachmentUrl } from '../../components/co
 import { DEPARTMENTS } from '../../utils/constants';
 import DateInput from '../../components/common/DateInput';
 import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
+import { storage } from '../../utils/storage';
 
 const ProcessAuditDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const userDept = (user?.department || (() => {
+  const savedUser = storage.getUser();
+  const currentUser = user || savedUser;
+
+  const userDept = (currentUser?.department || (() => {
     try {
-      const u = localStorage.getItem('todo_user');
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
       return u ? JSON.parse(u)?.department : '';
     } catch {
       return '';
     }
   })() || '').trim().toUpperCase();
 
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+  const userRole = (currentUser?.role || (() => {
+    try {
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.role : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
   const isIncomingQuality = userDept === 'INCOMING QUALITY';
+  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
   const canCreate = isIncomingQuality || isAdmin;
 
   const [requests, setRequests] = useState([]);
@@ -263,10 +276,18 @@ const ProcessAuditDashboard = () => {
 
   const total = filteredRequests.length;
 
-  const pendingExec = filteredRequests.filter((r) => {
-    const s = (r.status || '').toLowerCase();
-    return (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject'))) && !s.includes('progress');
-  }).length;
+  const pendingExec = !isAdmin
+    ? filteredRequests.filter((r) => {
+        const s = (r.status || '').toLowerCase();
+        return !s.includes('close');
+      }).length
+    : filteredRequests.filter((r) => {
+        const s = (r.status || '').toLowerCase();
+        return (
+          (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject'))) &&
+          !s.includes('progress')
+        );
+      }).length;
 
   const inProgress = filteredRequests.filter((r) => (r.status || '').toLowerCase().includes('progress')).length;
 
@@ -713,7 +734,10 @@ const ProcessAuditDashboard = () => {
                   const dateStr = formatDate(req.escalation_date || req.created_at);
                   const prodStr = req.product || '-';
                   const stageStr = req.model || req.stage || 'Standard';
-                  const statusStr = req.status || 'Pending Execution';
+                  const rawStatus = req.status || 'Pending Execution';
+                  const statusStr = (!isAdmin && rawStatus.toLowerCase().includes('progress'))
+                    ? 'Pending Execution'
+                    : rawStatus;
                   const meta = getStatusMeta(statusStr);
                   const createdDateStr = formatDate(req.created_at);
                   const deptStr = req.department || '-';
@@ -765,9 +789,24 @@ const ProcessAuditDashboard = () => {
                   <FileText className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">
-                    {selectedRequest.issue_no || `PA-${selectedRequest.id}`} Production Details
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-900">
+                      {selectedRequest.issue_no || `PA-${selectedRequest.id}`} Production Details
+                    </h3>
+                    {(() => {
+                      const rawModalStatus = selectedRequest.status || 'Pending Execution';
+                      const modalStatus = (!isAdmin && rawModalStatus.toLowerCase().includes('progress'))
+                        ? 'Pending Execution'
+                        : rawModalStatus;
+                      const modalMeta = getStatusMeta(modalStatus);
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${modalMeta.statusColor}`}>
+                          <span className={`w-1 h-1 rounded-full ${modalMeta.dotColor}`}></span>
+                          <span>{modalStatus}</span>
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <p className="text-[11px] text-slate-500">
                     Created on {formatDateTime(selectedRequest.created_at)}
                   </p>

@@ -28,23 +28,34 @@ import { useAuth } from '../../hooks/useAuth';
 import AttachmentThumbnail from '../../components/common/AttachmentThumbnail';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
 import { triggerDirectDownload, resolveAttachmentUrl } from '../../components/common/attachmentUtils';
+import { storage } from '../../utils/storage';
 
 const MyRequests = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const savedUser = storage.getUser();
+  const currentUser = user || savedUser;
 
-  const currentDept = (user?.department || (() => {
+  const currentDept = (currentUser?.department || (() => {
     try {
-      const u = localStorage.getItem('todo_user');
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
       return u ? JSON.parse(u)?.department : '';
     } catch {
       return '';
     }
   })() || '').trim();
 
-  const userRole = (user?.role || '').trim().toUpperCase();
-  const isAdmin = userRole === 'ADMIN';
+  const userRole = (currentUser?.role || (() => {
+    try {
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.role : '';
+    } catch {
+      return '';
+    }
+  })() || '').trim().toUpperCase();
+
   const isIncomingQuality = currentDept.toUpperCase() === 'INCOMING QUALITY';
+  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
   const canEdit = isIncomingQuality || isAdmin;
 
   const [searchParams] = useSearchParams();
@@ -510,7 +521,7 @@ const MyRequests = () => {
       (selectedStatus === 'Closed' && s.includes('close')) ||
       (selectedStatus === 'Open' && (s === 'open' || s.includes('open') || s.includes('reopen'))) ||
       (selectedStatus === 'Approved' && s.includes('approved') && !s.includes('partially') && !s.includes('pending')) ||
-      (selectedStatus === 'Pending Execution' && (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject') && !s.includes('progress')))) ||
+      (selectedStatus === 'Pending Execution' && (!isAdmin ? !s.includes('close') : (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject') && !s.includes('progress'))))) ||
       (selectedStatus === 'In Progress' && s.includes('progress')) ||
       (selectedStatus === 'Rejected' && s.includes('reject')) ||
       s === selectedStatus.toLowerCase();
@@ -794,7 +805,10 @@ const MyRequests = () => {
                   const lineStr = req.process_operation || req.line || 'General';
                   const creatorStr = req.created_by || req.creator || '-';
                   const executorStr = req.executor || 'Assigned Lead';
-                  const statusStr = req.status || 'Pending Execution';
+                  const rawStatus = req.status || 'Pending Execution';
+                  const statusStr = (!isAdmin && rawStatus.toLowerCase().includes('progress'))
+                    ? 'Pending Execution'
+                    : rawStatus;
                   const meta = getStatusMeta(statusStr);
 
                   return (
@@ -893,7 +907,7 @@ const MyRequests = () => {
                     {activeModalRequest.issue_no || `PA-${activeModalRequest.id}`} — Full Audit & Production Profile
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Status: <span className="font-semibold text-slate-800">{activeModalRequest.status || 'Pending Execution'}</span>
+                    Status: <span className="font-semibold text-slate-800">{(!isAdmin && (activeModalRequest.status || '').toLowerCase().includes('progress')) ? 'Pending Execution' : (activeModalRequest.status || 'Pending Execution')}</span>
                     {activeModalRequest.priority && (
                       <span className="ml-2 font-medium text-amber-600">({activeModalRequest.priority} Priority)</span>
                     )}
@@ -1266,8 +1280,8 @@ const MyRequests = () => {
                     </h4>
                   </div>
                   {activeModalRequest.status && (
-                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border self-start sm:self-auto ${getStatusMeta(activeModalRequest.status).statusColor}`}>
-                      Current Status: {activeModalRequest.status}
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border self-start sm:self-auto ${getStatusMeta((!isAdmin && activeModalRequest.status.toLowerCase().includes('progress')) ? 'Pending Execution' : activeModalRequest.status).statusColor}`}>
+                      Current Status: {(!isAdmin && activeModalRequest.status.toLowerCase().includes('progress')) ? 'Pending Execution' : activeModalRequest.status}
                     </span>
                   )}
                 </div>
