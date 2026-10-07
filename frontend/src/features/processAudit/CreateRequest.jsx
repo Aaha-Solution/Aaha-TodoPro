@@ -62,13 +62,13 @@ const DEPARTMENT_LIST = Array.isArray(DEPARTMENT_EXECUTORS)
 
 const EXECUTORS_MAP = Array.isArray(DEPARTMENT_EXECUTORS)
   ? {
-      'MAINTENANCE': ['Mr. Karthik (Maintenance Engineer)', 'Mr. Rajesh (Electrical Lead)', 'Mr. Balaji (Tooling Specialist)'],
-      'PRODUCTION': ['Mr. Kumar (Assembly Lead)', 'Mr. Murugan (Line 1 Supervisor)', 'Ms. Kavitha (Assembly Specialist)', 'Mr. Suresh (Floor Engineer)'],
-      'PED': ['Mr. Vignesh (Process Engineer)', 'Mr. Anand (NPI Lead)', 'Mr. Dinesh (Tooling & Fixtures)'],
-      'MATERIALS': ['Mr. Arjun (Packaging Supervisor)', 'Mr. Ramesh (Material Planning)', 'Mr. Sathish (Inventory Lead)'],
-      'MARKETING': ['Mr. Praveen (Customer Quality Liaison)', 'Ms. Priya (Order Fulfillment)'],
-      'INCOMING QUALITY': ['Mr. Ravi (Inspection Head)', 'Mr. Prakash (QC Inspector)', 'Ms. Deepa (Quality Auditor)'],
-    }
+    'MAINTENANCE': ['Mr. Karthik (Maintenance Engineer)', 'Mr. Rajesh (Electrical Lead)', 'Mr. Balaji (Tooling Specialist)'],
+    'PRODUCTION': ['Mr. Kumar (Assembly Lead)', 'Mr. Murugan (Line 1 Supervisor)', 'Ms. Kavitha (Assembly Specialist)', 'Mr. Suresh (Floor Engineer)'],
+    'PED': ['Mr. Vignesh (Process Engineer)', 'Mr. Anand (NPI Lead)', 'Mr. Dinesh (Tooling & Fixtures)'],
+    'MATERIALS': ['Mr. Arjun (Packaging Supervisor)', 'Mr. Ramesh (Material Planning)', 'Mr. Sathish (Inventory Lead)'],
+    'MARKETING': ['Mr. Praveen (Customer Quality Liaison)', 'Ms. Priya (Order Fulfillment)'],
+    'INCOMING QUALITY': ['Mr. Ravi (Inspection Head)', 'Mr. Prakash (QC Inspector)', 'Ms. Deepa (Quality Auditor)'],
+  }
   : DEPARTMENT_EXECUTORS;
 
 const CreateRequest = () => {
@@ -547,10 +547,16 @@ const CreateRequest = () => {
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                 >
                   <option value="">Select</option>
-                  <option value="Units">Units</option>
-                  <option value="Kg">Kg</option>
-                  <option value="Batches">Batches</option>
-                  <option value="Sets">Sets</option>
+                  <option value="Sets">SMT</option>
+                  <option value="Units">RR</option>
+                  <option value="Kg">Converter</option>
+                  <option value="Batches">Sensor</option>
+                  <option value="Sets">FWM</option>
+                  <option value="Sets">IU/IG</option>
+                  <option value="Sets">FWM</option>
+                  <option value="Sets">Display Unit</option>
+                  <option value="Sets">ISG</option>
+                  <option value="Sets">TCI/CDI</option>
                 </select>
               </div>
 
