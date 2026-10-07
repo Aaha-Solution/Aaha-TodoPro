@@ -242,7 +242,19 @@ const ProcessAuditApprovals = () => {
 
   useEffect(() => {
     loadRequests();
-  }, []);
+
+    const handleLiveUpdate = () => {
+      loadRequests();
+    };
+
+    window.addEventListener('processAuditLiveUpdate', handleLiveUpdate);
+    window.addEventListener('refreshNotifications', handleLiveUpdate);
+
+    return () => {
+      window.removeEventListener('processAuditLiveUpdate', handleLiveUpdate);
+      window.removeEventListener('refreshNotifications', handleLiveUpdate);
+    };
+  }, [user?.name, user?.role]);
 
   // Populate form fields when a row is clicked
   const populateForm = (req) => {

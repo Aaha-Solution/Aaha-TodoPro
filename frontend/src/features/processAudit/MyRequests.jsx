@@ -259,6 +259,18 @@ const MyRequests = () => {
 
   useEffect(() => {
     fetchRequests();
+
+    const handleLiveUpdate = () => {
+      fetchRequests();
+    };
+
+    window.addEventListener('processAuditLiveUpdate', handleLiveUpdate);
+    window.addEventListener('refreshNotifications', handleLiveUpdate);
+
+    return () => {
+      window.removeEventListener('processAuditLiveUpdate', handleLiveUpdate);
+      window.removeEventListener('refreshNotifications', handleLiveUpdate);
+    };
   }, []);
 
   // Deep-linking from notification or URL query (?requestId=14)

@@ -1,5 +1,6 @@
 import pool from '../../../shared/db.js';
 import { successResponse, errorResponse } from '../../../shared/response.js';
+import { broadcastEvent } from '../../../shared/realtimeNotifier.js';
 
 // Auto-ensure process_audit_notifications table exists
 const ensureNotificationTable = async () => {
@@ -116,6 +117,7 @@ export const markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
     await pool.query('UPDATE process_audit_notifications SET is_read = 1 WHERE id = ?', [id]);
+    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'read', id });
     return successResponse(res, { id }, 'Notification marked as read');
   } catch (error) {
     return errorResponse(res, error.message, 500);
@@ -130,6 +132,7 @@ export const markAllAsRead = async (req, res) => {
     } else {
       await pool.query('UPDATE process_audit_notifications SET is_read = 1');
     }
+    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'mark_all_read', userName });
     return successResponse(res, null, 'All notifications marked as read');
   } catch (error) {
     return errorResponse(res, error.message, 500);

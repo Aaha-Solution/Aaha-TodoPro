@@ -89,6 +89,18 @@ const ProcessAuditDashboard = () => {
 
   useEffect(() => {
     loadDashboardData();
+
+    const handleLiveUpdate = () => {
+      loadDashboardData();
+    };
+
+    window.addEventListener('processAuditLiveUpdate', handleLiveUpdate);
+    window.addEventListener('refreshNotifications', handleLiveUpdate);
+
+    return () => {
+      window.removeEventListener('processAuditLiveUpdate', handleLiveUpdate);
+      window.removeEventListener('refreshNotifications', handleLiveUpdate);
+    };
   }, []);
 
   const formatDate = (dateVal) => {

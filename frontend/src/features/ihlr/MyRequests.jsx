@@ -296,6 +296,18 @@ const IhlrMyRequests = () => {
 
   useEffect(() => {
     fetchRequests();
+
+    const handleLiveUpdate = () => {
+      fetchRequests();
+    };
+
+    window.addEventListener('ihlrLiveUpdate', handleLiveUpdate);
+    window.addEventListener('refreshNotifications', handleLiveUpdate);
+
+    return () => {
+      window.removeEventListener('ihlrLiveUpdate', handleLiveUpdate);
+      window.removeEventListener('refreshNotifications', handleLiveUpdate);
+    };
   }, [search, selectedShift, selected4M, selectedStatus, user?.name, user?.email, user?.role, user?.department]);
 
   const handleUpdateStatus = async (id, newStatus, actionUpdate) => {

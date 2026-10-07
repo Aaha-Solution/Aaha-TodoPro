@@ -97,6 +97,18 @@ const IhlrDashboard = () => {
 
   useEffect(() => {
     loadData();
+
+    const handleLiveUpdate = () => {
+      loadData();
+    };
+
+    window.addEventListener('ihlrLiveUpdate', handleLiveUpdate);
+    window.addEventListener('refreshNotifications', handleLiveUpdate);
+
+    return () => {
+      window.removeEventListener('ihlrLiveUpdate', handleLiveUpdate);
+      window.removeEventListener('refreshNotifications', handleLiveUpdate);
+    };
   }, [user?.name, user?.email, user?.role, user?.department, selectedDept, startDate, endDate]);
 
   const handleResetFilters = () => {
