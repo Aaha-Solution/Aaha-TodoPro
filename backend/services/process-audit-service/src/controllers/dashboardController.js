@@ -5,6 +5,8 @@ export const getDashboardMetrics = async (req, res) => {
   try {
     if (!pool) throw new Error('Database pool not available');
     const { department, month } = req.query;
+    const startDate = (req.query.startDate || req.query.start_date || req.query.from_date || '').trim();
+    const endDate = (req.query.endDate || req.query.end_date || req.query.to_date || '').trim();
 
     let query = 'SELECT status, COUNT(*) as count FROM process_audit_requests';
     const conditions = [];
@@ -18,6 +20,16 @@ export const getDashboardMetrics = async (req, res) => {
     if (month && month !== 'All') {
       conditions.push("(DATE_FORMAT(escalation_date, '%Y-%m') = ? OR DATE_FORMAT(created_at, '%Y-%m') = ?)");
       params.push(month, month);
+    }
+
+    if (startDate) {
+      conditions.push('DATE(COALESCE(escalation_date, created_at)) >= ?');
+      params.push(startDate);
+    }
+
+    if (endDate) {
+      conditions.push('DATE(COALESCE(escalation_date, created_at)) <= ?');
+      params.push(endDate);
     }
 
     if (conditions.length > 0) {
