@@ -107,7 +107,7 @@ export const createRequest = async (req, res) => {
 
     const created = await ProcessAuditRequest.create(requestData);
 
-    // Auto-create in-app notification for assigned executor
+    // Auto-create in-app notification for assigned executor(s)
     if (created && created.executor) {
       try {
         const issueNo = created.issue_no || (created.id ? `PA-${created.id}` : 'PA-1');
@@ -116,26 +116,33 @@ export const createRequest = async (req, res) => {
         const stage = created.model || 'Standard';
         const line = created.process_operation || 'General';
 
-        // Resolve executor user_id if available
-        const [execUserRows] = await pool.query(
-          'SELECT id FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1',
-          [created.executor.trim()]
-        ).catch(() => [[]]);
-        const execUserId = execUserRows?.[0]?.id || null;
+        const executorList = String(created.executor)
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
 
-        await pool.query(
-          `INSERT INTO process_audit_notifications 
-           (user_name, user_id, request_id, issue_no, type, title, message, link) 
-           VALUES (?, ?, ?, ?, 'approval_required', ?, ?, '/process-audit/approvals')`,
-          [
-            created.executor.trim(),
-            execUserId,
-            created.id,
-            issueNo,
-            `New Audit Request Assigned for Sign-off: #${issueNo}`,
-            `Request #${issueNo} for ${dept} (${stage} - ${line}) has been assigned to you by ${creator}. Awaiting your review & sign-off.`
-          ]
-        );
+        for (const execName of executorList) {
+          // Resolve executor user_id if available
+          const [execUserRows] = await pool.query(
+            'SELECT id FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
+            [execName, execName]
+          ).catch(() => [[]]);
+          const execUserId = execUserRows?.[0]?.id || null;
+
+          await pool.query(
+            `INSERT INTO process_audit_notifications 
+             (user_name, user_id, request_id, issue_no, type, title, message, link) 
+             VALUES (?, ?, ?, ?, 'approval_required', ?, ?, '/process-audit/approvals')`,
+            [
+              execName,
+              execUserId,
+              created.id,
+              issueNo,
+              `New Audit Request Assigned for Sign-off: #${issueNo}`,
+              `Request #${issueNo} for ${dept} (${stage} - ${line}) has been assigned to you by ${creator}. Awaiting your review & sign-off.`
+            ]
+          );
+        }
       } catch (notifErr) {
         console.warn('Failed to insert executor notification:', notifErr.message);
       }
