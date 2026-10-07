@@ -4,6 +4,7 @@ import { IhlrRequest } from '../models/IhlrRequest.js';
 import { saveBinaryFiles, streamBinaryFile } from '../../../shared/binaryStorage.js';
 import pool from '../../../shared/db.js';
 import { sendIhlrRequestEmails, sendIhlrCloserEmails, sendEmail } from '../../../../shared/mailer.js';
+import { broadcastEvent } from '../../../shared/realtimeNotifier.js';
 
 
 
@@ -389,6 +390,10 @@ export const createIhlrRequest = async (req, res) => {
       console.warn('[IHLR Mailer] Sync email dispatch warning:', mailSyncErr.message);
     }
 
+    // 5. Broadcast Realtime WebSocket Event
+    broadcastEvent('ihlr:created', created);
+    broadcastEvent('notifications:refresh', { module: 'ihlr', action: 'created', reqNo });
+
     return successResponse(res, created, 'IHLR request created successfully. Notifications and emails dispatched to both raised person and selected person.', 201);
   } catch (error) {
     return errorResponse(res, error.message, 500);
@@ -719,6 +724,10 @@ export const updateIhlrRequest = async (req, res) => {
       }
     }
 
+    // Broadcast Realtime WebSocket Event
+    broadcastEvent('ihlr:updated', updated);
+    broadcastEvent('notifications:refresh', { module: 'ihlr', action: 'updated', id: updated.id || id, reqNo });
+
     return successResponse(res, updated, 'IHLR closer log updated successfully. Notifications and emails dispatched to Requester and Admin to complete pending fields.');
   } catch (error) {
     return errorResponse(res, error.message, 500);
@@ -732,6 +741,11 @@ export const deleteIhlrRequest = async (req, res) => {
     if (!deleted) {
       fallbackRequests = fallbackRequests.filter(r => String(r.id) !== String(id));
     }
+
+    // Broadcast Realtime WebSocket Event
+    broadcastEvent('ihlr:deleted', { id });
+    broadcastEvent('notifications:refresh', { module: 'ihlr', action: 'deleted', id });
+
     return successResponse(res, { id }, 'IHLR request deleted successfully');
   } catch (error) {
     return errorResponse(res, error.message, 500);
@@ -886,6 +900,7 @@ export const markIhlrNotificationRead = async (req, res) => {
     if (pool) {
       await pool.query('UPDATE ihlr_notifications SET is_read = ? WHERE id = ?', [isRead, id]);
     }
+    broadcastEvent('notifications:refresh', { module: 'ihlr', action: isRead ? 'read' : 'unread', id });
     return successResponse(res, null, `Notification marked as ${isRead ? 'read' : 'unread'}`);
   } catch (error) {
     return errorResponse(res, error.message, 500);
@@ -898,6 +913,7 @@ export const markIhlrNotificationUnread = async (req, res) => {
     if (pool) {
       await pool.query('UPDATE ihlr_notifications SET is_read = 0 WHERE id = ?', [id]);
     }
+    broadcastEvent('notifications:refresh', { module: 'ihlr', action: 'unread', id });
     return successResponse(res, null, 'Notification marked as unread');
   } catch (error) {
     return errorResponse(res, error.message, 500);
@@ -930,6 +946,7 @@ export const markAllIhlrNotificationsRead = async (req, res) => {
         await pool.query(`UPDATE ihlr_notifications SET is_read = 1 WHERE ${conditions.join(' OR ')}`, params);
       }
     }
+    broadcastEvent('notifications:refresh', { module: 'ihlr', action: 'mark_all_read', userId, userName });
     return successResponse(res, null, 'Notifications marked as read');
   } catch (error) {
     return errorResponse(res, error.message, 500);

@@ -3,6 +3,7 @@ import pool from '../../../shared/db.js';
 import { ProcessAuditRequest } from '../models/Request.js';
 import Attachment from '../models/Attachment.js';
 import { successResponse, errorResponse } from '../../../shared/response.js';
+import { broadcastEvent } from '../../../shared/realtimeNotifier.js';
 
 export const getNextId = async (req, res) => {
   try {
@@ -139,6 +140,10 @@ export const createRequest = async (req, res) => {
         console.warn('Failed to insert executor notification:', notifErr.message);
       }
     }
+
+    // Broadcast Realtime WebSocket Event
+    broadcastEvent('process_audit:created', created);
+    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'created', id: created.id });
 
     return successResponse(res, created, 'Production request created', 201);
   } catch (err) {
@@ -302,6 +307,10 @@ export const updateRequestStatus = async (req, res) => {
       }
     }
 
+    // Broadcast Realtime WebSocket Event
+    broadcastEvent('process_audit:updated', updated);
+    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'updated', id: updated.id, status });
+
     return successResponse(res, updated, `Request status updated to ${status}`);
   } catch (err) {
     return errorResponse(res, err.message);
@@ -397,6 +406,10 @@ export const reassignRequest = async (req, res) => {
     } catch (notifErr) {
       console.warn('Failed to insert reassignment notification:', notifErr.message);
     }
+
+    // Broadcast Realtime WebSocket Event
+    broadcastEvent('process_audit:reassigned', updated);
+    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'reassigned', id: updated.id });
 
     return successResponse(res, updated, 'Request reassigned successfully');
   } catch (err) {
