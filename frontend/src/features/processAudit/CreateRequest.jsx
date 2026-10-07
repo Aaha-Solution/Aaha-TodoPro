@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -18,6 +18,10 @@ import {
   File as FileIcon,
   Image as ImageIcon,
   ShieldAlert,
+  ChevronDown,
+  Check,
+  Search,
+  Users,
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
@@ -103,6 +107,24 @@ const CreateRequest = () => {
   const [deptUsers, setDeptUsers] = useState([]);
   const [loadingExecutors, setLoadingExecutors] = useState(false);
 
+  const [selectedExecutors, setSelectedExecutors] = useState([]);
+  const [executorDropdownOpen, setExecutorDropdownOpen] = useState(false);
+  const [executorSearch, setExecutorSearch] = useState('');
+  const executorDropdownRef = useRef(null);
+
+  // Close executor dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (executorDropdownRef.current && !executorDropdownRef.current.contains(event.target)) {
+        setExecutorDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   // Fetch all users from DB on mount
   useEffect(() => {
     let isMounted = true;
@@ -186,6 +208,49 @@ const CreateRequest = () => {
       isMounted = false;
     };
   }, []);
+
+  // Compute available executors based on selected department (from DB or fallback constant)
+  const availableExecutors = React.useMemo(() => {
+    if (!formData.department) return [];
+    if (deptUsers.length > 0) {
+      return deptUsers.map((u) => {
+        const displayLabel = `${u.name}${u.role && u.role.toLowerCase() !== 'user' ? ` (${u.role})` : ''}`;
+        return {
+          id: u.id,
+          name: u.name,
+          role: u.role || '',
+          label: displayLabel,
+        };
+      });
+    }
+    const fallback = DEPARTMENT_EXECUTORS[formData.department] || [];
+    return fallback.map((exec, idx) => ({
+      id: `fallback-${idx}`,
+      name: exec,
+      role: '',
+      label: exec,
+    }));
+  }, [formData.department, deptUsers]);
+
+  const handleToggleExecutor = (name) => {
+    setSelectedExecutors((prev) => {
+      const exists = prev.includes(name);
+      const next = exists ? prev.filter((item) => item !== name) : [...prev, name];
+      setFormData((f) => ({ ...f, executor: next.join(', ') }));
+      return next;
+    });
+  };
+
+  const handleSelectAllExecutors = () => {
+    const allNames = availableExecutors.map((e) => e.name);
+    setSelectedExecutors(allNames);
+    setFormData((f) => ({ ...f, executor: allNames.join(', ') }));
+  };
+
+  const handleClearAllExecutors = () => {
+    setSelectedExecutors([]);
+    setFormData((f) => ({ ...f, executor: '' }));
+  };
 
   const [attachments, setAttachments] = useState([]);
   const [previewAttachment, setPreviewAttachment] = useState(null);
@@ -326,8 +391,8 @@ const CreateRequest = () => {
       alert('Please select a Department in Section 3');
       return;
     }
-    if (!formData.executor) {
-      alert('Please select an Assign Executor in Section 3');
+    if (!formData.executor && selectedExecutors.length === 0) {
+      alert('Please select at least one Assign Executor in Section 3');
       return;
     }
 
@@ -379,7 +444,7 @@ const CreateRequest = () => {
       priority: formData.priority || '',
       issue_observation: formData.issueObservation,
       department: formData.department,
-      executor: formData.executor,
+      executor: selectedExecutors.length > 0 ? selectedExecutors.join(', ') : (formData.executor || ''),
       comments: formData.comments,
       attachments: finalAttachments,
       created_by: creatorName,
@@ -781,6 +846,9 @@ const CreateRequest = () => {
                     department: newDept,
                     executor: '',
                   }));
+                  setSelectedExecutors([]);
+                  setExecutorDropdownOpen(false);
+                  setExecutorSearch('');
                 }}
                 className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
               >
@@ -793,51 +861,206 @@ const CreateRequest = () => {
               </select>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Assign Executor *
-              </label>
-              <select
-                required
-                disabled={!formData.department || loadingExecutors}
-                value={formData.executor}
-                onChange={(e) => setFormData({ ...formData, executor: e.target.value })}
-                className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium transition ${formData.department
-                  ? 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
-                  : 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-                  }`}
-              >
-                <option value="">
-                  {!formData.department
-                    ? 'Select Department first'
-                    : loadingExecutors
-                      ? 'Loading executors from DB...'
-                      : deptUsers.length === 0
-                        ? 'No users found in database for this department'
-                        : 'Select Executor'}
-                </option>
-                {deptUsers.length > 0 ? (
-                  deptUsers.map((u) => {
-                    const displayLabel = `${u.name}${u.role && u.role.toLowerCase() !== 'user' ? ` (${u.role})` : ''}`;
-                    return (
-                      <option key={u.id} value={u.name}>
-                        {displayLabel}
-                      </option>
-                    );
-                  })
-                ) : (
-                  (DEPARTMENT_EXECUTORS[formData.department] || []).map((exec) => (
-                    <option key={exec} value={exec}>
-                      {exec}
-                    </option>
-                  ))
+            <div className="relative" ref={executorDropdownRef}>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  Assign Executor *
+                </label>
+                {formData.department && availableExecutors.length > 0 && (
+                  <div className="flex items-center gap-2 text-[10px]">
+                    {selectedExecutors.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllExecutors}
+                        className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSelectAllExecutors}
+                      className="text-blue-600 hover:text-blue-700 font-semibold hover:underline cursor-pointer"
+                    >
+                      Select all ({availableExecutors.length})
+                    </button>
+                  </div>
                 )}
-              </select>
+              </div>
+
+              {/* Multi-select Trigger Box */}
+              <div
+                onClick={() => {
+                  if (formData.department && !loadingExecutors && availableExecutors.length > 0) {
+                    setExecutorDropdownOpen((prev) => !prev);
+                  }
+                }}
+                className={`w-full min-h-[42px] px-3.5 py-2 border rounded-xl text-xs font-medium transition flex items-center justify-between gap-2 ${
+                  !formData.department
+                    ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                    : loadingExecutors
+                    ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-wait'
+                    : availableExecutors.length === 0
+                    ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                    : executorDropdownOpen
+                    ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 cursor-pointer shadow-xs'
+                    : 'bg-white border-slate-200 hover:border-slate-300 text-slate-800 cursor-pointer shadow-2xs'
+                }`}
+              >
+                <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0 py-0.5">
+                  {!formData.department ? (
+                    <span className="text-slate-400">Select Department first</span>
+                  ) : loadingExecutors ? (
+                    <span className="text-slate-400 flex items-center gap-2">
+                      <span className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                      Loading executors from DB...
+                    </span>
+                  ) : availableExecutors.length === 0 ? (
+                    <span className="text-slate-400">No users found in database for this department</span>
+                  ) : selectedExecutors.length === 0 ? (
+                    <span className="text-slate-400">Select one or more executors</span>
+                  ) : (
+                    selectedExecutors.map((execName) => {
+                      const matched = availableExecutors.find((e) => e.name === execName);
+                      const display = matched ? matched.name : execName;
+                      return (
+                        <span
+                          key={execName}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200/80 text-[11px] font-semibold"
+                        >
+                          <span className="truncate max-w-[150px]">{display}</span>
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleExecutor(execName);
+                            }}
+                            className="p-0.5 hover:bg-blue-200/60 rounded text-blue-600 hover:text-blue-900 transition cursor-pointer"
+                            title="Remove"
+                          >
+                            <X className="w-3 h-3" />
+                          </span>
+                        </span>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0 text-slate-400">
+                  {selectedExecutors.length > 0 && (
+                    <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-md text-[10px] font-bold">
+                      {selectedExecutors.length}
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform duration-200 ${
+                      executorDropdownOpen ? 'rotate-180 text-blue-600' : ''
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Hidden input for native HTML form validation */}
+              <input
+                type="text"
+                tabIndex={-1}
+                required
+                value={selectedExecutors.join(', ')}
+                onChange={() => {}}
+                className="sr-only"
+                aria-hidden="true"
+              />
+
+              {/* Dropdown Menu */}
+              {executorDropdownOpen && formData.department && availableExecutors.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                  {/* Search box inside dropdown if more than 3 options */}
+                  {availableExecutors.length > 3 && (
+                    <div className="p-2 border-b border-slate-100 bg-slate-50/70">
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={executorSearch}
+                          onChange={(e) => setExecutorSearch(e.target.value)}
+                          placeholder="Search executor by name..."
+                          className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="max-h-56 overflow-y-auto p-1.5 divide-y divide-slate-50">
+                    {availableExecutors
+                      .filter((e) =>
+                        e.label.toLowerCase().includes(executorSearch.toLowerCase()) ||
+                        e.name.toLowerCase().includes(executorSearch.toLowerCase())
+                      )
+                      .map((exec) => {
+                        const isChecked = selectedExecutors.includes(exec.name);
+                        return (
+                          <div
+                            key={exec.id || exec.name}
+                            onClick={() => handleToggleExecutor(exec.name)}
+                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition select-none ${
+                              isChecked
+                                ? 'bg-blue-50/80 text-blue-900 font-semibold'
+                                : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                              <div
+                                className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${
+                                  isChecked
+                                    ? 'bg-blue-600 border-blue-600 text-white'
+                                    : 'border-slate-300 bg-white'
+                                }`}
+                              >
+                                {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs truncate">{exec.name}</div>
+                                {exec.role && exec.role.toLowerCase() !== 'user' && (
+                                  <div className="text-[10px] text-slate-400 truncate">
+                                    {exec.role}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {isChecked && (
+                              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider shrink-0">
+                                Selected
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  {/* Dropdown footer */}
+                  <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs">
+                    <span className="text-[11px] text-slate-500">
+                      {selectedExecutors.length} of {availableExecutors.length} selected
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setExecutorDropdownOpen(false)}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           <span className="text-[11px] text-slate-400 mt-2.5 block">
-            An automated dispatch and in-app alert will notify the executor upon submission.
+            {selectedExecutors.length > 1
+              ? `An automated dispatch and in-app alert will notify all ${selectedExecutors.length} executors upon submission.`
+              : 'An automated dispatch and in-app alert will notify the executor upon submission.'}
           </span>
         </div>
 
