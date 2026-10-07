@@ -266,16 +266,19 @@ const ProcessAuditApprovals = () => {
   useEffect(() => {
     loadRequests();
 
+    let debounceTimer = null;
     const handleLiveUpdate = () => {
-      loadRequests();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        loadRequests();
+      }, 150);
     };
 
     window.addEventListener('processAuditLiveUpdate', handleLiveUpdate);
-    window.addEventListener('refreshNotifications', handleLiveUpdate);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       window.removeEventListener('processAuditLiveUpdate', handleLiveUpdate);
-      window.removeEventListener('refreshNotifications', handleLiveUpdate);
     };
   }, [user?.name, user?.role]);
 
@@ -375,7 +378,6 @@ const ProcessAuditApprovals = () => {
       };
 
       const updated = await processAuditService.updateRequestStatus(reqId, closerStatus, payload);
-      window.dispatchEvent(new Event('refreshNotifications'));
 
       const displayId =
         selectedRequest.issue_no ||

@@ -297,16 +297,19 @@ const IhlrMyRequests = () => {
   useEffect(() => {
     fetchRequests();
 
+    let debounceTimer = null;
     const handleLiveUpdate = () => {
-      fetchRequests();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchRequests();
+      }, 150);
     };
 
     window.addEventListener('ihlrLiveUpdate', handleLiveUpdate);
-    window.addEventListener('refreshNotifications', handleLiveUpdate);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       window.removeEventListener('ihlrLiveUpdate', handleLiveUpdate);
-      window.removeEventListener('refreshNotifications', handleLiveUpdate);
     };
   }, [search, selectedShift, selected4M, selectedStatus, user?.name, user?.email, user?.role, user?.department]);
 

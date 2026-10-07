@@ -98,16 +98,19 @@ const IhlrDashboard = () => {
   useEffect(() => {
     loadData();
 
+    let debounceTimer = null;
     const handleLiveUpdate = () => {
-      loadData();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        loadData();
+      }, 150);
     };
 
     window.addEventListener('ihlrLiveUpdate', handleLiveUpdate);
-    window.addEventListener('refreshNotifications', handleLiveUpdate);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       window.removeEventListener('ihlrLiveUpdate', handleLiveUpdate);
-      window.removeEventListener('refreshNotifications', handleLiveUpdate);
     };
   }, [user?.name, user?.email, user?.role, user?.department, selectedDept, startDate, endDate]);
 

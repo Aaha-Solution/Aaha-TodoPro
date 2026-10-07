@@ -445,7 +445,6 @@ const IhlrCreateRequest = () => {
         created_by_email: creatorEmail,
         resp_person_email: combinedAssignedEmails || '',
       });
-      window.dispatchEvent(new Event('refreshNotifications'));
       const draftKey = getDraftKey();
       try {
         sessionStorage.removeItem(draftKey);

@@ -43,11 +43,7 @@ const Notification = () => {
     window.addEventListener('refreshNotifications', handleRefresh);
     window.addEventListener('focus', handleRefresh);
 
-    // Background safety-net fallback polling (instant updates are delivered via WebSocket)
-    const pollInterval = setInterval(fetchLiveNotifications, 30000);
-
     return () => {
-      clearInterval(pollInterval);
       window.removeEventListener('refreshNotifications', handleRefresh);
       window.removeEventListener('focus', handleRefresh);
     };

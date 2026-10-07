@@ -103,16 +103,19 @@ const ProcessAuditDashboard = () => {
   useEffect(() => {
     loadDashboardData();
 
+    let debounceTimer = null;
     const handleLiveUpdate = () => {
-      loadDashboardData();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        loadDashboardData();
+      }, 150);
     };
 
     window.addEventListener('processAuditLiveUpdate', handleLiveUpdate);
-    window.addEventListener('refreshNotifications', handleLiveUpdate);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       window.removeEventListener('processAuditLiveUpdate', handleLiveUpdate);
-      window.removeEventListener('refreshNotifications', handleLiveUpdate);
     };
   }, []);
 

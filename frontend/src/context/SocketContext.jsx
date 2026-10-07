@@ -38,13 +38,13 @@ export const SocketProvider = ({ children }) => {
     };
 
     const handleIhlrLiveUpdate = (data) => {
+      // Dispatches dedicated IHLR live update event (notifications are refreshed via notifications:refresh)
       window.dispatchEvent(new CustomEvent('ihlrLiveUpdate', { detail: data }));
-      window.dispatchEvent(new Event('refreshNotifications'));
     };
 
     const handleProcessAuditLiveUpdate = (data) => {
+      // Dispatches dedicated Process Audit live update event
       window.dispatchEvent(new CustomEvent('processAuditLiveUpdate', { detail: data }));
-      window.dispatchEvent(new Event('refreshNotifications'));
     };
 
     socket.on('notifications:refresh', handleNotificationsRefresh);

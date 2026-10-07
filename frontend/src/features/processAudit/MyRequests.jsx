@@ -193,7 +193,6 @@ const MyRequests = () => {
       };
 
       const updated = await processAuditService.reassignRequest(reassigningRequest.id, payload);
-      window.dispatchEvent(new Event('refreshNotifications'));
 
       const merged = {
         ...reassigningRequest,
@@ -271,16 +270,19 @@ const MyRequests = () => {
   useEffect(() => {
     fetchRequests();
 
+    let debounceTimer = null;
     const handleLiveUpdate = () => {
-      fetchRequests();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchRequests();
+      }, 150);
     };
 
     window.addEventListener('processAuditLiveUpdate', handleLiveUpdate);
-    window.addEventListener('refreshNotifications', handleLiveUpdate);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       window.removeEventListener('processAuditLiveUpdate', handleLiveUpdate);
-      window.removeEventListener('refreshNotifications', handleLiveUpdate);
     };
   }, []);
 
@@ -312,7 +314,6 @@ const MyRequests = () => {
       };
 
       const updated = await processAuditService.updateRequestStatus(reqId, newStatus, payload);
-      window.dispatchEvent(new Event('refreshNotifications'));
 
       const merged = {
         ...activeModalRequest,
