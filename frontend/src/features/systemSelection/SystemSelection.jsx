@@ -9,19 +9,32 @@ import {
   Info
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useModal } from '../../context/ModalContext';
 
 const SystemSelection = () => {
   const navigate = useNavigate();
   const { user, logout, switchSystem } = useAuth();
+  const { confirm } = useModal();
 
   const handleSelectSystem = (systemId, path) => {
     switchSystem(systemId);
     navigate(path);
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    const isConfirmed = await confirm({
+      title: 'Confirm Logout',
+      message: 'Are you sure you want to log out of your session?',
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      isDestructive: true,
+      type: 'warning',
+    });
+
+    if (isConfirmed) {
+      logout();
+      navigate('/login');
+    }
   };
 
   const modules = [

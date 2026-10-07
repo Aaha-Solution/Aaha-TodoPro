@@ -11,10 +11,12 @@ import {
   Users
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useModal } from '../context/ModalContext';
 import { useSelector } from 'react-redux';
 
 const Sidebar = ({ isOpen, closeSidebar }) => {
   const { user, logout } = useAuth();
+  const { confirm } = useModal();
   const { unreadCount } = useSelector((state) => state.notification);
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,9 +35,20 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
   const canCreate = isIncomingQuality || isAdmin;
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    const isConfirmed = await confirm({
+      title: 'Confirm Logout',
+      message: 'Are you sure you want to log out of your session?',
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      isDestructive: true,
+      type: 'warning',
+    });
+
+    if (isConfirmed) {
+      logout();
+      navigate('/login');
+    }
   };
 
   const navItems = isIhlr
