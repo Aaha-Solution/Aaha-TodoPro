@@ -315,7 +315,7 @@ const CreateRequest = () => {
       return;
     }
     if (!formData.processOperation) {
-      alert('Please select a Process / Operation in Section 1');
+      alert('Please enter a Process / Operation in Section 1');
       return;
     }
     if (!formData.shift) {
@@ -585,18 +585,14 @@ const CreateRequest = () => {
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Process / Operation *
                 </label>
-                <select
+                <input
+                  type="text"
                   required
+                  placeholder="Enter process or operation"
                   value={formData.processOperation}
                   onChange={(e) => setFormData({ ...formData, processOperation: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-                >
-                  <option value="">Select</option>
-                  <option value="Laser Marking">Laser Marking</option>
-                  <option value="Stator Winding & Lacing">Stator Winding & Lacing</option>
-                  <option value="Rotor Die Casting">Rotor Die Casting</option>
-                  <option value="CNC Milling & Machining">CNC Milling & Machining</option>
-                </select>
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
+                />
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -608,10 +604,10 @@ const CreateRequest = () => {
                   className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                 >
                   <option value="">Select</option>
-                  <option value="Morning (06:00 - 14:30)">Morning (06:00 - 14:30)</option>
-                  <option value="Evening (14:30 - 22:30)">Evening (14:30 - 22:30)</option>
-                  <option value="Night (22:30 - 06:00)">Night (22:30 - 06:00)</option>
-                  <option value="General (08:30 - 17:00)">General (08:30 - 17:00)</option>
+                  <option value="Morning (06:00 - 14:30)">Morning (06:30 - 03:00)</option>
+                  <option value="Evening (14:30 - 22:30)">Evening (03:00 - 11:30)</option>
+                  <option value="Night (22:30 - 06:00)">Night (11:30 - 06:00)</option>
+                  <option value="General (08:30 - 17:00)">General (08:30 - 05:00)</option>
                 </select>
               </div>
               <div>
@@ -882,12 +878,12 @@ const CreateRequest = () => {
             {isSubmitting ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Saving to Database...</span>
+                <span>Submitting...</span>
               </>
             ) : (
               <>
                 <Send className="w-4 h-4" />
-                <span>Submit Request</span>
+                <span>Submit </span>
               </>
             )}
           </button>

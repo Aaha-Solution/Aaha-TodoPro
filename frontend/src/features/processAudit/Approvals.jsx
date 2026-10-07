@@ -639,7 +639,7 @@ const ProcessAuditApprovals = () => {
           {isSelectedApproved && (
             <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 animate-in fade-in">
               <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>This request is already <strong>APPROVED</strong></span>
+              <span>This request is already <strong>Saved</strong></span>
             </div>
           )}
 
@@ -805,7 +805,7 @@ const ProcessAuditApprovals = () => {
                       className="w-full py-3 px-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
                     >
                       <Check className="w-4 h-4 text-emerald-600" />
-                      <span>Approved</span>
+                      <span>Saved</span>
                     </button>
                   )}
                 </div>
