@@ -10,7 +10,8 @@ import {
   ZoomOut, 
   Maximize2,
   Paperclip,
-  Check
+  Check,
+  PenTool
 } from 'lucide-react';
 import { getFileMeta, triggerDirectDownload, resolveAttachmentUrl } from './attachmentUtils';
 import ExcelViewer from './ExcelViewer';
@@ -20,7 +21,7 @@ import ExcelViewer from './ExcelViewer';
  * Supports PDF, Excel (.xlsx, .xls, .csv), Word (.doc, .docx), and Images (.png, .jpg, etc.)
  * Works across Process Audit, IHLR, and Try Out Status.
  */
-const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
+const AttachmentPreviewModal = ({ isOpen, attachment, onClose, onAnnotate }) => {
   const [zoom, setZoom] = useState(1);
   const [imageError, setImageError] = useState(false);
 
@@ -123,6 +124,23 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
               </div>
             )}
 
+            {onAnnotate && (isImage || isPdf) && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onClose();
+                  onAnnotate(attachment);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition cursor-pointer shadow-2xs"
+                title="Annotate technical drawing (draw circles, arrows, lines, sketches)"
+              >
+                <PenTool className="w-3.5 h-3.5 text-amber-600" />
+                <span className="hidden sm:inline">Annotate Drawing</span>
+              </button>
+            )}
+
             {activeUrl && (
               <button
                 type="button"
@@ -155,7 +173,15 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose }) => {
           {/* 1. Interactive Excel / Spreadsheet Viewer */}
           {isExcel ? (
             <div className="w-full">
-              <ExcelViewer url={activeUrl} filename={attachment.name} file={attachment.file} />
+              <ExcelViewer
+                url={activeUrl}
+                filename={attachment.name}
+                file={attachment.file}
+                onAnnotate={onAnnotate ? (snap) => {
+                  onClose();
+                  onAnnotate(snap);
+                } : undefined}
+              />
             </div>
           ) : /* 2. Embedded PDF Document Viewer */
           isPdf ? (

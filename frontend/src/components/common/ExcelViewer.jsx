@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
 import { 
   FileSpreadsheet, 
   Search, 
@@ -7,7 +8,8 @@ import {
   Loader2, 
   AlertCircle, 
   Table as TableIcon,
-  RefreshCw
+  RefreshCw,
+  PenTool
 } from 'lucide-react';
 import { triggerDirectDownload } from './attachmentUtils';
 
@@ -145,7 +147,7 @@ const parseWorksheetToGrid = (worksheet) => {
   return { headerRow, bodyRows, colsInfo, totalCols: range.e.c - range.s.c + 1 };
 };
 
-const ExcelViewer = ({ url, filename, file }) => {
+const ExcelViewer = ({ url, filename, file, onAnnotate }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sheets, setSheets] = useState([]);
@@ -153,6 +155,42 @@ const ExcelViewer = ({ url, filename, file }) => {
   const [gridData, setGridData] = useState({ headerRow: [], bodyRows: [], colsInfo: [], totalCols: 0 });
   const [search, setSearch] = useState('');
   const [workbookRef, setWorkbookRef] = useState(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const tableContainerRef = useRef(null);
+
+  const handleAnnotateSheet = async () => {
+    if (!tableContainerRef.current || !onAnnotate) return;
+    setIsCapturing(true);
+    try {
+      const canvas = await html2canvas(tableContainerRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 1.5,
+        logging: false,
+      });
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          setIsCapturing(false);
+          return;
+        }
+        const base = (filename || 'spreadsheet').replace(/\.[^/.]+$/, '');
+        const sheetClean = (activeSheet || 'Sheet1').replace(/[^a-zA-Z0-9]/g, '_');
+        const snapName = `${base}_${sheetClean}.png`;
+        const snapFile = new File([blob], snapName, { type: 'image/png' });
+        const snapUrl = URL.createObjectURL(blob);
+        setIsCapturing(false);
+        onAnnotate({
+          name: snapName,
+          file: snapFile,
+          url: snapUrl,
+          isImage: true,
+          type: 'PNG',
+        });
+      }, 'image/png');
+    } catch (err) {
+      console.error('Failed to capture worksheet snapshot for annotation:', err);
+      setIsCapturing(false);
+    }
+  };
 
   const loadExcel = async () => {
     if (!url && !file) return;
@@ -304,6 +342,28 @@ const ExcelViewer = ({ url, filename, file }) => {
             />
           </div>
 
+          {onAnnotate && (
+            <button
+              type="button"
+              disabled={isCapturing}
+              onClick={handleAnnotateSheet}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-semibold rounded-lg shadow-2xs transition cursor-pointer shrink-0 disabled:opacity-50"
+              title="Capture sheet snapshot and annotate cells with circles, arrows, sketches"
+            >
+              {isCapturing ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                  <span className="hidden sm:inline">Capturing...</span>
+                </>
+              ) : (
+                <>
+                  <PenTool className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="hidden sm:inline">Annotate Sheet</span>
+                </>
+              )}
+            </button>
+          )}
+
           {(url || file) && (
             <button
               type="button"
@@ -323,7 +383,7 @@ const ExcelViewer = ({ url, filename, file }) => {
       </div>
 
       {/* Spreadsheet Data Grid */}
-      <div className="flex-1 overflow-auto bg-slate-50/50">
+      <div ref={tableContainerRef} className="flex-1 overflow-auto bg-slate-50/50">
         <table className="w-full border-collapse text-[11px]">
           <thead className="sticky top-0 z-10 bg-slate-100 shadow-2xs">
             <tr>

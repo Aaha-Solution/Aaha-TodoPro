@@ -22,10 +22,12 @@ import {
   Check,
   Search,
   Users,
+  PenTool,
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
+import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
 import { storage } from '../../utils/storage';
 
 const DEPARTMENT_EXECUTORS = {
@@ -255,6 +257,30 @@ const CreateRequest = () => {
 
   const [attachments, setAttachments] = useState([]);
   const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [annotatingItem, setAnnotatingItem] = useState(null);
+
+  const handleSaveAnnotation = (annotatedFile, newPreviewUrl) => {
+    if (!annotatingItem) return;
+    const { index } = annotatingItem;
+    setAttachments((prev) =>
+      prev.map((att, i) => {
+        if (i === index) {
+          return {
+            ...att,
+            name: annotatedFile.name,
+            file: annotatedFile,
+            url: newPreviewUrl,
+            size: `${(annotatedFile.size / (1024 * 1024)).toFixed(2)} MB`,
+            type: 'PNG',
+            isImage: true,
+            isAnnotated: true,
+          };
+        }
+        return att;
+      })
+    );
+    setAnnotatingItem(null);
+  };
 
   const removeAttachment = (index) => {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
@@ -738,7 +764,7 @@ const CreateRequest = () => {
             <div>
               <h2 className="text-sm font-bold text-slate-900">2. Attachments & Technical Drawings</h2>
               <p className="text-xs text-slate-500">
-                Upload spec sheets, CAD revisions, BOM documents, or torque tolerance blueprints.
+                Upload CAD blueprints, PDF drawings, defect photos, or Excel inspection sheets. Click "Annotate" on any drawing, PDF blueprint, or spreadsheet to mark with circles, arrows, lines, and freehand sketches.
               </p>
             </div>
           </div>
@@ -791,9 +817,19 @@ const CreateRequest = () => {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-blue-600 transition" title={file.name}>
-                          {file.name}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-blue-600 transition" title={file.name}>
+                            {file.name}
+                          </p>
+                          {file.isAnnotated && (
+                            <span
+                              className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 rounded-full"
+                              title="Contains drawing annotations (circle, arrows, lines, sketches)"
+                            >
+                              Annotated
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[10px] text-slate-400">
                           {file.type} • {file.size} • {file.date}
                         </p>
@@ -801,6 +837,34 @@ const CreateRequest = () => {
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
+                      {(file.isImage || file.isPdf || (file.type || '').toUpperCase() === 'PDF' || file.name?.toLowerCase().endsWith('.pdf')) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAnnotatingItem({ attachment: file, index: idx });
+                          }}
+                          className="px-2 py-1 rounded-lg text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                          title="Annotate technical drawing or PDF blueprint (draw circle, arrows, lines, sketches)"
+                        >
+                          <PenTool className="w-3 h-3 text-amber-600" />
+                          <span className="hidden sm:inline">Annotate</span>
+                        </button>
+                      )}
+                      {(file.isExcel || ['XLS', 'XLSX', 'CSV'].includes((file.type || '').toUpperCase())) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewAttachment(file);
+                          }}
+                          className="px-2 py-1 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                          title="Preview spreadsheet and click 'Annotate Sheet' to mark cells"
+                        >
+                          <PenTool className="w-3 h-3 text-emerald-600" />
+                          <span className="hidden sm:inline">Annotate</span>
+                        </button>
+                      )}
                       <span
                         className="p-1.5 rounded-lg text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-50 transition"
                         title="Preview file"
@@ -1126,6 +1190,37 @@ const CreateRequest = () => {
         isOpen={Boolean(previewAttachment)}
         attachment={previewAttachment}
         onClose={() => setPreviewAttachment(null)}
+        onAnnotate={(att) => {
+          const idx = attachments.findIndex((a) => a === att || a.name === att?.name);
+          if (idx !== -1) {
+            setAnnotatingItem({ attachment: attachments[idx], index: idx });
+          } else {
+            // New snapshot created from an Excel sheet
+            const newAtt = {
+              name: att.name,
+              size: `${((att.file?.size || 102400) / (1024 * 1024)).toFixed(2)} MB`,
+              type: 'PNG',
+              date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+              file: att.file,
+              url: att.url,
+              isImage: true,
+              isAnnotated: false,
+            };
+            setAttachments((prev) => {
+              const next = [...prev, newAtt];
+              setAnnotatingItem({ attachment: newAtt, index: next.length - 1 });
+              return next;
+            });
+          }
+        }}
+      />
+
+      {/* Technical Drawing & Defect Image Annotation Modal (Circle, Arrow, Line, Sketches) */}
+      <ImageAnnotationModal
+        isOpen={Boolean(annotatingItem)}
+        imageAttachment={annotatingItem?.attachment}
+        onClose={() => setAnnotatingItem(null)}
+        onSave={handleSaveAnnotation}
       />
     </div>
   );
