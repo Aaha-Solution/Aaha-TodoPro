@@ -98,7 +98,7 @@ const ensureTable = async () => {
         department VARCHAR(100) NOT NULL,
         executor VARCHAR(100) NOT NULL,
         comments TEXT,
-        status VARCHAR(50) DEFAULT 'Pending Execution',
+        status VARCHAR(50) DEFAULT 'Pending',
         root_cause TEXT,
         corrective_action TEXT,
         action_attachments JSON,
@@ -130,6 +130,13 @@ const ensureTable = async () => {
       SET creator_remark = NULL
       WHERE (creator_remark = comments OR TRIM(creator_remark) = TRIM(comments))
          OR (LOWER(status) NOT LIKE '%close%' AND LOWER(status) NOT LIKE '%open%' AND LOWER(status) NOT LIKE '%reopen%')
+    `).catch(() => {});
+
+    // Sync legacy 'Pending Execution' statuses to 'Pending'
+    await pool.query(`
+      UPDATE process_audit_requests
+      SET status = 'Pending'
+      WHERE status = 'Pending Execution' OR status IS NULL OR status = ''
     `).catch(() => {});
   } catch (err) {
     console.warn('[process_audit_requests] Table structure sync notice:', err.message);
@@ -218,7 +225,7 @@ export const ProcessAuditRequest = {
     const department = data.department || 'PRODUCTION';
     const executor = data.executor || 'Plant Lead';
     const comments = data.comments || '';
-    const status = data.status || 'Pending Execution';
+    const status = data.status || 'Pending';
     const created_by = data.created_by || data.createdBy || data.creator_name || data.creator || null;
     const created_by_id = data.created_by_id || data.createdById || data.userId || null;
 

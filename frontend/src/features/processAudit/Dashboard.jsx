@@ -737,10 +737,10 @@ const ProcessAuditDashboard = () => {
                   const dateStr = formatDate(req.escalation_date || req.created_at);
                   const prodStr = req.product || '-';
                   const stageStr = req.model || req.stage || 'Standard';
-                  const rawStatus = req.status || 'Pending Execution';
+                  const rawStatus = req.status || 'Pending';
                   const statusStr = (!isAdmin && rawStatus.toLowerCase().includes('progress'))
-                    ? 'Pending Execution'
-                    : rawStatus;
+                    ? 'Pending'
+                    : (rawStatus.toLowerCase().includes('pending') ? 'Pending' : rawStatus);
                   const meta = getStatusMeta(statusStr);
                   const createdDateStr = formatDate(req.created_at);
                   const deptStr = req.department || '-';
@@ -797,10 +797,10 @@ const ProcessAuditDashboard = () => {
                       {selectedRequest.issue_no || `PA-${selectedRequest.id}`} Production Details
                     </h3>
                     {(() => {
-                      const rawModalStatus = selectedRequest.status || 'Pending Execution';
+                      const rawModalStatus = selectedRequest.status || 'Pending';
                       const modalStatus = (!isAdmin && rawModalStatus.toLowerCase().includes('progress'))
-                        ? 'Pending Execution'
-                        : rawModalStatus;
+                        ? 'Pending'
+                        : (rawModalStatus.toLowerCase().includes('pending') ? 'Pending' : rawModalStatus);
                       const modalMeta = getStatusMeta(modalStatus);
                       return (
                         <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${modalMeta.statusColor}`}>

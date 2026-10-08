@@ -301,7 +301,7 @@ const ProcessAuditApprovals = () => {
     setCloserRemarks('');
 
     // Status mapping
-    const s = req.status || 'Pending Execution';
+    const s = req.status || 'Pending';
     if (s.toLowerCase().includes('approved')) {
       setCloserStatus('Approved');
     } else if (s.toLowerCase().includes('close')) {
@@ -438,7 +438,7 @@ const ProcessAuditApprovals = () => {
       obs.includes(q) ||
       remarks.includes(q);
 
-    const s = (r.status || 'Pending Execution').toLowerCase();
+    const s = (r.status || 'Pending').toLowerCase();
     let matchesStatus = true;
     if (selectedStatus === 'Pending Approval' || selectedStatus === 'PENDING') {
       matchesStatus =
@@ -490,7 +490,7 @@ const ProcessAuditApprovals = () => {
           'STANDARDIZATION': r.standardization_details || '—',
           'TARGET DATE': r.target_date ? r.target_date.split('T')[0] : '—',
           'REMARKS': r.creator_remark || r.comments || r.remarks || '—',
-          'STATUS': r.status || 'Pending Execution'
+          'STATUS': (r.status && !r.status.toLowerCase().includes('pending')) ? r.status : 'Pending'
         };
       });
 
@@ -958,7 +958,7 @@ const ProcessAuditApprovals = () => {
                       const displayId = r.issue_no || (r.id ? `PA-${r.id}` : `#${r.id}`);
                       const problemText = r.issue_observation || r.problem || '—';
                       const modelText = `${r.model || r.stage || ''} • ${r.process_operation || r.line || ''}`.trim().replace(/^•\s*|\s*•$/g, '');
-                      const statusLower = (r.status || 'Pending Execution').toLowerCase();
+                      const statusLower = (r.status || 'Pending').toLowerCase();
                       const isApproved = statusLower.includes('approved') && !statusLower.includes('partially') && !statusLower.includes('close');
                       const isClosed = statusLower.includes('close');
                       const isOpen = statusLower === 'open' || statusLower.includes('open') || statusLower.includes('reopen');
@@ -1148,7 +1148,7 @@ const ProcessAuditApprovals = () => {
                       ? 'bg-rose-50 text-rose-700 border-rose-200'
                       : 'bg-amber-50 text-amber-700 border-amber-200'
                   }`}>
-                    {activeModalRequest.status || 'Pending Execution'}
+                    {(activeModalRequest.status && !activeModalRequest.status.toLowerCase().includes('pending')) ? activeModalRequest.status : 'Pending'}
                   </span>
                   <button
                     onClick={() => setActiveModalRequest(null)}

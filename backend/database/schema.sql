@@ -57,7 +57,7 @@ CREATE TABLE process_audit_requests (
   department VARCHAR(100) NOT NULL,
   executor VARCHAR(100) NOT NULL,
   comments TEXT NULL,
-  status VARCHAR(50) DEFAULT 'Pending Execution',
+  status VARCHAR(50) DEFAULT 'Pending',
   root_cause TEXT NULL,
   corrective_action TEXT NULL,
   action_attachments JSON NULL,
