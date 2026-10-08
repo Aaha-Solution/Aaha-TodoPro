@@ -353,6 +353,12 @@ const MyRequests = () => {
         dotColor: 'bg-emerald-600',
       };
     }
+    if (s.includes('signed off') || s.includes('signed')) {
+      return {
+        statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+        dotColor: 'bg-emerald-500',
+      };
+    }
     if (s.includes('progress')) {
       return {
         statusColor: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
@@ -517,13 +523,13 @@ const MyRequests = () => {
       String(req.executor || '').toLowerCase().includes(selectedExecutor.toLowerCase());
 
     const s = String(req.status || '').toLowerCase();
+    const isSignedOff = (s.includes('approved') || s.includes('progress') || s.includes('signed')) && !s.includes('close');
     const matchesStatus =
       selectedStatus === 'All Statuses' ||
       (selectedStatus === 'Closed' && s.includes('close')) ||
       (selectedStatus === 'Open' && (s === 'open' || s.includes('open') || s.includes('reopen'))) ||
-      (selectedStatus === 'Approved' && s.includes('approved') && !s.includes('partially') && !s.includes('pending')) ||
-      ((selectedStatus === 'Pending' || selectedStatus === 'Pending Execution') && (!isAdmin ? !s.includes('close') : (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject') && !s.includes('progress'))))) ||
-      (selectedStatus === 'In Progress' && s.includes('progress')) ||
+      ((selectedStatus === 'In Progress' || selectedStatus === 'Signed off' || selectedStatus === 'Approved') && isSignedOff) ||
+      ((selectedStatus === 'Pending' || selectedStatus === 'Pending Execution') && (s.includes('pending') || (!isSignedOff && !s.includes('close') && !s.includes('open') && !s.includes('reject')))) ||
       (selectedStatus === 'Rejected' && s.includes('reject')) ||
       s === selectedStatus.toLowerCase();
 
@@ -543,7 +549,14 @@ const MyRequests = () => {
         const creator = r.created_by || r.creator || '-';
         const executor = r.executor || '';
         const rawStatus = r.status || 'Pending';
-        const status = (rawStatus.toLowerCase().includes('pending')) ? 'Pending' : rawStatus;
+        const sLower = rawStatus.toLowerCase();
+        const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !sLower.includes('close');
+        let status = rawStatus;
+        if (isSignedOff) {
+          status = isAdmin ? 'In Progress' : 'Signed off';
+        } else if (sLower.includes('pending')) {
+          status = 'Pending';
+        }
         return `${id},${date},${shift},"${prod}",${stage},"${line}","${creator}","${executor}",${status}`;
       })
       .join('\n');
@@ -761,7 +774,9 @@ const MyRequests = () => {
             >
               <option value="All Statuses">All Statuses</option>
               <option value="Pending">Pending</option>
-              {isAdmin && <option value="In Progress">In Progress</option>}
+              <option value={isAdmin ? "In Progress" : "Signed off"}>
+                {isAdmin ? "In Progress" : "Signed off"}
+              </option>
               <option value="Closed">Closed</option>
             </select>
           </div>
@@ -808,9 +823,14 @@ const MyRequests = () => {
                   const creatorStr = req.created_by || req.creator || '-';
                   const executorStr = req.executor || 'Assigned Lead';
                   const rawStatus = req.status || 'Pending';
-                  const statusStr = (!isAdmin && rawStatus.toLowerCase().includes('progress'))
-                    ? 'Pending'
-                    : (rawStatus.toLowerCase().includes('pending') ? 'Pending' : rawStatus);
+                  const sLower = rawStatus.toLowerCase();
+                  const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !sLower.includes('close');
+                  let statusStr = rawStatus;
+                  if (isSignedOff) {
+                    statusStr = isAdmin ? 'In Progress' : 'Signed off';
+                  } else if (sLower.includes('pending')) {
+                    statusStr = 'Pending';
+                  }
                   const meta = getStatusMeta(statusStr);
 
                   return (
@@ -838,7 +858,7 @@ const MyRequests = () => {
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${meta.statusColor}`}>
                           {statusStr.toLowerCase().includes('close') ? (
                             <CheckCheck className="w-3.5 h-3.5 text-emerald-700" />
-                          ) : statusStr.toLowerCase().includes('approved') ? (
+                          ) : (statusStr.toLowerCase().includes('signed') || statusStr.toLowerCase().includes('approved')) ? (
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           ) : (
                             <span className={`w-1.5 h-1.5 rounded-full ${meta.dotColor}`}></span>
@@ -848,13 +868,13 @@ const MyRequests = () => {
                         {statusStr.toLowerCase().includes('close') && req.closed_by && (
                           <div className="text-[10px] text-slate-500 mt-0.5">by <strong className="text-slate-700">{req.closed_by}</strong></div>
                         )}
-                        {statusStr.toLowerCase().includes('approved') && !statusStr.toLowerCase().includes('close') && (req.approved_by || req.action_taken_by) && (
+                        {(statusStr.toLowerCase().includes('signed') || statusStr.toLowerCase().includes('progress') || statusStr.toLowerCase().includes('approved')) && !statusStr.toLowerCase().includes('close') && (req.approved_by || req.action_taken_by) && (
                           <div className="text-[10px] text-slate-500 mt-0.5">by <strong className="text-slate-700">{req.approved_by || req.action_taken_by}</strong></div>
                         )}
                       </td>
                       <td className="py-4 px-6 text-center align-middle whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5">
-                          {canEdit && statusStr.toLowerCase().includes('approved') && !statusStr.toLowerCase().includes('close') ? (
+                          {canEdit && isSignedOff && !statusStr.toLowerCase().includes('close') ? (
                             <button
                               onClick={() => setActiveModalRequest(req)}
                               className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5"
@@ -909,7 +929,20 @@ const MyRequests = () => {
                     {activeModalRequest.issue_no || `PA-${activeModalRequest.id}`} — Full Audit & Production Profile
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Status: <span className="font-semibold text-slate-800">{(!isAdmin && (activeModalRequest.status || '').toLowerCase().includes('progress')) ? 'Pending' : ((activeModalRequest.status || '').toLowerCase().includes('pending') ? 'Pending' : (activeModalRequest.status || 'Pending'))}</span>
+                    {(() => {
+                      const rawModalStatus = activeModalRequest.status || 'Pending';
+                      const sLower = rawModalStatus.toLowerCase();
+                      const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !sLower.includes('close');
+                      let modalStatus = rawModalStatus;
+                      if (isSignedOff) {
+                        modalStatus = isAdmin ? 'In Progress' : 'Signed off';
+                      } else if (sLower.includes('pending')) {
+                        modalStatus = 'Pending';
+                      }
+                      return (
+                        <>Status: <span className="font-semibold text-slate-800">{modalStatus}</span></>
+                      );
+                    })()}
                     {activeModalRequest.priority && (
                       <span className="ml-2 font-medium text-amber-600">({activeModalRequest.priority} Priority)</span>
                     )}
@@ -1282,9 +1315,15 @@ const MyRequests = () => {
                     </h4>
                   </div>
                   {activeModalRequest.status && (() => {
-                    const modalStatus = (!isAdmin && activeModalRequest.status.toLowerCase().includes('progress'))
-                      ? 'Pending'
-                      : (activeModalRequest.status.toLowerCase().includes('pending') ? 'Pending' : activeModalRequest.status);
+                    const rawModalStatus = activeModalRequest.status || 'Pending';
+                    const sLower = rawModalStatus.toLowerCase();
+                    const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !sLower.includes('close');
+                    let modalStatus = rawModalStatus;
+                    if (isSignedOff) {
+                      modalStatus = isAdmin ? 'In Progress' : 'Signed off';
+                    } else if (sLower.includes('pending')) {
+                      modalStatus = 'Pending';
+                    }
                     return (
                       <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border self-start sm:self-auto ${getStatusMeta(modalStatus).statusColor}`}>
                         Current Status: {modalStatus}

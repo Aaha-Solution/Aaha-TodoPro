@@ -52,9 +52,8 @@ export const getDashboardMetrics = async (req, res) => {
       totalRequests += c;
       const s = (r.status || '').toLowerCase();
       if (s.includes('close')) closed += c;
-      else if (s.includes('progress')) inProgress += c;
+      else if (s.includes('progress') || s.includes('signed') || (s.includes('approved') && !s.includes('pending'))) inProgress += c;
       else if (s === 'open' || s.includes('open') || s.includes('reopen')) openCount += c;
-      else if (s.includes('approved') && !s.includes('partially') && !s.includes('pending')) approved += c;
       else if (s.includes('rejected') || s.includes('reject')) rejected += c;
       else if (s.includes('pending execution') || s.includes('pending')) pendingExecution += c;
       else pendingExecution += c;

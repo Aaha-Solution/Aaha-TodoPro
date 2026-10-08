@@ -147,6 +147,12 @@ const ProcessAuditDashboard = () => {
         dotColor: 'bg-teal-500',
       };
     }
+    if (s.includes('signed off') || s.includes('signed')) {
+      return {
+        statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+        dotColor: 'bg-emerald-500',
+      };
+    }
     if (s.includes('progress')) {
       return {
         statusColor: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
@@ -279,20 +285,15 @@ const ProcessAuditDashboard = () => {
 
   const total = filteredRequests.length;
 
-  const pendingExec = !isAdmin
-    ? filteredRequests.filter((r) => {
-        const s = (r.status || '').toLowerCase();
-        return !s.includes('close');
-      }).length
-    : filteredRequests.filter((r) => {
-        const s = (r.status || '').toLowerCase();
-        return (
-          (s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject'))) &&
-          !s.includes('progress')
-        );
-      }).length;
+  const pendingExec = filteredRequests.filter((r) => {
+    const s = (r.status || '').toLowerCase();
+    return s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject') && !s.includes('progress') && !s.includes('signed'));
+  }).length;
 
-  const inProgress = filteredRequests.filter((r) => (r.status || '').toLowerCase().includes('progress')).length;
+  const inProgress = filteredRequests.filter((r) => {
+    const s = (r.status || '').toLowerCase();
+    return (s.includes('progress') || s.includes('approved') || s.includes('signed')) && !s.includes('close');
+  }).length;
 
   const closed = filteredRequests.filter((r) => (r.status || '').toLowerCase().includes('close')).length;
 
@@ -321,7 +322,15 @@ const ProcessAuditDashboard = () => {
             iconBg: 'bg-indigo-50 text-indigo-600',
           },
         ]
-      : []),
+      : [
+          {
+            title: 'Signed off',
+            value: String(inProgress),
+            subtitle: hasActiveFilters ? 'Filtered signed off' : (isDefaultYear ? `Current Year ${currentYear}` : undefined),
+            icon: CheckCircle2,
+            iconBg: 'bg-emerald-50 text-emerald-600',
+          },
+        ]),
     {
       title: 'Closed',
       value: String(closed),
@@ -738,9 +747,14 @@ const ProcessAuditDashboard = () => {
                   const prodStr = req.product || '-';
                   const stageStr = req.model || req.stage || 'Standard';
                   const rawStatus = req.status || 'Pending';
-                  const statusStr = (!isAdmin && rawStatus.toLowerCase().includes('progress'))
-                    ? 'Pending'
-                    : (rawStatus.toLowerCase().includes('pending') ? 'Pending' : rawStatus);
+                  const sLower = rawStatus.toLowerCase();
+                  const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !sLower.includes('close');
+                  let statusStr = rawStatus;
+                  if (isSignedOff) {
+                    statusStr = isAdmin ? 'In Progress' : 'Signed off';
+                  } else if (sLower.includes('pending')) {
+                    statusStr = 'Pending';
+                  }
                   const meta = getStatusMeta(statusStr);
                   const createdDateStr = formatDate(req.created_at);
                   const deptStr = req.department || '-';
@@ -798,9 +812,14 @@ const ProcessAuditDashboard = () => {
                     </h3>
                     {(() => {
                       const rawModalStatus = selectedRequest.status || 'Pending';
-                      const modalStatus = (!isAdmin && rawModalStatus.toLowerCase().includes('progress'))
-                        ? 'Pending'
-                        : (rawModalStatus.toLowerCase().includes('pending') ? 'Pending' : rawModalStatus);
+                      const sLower = rawModalStatus.toLowerCase();
+                      const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !sLower.includes('close');
+                      let modalStatus = rawModalStatus;
+                      if (isSignedOff) {
+                        modalStatus = isAdmin ? 'In Progress' : 'Signed off';
+                      } else if (sLower.includes('pending')) {
+                        modalStatus = 'Pending';
+                      }
                       const modalMeta = getStatusMeta(modalStatus);
                       return (
                         <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${modalMeta.statusColor}`}>

@@ -398,7 +398,7 @@ export const ProcessAuditRequest = {
       updates.push('closed_at = NOW()');
     }
 
-    const isApproved = status.toLowerCase().includes('approved');
+    const isApproved = status.toLowerCase().includes('approved') || status.toLowerCase().includes('progress') || status.toLowerCase().includes('signed');
     if (isApproved) {
       const approvedBy = details.approved_by || details.approvedBy || actionTakenBy || 'Assigned Executor';
       const approvedById = details.approved_by_id || details.approvedById || null;

@@ -340,10 +340,10 @@ const ProcessAuditApprovals = () => {
     if (e) e.preventDefault();
     if (!selectedRequest) return;
 
-    // Do not allow re-saving if status is already approved
+    // Do not allow re-saving if status is already approved / in progress / signed off / closed
     const s = String(selectedRequest.status || '').toLowerCase();
-    if (s.includes('approved') || s.includes('close')) {
-      setErrorMessage('This request has already been approved and signed off. Saving again is disabled.');
+    if (s.includes('approved') || s.includes('close') || s.includes('progress') || s.includes('signed')) {
+      setErrorMessage('This request has already been signed off. Saving again is disabled.');
       return;
     }
 
@@ -361,8 +361,9 @@ const ProcessAuditApprovals = () => {
       const combinedEvidence = [...existingEvidence, ...uploadedList];
       const reqId = selectedRequest.id || selectedRequest.issue_no;
 
+      const targetStatus = closerStatus === 'Rejected' ? 'Rejected' : 'In Progress';
       const payload = {
-        status: closerStatus,
+        status: targetStatus,
         root_cause: rootCause.trim(),
         corrective_action: closerAction.trim(),
         standardization_details: standardizationDetails.trim(),
@@ -377,7 +378,7 @@ const ProcessAuditApprovals = () => {
         approved_by_role: user?.role || null
       };
 
-      const updated = await processAuditService.updateRequestStatus(reqId, closerStatus, payload);
+      const updated = await processAuditService.updateRequestStatus(reqId, targetStatus, payload);
 
       const displayId =
         selectedRequest.issue_no ||
@@ -385,7 +386,7 @@ const ProcessAuditApprovals = () => {
       setSuccessMessage(`Sign-off updated successfully for ${displayId}!`);
       setNewEvidenceFiles([]);
 
-      const mergedUpdated = { ...selectedRequest, ...payload, ...updated, status: closerStatus };
+      const mergedUpdated = { ...selectedRequest, ...payload, ...updated, status: targetStatus };
       setSelectedRequest(mergedUpdated);
       if (updated) {
         populateForm(mergedUpdated);
@@ -439,13 +440,14 @@ const ProcessAuditApprovals = () => {
       remarks.includes(q);
 
     const s = (r.status || 'Pending').toLowerCase();
+    const isSignedOff = s.includes('approved') || s.includes('progress') || s.includes('signed');
     let matchesStatus = true;
     if (selectedStatus === 'Pending Approval' || selectedStatus === 'PENDING') {
       matchesStatus =
         s.includes('pending') ||
-        (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject'));
-    } else if (selectedStatus === 'Approved' || selectedStatus === 'APPROVED') {
-      matchesStatus = s.includes('approved') && !s.includes('partially') && !s.includes('close');
+        (!isSignedOff && !s.includes('close') && !s.includes('open') && !s.includes('reject'));
+    } else if (selectedStatus === 'Approved' || selectedStatus === 'APPROVED' || selectedStatus === 'In Progress' || selectedStatus === 'Signed off') {
+      matchesStatus = isSignedOff && !s.includes('close');
     } else if (selectedStatus === 'Closed' || selectedStatus === 'CLOSED') {
       matchesStatus = s.includes('close');
     } else if (selectedStatus === 'Open' || selectedStatus === 'OPEN') {
@@ -490,7 +492,16 @@ const ProcessAuditApprovals = () => {
           'STANDARDIZATION': r.standardization_details || '—',
           'TARGET DATE': r.target_date ? r.target_date.split('T')[0] : '—',
           'REMARKS': r.creator_remark || r.comments || r.remarks || '—',
-          'STATUS': (r.status && !r.status.toLowerCase().includes('pending')) ? r.status : 'Pending'
+          'STATUS': (() => {
+            const s = (r.status || '').toLowerCase();
+            if (s.includes('progress') || s.includes('approved') || s.includes('signed')) {
+              return isAdmin ? 'In Progress' : 'Signed off';
+            }
+            if (s.includes('close')) return 'Closed';
+            if (s.includes('reject')) return 'Rejected';
+            if (s.includes('open')) return 'Open';
+            return 'Pending';
+          })()
         };
       });
 
@@ -606,7 +617,7 @@ const ProcessAuditApprovals = () => {
   const isRequestApproved = (req) => {
     if (!req || !req.status) return false;
     const s = String(req.status).trim().toLowerCase();
-    return s.includes('approved') || s.includes('close');
+    return s.includes('approved') || s.includes('close') || s.includes('progress') || s.includes('signed');
   };
 
   const isSelectedApproved = Boolean(selectedRequest && isRequestApproved(selectedRequest));
@@ -664,8 +675,12 @@ const ProcessAuditApprovals = () => {
                   {selectedRequest.issue_no || (selectedRequest.id ? `PA-${selectedRequest.id}` : `#${selectedRequest.id}`)}
                 </span>
                 {isSelectedApproved && (
-                  <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    APPROVED
+                  <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold ${
+                    isAdmin
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  }`}>
+                    {isAdmin ? 'IN PROGRESS' : 'SIGNED OFF'}
                   </span>
                 )}
               </div>
@@ -674,9 +689,13 @@ const ProcessAuditApprovals = () => {
 
           {/* Approved & Locked Notice */}
           {isSelectedApproved && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 animate-in fade-in">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>This request is already <strong>Saved</strong></span>
+            <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 animate-in fade-in ${
+              isAdmin
+                ? 'bg-indigo-50 border-indigo-200 text-indigo-800'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            }`}>
+              <Check className="w-4 h-4 shrink-0" />
+              <span>This request is already <strong>{isAdmin ? 'In Progress' : 'Signed off'}</strong></span>
             </div>
           )}
 
@@ -839,10 +858,14 @@ const ProcessAuditApprovals = () => {
                     <button
                       type="button"
                       disabled
-                      className="w-full py-3 px-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                      className={`w-full py-3 px-4 rounded-xl border font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2 ${
+                        isAdmin
+                          ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                          : 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                      }`}
                     >
-                      <Check className="w-4 h-4 text-emerald-600" />
-                      <span>Saved</span>
+                      <Check className="w-4 h-4" />
+                      <span>{isAdmin ? 'In Progress' : 'Signed off'}</span>
                     </button>
                   )}
                 </div>
@@ -901,8 +924,10 @@ const ProcessAuditApprovals = () => {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
               >
                 <option value="All">All Decisions</option>
-                <option value="Pending Approval">Pending Approval / Execution</option>
-                <option value="Approved">Approved</option>
+                <option value="Pending Approval">Pending</option>
+                <option value={isAdmin ? "In Progress" : "Signed off"}>
+                  {isAdmin ? "In Progress" : "Signed off"}
+                </option>
                 <option value="Closed">Closed</option>
                 <option value="Open">Open</option>
                 <option value="Rejected">Rejected</option>
@@ -959,11 +984,11 @@ const ProcessAuditApprovals = () => {
                       const problemText = r.issue_observation || r.problem || '—';
                       const modelText = `${r.model || r.stage || ''} • ${r.process_operation || r.line || ''}`.trim().replace(/^•\s*|\s*•$/g, '');
                       const statusLower = (r.status || 'Pending').toLowerCase();
-                      const isApproved = statusLower.includes('approved') && !statusLower.includes('partially') && !statusLower.includes('close');
                       const isClosed = statusLower.includes('close');
                       const isOpen = statusLower === 'open' || statusLower.includes('open') || statusLower.includes('reopen');
                       const isRejected = statusLower.includes('reject');
-                      const isPending = !isApproved && !isClosed && !isOpen && !isRejected;
+                      const isSignedOff = (statusLower.includes('approved') || statusLower.includes('progress') || statusLower.includes('signed')) && !isClosed;
+                      const isPending = !isSignedOff && !isClosed && !isOpen && !isRejected;
 
                       const remarksText = r.creator_remark || r.corrective_action || r.comments || r.remarks || r.rejection_reason || '—';
                       const attachmentsRaw = r.action_attachments || r.attachments || r.evidence_attachment;
@@ -1010,9 +1035,13 @@ const ProcessAuditApprovals = () => {
                             />
                           </td>
                           <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                            {isApproved && (
-                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                APPROVED
+                            {isSignedOff && (
+                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                isAdmin
+                                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              }`}>
+                                {isAdmin ? 'IN PROGRESS' : 'SIGNED OFF'}
                               </span>
                             )}
                             {isClosed && (
@@ -1141,14 +1170,28 @@ const ProcessAuditApprovals = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
-                    (activeModalRequest.status || '').toLowerCase().includes('approved')
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : (activeModalRequest.status || '').toLowerCase().includes('reject')
-                      ? 'bg-rose-50 text-rose-700 border-rose-200'
-                      : 'bg-amber-50 text-amber-700 border-amber-200'
-                  }`}>
-                    {(activeModalRequest.status && !activeModalRequest.status.toLowerCase().includes('pending')) ? activeModalRequest.status : 'Pending'}
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${(() => {
+                    const s = (activeModalRequest.status || '').toLowerCase();
+                    if (s.includes('close')) return 'bg-teal-50 text-teal-700 border-teal-200';
+                    if (s.includes('reject')) return 'bg-rose-50 text-rose-700 border-rose-200';
+                    if (s.includes('open')) return 'bg-sky-50 text-sky-700 border-sky-200';
+                    if (s.includes('progress') || s.includes('approved') || s.includes('signed')) {
+                      return isAdmin
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                    }
+                    return 'bg-amber-50 text-amber-700 border-amber-200';
+                  })()}`}>
+                    {(() => {
+                      const s = (activeModalRequest.status || '').toLowerCase();
+                      if (s.includes('progress') || s.includes('approved') || s.includes('signed')) {
+                        return isAdmin ? 'In Progress' : 'Signed off';
+                      }
+                      if (s.includes('close')) return 'Closed';
+                      if (s.includes('reject')) return 'Rejected';
+                      if (s.includes('open')) return 'Open';
+                      return 'Pending';
+                    })()}
                   </span>
                   <button
                     onClick={() => setActiveModalRequest(null)}

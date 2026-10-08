@@ -225,15 +225,15 @@ export const updateRequestStatus = async (req, res) => {
     if (updated) {
       const issueNo = updated.issue_no || (updated.id ? `PA-${updated.id}` : 'PA-1');
       const lowerStatus = status.toLowerCase();
-      const isApproved = lowerStatus.includes('approved');
+      const isApproved = lowerStatus.includes('approved') || lowerStatus.includes('progress') || lowerStatus.includes('signed');
       const isRejected = lowerStatus.includes('reject');
       const isClosed = lowerStatus.includes('close');
       const isOpen = lowerStatus === 'open';
 
-      // 1. When approved by executor: Notify Creator with direct deep-link to request
+      // 1. When approved / signed off by executor: Notify Creator with direct deep-link to request
       if (isApproved && updated.created_by) {
         try {
-          const msg = `Your audit request #${issueNo} was approved by ${updated.executor}. Click to review corrective action, add your remark, and set status to Closed or Open.`;
+          const msg = `Your audit request #${issueNo} was signed off by ${updated.executor}. Click to review corrective action, add your remark, and set status to Closed or Open.`;
           await pool.query(
             `INSERT INTO process_audit_notifications 
              (user_name, user_id, request_id, issue_no, type, title, message, link) 
@@ -244,7 +244,7 @@ export const updateRequestStatus = async (req, res) => {
               updated.id,
               issueNo,
               'request_approved',
-              `Audit Request #${issueNo} Approved — Review & Remark Required`,
+              `Audit Request #${issueNo} Signed Off — Review & Remark Required`,
               msg,
               `/process-audit/my-requests?requestId=${updated.id}`
             ]
