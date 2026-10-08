@@ -133,6 +133,7 @@ const IhlrDashboard = () => {
       subtitle: hasActiveFilters ? 'Filtered line rejections' : 'Recorded line rejections',
       icon: Layers,
       iconBg: 'bg-blue-50 text-blue-600',
+      subtitleColor: 'text-blue-600',
       filterStatus: 'All',
     },
     {
@@ -141,6 +142,7 @@ const IhlrDashboard = () => {
       subtitle: hasActiveFilters ? 'Filtered pending' : 'Awaiting root cause closer actions',
       icon: AlertCircle,
       iconBg: 'bg-rose-50 text-rose-600',
+      subtitleColor: 'text-rose-600',
       filterStatus: 'OPEN',
     },
     {
@@ -149,6 +151,7 @@ const IhlrDashboard = () => {
       subtitle: hasActiveFilters ? 'Filtered approval pending' : 'Awaiting Admin Sign-off & Closure',
       icon: Clock,
       iconBg: 'bg-amber-50 text-amber-600',
+      subtitleColor: 'text-amber-600',
       filterStatus: 'IN_PROGRESS',
     },
     {
@@ -157,6 +160,7 @@ const IhlrDashboard = () => {
       subtitle: hasActiveFilters ? 'Filtered verified closures' : 'Verified by Quality',
       icon: CheckCircle2,
       iconBg: 'bg-emerald-50 text-emerald-600',
+      subtitleColor: 'text-emerald-600',
       filterStatus: 'CLOSED',
     },
   ];
@@ -413,7 +417,7 @@ const IhlrDashboard = () => {
               </div>
               <div>
                 <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">{kpi.value}</span>
-                <p className="text-[11px] text-slate-400 mt-1 font-medium">{kpi.subtitle}</p>
+                <p className={`text-[11px] mt-1 font-semibold ${kpi.subtitleColor || 'text-slate-400'}`}>{kpi.subtitle}</p>
               </div>
             </div>
           );
