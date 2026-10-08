@@ -387,8 +387,8 @@ const CreateRequest = () => {
       alert('Please select a Product in Section 1');
       return;
     }
-    if (!formData.model) {
-      alert('Please select a Model in Section 1');
+    if (!formData.model || !formData.model.trim()) {
+      alert('Please enter a Model in Section 1');
       return;
     }
     if (!formData.processOperation) {
@@ -641,18 +641,14 @@ const CreateRequest = () => {
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Model *
                 </label>
-                <select
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter model"
                   value={formData.model}
                   onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-                >
-                  <option value="">Select</option>
-                  <option value="Assembly">Assembly</option>
-                  <option value="Inspection">Inspection</option>
-                  <option value="Packaging">Packaging</option>
-                  <option value="Raw Material">Raw Material</option>
-                  <option value="Production">Production</option>
-                </select>
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
+                />
               </div>
             </div>
 
