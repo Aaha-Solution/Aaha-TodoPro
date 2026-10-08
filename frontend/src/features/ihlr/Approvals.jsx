@@ -15,7 +15,8 @@ import {
   AlertCircle,
   UserCheck,
   X,
-  ChevronDown
+  ChevronDown,
+  PenTool
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -24,6 +25,7 @@ import { ihlrService } from '../../services/ihlrService';
 import { IhlrAttachmentThumbnail, parseAttachments } from './IhlrAttachmentView';
 import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
+import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import DateInput from '../../components/common/DateInput';
@@ -112,6 +114,7 @@ const IhlrApprovals = () => {
   const [dbUsers, setDbUsers] = useState([]);
   const [existingEvidence, setExistingEvidence] = useState([]);
   const [newEvidenceFiles, setNewEvidenceFiles] = useState([]);
+  const [annotatingItem, setAnnotatingItem] = useState(null);
   const [isSavingCloser, setIsSavingCloser] = useState(false);
   const [isSavingAdmin, setIsSavingAdmin] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -327,6 +330,13 @@ const IhlrApprovals = () => {
 
   const handleRemoveNewEvidence = (index) => {
     setNewEvidenceFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveAnnotation = (annotatedFile) => {
+    if (!annotatingItem) return;
+    setNewEvidenceFiles((prev) => [...prev, annotatedFile]);
+    setAnnotatingItem(null);
+    modalSuccess(`Annotated drawing "${annotatedFile.name}" added to evidence files! Remember to click "Update Closer Log" to save.`);
   };
 
   // 1. Submit Closer Updates (5-Why causes, Action, Evidence, Target Date)
@@ -950,6 +960,7 @@ const IhlrApprovals = () => {
                   <AttachmentChipList
                     attachments={existingEvidence}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
+                    onAnnotate={canUpdateCloserFields ? (file) => setAnnotatingItem({ attachment: file }) : undefined}
                     onRemove={canUpdateCloserFields ? (idx) => handleRemoveExistingEvidence(idx) : undefined}
                   />
                 )}
@@ -957,6 +968,7 @@ const IhlrApprovals = () => {
                   <AttachmentChipList
                     attachments={previewableNewFiles}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
+                    onAnnotate={canUpdateCloserFields ? (file) => setAnnotatingItem({ attachment: file }) : undefined}
                     onRemove={canUpdateCloserFields ? (idx) => handleRemoveNewEvidence(idx) : undefined}
                   />
                 )}
@@ -1617,6 +1629,15 @@ const IhlrApprovals = () => {
         isOpen={Boolean(selectedPreviewAttachment)}
         attachment={selectedPreviewAttachment}
         onClose={() => setSelectedPreviewAttachment(null)}
+        onAnnotate={canUpdateCloserFields ? (att) => setAnnotatingItem({ attachment: att }) : undefined}
+      />
+
+      {/* Technical Drawing & Defect Image Annotation Modal */}
+      <ImageAnnotationModal
+        isOpen={Boolean(annotatingItem)}
+        imageAttachment={annotatingItem?.attachment}
+        onClose={() => setAnnotatingItem(null)}
+        onSave={handleSaveAnnotation}
       />
 
       {/* Universal Export Format Selection Modal */}

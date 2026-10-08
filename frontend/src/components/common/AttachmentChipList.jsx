@@ -1,17 +1,18 @@
 import React from 'react';
-import { FileText, FileSpreadsheet, Paperclip, X, Eye, Download } from 'lucide-react';
+import { FileText, FileSpreadsheet, Paperclip, X, Eye, Download, PenTool } from 'lucide-react';
 import { getFileMeta, parseAttachments, triggerDirectDownload } from './attachmentUtils';
 
 /**
  * Universal Attachment Chip List Component
  * Renders attachment chips with icons, format badges, click-to-preview triggers,
  * and seamless direct 1-click download buttons that don't affect UI or close modals.
- * Supports onRemove callback for upload forms.
+ * Supports onRemove and onAnnotate callbacks for upload forms.
  */
 const AttachmentChipList = ({ 
   attachments, 
   onPreview, 
   onRemove, 
+  onAnnotate,
   readonly = false 
 }) => {
   const list = Array.isArray(attachments) ? attachments : parseAttachments(attachments);
@@ -22,6 +23,14 @@ const AttachmentChipList = ({
     <div className="flex flex-wrap items-center gap-2 pt-1">
       {list.map((file, idx) => {
         const meta = getFileMeta(file.type, file.name);
+        const isAnnotatable = Boolean(
+          file.isImage || 
+          file.isPdf || 
+          (file.type || '').toUpperCase() === 'PDF' || 
+          file.name?.toLowerCase().endsWith('.pdf') || 
+          ['PNG', 'JPG', 'JPEG', 'WEBP'].includes((file.type || '').toUpperCase())
+        );
+
         return (
           <div
             key={idx}
@@ -46,6 +55,21 @@ const AttachmentChipList = ({
               </span>
               <Eye className="w-3 h-3 text-slate-400 group-hover:text-blue-600 transition shrink-0" />
             </div>
+
+            {/* Quick Annotate Drawing Button */}
+            {onAnnotate && isAnnotatable && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAnnotate(file, idx);
+                }}
+                className="p-1 rounded-md hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition cursor-pointer shrink-0"
+                title={`Annotate ${file.name} (draw circles, arrows, sketches)`}
+              >
+                <PenTool className="w-3.5 h-3.5 text-amber-600" />
+              </button>
+            )}
 
             {/* Quick 1-Click Direct Download Button */}
             {(file.url || file.file) && (
