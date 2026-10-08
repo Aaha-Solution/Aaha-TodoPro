@@ -36,6 +36,7 @@ import {
   toggleUserStatus
 } from '../../redux/slices/userSlice';
 import { userService } from '../../services/userService';
+import { processAuditService } from '../../services/processAuditService';
 import { DEPARTMENTS } from '../../utils/constants';
 
 const ROLES = [
@@ -102,12 +103,29 @@ const UserManagement = () => {
 
   // Load users from backend / local storage on mount
   useEffect(() => {
+    let isMounted = true;
     const fetchUsers = async () => {
       try {
         const data = await userService.getUsers();
-        dispatch(setUsers(data));
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          dispatch(setUsers(data));
+          return;
+        }
       } catch (err) {
-        console.error('Failed to load users from DB:', err);
+        console.warn('Primary userService.getUsers notice:', err);
+      }
+
+      try {
+        const paUsers = await processAuditService.getUsers();
+        if (isMounted && Array.isArray(paUsers) && paUsers.length > 0) {
+          const mapped = paUsers.map((u) => ({
+            ...u,
+            employeeId: u.employeeId || u.employee_id || String(u.id),
+          }));
+          dispatch(setUsers(mapped));
+        }
+      } catch (err2) {
+        console.error('Failed to load users from fallback:', err2);
       }
     };
     fetchUsers();
@@ -116,6 +134,9 @@ const UserManagement = () => {
     if (searchParams.get('action') === 'new') {
       handleOpenAddModal();
     }
+    return () => {
+      isMounted = false;
+    };
   }, [dispatch, searchParams]);
 
   const showToast = (msg) => {

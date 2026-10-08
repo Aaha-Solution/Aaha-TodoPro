@@ -2,8 +2,34 @@ import api from './api';
 
 export const userService = {
   getUsers: async () => {
-    const response = await api.get('/users');
-    return response.data?.data || [];
+    try {
+      const response = await api.get('/users');
+      const data = response.data?.data || response.data;
+      if (Array.isArray(data) && data.length > 0) {
+        return data.map((u) => ({
+          ...u,
+          employeeId: u.employeeId || u.employee_id || String(u.id),
+        }));
+      }
+    } catch (err) {
+      console.warn('api.get(/users) notice, trying fallback /process-audit/users:', err.message);
+    }
+
+    // High-availability fallback to /process-audit/users
+    try {
+      const fallbackRes = await api.get('/process-audit/users');
+      const fallbackData = fallbackRes.data?.data || fallbackRes.data;
+      if (Array.isArray(fallbackData)) {
+        return fallbackData.map((u) => ({
+          ...u,
+          employeeId: u.employeeId || u.employee_id || String(u.id),
+        }));
+      }
+    } catch (err2) {
+      console.error('All user endpoints failed:', err2.message);
+    }
+
+    return [];
   },
 
   getUserById: async (id) => {
