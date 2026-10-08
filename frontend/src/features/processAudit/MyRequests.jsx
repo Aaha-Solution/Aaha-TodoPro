@@ -349,8 +349,8 @@ const MyRequests = () => {
     const s = (status || '').toLowerCase();
     if (s.includes('close')) {
       return {
-        statusColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-        dotColor: 'bg-emerald-600',
+        statusColor: 'bg-red-50 text-red-700 border-red-200',
+        dotColor: 'bg-red-500',
       };
     }
     if (s.includes('signed off') || s.includes('signed')) {
@@ -857,7 +857,7 @@ const MyRequests = () => {
                       <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${meta.statusColor}`}>
                           {statusStr.toLowerCase().includes('close') ? (
-                            <CheckCheck className="w-3.5 h-3.5 text-emerald-700" />
+                            <CheckCheck className="w-3.5 h-3.5 text-red-600" />
                           ) : (statusStr.toLowerCase().includes('signed') || statusStr.toLowerCase().includes('approved')) ? (
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           ) : (
@@ -1335,13 +1335,13 @@ const MyRequests = () => {
                 {/* If already closed */}
                 {activeModalRequest.status && activeModalRequest.status.toLowerCase().includes('close') ? (
                   <div className="space-y-3">
-                    <div className="flex items-start gap-2.5 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl">
-                      <CheckCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2.5 text-xs text-red-800 bg-red-50 border border-red-200 p-3.5 rounded-xl">
+                      <CheckCheck className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                       <div>
-                        <p className="font-bold text-emerald-900 text-xs">
+                        <p className="font-bold text-red-900 text-xs">
                           This observation has been verified and marked as CLOSED
                         </p>
-                        <p className="text-[11px] text-emerald-700 mt-0.5">
+                        <p className="text-[11px] text-red-700 mt-0.5">
                           {activeModalRequest.closed_by && `Closed by ${activeModalRequest.closed_by}`}
                           {activeModalRequest.closed_at && ` on ${formatDate(activeModalRequest.closed_at)}`}.
                         </p>

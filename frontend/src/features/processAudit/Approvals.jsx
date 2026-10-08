@@ -849,9 +849,9 @@ const ProcessAuditApprovals = () => {
                     <button
                       type="button"
                       disabled
-                      className="w-full py-3 px-4 rounded-xl border border-teal-300 bg-teal-50 text-teal-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                      className="w-full py-3 px-4 rounded-xl border border-red-300 bg-red-50 text-red-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
                     >
-                      <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                      <CheckCircle2 className="w-4 h-4 text-red-600" />
                       <span>Closed</span>
                     </button>
                   ) : (
@@ -1045,7 +1045,7 @@ const ProcessAuditApprovals = () => {
                               </span>
                             )}
                             {isClosed && (
-                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
+                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
                                 CLOSED
                               </span>
                             )}
@@ -1172,7 +1172,7 @@ const ProcessAuditApprovals = () => {
                 <div className="flex items-center gap-2">
                   <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${(() => {
                     const s = (activeModalRequest.status || '').toLowerCase();
-                    if (s.includes('close')) return 'bg-teal-50 text-teal-700 border-teal-200';
+                    if (s.includes('close')) return 'bg-red-50 text-red-700 border-red-200';
                     if (s.includes('reject')) return 'bg-rose-50 text-rose-700 border-rose-200';
                     if (s.includes('open')) return 'bg-sky-50 text-sky-700 border-sky-200';
                     if (s.includes('progress') || s.includes('approved') || s.includes('signed')) {

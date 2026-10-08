@@ -143,8 +143,8 @@ const ProcessAuditDashboard = () => {
     const s = (status || '').toLowerCase();
     if (s.includes('close')) {
       return {
-        statusColor: 'bg-teal-50 text-teal-700 border-teal-200/80',
-        dotColor: 'bg-teal-500',
+        statusColor: 'bg-red-50 text-red-700 border-red-200',
+        dotColor: 'bg-red-500',
       };
     }
     if (s.includes('signed off') || s.includes('signed')) {
@@ -336,7 +336,7 @@ const ProcessAuditDashboard = () => {
       value: String(closed),
       subtitle: hasActiveFilters ? 'Filtered closed' : (isDefaultYear ? `Current Year ${currentYear}` : undefined),
       icon: CheckCircle2,
-      iconBg: 'bg-teal-50 text-teal-600',
+      iconBg: 'bg-red-50 text-red-600',
     },
   ];
 
