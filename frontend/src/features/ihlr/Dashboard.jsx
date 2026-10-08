@@ -6,7 +6,6 @@ import {
   CheckCircle2, 
   Layers, 
   Eye,
-  RefreshCw,
   Filter,
   Calendar,
   Building2,
@@ -230,16 +229,8 @@ const IhlrDashboard = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => loadData()}
-            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs transition cursor-pointer"
-            title="Refresh Data"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-
-          {canCreate && (
+        {canCreate && (
+          <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/ihlr/create-request')}
               className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
@@ -247,8 +238,8 @@ const IhlrDashboard = () => {
               <Plus className="w-4 h-4" />
               <span>Create IHLR Issue</span>
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Ultra-Modern Filter Toolbar */}

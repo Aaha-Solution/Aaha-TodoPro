@@ -163,17 +163,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          <button
-            onClick={loadFeed}
-            disabled={loading}
-            className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-2xs transition cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
-            title="Refresh notifications"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
-        </div>
+
       </div>
 
       {/* 2. Unified Toolbar (Search & Mark All Read) */}
