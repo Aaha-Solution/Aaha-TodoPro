@@ -18,6 +18,7 @@ import {
   Paperclip,
   FileSpreadsheet,
   FileText,
+  Clock,
   Check
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -353,7 +354,7 @@ const IhlrMyRequests = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, req) => {
     const s = (status || '').toUpperCase();
     if (s === 'CLOSED') {
       return (
@@ -363,26 +364,25 @@ const IhlrMyRequests = () => {
         </span>
       );
     }
-    if (!isAdmin) {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-          PENDING
-        </span>
-      );
-    }
-    if (s === 'IN_PROGRESS' || s === 'IN-PROGRESS') {
+    const isCompleted = s === 'IN_PROGRESS' || s === 'IN-PROGRESS' || s === 'APPROVAL_PENDING' || s === 'APPROVAL PENDING' || (req && (
+      Boolean(req.action && String(req.action).trim()) ||
+      Boolean(req.target_date) ||
+      (Array.isArray(req.prod_why_why) && req.prod_why_why.some(w => Boolean(w && String(w).trim())))
+    ));
+
+    if (isCompleted) {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          IN PROGRESS
+          <Clock className="w-3 h-3 text-amber-600" />
+          APPROVAL PENDING
         </span>
       );
     }
+
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">
         <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-        OPEN
+        PENDING
       </span>
     );
   };
@@ -474,7 +474,7 @@ const IhlrMyRequests = () => {
             >
               <option value="All">All Statuses</option>
               <option value="OPEN">Pending</option>
-              <option value="IN_PROGRESS">In Progress</option>
+              <option value="IN_PROGRESS">Approval Pending</option>
               <option value="CLOSED">Closed</option>
             </select>
           </div>
@@ -638,7 +638,7 @@ const IhlrMyRequests = () => {
 
                     {/* Status */}
                     <td className="py-3.5 px-3">
-                      {getStatusBadge(r.status)}
+                      {getStatusBadge(r.status, r)}
                     </td>
 
                     {/* Actions */}

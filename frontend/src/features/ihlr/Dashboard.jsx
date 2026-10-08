@@ -137,22 +137,20 @@ const IhlrDashboard = () => {
     },
     {
       title: 'Pending',
-      value: !isAdmin 
-        ? ((stats.open || 0) + (stats.inProgress || 0))
-        : (stats.pending !== undefined ? stats.pending : (stats.open || 0)),
-      subtitle: hasActiveFilters ? 'Filtered pending closures' : 'Awaiting root cause closure',
+      value: stats.open !== undefined ? stats.open : (stats.pending || 0),
+      subtitle: hasActiveFilters ? 'Filtered pending' : 'Awaiting root cause closer actions',
       icon: AlertCircle,
       iconBg: 'bg-rose-50 text-rose-600',
       filterStatus: 'OPEN',
     },
-    ...(isAdmin ? [{
-      title: 'In Progress',
+    {
+      title: 'Approval Pending',
       value: stats.inProgress || 0,
-      subtitle: hasActiveFilters ? 'Filtered in progress' : 'Containment & RCA in work',
+      subtitle: hasActiveFilters ? 'Filtered approval pending' : 'Awaiting Admin Sign-off & Closure',
       icon: Clock,
       iconBg: 'bg-amber-50 text-amber-600',
       filterStatus: 'IN_PROGRESS',
-    }] : []),
+    },
     {
       title: 'Closed',
       value: stats.closed || 0,
@@ -163,7 +161,7 @@ const IhlrDashboard = () => {
     },
   ];
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, req) => {
     const s = (status || '').toUpperCase();
     if (s === 'CLOSED') {
       return (
@@ -173,28 +171,25 @@ const IhlrDashboard = () => {
         </span>
       );
     }
-    // For regular users, non-closed issues show as PENDING
-    if (!isAdmin) {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-          PENDING
-        </span>
-      );
-    }
-    // For Admin:
-    if (s === 'IN_PROGRESS' || s === 'IN-PROGRESS') {
+    const isCompleted = s === 'IN_PROGRESS' || s === 'IN-PROGRESS' || s === 'APPROVAL_PENDING' || s === 'APPROVAL PENDING' || (req && (
+      Boolean(req.action && String(req.action).trim()) ||
+      Boolean(req.target_date) ||
+      (Array.isArray(req.prod_why_why) && req.prod_why_why.some(w => Boolean(w && String(w).trim())))
+    ));
+
+    if (isCompleted) {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          IN PROGRESS
+          <Clock className="w-3 h-3 text-amber-600" />
+          APPROVAL PENDING
         </span>
       );
     }
+
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
         <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-        OPEN
+        PENDING
       </span>
     );
   };
@@ -402,7 +397,7 @@ const IhlrDashboard = () => {
       </div>
 
       {/* KPI Cards Row (Display only - No navigation) */}
-      <div className={`grid grid-cols-1 ${isAdmin ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'} gap-4`}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, index) => {
           const Icon = kpi.icon;
           return (
@@ -591,7 +586,7 @@ const IhlrDashboard = () => {
 
                     {/* Status */}
                     <td className="py-4 px-4">
-                      {getStatusBadge(req.status)}
+                      {getStatusBadge(req.status, req)}
                     </td>
 
                     {/* View Action */}

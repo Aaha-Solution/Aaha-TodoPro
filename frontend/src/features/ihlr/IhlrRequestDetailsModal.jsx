@@ -82,6 +82,16 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
     return `Shift ${str}`;
   };
 
+  const isCompleted = Boolean(
+    (request?.status || '').toUpperCase() === 'IN_PROGRESS' ||
+    (request?.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
+    (request && (
+      Boolean(request.action && String(request.action).trim()) ||
+      Boolean(request.target_date) ||
+      (Array.isArray(request.prod_why_why) && request.prod_why_why.some(w => Boolean(w && String(w).trim())))
+    ))
+  );
+
   const getStatusBadge = (status) => {
     const s = (status || 'OPEN').toUpperCase();
     if (s === 'CLOSED' || s === 'APPROVED') {
@@ -92,26 +102,18 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
         </span>
       );
     }
-    if (!isAdmin) {
+    if (isCompleted || s === 'IN_PROGRESS' || s === 'UNDER_REVIEW') {
       return (
-        <span className="px-3 py-0.5 rounded-full text-xs font-semibold border border-rose-400 text-rose-700 bg-rose-50/70 inline-flex items-center gap-1">
-          <AlertCircle className="w-3 h-3 text-rose-600" />
-          <span>Pending</span>
-        </span>
-      );
-    }
-    if (s === 'IN_PROGRESS' || s === 'UNDER_REVIEW') {
-      return (
-        <span className="px-3 py-0.5 rounded-full text-xs font-semibold border border-blue-400 text-blue-700 bg-blue-50/70 inline-flex items-center gap-1">
-          <Clock className="w-3 h-3 text-blue-600" />
-          <span>In Progress</span>
+        <span className="px-3 py-0.5 rounded-full text-xs font-semibold border border-amber-400 text-amber-800 bg-amber-50/70 inline-flex items-center gap-1">
+          <Clock className="w-3 h-3 text-amber-600" />
+          <span>Approval Pending</span>
         </span>
       );
     }
     return (
       <span className="px-3 py-0.5 rounded-full text-xs font-semibold border border-rose-400 text-rose-800 bg-rose-50/70 inline-flex items-center gap-1">
         <AlertCircle className="w-3 h-3 text-rose-600" />
-        <span>Open</span>
+        <span>Pending</span>
       </span>
     );
   };
@@ -403,9 +405,13 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
                   Closed
                 </span>
-              ) : (
+              ) : isCompleted ? (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
-                  {request.status || 'Pending'}
+                  Approval Pending
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300">
+                  Pending
                 </span>
               )}
             </button>

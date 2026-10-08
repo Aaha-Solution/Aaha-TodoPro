@@ -127,8 +127,9 @@ export const getDashboardStats = async (req, res) => {
     return successResponse(res, {
       total,
       open,
-      pending: isAdmin ? open : (open + inProgress),
+      pending: open,
       inProgress,
+      approvalPending: inProgress,
       closed,
       fourMBreakdown,
       recentRequests: sortedRequests.slice(0, 5),
