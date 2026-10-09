@@ -481,6 +481,7 @@ const IhlrCreateRequest = () => {
         localStorage.removeItem('ihlr_create_request_draft');
       } catch {}
       await success(`IHLR Analysis Report ${formData.req_no} submitted successfully!`);
+      window.dispatchEvent(new Event('refreshNotifications'));
       navigate('/ihlr/my-requests');
     } catch (err) {
       error('Failed to submit IHLR Report: ' + err.message);

@@ -923,15 +923,23 @@ export const getIhlrNotifications = async (req, res) => {
       if (userName) {
         conditions.push('LOWER(TRIM(user_name)) = LOWER(TRIM(?))');
         params.push(userName);
+        conditions.push('LOWER(user_name) LIKE ?');
+        params.push(`%${userName.toLowerCase()}%`);
       }
       if (userEmail) {
         conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
         params.push(userEmail);
+        conditions.push('LOWER(user_email) LIKE ?');
+        params.push(`%${userEmail.toLowerCase()}%`);
       }
       if (isAdmin) {
-        conditions.push("LOWER(TRIM(user_name)) = 'admin'");
+        conditions.push("LOWER(TRIM(user_name)) LIKE '%admin%'");
         conditions.push("LOWER(TRIM(user_email)) LIKE '%admin%'");
         conditions.push("type LIKE '%admin%'");
+        conditions.push("type = 'closer_completed_pending_admin_signoff'");
+        conditions.push("type = 'submission_confirmed'");
+        conditions.push("type = 'case_closed'");
+        conditions.push("type = 'ihlr_reassigned'");
       }
 
       if (conditions.length > 0) {
