@@ -833,6 +833,8 @@ export const getIhlrNotifications = async (req, res) => {
 
       if (conditions.length > 0) {
         query += ` WHERE (${conditions.join(' OR ')})`;
+      } else if (!isAdmin) {
+        return successResponse(res, [], 'IHLR notifications retrieved');
       }
       query += ' ORDER BY id DESC LIMIT 50';
       const [rows] = await pool.query(query, params).catch(() => [[]]);
@@ -842,12 +844,33 @@ export const getIhlrNotifications = async (req, res) => {
     // Also include synthetic recent request stream if notifications table is empty
     if (notifRows.length === 0) {
       let requests = (await IhlrRequest.getAll()) || [];
-      if (!isAdmin && (userName || userId)) {
+      if (!isAdmin) {
+        if (!userName && !userId && !userEmail) {
+          return successResponse(res, [], 'IHLR notifications retrieved');
+        }
         requests = requests.filter(r => {
-          const rPerson = (r.resp_person || '').trim().toLowerCase();
+          const assignedNames = (r.resp_person || '')
+            .toLowerCase()
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+          const assignedEmails = (r.resp_person_email || '')
+            .toLowerCase()
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
           const rCreatedBy = (r.created_by || '').trim().toLowerCase();
-          return (userName && (rPerson === userName.toLowerCase() || rCreatedBy === userName.toLowerCase())) ||
-                 (userId && String(r.created_by_id) === String(userId));
+          const rCreatedEmail = (r.created_by_email || '').trim().toLowerCase();
+
+          const isAssigned =
+            (userName && (assignedNames.includes(userName.toLowerCase()) || assignedNames.some(p => p.includes(userName.toLowerCase()) || userName.toLowerCase().includes(p)))) ||
+            (userEmail && assignedEmails.includes(userEmail.toLowerCase()));
+          const isCreator =
+            (userName && (rCreatedBy === userName.toLowerCase() || userName.toLowerCase() === rCreatedBy)) ||
+            (userEmail && rCreatedEmail === userEmail.toLowerCase()) ||
+            (userId && String(r.created_by_id) === String(userId));
+
+          return isAssigned || isCreator;
         });
       }
       const notifications = requests.slice(0, 15).map((r) => {

@@ -29,7 +29,7 @@ import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
 import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
 import { getTodayDateInput, formatDateDDMMYYYY } from '../../utils/dateUtils';
-import { IHLR_SHIFTS, getCurrentIhlrShift, getIhlrShiftDetails } from '../../utils/constants';
+import { IHLR_SHIFTS, getCurrentIhlrShift } from '../../utils/constants';
 
 const IhlrCreateRequest = () => {
   const { alert, success, error, warning } = useModal();
@@ -480,7 +480,7 @@ const IhlrCreateRequest = () => {
         localStorage.removeItem(draftKey);
         localStorage.removeItem('ihlr_create_request_draft');
       } catch {}
-      await success(`IHLR Analysis Report ${formData.req_no} submitted successfully!\n\n✓ In-App notifications sent to ${creatorName} and assigned personnel (${formData.resp_person}).\n✓ Email notifications triggered to all assigned parties.`);
+      await success(`IHLR Analysis Report ${formData.req_no} submitted successfully!`);
       navigate('/ihlr/my-requests');
     } catch (err) {
       error('Failed to submit IHLR Report: ' + err.message);
@@ -604,16 +604,9 @@ const IhlrCreateRequest = () => {
 
             {/* Shift */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-                  Shift *
-                </label>
-                {getIhlrShiftDetails(formData.shift) && (
-                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 font-mono">
-                    {getIhlrShiftDetails(formData.shift).timeDisplay}
-                  </span>
-                )}
-              </div>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
+                Shift *
+              </label>
               <select
                 value={formData.shift}
                 onChange={(e) => setFormData({ ...formData, shift: e.target.value })}

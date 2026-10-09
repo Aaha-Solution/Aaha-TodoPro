@@ -1,6 +1,7 @@
 import { ihlrService } from './ihlrService';
 import { processAuditService } from './processAuditService';
 import { storage } from '../utils/storage';
+import { isIhlrRequestVisibleToUser } from '../utils/ihlrAuthUtils';
 
 /**
  * Helper to safely format ISO/timestamp dates into human-readable strings.
@@ -59,7 +60,17 @@ export const setReadOverride = (tab, user, notifKey, isRead) => {
  */
 export const fetchIhlrNotificationsFeed = async (user) => {
   try {
-    const resolvedUser = user || storage.getUser();
+    const storedUser = storage.getUser() || {};
+    const resolvedUser = {
+      ...storedUser,
+      ...(user || {}),
+      department: (user?.department || storedUser?.department || '').trim().toUpperCase(),
+    };
+
+    const userRole = (resolvedUser?.role || '').trim().toUpperCase();
+    const userDept = (resolvedUser?.department || '').trim().toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+
     const [apiNotifs, requests] = await Promise.all([
       ihlrService
         .getNotifications({
@@ -68,6 +79,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           user_id: resolvedUser?.id,
           user_email: resolvedUser?.email,
           role: resolvedUser?.role,
+          department: resolvedUser?.department,
         })
         .catch(() => []),
       ihlrService.getRequests().catch(() => []),
@@ -78,6 +90,24 @@ export const fetchIhlrNotificationsFeed = async (user) => {
 
     if (Array.isArray(apiNotifs) && apiNotifs.length > 0) {
       apiNotifs.forEach((n) => {
+        // Enforce user visibility safeguard: non-admins only see notifications meant for them
+        if (!isAdmin) {
+          const uName = (resolvedUser?.name || '').trim().toLowerCase();
+          const uEmail = (resolvedUser?.email || '').trim().toLowerCase();
+          const uId = String(resolvedUser?.id || '');
+
+          const nName = (n.user_name || '').trim().toLowerCase();
+          const nEmail = (n.user_email || '').trim().toLowerCase();
+          const nId = String(n.user_id || '');
+
+          const isDirectMatch =
+            (uId && nId && uId === nId) ||
+            (uName && nName && (uName === nName || nName.includes(uName))) ||
+            (uEmail && nEmail && (uEmail === nEmail || nEmail.includes(uEmail)));
+
+          if (!isDirectMatch) return;
+        }
+
         const isClosedNotif =
           ['case_closed', 'closure_confirmed', 'closed'].includes(n.type) ||
           (n.title && n.title.toLowerCase().includes('closed')) ||
@@ -153,6 +183,13 @@ export const fetchIhlrNotificationsFeed = async (user) => {
 
     if (Array.isArray(requests)) {
       requests.forEach((r, idx) => {
+        // Enforce strict access control:
+        // Operational users only see notifications for requests where they are the selected responsible person or creator!
+        // Other departments (e.g. PED) and unassigned users MUST NOT receive notifications for this request.
+        if (!isIhlrRequestVisibleToUser(r, resolvedUser)) {
+          return;
+        }
+
         const reqNo = String(r.req_no || '').startsWith('IHLR-') ? r.req_no : `IHLR-${r.req_no || idx + 1}`;
         const isClosed = (r.status || '').toUpperCase() === 'CLOSED';
         const isInProgress = (r.status || '').toUpperCase() === 'IN_PROGRESS';
