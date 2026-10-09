@@ -32,10 +32,11 @@ export const getNotifications = async (req, res) => {
     if (!pool) throw new Error('Database pool not available');
     await ensureNotificationTable();
 
-    const userName = (req.query.user || req.query.user_name || req.user?.name || '').trim();
+    const userName = (req.query.user || req.query.user_name || req.query.user_email || req.user?.name || req.user?.email || '').trim();
     const userId = req.query.user_id || req.user?.id || null;
     const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN';
+    const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'INCOMING QUALITY';
 
     // Auto-sync any unnotified assigned pending requests from process_audit_requests
     await pool.query(`
@@ -46,19 +47,23 @@ export const getNotifications = async (req, res) => {
         r.id, 
         r.issue_no, 
         'approval_required',
-        CONCAT('New Audit Request Assigned for Sign-off: #', r.issue_no),
-        CONCAT('Request #', r.issue_no, ' for ', r.department, ' (', r.model, ' - ', r.process_operation, ') has been assigned to you by ', COALESCE(r.created_by, 'Quality Auditor'), '. Awaiting your review & sign-off.'),
+        CONCAT('New Request Assigned: #', r.issue_no),
+        CONCAT('New request #', r.issue_no, ' (', r.department, ' - ', r.model, ') has been assigned to you for review & sign-off.'),
         '/process-audit/approvals'
       FROM process_audit_requests r
       LEFT JOIN users u ON LOWER(TRIM(u.name)) = LOWER(TRIM(r.executor))
       WHERE r.executor IS NOT NULL 
         AND TRIM(r.executor) != ''
-        AND r.status NOT IN ('Approved', 'Rejected')
+        AND r.status NOT IN ('Approved', 'Rejected', 'Closed')
         AND NOT EXISTS (
           SELECT 1 FROM process_audit_notifications n 
           WHERE n.request_id = r.id AND LOWER(TRIM(n.user_name)) = LOWER(TRIM(r.executor))
         )
     `).catch(() => {});
+
+    if (!isAdmin && !userName && !userId) {
+      return successResponse(res, []);
+    }
 
     let query = `SELECT * FROM process_audit_notifications`;
     const params = [];

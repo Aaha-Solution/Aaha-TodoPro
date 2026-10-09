@@ -225,8 +225,8 @@ const ProcessAuditApprovals = () => {
     const name = (uName || '').trim().toLowerCase();
     const email = (uEmail || '').trim().toLowerCase();
 
-    if (name && e === name) return true;
-    if (email && e === email) return true;
+    if (name && (e === name || e.includes(name))) return true;
+    if (email && (e === email || e.includes(email))) return true;
 
     const tokens = e.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(Boolean);
     if (name && tokens.includes(name)) return true;
@@ -237,9 +237,11 @@ const ProcessAuditApprovals = () => {
     setLoading(true);
     try {
       const params = {};
-      if (!isAdmin && user?.name) {
-        params.executor = user.name;
-        params.role = user?.role;
+      if (!isAdmin && (currentUser?.name || currentUser?.email || currentUser?.id)) {
+        params.executor = currentUser?.name || currentUser?.email;
+        params.user = currentUser?.name || currentUser?.email;
+        params.user_id = currentUser?.id;
+        params.role = currentUser?.role;
       }
       const data = await processAuditService.getRequests(params);
       const list = Array.isArray(data) ? data : [];
@@ -1440,16 +1442,18 @@ const ProcessAuditApprovals = () => {
                   Created by: <strong className="text-slate-700">{activeModalRequest.created_by || 'Quality Auditor'}</strong>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      populateForm(activeModalRequest);
-                      setActiveModalRequest(null);
-                    }}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
-                  >
-                    Edit in Sign-off Form
-                  </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        populateForm(activeModalRequest);
+                        setActiveModalRequest(null);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                    >
+                      Edit in Sign-off Form
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setActiveModalRequest(null)}

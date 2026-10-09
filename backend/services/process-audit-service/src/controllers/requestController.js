@@ -26,9 +26,12 @@ export const getAllRequests = async (req, res) => {
       if (created_by) filters.created_by = created_by;
       if (created_by_id) filters.created_by_id = created_by_id;
       if (executor) filters.executor = executor;
-      if (user) {
-        filters.user = user;
-        filters.user_id = req.query.user_id || req.user?.id;
+      
+      const userName = user || req.user?.name || req.user?.email || created_by || executor;
+      const uId = req.query.user_id || req.user?.id || created_by_id;
+      if (userName || uId) {
+        filters.user = userName;
+        filters.user_id = uId;
       }
     }
 
@@ -143,8 +146,25 @@ export const createRequest = async (req, res) => {
             ]
           );
         }
+
+        // Auto-create in-app notification for the request creator / requestor
+        if (created.created_by) {
+          await pool.query(
+            `INSERT INTO process_audit_notifications 
+             (user_name, user_id, request_id, issue_no, type, title, message, link) 
+             VALUES (?, ?, ?, ?, 'request_created', ?, ?, '/process-audit/my-requests')`,
+            [
+              created.created_by,
+              created.created_by_id || null,
+              created.id,
+              issueNo,
+              `Request Created: #${issueNo}`,
+              `Audit request #${issueNo} for ${dept} (${created.model || 'Process'}) has been raised and assigned to ${created.executor}.`
+            ]
+          );
+        }
       } catch (notifErr) {
-        console.warn('Failed to insert executor notification:', notifErr.message);
+        console.warn('Failed to insert executor/creator notification:', notifErr.message);
       }
     }
 

@@ -173,20 +173,18 @@ export const ProcessAuditRequest = {
       params.push(filters.executor, filters.executor);
     }
 
-    // Filter by general user (either creator OR executor)
-    if (filters.user) {
+    // Filter by general user (either creator OR assigned executor)
+    if (filters.user || filters.user_id) {
+      const uName = (filters.user || '').trim();
+      const uId = filters.user_id ? Number(filters.user_id) : 0;
       conditions.push(`(
-        r.created_by_id = ? 
-        OR LOWER(TRIM(r.created_by)) = LOWER(TRIM(?)) 
-        OR LOWER(TRIM(r.executor)) = LOWER(TRIM(?))
-        OR LOWER(r.executor) REGEXP CONCAT('(^|[^a-zA-Z0-9])', ?, '([^a-zA-Z0-9]|$)')
+        (r.created_by_id IS NOT NULL AND r.created_by_id = ?) 
+        OR LOWER(TRIM(r.created_by)) = LOWER(?)
+        OR LOWER(r.created_by) LIKE CONCAT('%', LOWER(?), '%')
+        OR LOWER(TRIM(r.executor)) = LOWER(?)
+        OR LOWER(r.executor) LIKE CONCAT('%', LOWER(?), '%')
       )`);
-      params.push(
-        filters.user_id || 0,
-        filters.user,
-        filters.user,
-        filters.user
-      );
+      params.push(uId, uName, uName, uName, uName);
     }
 
     if (conditions.length > 0) {

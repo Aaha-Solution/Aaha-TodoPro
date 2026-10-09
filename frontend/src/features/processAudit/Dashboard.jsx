@@ -82,9 +82,15 @@ const ProcessAuditDashboard = () => {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
+      const params = {};
+      if (!isAdmin && (currentUser?.name || currentUser?.email || currentUser?.id)) {
+        params.user = currentUser?.name || currentUser?.email;
+        params.user_id = currentUser?.id;
+        params.role = currentUser?.role;
+      }
       const [reqsData, statsData] = await Promise.allSettled([
-        processAuditService.getRequests(),
-        processAuditService.getDashboardStats()
+        processAuditService.getRequests(params),
+        processAuditService.getDashboardStats(params)
       ]);
 
       if (reqsData.status === 'fulfilled' && Array.isArray(reqsData.value)) {
@@ -260,9 +266,43 @@ const ProcessAuditDashboard = () => {
     ).sort();
   }, [requests]);
 
+  const canUserAccessRequest = (req, u, adminFlag) => {
+    if (adminFlag) return true;
+    if (!u || !req) return false;
+
+    const uId = u.id ? Number(u.id) : null;
+    const uName = (u.name || '').trim().toLowerCase();
+    const uEmail = (u.email || '').trim().toLowerCase();
+
+    // 1. Creator check
+    const reqCreatorId = req.created_by_id ? Number(req.created_by_id) : null;
+    if (uId && reqCreatorId && uId === reqCreatorId) return true;
+
+    const creatorName = (req.created_by || req.creator || '').trim().toLowerCase();
+    if (uName && (creatorName === uName || creatorName.includes(uName))) return true;
+    if (uEmail && (creatorName === uEmail || creatorName.includes(uEmail))) return true;
+
+    // 2. Assigned Executor check
+    const execStr = (req.executor || '').trim().toLowerCase();
+    if (execStr) {
+      if (uName && (execStr === uName || execStr.includes(uName))) return true;
+      if (uEmail && (execStr === uEmail || execStr.includes(uEmail))) return true;
+      const tokens = execStr.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(Boolean);
+      if (uName && tokens.includes(uName)) return true;
+    }
+
+    return false;
+  };
+
   // Filter requests based on selected department and timeline range
   const filteredRequests = React.useMemo(() => {
     return requests.filter((r) => {
+      // Access control: only Admin, Creator who raised it, or Assigned Executor can see the request
+      if (!isAdmin) {
+        const canAccess = canUserAccessRequest(r, currentUser, isAdmin);
+        if (!canAccess) return false;
+      }
+
       // Department filter
       if (selectedDept !== 'All') {
         const dept = (r.department || '').trim().toUpperCase();
@@ -281,7 +321,7 @@ const ProcessAuditDashboard = () => {
 
       return true;
     });
-  }, [requests, selectedDept, startDate, endDate]);
+  }, [requests, selectedDept, startDate, endDate, isAdmin, currentUser]);
 
   const total = filteredRequests.length;
 

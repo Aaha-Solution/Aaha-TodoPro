@@ -37,6 +37,12 @@ export const getReadOverrides = (tab, user) => {
   }
 };
 
+export const getReadOverride = (tab, user, notifKey) => {
+  const overrides = getReadOverrides(tab, user);
+  if (notifKey === undefined || notifKey === null) return null;
+  return overrides[String(notifKey)] !== undefined ? Boolean(overrides[String(notifKey)]) : null;
+};
+
 export const setReadOverride = (tab, user, notifKey, isRead) => {
   try {
     const key = `notifications_read_${tab}_${user?.id || user?.name || 'global'}`;
@@ -238,16 +244,16 @@ export const fetchIhlrNotificationsFeed = async (user) => {
  */
 export const fetchProcessAuditNotificationsFeed = async (user) => {
   try {
-    const [apiNotifs, requests] = await Promise.all([
-      processAuditService
-        .getNotifications({
-          user: user?.name,
-          user_id: user?.id,
-          role: user?.role,
-        })
-        .catch(() => []),
-      processAuditService.getRequests().catch(() => []),
-    ]);
+    const activeUser = user || storage.getUser();
+    const apiNotifs = await processAuditService
+      .getNotifications({
+        user: activeUser?.name,
+        user_name: activeUser?.name,
+        user_id: activeUser?.id,
+        role: activeUser?.role,
+        department: activeUser?.department,
+      })
+      .catch(() => []);
 
     const streamList = [];
 
@@ -264,6 +270,9 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         const rawReq = n.requestId || n.issue_no || '';
         const reqNo = rawReq ? (String(rawReq).startsWith('#') ? rawReq : `#${rawReq}`) : '#PA';
 
+        const savedRead = getReadOverride('process-audit', activeUser, `pa-notif-${n.id}`) ?? getReadOverride('process-audit', activeUser, n.id);
+        const isRead = savedRead !== null ? savedRead : Boolean(n.read || n.is_read);
+
         streamList.push({
           id: `pa-notif-${n.id}`,
           notifId: n.id,
@@ -277,77 +286,10 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           timeDisplay: formatStreamDate(n.date || n.time),
           subCategory: 'PROCESS AUDIT OBSERVATION',
           footerFlag,
-          read: Boolean(n.read),
+          read: isRead,
           type: n.type || 'info',
           link: n.link || (isApproval ? '/process-audit/approvals' : '/process-audit/my-requests'),
         });
-      });
-    }
-
-    if (Array.isArray(requests)) {
-      requests.forEach((r, idx) => {
-        const reqNo = String(r.issue_no || '').startsWith('PA-') ? r.issue_no : `PA-${r.issue_no || r.id || idx + 1}`;
-        const status = (r.status || '').toUpperCase();
-        const isApproved = status === 'APPROVED' || status === 'CLOSED';
-        const isRejected = status === 'REJECTED';
-        const dept = (r.department || 'PRODUCTION').toUpperCase();
-        const subCat = r.four_m ? `4M: ${r.four_m} • ${r.process_operation || 'AUDIT'}` : `PROCESS: ${r.process_operation || 'AUDIT'}`;
-        const formattedDate = formatStreamDate(r.created_at);
-
-        if (!streamList.some((s) => s.reqNo === `#${reqNo}`)) {
-          if (isApproved) {
-            streamList.push({
-              id: `pa-req-app-${r.id || idx}`,
-              rawId: r.id,
-              reqNo: `#${reqNo}`,
-              badgeLabel: 'AUDIT APPROVED',
-              accentColor: 'emerald',
-              department: dept,
-              title: `Audit Observation Approved & Verified – ${reqNo}`,
-              message: `Audit observation ${reqNo} (Model: ${r.model || 'OLS LONG ARM'}, Operation: "${r.process_operation || 'Assembly'}") has been verified and signed off by ${r.executor || 'Department Lead'}. Status: Approved.`,
-              timeDisplay: formattedDate,
-              subCategory: subCat,
-              footerFlag: 'SYSTEM_LOGS',
-              read: true,
-              type: 'approved',
-              link: '/process-audit/my-requests',
-            });
-          } else if (isRejected) {
-            streamList.push({
-              id: `pa-req-rej-${r.id || idx}`,
-              rawId: r.id,
-              reqNo: `#${reqNo}`,
-              badgeLabel: 'CORRECTION NEEDED',
-              accentColor: 'rose',
-              department: dept,
-              title: `Observation Returned for Clarification – ${reqNo}`,
-              message: `Audit issue ${reqNo} ("${r.audit_finding || r.issue_description || 'Observation details'}") requires further containment. Returned by ${r.executor || 'Sign-off Lead'}. Reason: ${r.rejection_reason || 'Pending action'}.`,
-              timeDisplay: formattedDate,
-              subCategory: subCat,
-              footerFlag: 'ACTION_REQUIRED',
-              read: false,
-              type: 'rejected',
-              link: '/process-audit/my-requests',
-            });
-          } else {
-            streamList.push({
-              id: `pa-req-pen-${r.id || idx}`,
-              rawId: r.id,
-              reqNo: `#${reqNo}`,
-              badgeLabel: 'SIGN-OFF REQUIRED',
-              accentColor: 'amber',
-              department: dept,
-              title: `Observation Assigned for Sign-off – ${reqNo}`,
-              message: `New process audit finding ${reqNo} recorded for ${r.process_operation || 'Production Line'} (Model: ${r.model || 'OLS LONG ARM'}). Assigned to ${r.executor || 'Lead'} (${dept}) for review and closure.`,
-              timeDisplay: formattedDate,
-              subCategory: subCat,
-              footerFlag: 'ACTION_REQUIRED',
-              read: false,
-              type: 'pending',
-              link: '/process-audit/approvals',
-            });
-          }
-        }
       });
     }
 

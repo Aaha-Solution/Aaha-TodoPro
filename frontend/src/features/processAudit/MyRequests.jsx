@@ -274,7 +274,13 @@ const MyRequests = () => {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const data = await processAuditService.getRequests();
+      const params = {};
+      if (!isAdmin && (currentUser?.name || currentUser?.email || currentUser?.id)) {
+        params.user = currentUser?.name || currentUser?.email;
+        params.user_id = currentUser?.id;
+        params.role = currentUser?.role;
+      }
+      const data = await processAuditService.getRequests(params);
       setRequests(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load requests from DB:', err);
@@ -475,32 +481,39 @@ const MyRequests = () => {
     setSelectedStatus('All Statuses');
   };
 
-  const matchesCreatorUser = (creatorName, creatorId, uId, uName, uEmail) => {
-    if (uId && creatorId && Number(uId) === Number(creatorId)) return true;
-    if (!creatorName) return false;
-    const c = creatorName.trim().toLowerCase();
-    const name = (uName || '').trim().toLowerCase();
-    const email = (uEmail || '').trim().toLowerCase();
+  const canUserAccessRequest = (req, u, adminFlag) => {
+    if (adminFlag) return true;
+    if (!u || !req) return false;
 
-    if (name && c === name) return true;
-    if (email && c === email) return true;
+    const uId = u.id ? Number(u.id) : null;
+    const uName = (u.name || '').trim().toLowerCase();
+    const uEmail = (u.email || '').trim().toLowerCase();
 
-    const tokens = c.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(Boolean);
-    if (name && tokens.includes(name)) return true;
+    // 1. Creator check
+    const reqCreatorId = req.created_by_id ? Number(req.created_by_id) : null;
+    if (uId && reqCreatorId && uId === reqCreatorId) return true;
+
+    const creatorName = (req.created_by || req.creator || '').trim().toLowerCase();
+    if (uName && (creatorName === uName || creatorName.includes(uName))) return true;
+    if (uEmail && (creatorName === uEmail || creatorName.includes(uEmail))) return true;
+
+    // 2. Assigned Executor check
+    const execStr = (req.executor || '').trim().toLowerCase();
+    if (execStr) {
+      if (uName && (execStr === uName || execStr.includes(uName))) return true;
+      if (uEmail && (execStr === uEmail || execStr.includes(uEmail))) return true;
+      const tokens = execStr.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(Boolean);
+      if (uName && tokens.includes(uName)) return true;
+    }
+
     return false;
   };
 
   const filteredRequests = requests.filter((req) => {
-    // Only show requests created by this user unless Admin
+    // Only show requests to Admin, the Creator who raised it, or the Assigned Executor
     if (!isAdmin) {
-      const isMine = matchesCreatorUser(
-        req.created_by || req.creator,
-        req.created_by_id,
-        user?.id,
-        user?.name,
-        user?.email
-      );
-      if (!isMine) return false;
+      const canAccess = canUserAccessRequest(req, currentUser, isAdmin);
+      if (!canAccess) return false;
     }
 
     const reqId = String(req.issue_no || (req.id ? `PA-${req.id}` : '')).toLowerCase();
