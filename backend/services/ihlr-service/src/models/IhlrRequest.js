@@ -4,6 +4,7 @@ const resolveIhlrStatus = (r) => {
   const currentStatus = String(r.status || '').trim().toUpperCase();
   if (currentStatus === 'CLOSED') return 'CLOSED';
   if (currentStatus === 'IN_PROGRESS' || currentStatus === 'IN-PROGRESS') return 'IN_PROGRESS';
+  if (currentStatus === 'OPEN') return 'OPEN';
 
   const prodWhys = typeof r.prod_why_why === 'string'
     ? (() => { try { return JSON.parse(r.prod_why_why); } catch { return []; } })()
@@ -178,7 +179,7 @@ export const IhlrRequest = {
         const allowed = [
           'req_no', 'batch_date', 'shift', 'problem', 'model', 
           'problem_detected_at', 'received_from', 'analysis_done_by', 
-          'defect_image', 'actual_qty', 'four_m', 'resp', 'resp_person',
+          'defect_image', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
           'action', 'evidence_attachment', 'target_date', 'remarks', 'status'
         ];
 

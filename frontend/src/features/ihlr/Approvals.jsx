@@ -467,6 +467,14 @@ const IhlrApprovals = () => {
       };
 
       if (isReassignOpen) {
+        if (closerStatus !== 'CLOSED') {
+          payload.status = 'OPEN';
+        }
+        payload.prod_why_why = ['', '', '', '', ''];
+        payload.action = '';
+        payload.evidence_attachment = '[]';
+        payload.target_date = null;
+
         if (reassignedDept) {
           payload.resp = reassignedDept;
         }

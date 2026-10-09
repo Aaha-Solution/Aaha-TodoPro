@@ -495,11 +495,7 @@ export const updateIhlrRequest = async (req, res) => {
     if (!isAdmin && isCloser) {
       const isAlreadySubmittedByCloser = Boolean(
         String(existing.status || '').toUpperCase() === 'IN_PROGRESS' ||
-        String(existing.status || '').toUpperCase() === 'CLOSED' ||
-        (existing.action && String(existing.action).trim().length > 0) ||
-        (existing.target_date && String(existing.target_date).trim().length > 0) ||
-        (Array.isArray(existing.prod_why_why) && existing.prod_why_why.some((w) => Boolean(w && String(w).trim()))) ||
-        (typeof existing.prod_why_why === 'string' && existing.prod_why_why.trim().length > 0 && existing.prod_why_why !== '[]')
+        String(existing.status || '').toUpperCase() === 'CLOSED'
       );
 
       if (isAlreadySubmittedByCloser) {
@@ -565,11 +561,28 @@ export const updateIhlrRequest = async (req, res) => {
       }
     }
 
-    const prevRespPerson = existing.resp_person;
+    const prevRespPerson = clean(existing.resp_person);
+    const prevRespDept = clean(existing.resp);
+    const newRespPerson = safeUpdates.resp_person !== undefined ? clean(safeUpdates.resp_person) : prevRespPerson;
+    const newRespDept = safeUpdates.resp !== undefined ? clean(safeUpdates.resp) : prevRespDept;
+
     const isReassigned = Boolean(
-      safeUpdates.resp_person &&
-      clean(safeUpdates.resp_person) !== clean(prevRespPerson)
+      isAdmin && (
+        (safeUpdates.resp_person !== undefined && newRespPerson !== prevRespPerson) ||
+        (safeUpdates.resp !== undefined && newRespDept !== prevRespDept)
+      )
     );
+
+    // If Admin reassigns to new assignee/department, reset status to OPEN and clear previous closer fields so new assignee can submit once
+    if (isReassigned) {
+      if (!safeUpdates.status || safeUpdates.status !== 'CLOSED') {
+        safeUpdates.status = 'OPEN';
+      }
+      if (safeUpdates.prod_why_why === undefined) safeUpdates.prod_why_why = [];
+      if (safeUpdates.action === undefined) safeUpdates.action = '';
+      if (safeUpdates.evidence_attachment === undefined) safeUpdates.evidence_attachment = '';
+      if (safeUpdates.target_date === undefined) safeUpdates.target_date = null;
+    }
 
     // Clean dates and JSON structures safely
     if (safeUpdates.target_date !== undefined) {
@@ -600,7 +613,7 @@ export const updateIhlrRequest = async (req, res) => {
       return errorResponse(res, 'IHLR Request not found to update', 404);
     }
 
-    // 1. Trigger In-App Notifications and Email Dispatch
+    // Trigger In-App Notifications and Email Dispatch
     if (pool && updated) {
       try {
         const reqNo = updated.req_no || `IHLR-${updated.id || id}`;
@@ -619,162 +632,63 @@ export const updateIhlrRequest = async (req, res) => {
           adminUsers = [{ id: null, name: 'Quality Admin', email: 'admin@gmail.com' }];
         }
 
-        // Notification A: For Raised Person (Requester) to complete pending fields
-        if (updated.created_by_id || updated.created_by || updated.created_by_email) {
-          const reqNotifType = isClosed ? 'case_closed' : 'closer_completed_pending_review';
-          const reqNotifTitle = isClosed ? `IHLR Case Closed: #${reqNo}` : `Closer Countermeasures Submitted #${reqNo}`;
-          const reqNotifMsg = isClosed
-            ? `Defect report #${reqNo} (${updated.model || 'Model'}) has been verified and marked as CLOSED.`
-            : `Closer ${closerName} (${closerDept}) has completed 5-Why root cause analysis and corrective action for #${reqNo} (${updated.model || 'Model'}). Quality Admin review and closure sign-off pending.`;
+        // SCENARIO 1: REASSIGNED by Admin to new department or person(s)
+        if (isReassigned) {
+          // A. Send in-app notification and email to ALL newly selected assignee(s)
+          const newNames = String(updated.resp_person || '').split(',').map((s) => s.trim()).filter(Boolean);
+          const targetUsers = [];
 
-          await pool.query(
-            `INSERT INTO ihlr_notifications 
-             (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, '/ihlr/approvals', 0)`,
-            [
-              updated.created_by_id || null,
-              updated.created_by || 'Quality Requester',
-              updated.created_by_email || '',
-              updated.id || id,
-              reqNo,
-              reqNotifType,
-              reqNotifTitle,
-              reqNotifMsg
-            ]
-          );
-        }
-
-        // Notification B: For Quality Admins to review and sign-off pending fields
-        for (const admin of adminUsers) {
-          // Avoid duplicate notification if requester is this admin
-          if (updated.created_by_email && admin.email && updated.created_by_email.toLowerCase() === admin.email.toLowerCase()) {
-            continue;
-          }
-          const adminNotifType = isClosed ? 'case_closed' : 'closer_completed_pending_admin_signoff';
-          const adminNotifTitle = isClosed ? `IHLR Case Closed: #${reqNo}` : `Admin Action Required: Pending Sign-Off #${reqNo}`;
-          const adminNotifMsg = isClosed
-            ? `Defect report #${reqNo} (${updated.model || 'Model'}) has been signed off and closed.`
-            : `Closer ${closerName} (${closerDept}) has completed countermeasures for #${reqNo} (${updated.model || 'Model'}). Action required: Please enter validation remarks and update status to finalize closure.`;
-
-          await pool.query(
-            `INSERT INTO ihlr_notifications 
-             (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, '/ihlr/approvals', 0)`,
-            [
-              admin.id || null,
-              admin.name || 'Admin',
-              admin.email || 'admin@gmail.com',
-              updated.id || id,
-              reqNo,
-              adminNotifType,
-              adminNotifTitle,
-              adminNotifMsg
-            ]
-          ).catch((e) => console.warn('[Admin Notif Error]:', e.message));
-        }
-
-        // Notification C: For Closer / Assigned Person (Acknowledgment)
-        let closerUserId = null;
-        let closerEmail = updated.resp_person_email || '';
-        let closerPersonName = updated.resp_person || closerName;
-
-        if (closerPersonName || closerEmail) {
-          const [uRows] = await pool.query(
-            'SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
-            [closerPersonName || '', closerEmail || closerPersonName || '']
-          ).catch(() => [[]]);
-          if (uRows && uRows.length > 0) {
-            closerUserId = uRows[0].id;
-            closerEmail = closerEmail || uRows[0].email;
-            closerPersonName = uRows[0].name || closerPersonName;
-          }
-        }
-
-        const closerNotifType = isClosed ? 'closure_confirmed' : 'countermeasure_saved';
-        const closerNotifTitle = isClosed ? `IHLR Case Closed: #${reqNo}` : `Closer Submission Acknowledged: #${reqNo}`;
-        const closerNotifMsg = isClosed
-          ? `You have closed defect report #${reqNo} (${updated.model || 'Model'}). Containment and root cause countermeasures have been signed off.`
-          : `Your 5-Why root cause analysis and corrective action for #${reqNo} (${updated.model || 'Model'}) have been submitted. The Requester and Quality Admin have been alerted with notification & email to complete the pending validation remarks and status sign-off.`;
-
-        await pool.query(
-          `INSERT INTO ihlr_notifications 
-           (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, '/ihlr/approvals', 0)`,
-          [
-            closerUserId,
-            closerPersonName,
-            closerEmail,
-            updated.id || id,
-            reqNo,
-            closerNotifType,
-            closerNotifTitle,
-            closerNotifMsg
-          ]
-        ).catch((e) => console.warn('[Closer Notif Error]:', e.message));
-
-        // 2. Trigger Closer Email Dispatch to Requester, Quality Admins, and Closer
-        try {
-          sendIhlrCloserEmails({
-            request: updated,
-            closerUser: req.user,
-            creatorUser: {
-              id: updated.created_by_id,
-              name: updated.created_by,
-              email: updated.created_by_email
-            },
-            assignedUser: {
-              name: updated.resp_person,
-              email: updated.resp_person_email,
-              department: updated.resp
-            },
-            adminUsers
-          }).catch(mailErr => console.warn('[IHLR Mailer] Closer email dispatch warning:', mailErr.message));
-        } catch (mailSyncErr) {
-          console.warn('[IHLR Mailer] Sync closer email dispatch warning:', mailSyncErr.message);
-        }
-
-        // 3. If Reassigned, send distinct notification and email to newly assigned closer(s)
-        if (isReassigned && updated.resp_person) {
-          const newNames = String(updated.resp_person).split(',').map((s) => s.trim()).filter(Boolean);
-          for (const nameItem of newNames) {
-            let itemCloserId = null;
-            let itemCloserEmail = '';
-            if (pool) {
+          if (newNames.length > 0) {
+            for (const nameItem of newNames) {
               const [nuRows] = await pool.query(
                 'SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
                 [nameItem, nameItem]
               ).catch(() => [[]]);
               if (nuRows && nuRows.length > 0) {
-                itemCloserId = nuRows[0].id;
-                itemCloserEmail = nuRows[0].email;
+                targetUsers.push(nuRows[0]);
               } else {
-                itemCloserEmail = `${nameItem.toLowerCase().replace(/\s+/g, '')}@gmail.com`;
+                targetUsers.push({
+                  id: null,
+                  name: nameItem,
+                  email: `${nameItem.toLowerCase().replace(/\s+/g, '')}@gmail.com`
+                });
               }
-
-              await pool.query(
-                `INSERT INTO ihlr_notifications 
-                 (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-                 VALUES (?, ?, ?, ?, ?, 'assigned_to_ihlr', ?, ?, '/ihlr/approvals', 0)`,
-                [
-                  itemCloserId,
-                  nameItem,
-                  itemCloserEmail,
-                  updated.id || id,
-                  reqNo,
-                  `IHLR Defect Report Assigned: #${reqNo}`,
-                  `You have been assigned to IHLR defect report #${reqNo} (${updated.model || 'Model'}) for ${updated.resp || 'Department'}. Please submit 5-Why root cause analysis and corrective countermeasures.`
-                ]
-              ).catch((e) => console.warn('[Reassign Notif Error]:', e.message));
             }
+          } else if (updated.resp) {
+            // If department was selected without specific persons, alert users of that department
+            const [deptRows] = await pool.query(
+              'SELECT id, name, email FROM users WHERE UPPER(TRIM(department)) = UPPER(TRIM(?))',
+              [updated.resp]
+            ).catch(() => [[]]);
+            if (deptRows && deptRows.length > 0) {
+              targetUsers.push(...deptRows);
+            }
+          }
 
-            if (itemCloserEmail) {
+          for (const u of targetUsers) {
+            await pool.query(
+              `INSERT INTO ihlr_notifications 
+               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, 'assigned_to_ihlr', ?, ?, '/ihlr/approvals', 0)`,
+              [
+                u.id || null,
+                u.name,
+                u.email,
+                updated.id || id,
+                reqNo,
+                `IHLR Defect Report Assigned: #${reqNo}`,
+                `You have been assigned to IHLR defect report #${reqNo} (${updated.model || 'Model'}) for ${updated.resp || 'Department'}. Please submit 5-Why root cause analysis and corrective countermeasures.`
+              ]
+            ).catch((e) => console.warn('[Reassign Notif Error]:', e.message));
+
+            if (u.email) {
               try {
                 sendEmail({
-                  to: itemCloserEmail,
-                  recipientName: nameItem,
+                  to: u.email,
+                  recipientName: u.name,
                   recipientRole: 'ASSIGNED_CLOSER',
                   subject: `[IHLR Action Required] Defect Report Assigned to You: #${reqNo}`,
-                  text: `Dear ${nameItem},\n\nIHLR incident #${reqNo} (${updated.model || 'Model'}) has been assigned to you (${updated.resp}).\n\nPlease review and submit 5-Why root cause analysis and containment actions at: http://localhost:5173/ihlr/approvals\n\nThank you,\nQuality Portal`,
+                  text: `Dear ${u.name},\n\nIHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to you (${updated.resp}).\n\nPlease review and submit 5-Why root cause analysis and containment actions at: http://localhost:5173/ihlr/approvals\n\nThank you,\nQuality Portal`,
                   referenceNo: reqNo,
                   moduleType: 'IHLR'
                 }).catch((err) => console.warn('[Reassign Mail Warning]:', err.message));
@@ -782,6 +696,177 @@ export const updateIhlrRequest = async (req, res) => {
                 console.warn('[Reassign Mail Sync Warning]:', mErr.message);
               }
             }
+          }
+
+          // B. Notify Requester about the reassignment
+          if (updated.created_by_id || updated.created_by || updated.created_by_email) {
+            await pool.query(
+              `INSERT INTO ihlr_notifications 
+               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, 'ihlr_reassigned', ?, ?, '/ihlr/approvals', 0)`,
+              [
+                updated.created_by_id || null,
+                updated.created_by || 'Quality Requester',
+                updated.created_by_email || '',
+                updated.id || id,
+                reqNo,
+                `IHLR Case Reassigned: #${reqNo}`,
+                `Defect report #${reqNo} (${updated.model || 'Model'}) has been reassigned to ${updated.resp_person || updated.resp} (${updated.resp}) for root cause investigation.`
+              ]
+            ).catch((e) => console.warn('[Reassign Req Notif Error]:', e.message));
+          }
+
+        } else if (isClosed) {
+          // SCENARIO 2: CASE CLOSED by Admin
+          if (updated.created_by_id || updated.created_by || updated.created_by_email) {
+            await pool.query(
+              `INSERT INTO ihlr_notifications 
+               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, 'case_closed', ?, ?, '/ihlr/approvals', 0)`,
+              [
+                updated.created_by_id || null,
+                updated.created_by || 'Quality Requester',
+                updated.created_by_email || '',
+                updated.id || id,
+                reqNo,
+                `IHLR Case Closed: #${reqNo}`,
+                `Defect report #${reqNo} (${updated.model || 'Model'}) has been verified and marked as CLOSED.`
+              ]
+            ).catch((e) => console.warn('[Case Closed Req Notif Error]:', e.message));
+          }
+
+          for (const admin of adminUsers) {
+            if (updated.created_by_email && admin.email && updated.created_by_email.toLowerCase() === admin.email.toLowerCase()) {
+              continue;
+            }
+            await pool.query(
+              `INSERT INTO ihlr_notifications 
+               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, 'case_closed', ?, ?, '/ihlr/approvals', 0)`,
+              [
+                admin.id || null,
+                admin.name || 'Admin',
+                admin.email || 'admin@gmail.com',
+                updated.id || id,
+                reqNo,
+                `IHLR Case Closed: #${reqNo}`,
+                `Defect report #${reqNo} (${updated.model || 'Model'}) has been signed off and closed.`
+              ]
+            ).catch((e) => console.warn('[Case Closed Admin Notif Error]:', e.message));
+          }
+
+          try {
+            sendIhlrCloserEmails({
+              request: updated,
+              closerUser: req.user,
+              creatorUser: {
+                id: updated.created_by_id,
+                name: updated.created_by,
+                email: updated.created_by_email
+              },
+              assignedUser: {
+                name: updated.resp_person,
+                email: updated.resp_person_email,
+                department: updated.resp
+              },
+              adminUsers
+            }).catch(mailErr => console.warn('[IHLR Mailer] Case closed email dispatch warning:', mailErr.message));
+          } catch (mailSyncErr) {
+            console.warn('[IHLR Mailer] Sync case closed email dispatch warning:', mailSyncErr.message);
+          }
+
+        } else {
+          // SCENARIO 3: CLOSER DETAILS SUBMITTED (5-Why & Action)
+          // Notification A: For Raised Person (Requester) to complete pending review
+          if (updated.created_by_id || updated.created_by || updated.created_by_email) {
+            await pool.query(
+              `INSERT INTO ihlr_notifications 
+               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, 'closer_completed_pending_review', ?, ?, '/ihlr/approvals', 0)`,
+              [
+                updated.created_by_id || null,
+                updated.created_by || 'Quality Requester',
+                updated.created_by_email || '',
+                updated.id || id,
+                reqNo,
+                `Closer Countermeasures Submitted #${reqNo}`,
+                `Closer ${closerName} (${closerDept}) has completed 5-Why root cause analysis and corrective action for #${reqNo} (${updated.model || 'Model'}). Quality Admin review and closure sign-off pending.`
+              ]
+            ).catch((e) => console.warn('[Closer Review Notif Error]:', e.message));
+          }
+
+          // Notification B: For Quality Admins to review and sign-off pending fields
+          for (const admin of adminUsers) {
+            if (updated.created_by_email && admin.email && updated.created_by_email.toLowerCase() === admin.email.toLowerCase()) {
+              continue;
+            }
+            await pool.query(
+              `INSERT INTO ihlr_notifications 
+               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, 'closer_completed_pending_admin_signoff', ?, ?, '/ihlr/approvals', 0)`,
+              [
+                admin.id || null,
+                admin.name || 'Admin',
+                admin.email || 'admin@gmail.com',
+                updated.id || id,
+                reqNo,
+                `Admin Action Required: Pending Sign-Off #${reqNo}`,
+                `Closer ${closerName} (${closerDept}) has completed countermeasures for #${reqNo} (${updated.model || 'Model'}). Action required: Please enter validation remarks and update status to finalize closure.`
+              ]
+            ).catch((e) => console.warn('[Admin Notif Error]:', e.message));
+          }
+
+          // Notification C: For Closer / Assigned Person (Acknowledgment)
+          let closerUserId = null;
+          let closerEmail = updated.resp_person_email || '';
+          let closerPersonName = updated.resp_person || closerName;
+
+          if (closerPersonName || closerEmail) {
+            const [uRows] = await pool.query(
+              'SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
+              [closerPersonName || '', closerEmail || closerPersonName || '']
+            ).catch(() => [[]]);
+            if (uRows && uRows.length > 0) {
+              closerUserId = uRows[0].id;
+              closerEmail = closerEmail || uRows[0].email;
+              closerPersonName = uRows[0].name || closerPersonName;
+            }
+          }
+
+          await pool.query(
+            `INSERT INTO ihlr_notifications 
+             (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+             VALUES (?, ?, ?, ?, ?, 'countermeasure_saved', ?, ?, '/ihlr/approvals', 0)`,
+            [
+              closerUserId,
+              closerPersonName,
+              closerEmail,
+              updated.id || id,
+              reqNo,
+              `Closer Submission Acknowledged: #${reqNo}`,
+              `Your 5-Why root cause analysis and corrective action for #${reqNo} (${updated.model || 'Model'}) have been submitted. The Requester and Quality Admin have been alerted with notification & email to complete the pending validation remarks and status sign-off.`
+            ]
+          ).catch((e) => console.warn('[Closer Notif Error]:', e.message));
+
+          // Trigger Closer Email Dispatch to Requester, Quality Admins, and Closer
+          try {
+            sendIhlrCloserEmails({
+              request: updated,
+              closerUser: req.user,
+              creatorUser: {
+                id: updated.created_by_id,
+                name: updated.created_by,
+                email: updated.created_by_email
+              },
+              assignedUser: {
+                name: updated.resp_person,
+                email: updated.resp_person_email,
+                department: updated.resp
+              },
+              adminUsers
+            }).catch(mailErr => console.warn('[IHLR Mailer] Closer email dispatch warning:', mailErr.message));
+          } catch (mailSyncErr) {
+            console.warn('[IHLR Mailer] Sync closer email dispatch warning:', mailSyncErr.message);
           }
         }
 
