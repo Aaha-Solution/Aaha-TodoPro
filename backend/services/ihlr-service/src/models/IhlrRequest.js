@@ -5,18 +5,6 @@ const resolveIhlrStatus = (r) => {
   if (currentStatus === 'CLOSED') return 'CLOSED';
   if (currentStatus === 'IN_PROGRESS' || currentStatus === 'IN-PROGRESS') return 'IN_PROGRESS';
   if (currentStatus === 'OPEN') return 'OPEN';
-
-  const prodWhys = typeof r.prod_why_why === 'string'
-    ? (() => { try { return JSON.parse(r.prod_why_why); } catch { return []; } })()
-    : (r.prod_why_why || []);
-  const hasWhys = Array.isArray(prodWhys) && prodWhys.some(w => Boolean(w && String(w).trim()));
-  const hasAction = Boolean(r.action && String(r.action).trim());
-  const hasEvidence = Boolean(r.evidence_attachment && String(r.evidence_attachment).trim() && r.evidence_attachment !== '[]');
-  const hasTargetDate = Boolean(r.target_date);
-
-  if (hasWhys || hasAction || hasEvidence || hasTargetDate) {
-    return 'IN_PROGRESS';
-  }
   return currentStatus || 'OPEN';
 };
 

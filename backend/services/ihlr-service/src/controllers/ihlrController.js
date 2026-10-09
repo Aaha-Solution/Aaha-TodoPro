@@ -573,15 +573,12 @@ export const updateIhlrRequest = async (req, res) => {
       )
     );
 
-    // If Admin reassigns to new assignee/department, reset status to OPEN and clear previous closer fields so new assignee can submit once
+    // If Admin reassigns to new assignee/department, reset status to OPEN so new assignee can review, edit existing values, and submit once
     if (isReassigned) {
       if (!safeUpdates.status || safeUpdates.status !== 'CLOSED') {
         safeUpdates.status = 'OPEN';
       }
-      if (safeUpdates.prod_why_why === undefined) safeUpdates.prod_why_why = [];
-      if (safeUpdates.action === undefined) safeUpdates.action = '';
-      if (safeUpdates.evidence_attachment === undefined) safeUpdates.evidence_attachment = '';
-      if (safeUpdates.target_date === undefined) safeUpdates.target_date = null;
+      // Keep existing closer values (5-Why, Action, Evidence, Target Date) intact so the reassigned person can view/edit them
     }
 
     // Clean dates and JSON structures safely

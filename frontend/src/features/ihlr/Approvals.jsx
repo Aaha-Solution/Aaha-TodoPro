@@ -88,15 +88,13 @@ const IhlrApprovals = () => {
   const isSelectedClosed = String(selectedRequest?.status || '').toUpperCase() === 'CLOSED';
 
   // Check if closer details have already been submitted once
+  // When status is 'OPEN' (new request or reassigned), closer can view/edit values and submit once.
+  // When status is 'IN_PROGRESS' or 'CLOSED', closer updates are locked for non-admins.
   const hasCloserSubmitted = Boolean(
     selectedRequest && (
       String(selectedRequest.status || '').toUpperCase() === 'IN_PROGRESS' ||
       String(selectedRequest.status || '').toUpperCase() === 'CLOSED' ||
-      String(selectedRequest.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
-      (selectedRequest.action && String(selectedRequest.action).trim().length > 0) ||
-      (selectedRequest.target_date && String(selectedRequest.target_date).trim().length > 0) ||
-      (Array.isArray(selectedRequest.prod_why_why) && selectedRequest.prod_why_why.some((w) => Boolean(w && String(w).trim()))) ||
-      (typeof selectedRequest.prod_why_why === 'string' && selectedRequest.prod_why_why.trim().length > 0 && selectedRequest.prod_why_why !== '[]')
+      String(selectedRequest.status || '').toUpperCase() === 'APPROVAL_PENDING'
     )
   );
 
@@ -470,10 +468,6 @@ const IhlrApprovals = () => {
         if (closerStatus !== 'CLOSED') {
           payload.status = 'OPEN';
         }
-        payload.prod_why_why = ['', '', '', '', ''];
-        payload.action = '';
-        payload.evidence_attachment = '[]';
-        payload.target_date = null;
 
         if (reassignedDept) {
           payload.resp = reassignedDept;
