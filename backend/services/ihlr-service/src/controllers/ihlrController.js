@@ -490,6 +490,27 @@ export const updateIhlrRequest = async (req, res) => {
       return errorResponse(res, 'You are not authorized to update this IHLR request. Only the assigned closer or admin can submit updates.', 403);
     }
 
+    // Single-Submission Rule for Closer:
+    // Closer user can submit details ONLY ONCE. Only Quality Admin can update multiple times.
+    if (!isAdmin && isCloser) {
+      const isAlreadySubmittedByCloser = Boolean(
+        String(existing.status || '').toUpperCase() === 'IN_PROGRESS' ||
+        String(existing.status || '').toUpperCase() === 'CLOSED' ||
+        (existing.action && String(existing.action).trim().length > 0) ||
+        (existing.target_date && String(existing.target_date).trim().length > 0) ||
+        (Array.isArray(existing.prod_why_why) && existing.prod_why_why.some((w) => Boolean(w && String(w).trim()))) ||
+        (typeof existing.prod_why_why === 'string' && existing.prod_why_why.trim().length > 0 && existing.prod_why_why !== '[]')
+      );
+
+      if (isAlreadySubmittedByCloser) {
+        return errorResponse(
+          res,
+          'Closer details have already been submitted once for this request. Only Quality Admin has permission to modify closer records multiple times.',
+          403
+        );
+      }
+    }
+
     // Role-based field segregation:
     // - Closer can ONLY update: prod_why_why, action, evidence_attachment, target_date
     // - Admin can update any field (including remarks, status, resp, resp_person)

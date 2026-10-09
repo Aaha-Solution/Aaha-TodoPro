@@ -95,7 +95,12 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { employeeId } = req.body;
+    const { employeeId, department } = req.body;
+
+    const existingUser = await User.findById(id);
+    if (!existingUser) {
+      return errorResponse(res, 'User not found', 404);
+    }
 
     if (employeeId && String(employeeId).trim()) {
       const trimmedEmpId = String(employeeId).trim();
@@ -105,10 +110,27 @@ export const updateUser = async (req, res) => {
       }
     }
 
+    // If department is being changed, check if user has existing records in current department
+    if (
+      department &&
+      existingUser.department &&
+      department.trim().toUpperCase() !== existingUser.department.trim().toUpperCase()
+    ) {
+      const hasData = await User.hasAssociatedData(id, existingUser.name, existingUser.email);
+      if (hasData) {
+        return errorResponse(
+          res,
+          `Cannot change department: User "${existingUser.name}" has existing requests / records associated with "${existingUser.department}". Department must remain in its original state to maintain data integrity.`,
+          400
+        );
+      }
+    }
+
     const updated = await User.update(id, req.body);
     if (!updated) {
       return errorResponse(res, 'User not found', 404);
     }
+    updated.hasData = await User.hasAssociatedData(id, updated.name, updated.email);
     return successResponse(res, updated, 'User updated successfully');
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {

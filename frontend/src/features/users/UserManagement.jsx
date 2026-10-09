@@ -250,6 +250,8 @@ const UserManagement = () => {
   const handleOpenEditModal = (userToEdit) => {
     setEditingUser({
       ...userToEdit,
+      originalDepartment: userToEdit.department,
+      hasData: Boolean(userToEdit.hasData),
       employeeId: userToEdit.employeeId || userToEdit.employee_id || String(userToEdit.id),
       password: '',
       status: (userToEdit.status && userToEdit.status.toUpperCase() === 'INACTIVE') ? 'Inactive' : 'Active'
@@ -280,6 +282,14 @@ const UserManagement = () => {
       )
     ) {
       errs.employeeId = `Employee ID "${trimmedEmpId}" already taken by another user`;
+    }
+
+    if (
+      editingUser.hasData &&
+      editingUser.originalDepartment &&
+      editingUser.department !== editingUser.originalDepartment
+    ) {
+      errs.department = `Cannot change department: "${editingUser.name}" has existing requests / audit records associated with "${editingUser.originalDepartment}".`;
     }
 
     if (trimmedPass && trimmedPass.length < 6) {
@@ -313,6 +323,23 @@ const UserManagement = () => {
       await userService.updateUser(editingUser.id, payload);
       const freshData = await userService.getUsers();
       dispatch(setUsers(freshData));
+
+      // If updating the currently active session user, refresh auth session immediately
+      if (
+        String(currentAuthUser?.id) === String(editingUser.id) ||
+        (currentAuthUser?.email && currentAuthUser.email.toLowerCase() === editingUser.email?.toLowerCase())
+      ) {
+        updateAuthUser(
+          {
+            ...currentAuthUser,
+            name: editingUser.name,
+            role: (editingUser.role || 'USER').toUpperCase().replace(/\s+/g, '_'),
+            department: editingUser.department
+          },
+          storage.getToken() || 'active-session-token'
+        );
+      }
+
       setShowEditModal(false);
       setEditFormErrors({});
       showToast(
@@ -324,6 +351,8 @@ const UserManagement = () => {
       const msg = err.response?.data?.message || err.message;
       if (msg.toLowerCase().includes('employee id') || msg.toLowerCase().includes('employee_id')) {
         setEditFormErrors((prev) => ({ ...prev, employeeId: msg }));
+      } else if (msg.toLowerCase().includes('department')) {
+        setEditFormErrors((prev) => ({ ...prev, department: msg }));
       } else {
         modalError('Failed to update user in DB: ' + msg);
       }
@@ -1220,18 +1249,45 @@ const UserManagement = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Department (First) */}
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Department *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                      Department *
+                    </label>
+                    {editingUser.hasData && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                        <Lock className="w-3 h-3 text-amber-600" /> Locked (Has Records)
+                      </span>
+                    )}
+                  </div>
                   <select
                     value={editingUser.department}
+                    disabled={editingUser.hasData}
                     onChange={(e) => handleEditDepartmentChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                    className={`w-full px-3 py-2 border rounded-xl text-xs text-slate-800 outline-none transition ${
+                      editingUser.hasData
+                        ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed select-none font-medium'
+                        : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
+                    }`}
                   >
                     {DEPARTMENTS.map((dept) => (
                       <option key={dept} value={dept}>{dept}</option>
                     ))}
                   </select>
+                  {editingUser.hasData ? (
+                    <p className="text-[10px] text-amber-600 mt-1 font-medium">
+                      Department cannot be modified because this user has existing requests/records in {editingUser.originalDepartment || editingUser.department}.
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-emerald-600 mt-1 font-medium">
+                      ✓ No existing records linked. Department can be modified.
+                    </p>
+                  )}
+                  {editFormErrors.department && (
+                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{editFormErrors.department}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Role (Second) */}

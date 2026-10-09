@@ -35,11 +35,67 @@ export const User = {
     return rows && rows.length > 0 ? rows[0] : null;
   },
 
+  hasAssociatedData: async (id, userName, userEmail) => {
+    if (!pool) return false;
+    try {
+      const cleanName = (userName || '').trim();
+      const cleanEmail = (userEmail || '').trim();
+      const userId = Number(id);
+
+      // 1. Check IHLR Requests (Creator or Assigned Person)
+      const [ihlrRows] = await pool.query(
+        `SELECT id FROM ihlr_requests 
+         WHERE created_by_id = ? 
+            OR (LENGTH(?) > 0 AND LOWER(created_by) = LOWER(?))
+            OR (LENGTH(?) > 0 AND LOWER(created_by_email) = LOWER(?))
+            OR (LENGTH(?) > 0 AND LOWER(resp_person) LIKE LOWER(?))
+            OR (LENGTH(?) > 0 AND LOWER(resp_person_email) LIKE LOWER(?))
+         LIMIT 1`,
+        [userId, cleanName, cleanName, cleanEmail, cleanEmail, cleanName, `%${cleanName}%`, cleanEmail, `%${cleanEmail}%`]
+      ).catch(() => [[]]);
+      if (ihlrRows && ihlrRows.length > 0) return true;
+
+      // 2. Check Process Audit Requests (Creator, Executor, or Approver)
+      const [paRows] = await pool.query(
+        `SELECT id FROM process_audit_requests 
+         WHERE created_by_id = ? 
+            OR approved_by_id = ?
+            OR (LENGTH(?) > 0 AND LOWER(created_by) = LOWER(?))
+            OR (LENGTH(?) > 0 AND LOWER(executor) = LOWER(?))
+            OR (LENGTH(?) > 0 AND LOWER(approved_by) = LOWER(?))
+         LIMIT 1`,
+        [userId, userId, cleanName, cleanName, cleanName, cleanName, cleanName, cleanName]
+      ).catch(() => [[]]);
+      if (paRows && paRows.length > 0) return true;
+
+      // 3. Check Process Audit Approvals
+      const [paApprRows] = await pool.query(
+        `SELECT id FROM process_audit_approvals 
+         WHERE approved_by_id = ? 
+            OR (LENGTH(?) > 0 AND LOWER(approved_by) = LOWER(?))
+            OR (LENGTH(?) > 0 AND LOWER(executor) = LOWER(?))
+         LIMIT 1`,
+        [userId, cleanName, cleanName, cleanName, cleanName]
+      ).catch(() => [[]]);
+      if (paApprRows && paApprRows.length > 0) return true;
+
+      return false;
+    } catch (err) {
+      console.warn('Error checking user associated data:', err.message);
+      return false;
+    }
+  },
+
   getAll: async () => {
     if (!pool) throw new Error('Database connection pool is not available');
     const [rows] = await pool.query(
       'SELECT id, employee_id, COALESCE(employee_id, CAST(id AS CHAR)) AS employeeId, name, email, role, department, status, created_at, updated_at FROM users ORDER BY id ASC'
     );
+    if (Array.isArray(rows)) {
+      for (const u of rows) {
+        u.hasData = await User.hasAssociatedData(u.id, u.name, u.email);
+      }
+    }
     return rows;
   },
 

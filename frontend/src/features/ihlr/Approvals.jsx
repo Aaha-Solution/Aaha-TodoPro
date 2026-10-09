@@ -16,7 +16,8 @@ import {
   UserCheck,
   X,
   ChevronDown,
-  PenTool
+  PenTool,
+  Lock
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -86,10 +87,26 @@ const IhlrApprovals = () => {
 
   const isSelectedClosed = String(selectedRequest?.status || '').toUpperCase() === 'CLOSED';
 
+  // Check if closer details have already been submitted once
+  const hasCloserSubmitted = Boolean(
+    selectedRequest && (
+      String(selectedRequest.status || '').toUpperCase() === 'IN_PROGRESS' ||
+      String(selectedRequest.status || '').toUpperCase() === 'CLOSED' ||
+      String(selectedRequest.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
+      (selectedRequest.action && String(selectedRequest.action).trim().length > 0) ||
+      (selectedRequest.target_date && String(selectedRequest.target_date).trim().length > 0) ||
+      (Array.isArray(selectedRequest.prod_why_why) && selectedRequest.prod_why_why.some((w) => Boolean(w && String(w).trim()))) ||
+      (typeof selectedRequest.prod_why_why === 'string' && selectedRequest.prod_why_why.trim().length > 0 && selectedRequest.prod_why_why !== '[]')
+    )
+  );
+
   // 1. Closer Fields (Occurrence Cause 5-Why: W1-W5, Action, Evidence Attachment, Target Date):
-  //    Only the assigned Closer (or Admin) can update. Disabled for others.
+  //    Closer person can submit ONLY ONCE. Quality Admin can update multiple times.
   const canUpdateCloserFields = Boolean(
-    selectedRequest && (isAdmin || isCloser) && (!isSelectedClosed || isAdmin)
+    selectedRequest && (
+      isAdmin ||
+      (isCloser && !hasCloserSubmitted && !isSelectedClosed)
+    )
   );
 
   // 2. Admin Only Fields (Remarks, Status):
@@ -98,7 +115,7 @@ const IhlrApprovals = () => {
     selectedRequest && isAdmin
   );
 
-  const isLockedForCloserUser = !isAdmin && isSelectedClosed;
+  const isLockedForCloserUser = !isAdmin && (isSelectedClosed || hasCloserSubmitted);
 
   // Form State for Closer Fields
   const [closerWhyWhy, setCloserWhyWhy] = useState(['', '', '', '', '']);
@@ -346,7 +363,11 @@ const IhlrApprovals = () => {
     if (!selectedRequest) return;
 
     if (isLockedForCloserUser) {
-      modalError('This incident is closed. Only Admin can update closed reports.');
+      if (isSelectedClosed) {
+        modalError('This incident is closed. Only Admin can update closed reports.');
+      } else {
+        modalWarning('Closer details have already been submitted once for this report. Only Quality Admin has permission to make multiple updates.');
+      }
       return;
     }
 
@@ -833,15 +854,9 @@ const IhlrApprovals = () => {
                 <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
                   <span>Occurrence Cause (Production Team - 5 Why)</span>
                   {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        Closer
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        Closer Only (Read-Only)
-                      </span>
-                    )
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      Closer
+                    </span>
                   )}
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">W1 to W5</span>
@@ -1012,10 +1027,15 @@ const IhlrApprovals = () => {
                 >
                   Select a Request to Update
                 </button>
-              ) : isLockedForCloserUser ? (
+              ) : !isAdmin && isSelectedClosed ? (
                 <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Incident Closed — Updates Locked for Users (Admin Only)</span>
+                  <span>Incident Closed — Updates Locked (Admin Only)</span>
+                </div>
+              ) : !isAdmin && hasCloserSubmitted ? (
+                <div className="w-full py-2.5 px-4 rounded-xl border border-blue-200 bg-blue-50/90 text-blue-900 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                  <span>Closer Details Submitted</span>
                 </div>
               ) : !canUpdateCloserFields && !isAdmin ? (
                 <div className="w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
@@ -1037,7 +1057,7 @@ const IhlrApprovals = () => {
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      <span>Update Closer Log (5-Why &amp; Action)</span>
+                      <span>{isAdmin ? 'Update Closer Log (5-Why & Action)' : 'Submit Closer Log (5-Why & Action)'}</span>
                     </>
                   )}
                 </button>
