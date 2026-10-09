@@ -276,10 +276,16 @@ export const createIhlrRequest = async (req, res) => {
     let assignedUsersList = [];
     if (assignedNames.length > 0 && pool) {
       for (const name of assignedNames) {
-        const [aRows] = await pool.query(
-          'SELECT id, name, email, department, role FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
-          [name, name]
+        let [aRows] = await pool.query(
+          'SELECT id, name, email, department, role FROM users WHERE (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?))) AND UPPER(TRIM(department)) = UPPER(TRIM(?)) LIMIT 1',
+          [name, name, data.resp || 'PRODUCTION']
         ).catch(() => [[]]);
+        if (!aRows || aRows.length === 0) {
+          [aRows] = await pool.query(
+            'SELECT id, name, email, department, role FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
+            [name, name]
+          ).catch(() => [[]]);
+        }
         if (aRows && aRows.length > 0) {
           assignedUsersList.push(aRows[0]);
         } else {
@@ -471,10 +477,14 @@ export const updateIhlrRequest = async (req, res) => {
     const respEmail = clean(existing.resp_person_email);
     const respEmailList = respEmail.split(',').map((s) => clean(s)).filter(Boolean);
     const respDept = clean(existing.resp);
+
+    const isDeptMatch = Boolean(!respDept || (userDept && clean(userDept) === respDept));
     const isCloser = Boolean(
-      (respPerson && (userName === respPerson || respPersonList.includes(userName) || respPersonList.some((p) => p.includes(userName) || userName.includes(p)))) ||
-      (respEmail && userEmail && (userEmail === respEmail || respEmailList.includes(userEmail) || respEmail.includes(userEmail))) ||
-      (respDept && userDept && clean(userDept) === respDept)
+      isDeptMatch && (
+        (respPerson && (userName === respPerson || respPersonList.includes(userName))) ||
+        (respEmail && userEmail && (userEmail === respEmail || respEmailList.includes(userEmail))) ||
+        (!respPerson)
+      )
     );
 
     const createdBy = clean(existing.created_by);
@@ -482,7 +492,7 @@ export const updateIhlrRequest = async (req, res) => {
     const createdId = existing.created_by_id ? String(existing.created_by_id) : null;
     const isRequester = Boolean(
       (createdId && userId && createdId === userId) ||
-      (createdBy && (userName === createdBy || userName.includes(createdBy) || createdBy.includes(userName))) ||
+      (createdBy && userName === createdBy) ||
       (createdEmail && userEmail && userEmail === createdEmail)
     );
 
@@ -637,17 +647,24 @@ export const updateIhlrRequest = async (req, res) => {
 
           if (newNames.length > 0) {
             for (const nameItem of newNames) {
-              const [nuRows] = await pool.query(
-                'SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
-                [nameItem, nameItem]
+              let [nuRows] = await pool.query(
+                'SELECT id, name, email, department, role FROM users WHERE (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?))) AND UPPER(TRIM(department)) = UPPER(TRIM(?)) LIMIT 1',
+                [nameItem, nameItem, updated.resp || 'PRODUCTION']
               ).catch(() => [[]]);
+              if (!nuRows || nuRows.length === 0) {
+                [nuRows] = await pool.query(
+                  'SELECT id, name, email, department, role FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
+                  [nameItem, nameItem]
+                ).catch(() => [[]]);
+              }
               if (nuRows && nuRows.length > 0) {
                 targetUsers.push(nuRows[0]);
               } else {
                 targetUsers.push({
                   id: null,
                   name: nameItem,
-                  email: `${nameItem.toLowerCase().replace(/\s+/g, '')}@gmail.com`
+                  email: `${nameItem.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
+                  department: updated.resp || 'PRODUCTION'
                 });
               }
             }

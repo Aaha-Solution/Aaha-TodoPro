@@ -27,26 +27,32 @@ export const isIhlrRequestVisibleToUser = (request, user) => {
   const uEmail = clean(user.email);
   const uId = String(user.id || '');
 
+  const rDept = (request.resp || request.department || '').trim().toUpperCase();
   const rPerson = clean(request.resp_person);
   const rPersonEmail = clean(request.resp_person_email);
   const rCreatedBy = clean(request.created_by);
   const rCreatedEmail = clean(request.created_by_email);
   const rCreatedId = String(request.created_by_id || '');
 
-  // Check if current user is among the chosen responsible persons
-  const personList = rPerson.split(',').map((s) => clean(s)).filter(Boolean);
-  const emailList = rPersonEmail.split(',').map((s) => clean(s)).filter(Boolean);
-  const isSelectedPerson = Boolean(
-    (uName && (rPerson === uName || personList.includes(uName))) ||
-    (uEmail && (rPersonEmail === uEmail || emailList.includes(uEmail)))
-  );
-
-  // Check if current user was the creator
+  // 1. Creator access: user who created the report
   const isCreator = Boolean(
     (uId && rCreatedId && rCreatedId === uId) ||
     (uName && rCreatedBy && (rCreatedBy === uName || uName === rCreatedBy)) ||
     (uEmail && rCreatedEmail && rCreatedEmail === uEmail)
   );
+  if (isCreator) return true;
 
-  return isSelectedPerson || isCreator;
+  // 2. Closer access: MUST match department AND exact full name or email!
+  const isDeptMatch = Boolean(!rDept || (userDept && userDept === rDept));
+  if (!isDeptMatch) return false;
+
+  const personList = rPerson.split(',').map((s) => clean(s)).filter(Boolean);
+  const emailList = rPersonEmail.split(',').map((s) => clean(s)).filter(Boolean);
+  const isSelectedPerson = Boolean(
+    (uName && (rPerson === uName || personList.includes(uName))) ||
+    (uEmail && (rPersonEmail === uEmail || emailList.includes(uEmail))) ||
+    (!rPerson && isDeptMatch)
+  );
+
+  return isSelectedPerson;
 };
