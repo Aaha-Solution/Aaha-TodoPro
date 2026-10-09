@@ -23,7 +23,7 @@ import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 import DateInput from '../../components/common/DateInput';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
-import { DEPARTMENTS } from '../../utils/constants';
+import { DEPARTMENTS, formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
 
 const IhlrDashboard = () => {
   const navigate = useNavigate();
@@ -543,13 +543,20 @@ const IhlrDashboard = () => {
                     </td>
 
                     {/* Date / Shift */}
-                    <td className="py-4 px-4">
+                    <td className="py-4 px-4 whitespace-nowrap">
                       <div className="font-semibold text-slate-900">
                         {formatDateDDMMYYYY(req.batch_date)}
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400 font-mono">
-                        {String(req.shift || '').toLowerCase().includes('gen') ? req.shift : String(req.shift || '').startsWith('Shift') ? req.shift : `Shift ${req.shift}`}
-                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] font-bold text-slate-600 font-mono">
+                          {formatIhlrShiftDisplay(req.shift)}
+                        </span>
+                        {getIhlrShiftDetails(req.shift)?.timing && (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 font-mono border border-slate-200">
+                            {getIhlrShiftDetails(req.shift).timing}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Problem & Model */}

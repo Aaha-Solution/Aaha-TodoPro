@@ -326,11 +326,17 @@ export const createIhlrRequest = async (req, res) => {
         }
         calculatedReqNo = `IHLR-${max + 1}`;
       }
+      let normalizedShift = String(data.shift || 'Shift 1').trim();
+      if (normalizedShift.toLowerCase().includes('gen')) normalizedShift = 'General';
+      else if (normalizedShift.includes('1') || normalizedShift.toLowerCase() === 'i') normalizedShift = 'Shift 1';
+      else if (normalizedShift.includes('2') || normalizedShift.toLowerCase() === 'ii') normalizedShift = 'Shift 2';
+      else if (normalizedShift.includes('3') || normalizedShift.toLowerCase() === 'iii') normalizedShift = 'Shift 3';
+
       created = {
         id: newId,
         req_no: calculatedReqNo,
         batch_date: data.batch_date || new Date().toISOString().split('T')[0],
-        shift: data.shift || 'I',
+        shift: normalizedShift,
         problem: data.problem,
         model: data.model,
         problem_detected_at: data.problem_detected_at || '',

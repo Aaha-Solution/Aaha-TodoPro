@@ -83,7 +83,7 @@ export const IhlrRequest = {
         let {
           req_no,
           batch_date,
-          shift = 'I',
+          shift = 'Shift 1',
           problem,
           model,
           problem_detected_at,
@@ -111,6 +111,12 @@ export const IhlrRequest = {
           req_no = (await IhlrRequest.getNextReqNo()) || 'IHLR-1';
         }
 
+        let normalizedShift = String(shift || 'Shift 1').trim();
+        if (normalizedShift.toLowerCase().includes('gen')) normalizedShift = 'General';
+        else if (normalizedShift.includes('1') || normalizedShift.toLowerCase() === 'i') normalizedShift = 'Shift 1';
+        else if (normalizedShift.includes('2') || normalizedShift.toLowerCase() === 'ii') normalizedShift = 'Shift 2';
+        else if (normalizedShift.includes('3') || normalizedShift.toLowerCase() === 'iii') normalizedShift = 'Shift 3';
+
         const [result] = await pool.query(
           `INSERT INTO ihlr_requests (
             req_no, batch_date, shift, problem, model, problem_detected_at, 
@@ -122,7 +128,7 @@ export const IhlrRequest = {
           [
             req_no,
             batch_date || new Date().toISOString().split('T')[0],
-            shift,
+            normalizedShift,
             problem,
             model,
             problem_detected_at,
@@ -182,6 +188,13 @@ export const IhlrRequest = {
             let val = updates[key];
             if ((key === 'target_date' || key === 'batch_date') && (val === '' || !val)) {
               val = null;
+            }
+            if (key === 'shift' && val) {
+              const s = String(val).trim().toLowerCase();
+              if (s.includes('gen')) val = 'General';
+              else if (s.includes('1') || s === 'i') val = 'Shift 1';
+              else if (s.includes('2') || s === 'ii') val = 'Shift 2';
+              else if (s.includes('3') || s === 'iii') val = 'Shift 3';
             }
             values.push(val);
           }

@@ -27,6 +27,7 @@ import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
+import { formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
 
 /**
@@ -76,10 +77,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
   };
 
   const formatShift = (shift) => {
-    if (!shift) return 'Shift 1';
-    const str = String(shift).trim();
-    if (str.toLowerCase().startsWith('shift') || str.toLowerCase().includes('gen')) return str;
-    return `Shift ${str}`;
+    return formatIhlrShiftDisplay(shift, true);
   };
 
   const isCompleted = Boolean(
@@ -599,9 +597,16 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         SHIFT
                       </span>
-                      <span className="font-medium text-slate-800">
-                        {formatShift(request.shift)}
-                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="font-semibold text-slate-800">
+                          {formatIhlrShiftDisplay(request.shift)}
+                        </span>
+                        {getIhlrShiftDetails(request.shift)?.timeDisplay && (
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-mono font-medium border border-blue-100">
+                            {getIhlrShiftDetails(request.shift).timeDisplay}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div>

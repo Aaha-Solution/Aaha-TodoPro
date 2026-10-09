@@ -29,6 +29,7 @@ import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
 import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
 import { getTodayDateInput, formatDateDDMMYYYY } from '../../utils/dateUtils';
+import { IHLR_SHIFTS, getCurrentIhlrShift, getIhlrShiftDetails } from '../../utils/constants';
 
 const IhlrCreateRequest = () => {
   const { alert, success, error, warning } = useModal();
@@ -72,7 +73,7 @@ const IhlrCreateRequest = () => {
   const defaultFormData = {
     req_no: 'IHLR-1',
     batch_date: getTodayDateInput(),
-    shift: '',
+    shift: getCurrentIhlrShift(),
     problem: '',
     model: '',
     problem_detected_at: '',
@@ -108,6 +109,7 @@ const IhlrCreateRequest = () => {
       return {
         ...defaultFormData,
         ...saved.formData,
+        shift: saved.formData.shift || getCurrentIhlrShift(),
         status: 'OPEN'
       };
     }
@@ -602,9 +604,16 @@ const IhlrCreateRequest = () => {
 
             {/* Shift */}
             <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Shift *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                  Shift *
+                </label>
+                {getIhlrShiftDetails(formData.shift) && (
+                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 font-mono">
+                    {getIhlrShiftDetails(formData.shift).timeDisplay}
+                  </span>
+                )}
+              </div>
               <select
                 value={formData.shift}
                 onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
@@ -612,10 +621,11 @@ const IhlrCreateRequest = () => {
                 required
               >
                 <option value="">Select Shift</option>
-                <option value="Shift 1">Shift 1</option>
-                <option value="Shift 2">Shift 2</option>
-                <option value="Shift 3">Shift 3</option>
-                <option value="General">General</option>
+                {IHLR_SHIFTS.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
               </select>
             </div>
 

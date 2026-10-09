@@ -33,6 +33,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { isIhlrRequestVisibleToUser } from '../../utils/ihlrAuthUtils';
+import { IHLR_SHIFTS, formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
 
 const IhlrMyRequests = () => {
   const navigate = useNavigate();
@@ -101,7 +102,7 @@ const IhlrMyRequests = () => {
         'SL NO': index + 1,
         'REQ NO': String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
         'DATE': formatDateDDMMYYYY(r.batch_date),
-        'SHIFT': String(r.shift || '').toLowerCase().includes('gen') ? r.shift : String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`,
+        'SHIFT': formatIhlrShiftDisplay(r.shift, true),
         'PROBLEM': r.problem || '—',
         'MODEL': r.model || '—',
         'DETECTED AT': r.problem_detected_at || '—',
@@ -209,7 +210,7 @@ const IhlrMyRequests = () => {
       const tableRows = requests.map((r, idx) => [
         idx + 1,
         String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
-        `${formatDateDDMMYYYY(r.batch_date)}\n${String(r.shift || '').toLowerCase().includes('gen') ? r.shift : String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}`,
+        `${formatDateDDMMYYYY(r.batch_date)}\n${formatIhlrShiftDisplay(r.shift, true)}`,
         r.problem || '—',
         r.model || '—',
         r.problem_detected_at || '—',
@@ -443,10 +444,11 @@ const IhlrMyRequests = () => {
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
             >
               <option value="All">All Shifts</option>
-              <option value="Shift 1">Shift 1</option>
-              <option value="Shift 2">Shift 2</option>
-              <option value="Shift 3">Shift 3</option>
-              <option value="General">General</option>
+              {IHLR_SHIFTS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -567,9 +569,16 @@ const IhlrMyRequests = () => {
                       <div className="font-semibold text-slate-900">
                         {formatDateDDMMYYYY(r.batch_date)}
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400 font-mono">
-                        {String(r.shift || '').toLowerCase().includes('gen') ? r.shift : String(r.shift || '').startsWith('Shift') ? r.shift : `Shift ${r.shift}`}
-                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] font-bold text-slate-600 font-mono">
+                          {formatIhlrShiftDisplay(r.shift)}
+                        </span>
+                        {getIhlrShiftDetails(r.shift)?.timing && (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 font-mono border border-slate-200">
+                            {getIhlrShiftDetails(r.shift).timing}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Problem */}
