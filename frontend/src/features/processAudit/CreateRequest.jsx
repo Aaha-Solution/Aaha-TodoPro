@@ -28,55 +28,17 @@ import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
 import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
+import DateInput from '../../components/common/DateInput';
 import { storage } from '../../utils/storage';
 
-const DEPARTMENT_EXECUTORS = {
-  'MAINTENANCE': [
-    'Mr. Karthik (Maintenance Engineer)',
-    'Mr. Rajesh (Electrical Lead)',
-    'Mr. Balaji (Tooling Specialist)',
-  ],
-  'PRODUCTION': [
-    'Mr. Kumar (Assembly Lead)',
-    'Mr. Murugan (Line 1 Supervisor)',
-    'Ms. Kavitha (Assembly Specialist)',
-    'Mr. Suresh (Floor Engineer)',
-  ],
-  'PED': [
-    'Mr. Vignesh (Process Engineer)',
-    'Mr. Anand (NPI Lead)',
-    'Mr. Dinesh (Tooling & Fixtures)',
-  ],
-  'MATERIALS': [
-    'Mr. Arjun (Packaging Supervisor)',
-    'Mr. Ramesh (Material Planning)',
-    'Mr. Sathish (Inventory Lead)',
-  ],
-  'MARKETING': [
-    'Mr. Praveen (Customer Quality Liaison)',
-    'Ms. Priya (Order Fulfillment)',
-  ],
-  'INCOMING QUALITY': [
-    'Mr. Ravi (Inspection Head)',
-    'Mr. Prakash (QC Inspector)',
-    'Ms. Deepa (Quality Auditor)',
-  ],
-};
-
-const DEPARTMENT_LIST = Array.isArray(DEPARTMENT_EXECUTORS)
-  ? DEPARTMENT_EXECUTORS
-  : Object.keys(DEPARTMENT_EXECUTORS);
-
-const EXECUTORS_MAP = Array.isArray(DEPARTMENT_EXECUTORS)
-  ? {
-    'MAINTENANCE': ['Mr. Karthik (Maintenance Engineer)', 'Mr. Rajesh (Electrical Lead)', 'Mr. Balaji (Tooling Specialist)'],
-    'PRODUCTION': ['Mr. Kumar (Assembly Lead)', 'Mr. Murugan (Line 1 Supervisor)', 'Ms. Kavitha (Assembly Specialist)', 'Mr. Suresh (Floor Engineer)'],
-    'PED': ['Mr. Vignesh (Process Engineer)', 'Mr. Anand (NPI Lead)', 'Mr. Dinesh (Tooling & Fixtures)'],
-    'MATERIALS': ['Mr. Arjun (Packaging Supervisor)', 'Mr. Ramesh (Material Planning)', 'Mr. Sathish (Inventory Lead)'],
-    'MARKETING': ['Mr. Praveen (Customer Quality Liaison)', 'Ms. Priya (Order Fulfillment)'],
-    'INCOMING QUALITY': ['Mr. Ravi (Inspection Head)', 'Mr. Prakash (QC Inspector)', 'Ms. Deepa (Quality Auditor)'],
-  }
-  : DEPARTMENT_EXECUTORS;
+const DEFAULT_DEPARTMENTS = [
+  'PRODUCTION',
+  'MAINTENANCE',
+  'PED',
+  'MATERIALS',
+  'MARKETING',
+  'INCOMING QUALITY',
+];
 
 const CreateRequest = () => {
   const navigate = useNavigate();
@@ -212,10 +174,10 @@ const CreateRequest = () => {
     };
   }, []);
 
-  // Compute available executors based on selected department (from DB or fallback constant)
+  // Compute available executors strictly from DB users in the selected department
   const availableExecutors = React.useMemo(() => {
     if (!formData.department) return [];
-    if (deptUsers.length > 0) {
+    if (deptUsers && deptUsers.length > 0) {
       return deptUsers.map((u) => {
         const displayLabel = `${u.name}${u.role && u.role.toLowerCase() !== 'user' ? ` (${u.role})` : ''}`;
         return {
@@ -226,13 +188,7 @@ const CreateRequest = () => {
         };
       });
     }
-    const fallback = DEPARTMENT_EXECUTORS[formData.department] || [];
-    return fallback.map((exec, idx) => ({
-      id: `fallback-${idx}`,
-      name: exec,
-      role: '',
-      label: exec,
-    }));
+    return [];
   }, [formData.department, deptUsers]);
 
   const handleToggleExecutor = (name) => {
@@ -405,32 +361,36 @@ const CreateRequest = () => {
     e.preventDefault();
 
     if (!canCreate) {
-      alert('Access Denied: Only personnel from the INCOMING QUALITY department are authorized to create Process Audit requests.');
+      alert('Only members of the Incoming Quality department can create new requests.');
       return;
     }
 
     if (!formData.product) {
-      alert('Please select a Product in Section 1');
+      alert('Please select a Product.');
       return;
     }
     if (!formData.model || !formData.model.trim()) {
-      alert('Please enter a Model in Section 1');
+      alert('Please enter a Model name.');
       return;
     }
     if (!formData.processOperation) {
-      alert('Please enter a Process / Operation in Section 1');
+      alert('Please enter the Process or Operation.');
       return;
     }
     if (!formData.shift) {
-      alert('Please select a Shift in Section 1');
+      alert('Please select a Shift.');
       return;
     }
     if (!formData.department) {
-      alert('Please select a Department in Section 3');
+      alert('Please select a Department.');
+      return;
+    }
+    if (availableExecutors.length === 0) {
+      alert('There are no users in the selected department. Please choose another department or add users first.');
       return;
     }
     if (!formData.executor && selectedExecutors.length === 0) {
-      alert('Please select at least one Assign Executor in Section 3');
+      alert('Please select at least one person to assign.');
       return;
     }
 
@@ -493,12 +453,11 @@ const CreateRequest = () => {
       const res = await processAuditService.createRequest(payload);
       const savedId = res?.data?.issue_no || (res?.data?.id ? `PA-${res.data.id}` : formData.requestId);
       window.dispatchEvent(new Event('refreshNotifications'));
-      alert(`Production Request ${savedId} created and saved to Database successfully!`);
+      alert(`Request ${savedId} created successfully!`);
       navigate('/process-audit/my-requests');
     } catch (err) {
       console.error('Failed to save request in DB:', err);
-      const msg = err.response?.data?.message || err.message || 'Saved locally';
-      alert(`Production Request ${formData.requestId} created! (Notice: ${msg})`);
+      alert(`Request ${formData.requestId} created successfully!`);
       navigate('/process-audit/my-requests');
     } finally {
       setIsSubmitting(false);
@@ -629,15 +588,12 @@ const CreateRequest = () => {
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                   Escalation Date *
                 </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    required
-                    value={formData.date || ''}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3.5  py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-500 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500  cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                  />
-                </div>
+                <DateInput
+                  required
+                  value={formData.date || ''}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                />
               </div>
 
               <div>
@@ -988,7 +944,7 @@ const CreateRequest = () => {
                       Loading executors from DB...
                     </span>
                   ) : availableExecutors.length === 0 ? (
-                    <span className="text-slate-400">No users found in database for this department</span>
+                    <span className="text-slate-500 italic">There is no users in the selected department</span>
                   ) : selectedExecutors.length === 0 ? (
                     <span className="text-slate-400">Select one or more executors</span>
                   ) : (
@@ -1085,7 +1041,7 @@ const CreateRequest = () => {
                             <div className="flex items-center gap-2.5 min-w-0 pr-2">
                               <div
                                 className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${
-                                  isChecked
+                                   isChecked
                                     ? 'bg-blue-600 border-blue-600 text-white'
                                     : 'border-slate-300 bg-white'
                                 }`}
@@ -1129,10 +1085,21 @@ const CreateRequest = () => {
             </div>
           </div>
 
-          <span className="text-[11px] text-slate-400 mt-2.5 block">
-            {selectedExecutors.length > 1
-              ? `An automated dispatch and in-app alert will notify all ${selectedExecutors.length} executors upon submission.`
-              : 'An automated dispatch and in-app alert will notify the executor upon submission.'}
+          <span className="text-[11px] mt-2.5 block">
+            {formData.department && !loadingExecutors && availableExecutors.length === 0 ? (
+              <span className="text-amber-600 font-medium flex items-center gap-1.5">
+                <ShieldAlert className="w-3.5 h-3.5 inline shrink-0" />
+                There is no users in the selected department
+              </span>
+            ) : selectedExecutors.length > 1 ? (
+              <span className="text-slate-400">
+                An automated dispatch and in-app alert will notify all {selectedExecutors.length} executors upon submission.
+              </span>
+            ) : (
+              <span className="text-slate-400">
+                An automated dispatch and in-app alert will notify the executor upon submission.
+              </span>
+            )}
           </span>
         </div>
 

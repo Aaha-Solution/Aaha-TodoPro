@@ -99,6 +99,22 @@ const MyRequests = () => {
     ])
   );
 
+  const distinctExecutors = React.useMemo(() => {
+    const set = new Set();
+    dbUsers.forEach((u) => {
+      if (u.name) set.add(u.name);
+    });
+    requests.forEach((r) => {
+      if (r.executor) {
+        r.executor.split(',').forEach((e) => {
+          const trimmed = e.trim();
+          if (trimmed && trimmed !== '—') set.add(trimmed);
+        });
+      }
+    });
+    return Array.from(set).sort();
+  }, [dbUsers, requests]);
+
   useEffect(() => {
     let isMounted = true;
     processAuditService.getUsers()
@@ -172,11 +188,11 @@ const MyRequests = () => {
   const handleConfirmReassign = async () => {
     if (!reassigningRequest) return;
     if (!reassignDept || !reassignExecutor) {
-      alert('Please select both a new Department and an Assigned Executor.');
+      alert('Please choose a department and a person to reassign to.');
       return;
     }
     if (!reassignReason.trim()) {
-      alert('Please provide a reason or note explaining why this request is being reassigned.');
+      alert('Please enter a reason for reassigning this request.');
       return;
     }
 
@@ -223,12 +239,12 @@ const MyRequests = () => {
         setActiveModalRequest(merged);
       }
 
-      alert(`Audit Request ${merged.issue_no || reassigningRequest.id} has been successfully reassigned to ${reassignDept} (${reassignExecutor})!`);
+      alert(`Request ${merged.issue_no || reassigningRequest.id} has been reassigned to ${reassignExecutor} (${reassignDept}).`);
       setShowReassignModal(false);
       setReassigningRequest(null);
     } catch (err) {
       console.error('Failed to reassign request:', err);
-      alert('Failed to reassign request: ' + (err.response?.data?.message || err.message));
+      alert('Could not reassign the request. Please try again.');
     } finally {
       setReassignLoading(false);
     }
@@ -329,10 +345,10 @@ const MyRequests = () => {
       );
       setActiveModalRequest(merged);
 
-      alert(`Audit Request ${merged.issue_no || reqId} has been successfully marked as ${newStatus}!`);
+      alert(`Request ${merged.issue_no || reqId} has been updated to ${newStatus}.`);
     } catch (err) {
       console.error('Failed to update closure status:', err);
-      alert('Failed to update status in database: ' + (err.response?.data?.message || err.message));
+      alert('Could not update the status. Please try again.');
     } finally {
       setActionLoading(false);
     }
@@ -752,14 +768,10 @@ const MyRequests = () => {
               onChange={(e) => setSelectedExecutor(e.target.value)}
               className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
             >
-              <option>All Executors</option>
-              <option value="Karthik">Mr. Karthik (Maintenance)</option>
-              <option value="Kumar">Mr. Kumar (Assembly)</option>
-              <option value="Deepa">Ms. Deepa (Quality)</option>
-              <option value="Prakash">Mr. Prakash (QC)</option>
-              <option value="Ravi">Mr. Ravi (Inspection)</option>
-              <option value="Arjun">Mr. Arjun (Packaging)</option>
-              <option value="Suresh">Mr. Suresh (Floor)</option>
+              <option value="All Executors">All Executors</option>
+              {distinctExecutors.map((exec) => (
+                <option key={exec} value={exec}>{exec}</option>
+              ))}
             </select>
           </div>
 
@@ -1585,14 +1597,24 @@ const MyRequests = () => {
                     className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer appearance-none pr-8"
                   >
                     <option value="">-- Select Executor for {reassignDept} --</option>
-                    {deptUsers.map((u) => (
-                      <option key={u.id || u.name} value={u.name || u.email}>
-                        {u.name || u.email} {u.role ? `(${u.role})` : ''}
-                      </option>
-                    ))}
+                    {deptUsers.length === 0 ? (
+                      <option value="" disabled>There is no users in the selected department</option>
+                    ) : (
+                      deptUsers.map((u) => (
+                        <option key={u.id || u.name} value={u.name || u.email}>
+                          {u.name || u.email} {u.role ? `(${u.role})` : ''}
+                        </option>
+                      ))
+                    )}
                   </select>
                   <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
                 </div>
+                {reassignDept && !loadingDeptUsers && deptUsers.length === 0 && (
+                  <span className="text-[11px] text-amber-600 font-medium mt-1 flex items-center gap-1">
+                    <ShieldAlert className="w-3.5 h-3.5 inline shrink-0" />
+                    There is no users in the selected department
+                  </span>
+                )}
               </div>
 
               <div>

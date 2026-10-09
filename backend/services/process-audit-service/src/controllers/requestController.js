@@ -138,8 +138,8 @@ export const createRequest = async (req, res) => {
               execUserId,
               created.id,
               issueNo,
-              `New Audit Request Assigned for Sign-off: #${issueNo}`,
-              `Request #${issueNo} for ${dept} (${stage} - ${line}) has been assigned to you by ${creator}. Awaiting your review & sign-off.`
+              `New Request Assigned: #${issueNo}`,
+              `${creator} assigned request #${issueNo} (${dept}) to you for review and sign-off.`
             ]
           );
         }
@@ -233,7 +233,7 @@ export const updateRequestStatus = async (req, res) => {
       // 1. When approved / signed off by executor: Notify Creator with direct deep-link to request
       if (isApproved && updated.created_by) {
         try {
-          const msg = `Your audit request #${issueNo} was signed off by ${updated.executor}. Click to review corrective action, add your remark, and set status to Closed or Open.`;
+          const msg = `${updated.executor} completed the sign-off for request #${issueNo}. Please review and close when ready.`;
           await pool.query(
             `INSERT INTO process_audit_notifications 
              (user_name, user_id, request_id, issue_no, type, title, message, link) 
@@ -244,7 +244,7 @@ export const updateRequestStatus = async (req, res) => {
               updated.id,
               issueNo,
               'request_approved',
-              `Audit Request #${issueNo} Signed Off — Review & Remark Required`,
+              `Request #${issueNo} Signed Off`,
               msg,
               `/process-audit/my-requests?requestId=${updated.id}`
             ]
@@ -256,8 +256,8 @@ export const updateRequestStatus = async (req, res) => {
         // When rejected by executor
         try {
           const msg = rejectionReason
-            ? `Your audit request #${issueNo} was rejected by ${updated.executor}. Reason: ${rejectionReason}`
-            : `Your audit request #${issueNo} was rejected by ${updated.executor}.`;
+            ? `${updated.executor} could not sign off request #${issueNo}. Note: "${rejectionReason}"`
+            : `${updated.executor} could not sign off request #${issueNo}.`;
           await pool.query(
             `INSERT INTO process_audit_notifications 
              (user_name, user_id, request_id, issue_no, type, title, message, link) 
@@ -268,7 +268,7 @@ export const updateRequestStatus = async (req, res) => {
               updated.id,
               issueNo,
               'request_rejected',
-              `Audit Request #${issueNo} Rejected`,
+              `Request #${issueNo} Needs Attention`,
               msg,
               `/process-audit/my-requests?requestId=${updated.id}`
             ]
@@ -290,8 +290,8 @@ export const updateRequestStatus = async (req, res) => {
           ).catch(() => {});
 
           const remarkText = details.creator_remark ? ` Remark: "${details.creator_remark}"` : '';
-          const actionText = isClosed ? 'Verified & Closed' : 'Reviewed & Kept Open';
-          const msg = `Audit Request #${issueNo} has been marked as ${isClosed ? 'Closed' : 'Open'} by ${updated.created_by || 'Creator'}.${remarkText}`;
+          const actionText = isClosed ? 'Closed' : 'Reopened';
+          const msg = `Request #${issueNo} was marked as ${isClosed ? 'Closed' : 'Open'} by ${updated.created_by || 'Creator'}.${remarkText}`;
 
           await pool.query(
             `INSERT INTO process_audit_notifications 
@@ -303,7 +303,7 @@ export const updateRequestStatus = async (req, res) => {
               updated.id,
               issueNo,
               isClosed ? 'request_closed' : 'request_reopened',
-              `Audit Request #${issueNo} ${actionText}`,
+              `Request #${issueNo} ${actionText}`,
               msg,
               `/process-audit/approvals?requestId=${updated.id}`
             ]
@@ -394,8 +394,8 @@ export const reassignRequest = async (req, res) => {
       ).catch(() => [[]]);
       const newExecUserId = execUserRows?.[0]?.id || null;
 
-      const reasonText = reason ? ` Reason: ${reason}` : '';
-      const notifMsg = `Request #${issueNo} has been reassigned to ${new_department} (${new_executor}) by ${reassignedByName}.${reasonText} Awaiting your review & sign-off.`;
+      const reasonText = reason ? ` Reason: "${reason}"` : '';
+      const notifMsg = `Request #${issueNo} was reassigned to you by ${reassignedByName}.${reasonText}`;
 
       await pool.query(
         `INSERT INTO process_audit_notifications 
@@ -406,7 +406,7 @@ export const reassignRequest = async (req, res) => {
           newExecUserId,
           updated.id,
           issueNo,
-          `Audit Request Reassigned to You: #${issueNo}`,
+          `Request #${issueNo} Reassigned to You`,
           notifMsg
         ]
       );

@@ -39,6 +39,7 @@ import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import AttachmentThumbnail from '../../components/common/AttachmentThumbnail';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
+import DateInput from '../../components/common/DateInput';
 import { resolveAttachmentUrl, triggerDirectDownload } from '../../components/common/attachmentUtils';
 import { storage } from '../../utils/storage';
 
@@ -823,12 +824,11 @@ const ProcessAuditApprovals = () => {
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
                 TARGET DATE
               </label>
-              <input
-                type="date"
+              <DateInput
                 disabled={!selectedRequest || isSelectedApproved}
                 value={closerTargetDate}
                 onChange={(e) => setCloserTargetDate(e.target.value)}
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition"
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition"
               />
             </div>
 
