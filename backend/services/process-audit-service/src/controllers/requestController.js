@@ -16,13 +16,14 @@ export const getNextId = async (req, res) => {
 
 export const getAllRequests = async (req, res) => {
   try {
-    const { created_by, created_by_id, executor, user, role } = req.query;
+    const { created_by, created_by_id, executor, user, role, scope, is_dashboard, all } = req.query;
 
     const userRole = (role || req.user?.role || '').trim().toUpperCase();
     const isAdmin = userRole === 'ADMIN';
+    const isDashboardScope = scope === 'dashboard' || is_dashboard === 'true' || all === 'true';
 
     const filters = {};
-    if (!isAdmin) {
+    if (!isAdmin && !isDashboardScope) {
       if (created_by) filters.created_by = created_by;
       if (created_by_id) filters.created_by_id = created_by_id;
       if (executor) filters.executor = executor;

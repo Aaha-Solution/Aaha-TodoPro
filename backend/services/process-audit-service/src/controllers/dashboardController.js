@@ -4,32 +4,13 @@ import { successResponse, errorResponse } from '../../../shared/response.js';
 export const getDashboardMetrics = async (req, res) => {
   try {
     if (!pool) throw new Error('Database pool not available');
-    const { department, month, user, user_id, role } = req.query;
+    const { department, month } = req.query;
     const startDate = (req.query.startDate || req.query.start_date || req.query.from_date || '').trim();
     const endDate = (req.query.endDate || req.query.end_date || req.query.to_date || '').trim();
-
-    const userRole = (role || req.user?.role || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN';
 
     let query = 'SELECT status, COUNT(*) as count FROM process_audit_requests';
     const conditions = [];
     const params = [];
-
-    // Filter by user unless Admin
-    if (!isAdmin) {
-      const uName = (user || req.user?.name || req.user?.email || '').trim();
-      const uId = Number(user_id || req.user?.id) || 0;
-      if (uName || uId) {
-        conditions.push(`(
-          (created_by_id IS NOT NULL AND created_by_id = ?) 
-          OR LOWER(TRIM(created_by)) = LOWER(?)
-          OR LOWER(created_by) LIKE CONCAT('%', LOWER(?), '%')
-          OR LOWER(TRIM(executor)) = LOWER(?)
-          OR LOWER(executor) LIKE CONCAT('%', LOWER(?), '%')
-        )`);
-        params.push(uId, uName, uName, uName, uName);
-      }
-    }
 
     if (department && department !== 'All') {
       conditions.push('UPPER(TRIM(department)) = UPPER(TRIM(?))');
