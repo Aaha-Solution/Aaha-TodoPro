@@ -29,7 +29,7 @@ import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
 import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
 import { getTodayDateInput, formatDateDDMMYYYY } from '../../utils/dateUtils';
-import { IHLR_SHIFTS, getCurrentIhlrShift } from '../../utils/constants';
+import { IHLR_SHIFTS } from '../../utils/constants';
 
 const IhlrCreateRequest = () => {
   const { alert, success, error, warning } = useModal();
@@ -73,7 +73,7 @@ const IhlrCreateRequest = () => {
   const defaultFormData = {
     req_no: 'IHLR-1',
     batch_date: getTodayDateInput(),
-    shift: getCurrentIhlrShift(),
+    shift: '',
     problem: '',
     model: '',
     problem_detected_at: '',
@@ -109,7 +109,7 @@ const IhlrCreateRequest = () => {
       return {
         ...defaultFormData,
         ...saved.formData,
-        shift: saved.formData.shift || getCurrentIhlrShift(),
+        shift: saved.formData.shift || '',
         status: 'OPEN'
       };
     }

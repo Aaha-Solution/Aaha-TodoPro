@@ -989,10 +989,14 @@ export const getIhlrNotifications = async (req, res) => {
             .filter(Boolean);
           const rCreatedBy = (r.created_by || '').trim().toLowerCase();
           const rCreatedEmail = (r.created_by_email || '').trim().toLowerCase();
+          const rDept = (r.resp || '').trim().toUpperCase();
 
+          const isDeptMatch = Boolean(!rDept || (userDept && userDept === rDept));
           const isAssigned =
-            (userName && assignedNames.includes(userName.toLowerCase())) ||
-            (userEmail && assignedEmails.includes(userEmail.toLowerCase()));
+            isDeptMatch && (
+              (userName && assignedNames.includes(userName.toLowerCase())) ||
+              (userEmail && assignedEmails.includes(userEmail.toLowerCase()))
+            );
           const isCreator =
             (userName && (rCreatedBy === userName.toLowerCase() || userName.toLowerCase() === rCreatedBy)) ||
             (userEmail && rCreatedEmail === userEmail.toLowerCase()) ||

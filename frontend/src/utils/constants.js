@@ -84,7 +84,7 @@ export const formatIhlrShiftDisplay = (shiftVal, includeTiming = false) => {
     return includeTiming ? `${details.name} (${details.timing})` : details.name;
   }
   const s = String(shiftVal || '').trim();
-  if (!s) return 'Shift 1';
+  if (!s) return '—';
   return s.toLowerCase().startsWith('shift') || s.toLowerCase().includes('gen') ? s : `Shift ${s}`;
 };
 

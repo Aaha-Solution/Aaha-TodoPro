@@ -69,8 +69,10 @@ const IhlrApprovals = () => {
   const rRespPerson = cleanStr(selectedRequest?.resp_person);
   const rRespPersonList = rRespPerson.split(',').map((s) => cleanStr(s)).filter(Boolean);
   const rRespEmail = cleanStr(selectedRequest?.resp_person_email);
-  const rRespDept = cleanStr(selectedRequest?.resp);
-  const isDeptMatch = Boolean(!rRespDept || (uDept && uDept === rRespDept));
+  const rRespEmailList = rRespEmail.split(',').map((s) => cleanStr(s)).filter(Boolean);
+  const rRespDept = (selectedRequest?.resp || '').trim().toUpperCase();
+
+  const isDeptMatch = Boolean(!rRespDept || (uDept && uDept.toUpperCase() === rRespDept));
   const isCloser = Boolean(
     isDeptMatch && (
       (rRespPerson && (uName === rRespPerson || rRespPersonList.includes(uName))) ||

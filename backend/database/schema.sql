@@ -71,6 +71,7 @@ CREATE TABLE process_audit_requests (
   approved_at TIMESTAMP NULL,
   created_by VARCHAR(100) NULL,
   created_by_id INT NULL,
+  reassignment_history JSON NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_pa_issue_no (issue_no),
