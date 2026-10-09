@@ -100,10 +100,13 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           const nEmail = (n.user_email || '').trim().toLowerCase();
           const nId = String(n.user_id || '');
 
+          const nNameList = nName.split(',').map((s) => s.trim()).filter(Boolean);
+          const nEmailList = nEmail.split(',').map((s) => s.trim()).filter(Boolean);
+
           const isDirectMatch =
             (uId && nId && uId === nId) ||
-            (uName && nName && (uName === nName || nName.includes(uName))) ||
-            (uEmail && nEmail && (uEmail === nEmail || nEmail.includes(uEmail)));
+            (uName && nName && (uName === nName || nNameList.includes(uName))) ||
+            (uEmail && nEmail && (uEmail === nEmail || nEmailList.includes(uEmail)));
 
           if (!isDirectMatch) return;
         }

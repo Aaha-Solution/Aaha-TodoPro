@@ -70,10 +70,11 @@ const IhlrApprovals = () => {
   const rRespPersonList = rRespPerson.split(',').map((s) => cleanStr(s)).filter(Boolean);
   const rRespEmail = cleanStr(selectedRequest?.resp_person_email);
   const rRespDept = cleanStr(selectedRequest?.resp);
+  const rRespEmailList = rRespEmail.split(',').map((s) => cleanStr(s)).filter(Boolean);
   const isCloser = Boolean(
-    (rRespPerson && (uName === rRespPerson || rRespPersonList.includes(uName) || rRespPersonList.some((p) => p.includes(uName) || uName.includes(p)))) ||
-    (rRespEmail && uEmail && (uEmail === rRespEmail || rRespEmail.includes(uEmail))) ||
-    (rRespDept && uDept && uDept === rRespDept)
+    (rRespPerson && (uName === rRespPerson || rRespPersonList.includes(uName))) ||
+    (rRespEmail && (uEmail === rRespEmail || rRespEmailList.includes(uEmail))) ||
+    (!rRespPerson && rRespDept && uDept && uDept === rRespDept)
   );
 
   const rCreatedBy = cleanStr(selectedRequest?.created_by);

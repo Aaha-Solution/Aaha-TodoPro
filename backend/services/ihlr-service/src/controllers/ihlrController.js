@@ -923,14 +923,14 @@ export const getIhlrNotifications = async (req, res) => {
       if (userName) {
         conditions.push('LOWER(TRIM(user_name)) = LOWER(TRIM(?))');
         params.push(userName);
-        conditions.push('LOWER(user_name) LIKE ?');
-        params.push(`%${userName.toLowerCase()}%`);
+        conditions.push('FIND_IN_SET(?, REPLACE(LOWER(user_name), ", ", ","))');
+        params.push(userName.toLowerCase());
       }
       if (userEmail) {
         conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
         params.push(userEmail);
-        conditions.push('LOWER(user_email) LIKE ?');
-        params.push(`%${userEmail.toLowerCase()}%`);
+        conditions.push('FIND_IN_SET(?, REPLACE(LOWER(user_email), ", ", ","))');
+        params.push(userEmail.toLowerCase());
       }
       if (isAdmin) {
         conditions.push("LOWER(TRIM(user_name)) LIKE '%admin%'");
@@ -974,7 +974,7 @@ export const getIhlrNotifications = async (req, res) => {
           const rCreatedEmail = (r.created_by_email || '').trim().toLowerCase();
 
           const isAssigned =
-            (userName && (assignedNames.includes(userName.toLowerCase()) || assignedNames.some(p => p.includes(userName.toLowerCase()) || userName.toLowerCase().includes(p)))) ||
+            (userName && assignedNames.includes(userName.toLowerCase())) ||
             (userEmail && assignedEmails.includes(userEmail.toLowerCase()));
           const isCreator =
             (userName && (rCreatedBy === userName.toLowerCase() || userName.toLowerCase() === rCreatedBy)) ||
