@@ -73,12 +73,13 @@ const ProcessAuditDashboard = () => {
   const defaultEndDate = `${currentYear}-12-31`;
 
   const [selectedDept, setSelectedDept] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState('All');
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultEndDate);
   const [showFilters, setShowFilters] = useState(false);
 
   const isDefaultYear = startDate === defaultStartDate && endDate === defaultEndDate;
-  const hasActiveFilters = selectedDept !== 'All' || !isDefaultYear;
+  const hasActiveFilters = selectedDept !== 'All' || selectedStatus !== 'All' || !isDefaultYear;
 
   const loadDashboardData = async (overrides = {}) => {
     setLoading(true);
@@ -262,6 +263,7 @@ const ProcessAuditDashboard = () => {
 
   const handleResetFilters = () => {
     setSelectedDept('All');
+    setSelectedStatus('All');
     setStartDate(defaultStartDate);
     setEndDate(defaultEndDate);
   };
@@ -276,8 +278,8 @@ const ProcessAuditDashboard = () => {
     ).sort();
   }, [requests]);
 
-  // Filter requests based on selected department and timeline range (common to all users, exactly like IHLR)
-  const filteredRequests = React.useMemo(() => {
+  // Base requests filtered by department and timeline range (for KPI metrics calculation)
+  const baseFilteredRequests = React.useMemo(() => {
     return requests.filter((r) => {
       // Department filter
       if (selectedDept !== 'All') {
@@ -299,23 +301,43 @@ const ProcessAuditDashboard = () => {
     });
   }, [requests, selectedDept, startDate, endDate]);
 
-  const total = filteredRequests.length;
+  const total = baseFilteredRequests.length;
 
-  const pendingExec = filteredRequests.filter((r) => {
+  const pendingExec = baseFilteredRequests.filter((r) => {
     const s = (r.status || '').toLowerCase();
     return s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject') && !s.includes('progress') && !s.includes('signed'));
   }).length;
 
-  const inProgress = filteredRequests.filter((r) => {
+  const inProgress = baseFilteredRequests.filter((r) => {
     const s = (r.status || '').toLowerCase();
     return (s.includes('progress') || s.includes('approved') || s.includes('signed')) && !s.includes('close');
   }).length;
 
-  const closed = filteredRequests.filter((r) => (r.status || '').toLowerCase().includes('close')).length;
+  const closed = baseFilteredRequests.filter((r) => (r.status || '').toLowerCase().includes('close')).length;
+
+  // Filter requests based on selected status (for display table and recent logs)
+  const filteredRequests = React.useMemo(() => {
+    if (selectedStatus === 'All') return baseFilteredRequests;
+
+    return baseFilteredRequests.filter((r) => {
+      const s = (r.status || '').toLowerCase();
+      if (selectedStatus === 'PENDING') {
+        return s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject') && !s.includes('progress') && !s.includes('signed'));
+      }
+      if (selectedStatus === 'IN_PROGRESS') {
+        return (s.includes('progress') || s.includes('approved') || s.includes('signed')) && !s.includes('close');
+      }
+      if (selectedStatus === 'CLOSED') {
+        return s.includes('close');
+      }
+      return true;
+    });
+  }, [baseFilteredRequests, selectedStatus]);
 
   const kpis = [
     {
       title: 'Total Issues',
+      filterStatus: 'All',
       value: String(total),
       subtitle: hasActiveFilters ? 'Filtered issues' : (isDefaultYear ? `Current Year ${currentYear}` : undefined),
       icon: BarChart3,
@@ -323,6 +345,7 @@ const ProcessAuditDashboard = () => {
     },
     {
       title: 'Pending',
+      filterStatus: 'PENDING',
       value: String(pendingExec),
       subtitle: hasActiveFilters ? 'Filtered pending' : (isDefaultYear ? `Current Year ${currentYear}` : undefined),
       icon: Hourglass,
@@ -332,6 +355,7 @@ const ProcessAuditDashboard = () => {
       ? [
           {
             title: 'In Progress',
+            filterStatus: 'IN_PROGRESS',
             value: String(inProgress),
             subtitle: hasActiveFilters ? 'Filtered in progress' : (isDefaultYear ? `Current Year ${currentYear}` : undefined),
             icon: Clock,
@@ -341,6 +365,7 @@ const ProcessAuditDashboard = () => {
       : [
           {
             title: 'Signed off',
+            filterStatus: 'IN_PROGRESS',
             value: String(inProgress),
             subtitle: hasActiveFilters ? 'Filtered signed off' : (isDefaultYear ? `Current Year ${currentYear}` : undefined),
             icon: CheckCircle2,
@@ -349,6 +374,7 @@ const ProcessAuditDashboard = () => {
         ]),
     {
       title: 'Closed',
+      filterStatus: 'CLOSED',
       value: String(closed),
       subtitle: hasActiveFilters ? 'Filtered closed' : (isDefaultYear ? `Current Year ${currentYear}` : undefined),
       icon: CheckCircle2,
@@ -533,7 +559,7 @@ const ProcessAuditDashboard = () => {
             {showFilters && (
               <div className="flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
                 {/* Department Dropdown */}
-                <div className="min-w-[200px] flex-1 sm:flex-initial">
+                <div className="min-w-[190px] flex-1 sm:flex-initial">
                   <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
                     <Building2 className="w-3.5 h-3.5 text-blue-600" />
                     <span>Department</span>
@@ -550,6 +576,27 @@ const ProcessAuditDashboard = () => {
                           {dept}
                         </option>
                       ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Status Dropdown */}
+                <div className="min-w-[170px] flex-1 sm:flex-initial">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Status</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedStatus}
+                      onChange={(e) => setSelectedStatus(e.target.value)}
+                      className="w-full appearance-none pl-3.5 pr-8 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200/90 hover:border-slate-300 focus:border-blue-500 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer"
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="PENDING">Pending</option>
+                      <option value="IN_PROGRESS">{isAdmin ? 'In Progress' : 'Signed off'}</option>
+                      <option value="CLOSED">Closed</option>
                     </select>
                     <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
@@ -627,6 +674,22 @@ const ProcessAuditDashboard = () => {
                   </span>
                 )}
 
+                {selectedStatus !== 'All' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                    <span>
+                      Status: <strong>{selectedStatus === 'PENDING' ? 'Pending' : selectedStatus === 'IN_PROGRESS' ? (isAdmin ? 'In Progress' : 'Signed off') : 'Closed'}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStatus('All')}
+                      className="hover:text-emerald-900 cursor-pointer p-0.5 rounded hover:bg-emerald-100/60 transition-colors"
+                      title="Clear status filter"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
                 {!isDefaultYear && (Boolean(startDate) || Boolean(endDate)) && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
                     <span>
@@ -666,10 +729,20 @@ const ProcessAuditDashboard = () => {
       <div className={`grid ${kpis.length === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'} gap-3 sm:gap-4`}>
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
+          const isSelected = selectedStatus === kpi.filterStatus;
           return (
             <div
               key={idx}
-              className="bg-white rounded-2xl p-4 sm:p-4.5 border border-slate-200/90 shadow-2xs hover:shadow-xs transition flex flex-col justify-between"
+              onClick={() => {
+                setSelectedStatus((prev) => (prev === kpi.filterStatus ? 'All' : kpi.filterStatus));
+                setShowFilters(true);
+              }}
+              className={`bg-white rounded-2xl p-4 sm:p-4.5 border transition cursor-pointer select-none flex flex-col justify-between hover:shadow-xs ${
+                isSelected
+                  ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-xs'
+                  : 'border-slate-200/90 shadow-2xs hover:border-slate-300'
+              }`}
+              title={`Click to filter by ${kpi.title}`}
             >
               <div className="flex items-center justify-between gap-1.5">
                 <span className="text-xs font-semibold text-slate-700 truncate">{kpi.title}</span>
@@ -708,7 +781,11 @@ const ProcessAuditDashboard = () => {
             </div>
             {hasActiveFilters && (
               <p className="text-xs text-slate-500 mt-0.5">
-                Showing results for {selectedDept !== 'All' ? `Dept: ${selectedDept}` : ''}{selectedDept !== 'All' && !isDefaultYear ? ' • ' : ''}{!isDefaultYear ? `Timeline: ${startDate ? formatDateDDMMYYYY(startDate) : 'Start'} to ${endDate ? formatDateDDMMYYYY(endDate) : 'End'}` : ''}
+                Showing results for {selectedDept !== 'All' ? `Dept: ${selectedDept}` : ''}
+                {selectedDept !== 'All' && selectedStatus !== 'All' ? ' • ' : ''}
+                {selectedStatus !== 'All' ? `Status: ${selectedStatus === 'PENDING' ? 'Pending' : selectedStatus === 'IN_PROGRESS' ? (isAdmin ? 'In Progress' : 'Signed off') : 'Closed'}` : ''}
+                {(selectedDept !== 'All' || selectedStatus !== 'All') && !isDefaultYear ? ' • ' : ''}
+                {!isDefaultYear ? `Timeline: ${startDate ? formatDateDDMMYYYY(startDate) : 'Start'} to ${endDate ? formatDateDDMMYYYY(endDate) : 'End'}` : ''}
               </p>
             )}
           </div>
@@ -733,7 +810,7 @@ const ProcessAuditDashboard = () => {
                 <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                 <p className="font-semibold text-slate-700 text-sm mb-1">No requests match current filters</p>
                 <p className="text-slate-400 mb-4 max-w-sm mx-auto">
-                  There are no issues found matching {selectedDept !== 'All' ? `department "${selectedDept}"` : ''} {selectedDept !== 'All' && !isDefaultYear ? 'and ' : ''} {!isDefaultYear ? `timeline range (${startDate ? formatDateDDMMYYYY(startDate) : 'Start'} - ${endDate ? formatDateDDMMYYYY(endDate) : 'End'})` : ''}.
+                  There are no issues found matching {selectedDept !== 'All' ? `department "${selectedDept}"` : ''} {selectedStatus !== 'All' ? `status "${selectedStatus === 'PENDING' ? 'Pending' : selectedStatus === 'IN_PROGRESS' ? (isAdmin ? 'In Progress' : 'Signed off') : 'Closed'}"` : ''} {!isDefaultYear ? `timeline range (${startDate ? formatDateDDMMYYYY(startDate) : 'Start'} - ${endDate ? formatDateDDMMYYYY(endDate) : 'End'})` : ''}.
                 </p>
                 <button
                   onClick={handleResetFilters}

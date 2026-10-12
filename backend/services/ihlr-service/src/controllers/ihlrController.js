@@ -122,7 +122,26 @@ export const getDashboardStats = async (req, res) => {
       MATERIAL: requests.filter(r => (r.four_m || '').toUpperCase() === 'MATERIAL').length,
     };
 
-    const sortedRequests = [...requests].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+    // Filter recentRequests by status if specified
+    const targetStatus = (req.query.status || '').trim().toUpperCase();
+    let filteredForList = requests;
+    if (targetStatus && targetStatus !== 'ALL') {
+      filteredForList = requests.filter(r => {
+        const s = (r.status || '').toUpperCase();
+        if (targetStatus === 'OPEN' || targetStatus === 'PENDING') {
+          return s === 'OPEN' || s === 'PENDING';
+        }
+        if (targetStatus === 'IN_PROGRESS' || targetStatus === 'IN-PROGRESS') {
+          return s === 'IN_PROGRESS' || s === 'IN-PROGRESS';
+        }
+        if (targetStatus === 'CLOSED') {
+          return s === 'CLOSED';
+        }
+        return s === targetStatus;
+      });
+    }
+
+    const sortedRequests = [...filteredForList].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
 
     return successResponse(res, {
       total,
@@ -132,11 +151,12 @@ export const getDashboardStats = async (req, res) => {
       approvalPending: inProgress,
       closed,
       fourMBreakdown,
-      recentRequests: sortedRequests.slice(0, 5),
+      recentRequests: sortedRequests.slice(0, 10),
       currentYear,
       filter: {
         startDate,
         endDate,
+        status: targetStatus || 'All',
         year: req.query.year || currentYear,
         isDefaultYear: !isAllTime && startDate === `${currentYear}-01-01` && endDate === `${currentYear}-12-31`
       }

@@ -61,23 +61,28 @@ const IhlrDashboard = () => {
   const defaultEndDate = `${currentYear}-12-31`;
 
   const [selectedDept, setSelectedDept] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState('All');
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultEndDate);
   const [showFilters, setShowFilters] = useState(false);
 
   const isDefaultYear = startDate === defaultStartDate && endDate === defaultEndDate;
-  const hasActiveFilters = selectedDept !== 'All' || !isDefaultYear;
+  const hasActiveFilters = selectedDept !== 'All' || selectedStatus !== 'All' || !isDefaultYear;
 
   const loadData = async (overrides = {}) => {
     setLoading(true);
     try {
       const activeDept = overrides.selectedDept !== undefined ? overrides.selectedDept : selectedDept;
+      const activeStatus = overrides.selectedStatus !== undefined ? overrides.selectedStatus : selectedStatus;
       const activeStart = overrides.startDate !== undefined ? overrides.startDate : startDate;
       const activeEnd = overrides.endDate !== undefined ? overrides.endDate : endDate;
 
       const filters = {};
       if (activeDept && activeDept !== 'All') {
         filters.resp = activeDept;
+      }
+      if (activeStatus && activeStatus !== 'All') {
+        filters.status = activeStatus;
       }
       if (activeStart) {
         filters.startDate = activeStart;
@@ -112,10 +117,11 @@ const IhlrDashboard = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       window.removeEventListener('ihlrLiveUpdate', handleLiveUpdate);
     };
-  }, [user?.name, user?.email, user?.role, user?.department, selectedDept, startDate, endDate]);
+  }, [user?.name, user?.email, user?.role, user?.department, selectedDept, selectedStatus, startDate, endDate]);
 
   const handleResetFilters = () => {
     setSelectedDept('All');
+    setSelectedStatus('All');
     setStartDate(defaultStartDate);
     setEndDate(defaultEndDate);
   };
@@ -291,7 +297,7 @@ const IhlrDashboard = () => {
             {showFilters && (
               <div className="flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
                 {/* Department Dropdown */}
-                <div className="min-w-[200px] flex-1 sm:flex-initial">
+                <div className="min-w-[190px] flex-1 sm:flex-initial">
                   <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
                     <Building2 className="w-3.5 h-3.5 text-blue-600" />
                     <span>Department</span>
@@ -308,6 +314,27 @@ const IhlrDashboard = () => {
                           {dept}
                         </option>
                       ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Status Dropdown */}
+                <div className="min-w-[170px] flex-1 sm:flex-initial">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Status</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedStatus}
+                      onChange={(e) => setSelectedStatus(e.target.value)}
+                      className="w-full appearance-none pl-3.5 pr-8 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200/90 hover:border-slate-300 focus:border-blue-500 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer"
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="OPEN">Pending</option>
+                      <option value="IN_PROGRESS">Approval Pending</option>
+                      <option value="CLOSED">Closed</option>
                     </select>
                     <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
@@ -385,6 +412,22 @@ const IhlrDashboard = () => {
                   </span>
                 )}
 
+                {selectedStatus !== 'All' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                    <span>
+                      Status: <strong>{selectedStatus === 'OPEN' ? 'Pending' : selectedStatus === 'IN_PROGRESS' ? 'Approval Pending' : 'Closed'}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStatus('All')}
+                      className="hover:text-emerald-900 cursor-pointer p-0.5 rounded hover:bg-emerald-100/60 transition-colors"
+                      title="Clear status filter"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
                 {!isDefaultYear && (Boolean(startDate) || Boolean(endDate)) && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
                     <span>
@@ -420,14 +463,24 @@ const IhlrDashboard = () => {
         </div>
       </div>
 
-      {/* KPI Cards Row (Display only - No navigation) */}
+      {/* KPI Cards Row (Clickable to filter by status) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, index) => {
           const Icon = kpi.icon;
+          const isSelected = selectedStatus === kpi.filterStatus;
           return (
             <div
               key={index}
-              className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs flex flex-col justify-between select-none"
+              onClick={() => {
+                setSelectedStatus((prev) => (prev === kpi.filterStatus ? 'All' : kpi.filterStatus));
+                setShowFilters(true);
+              }}
+              className={`bg-white rounded-2xl p-5 sm:p-6 border transition-all cursor-pointer select-none hover:shadow-md hover:-translate-y-0.5 ${
+                isSelected
+                  ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-sm'
+                  : 'border-slate-200/90 shadow-2xs'
+              }`}
+              title={`Click to filter by ${kpi.title}`}
             >
               <div className="flex items-center justify-between mb-4">
                 <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{kpi.title}</span>
