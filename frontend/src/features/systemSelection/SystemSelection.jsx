@@ -44,7 +44,7 @@ const SystemSelection = () => {
       badge: 'Audit & Compliance',
       badgeColor: 'bg-blue-50 text-blue-600 border border-blue-100',
       numberColor: 'bg-blue-50 text-blue-600 border border-blue-100',
-      cardBorder: 'border-2 border-blue-500 shadow-sm',
+      cardBorder: 'border border-slate-200/90 border-t-[3px] border-t-blue-500 shadow-sm',
       iconBoxColor: 'bg-blue-50 text-blue-600',
       icon: FileCheck2,
       title: 'Process Audit Observation',
