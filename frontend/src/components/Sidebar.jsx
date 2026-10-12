@@ -55,7 +55,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
     ? [
         { name: 'Dashboard', path: '/ihlr/dashboard', icon: LayoutDashboard },
         ...(canCreate ? [{ name: 'Create Request', path: '/ihlr/create-request', icon: Plus, isAction: true }] : []),
-        { name: 'All Requests', path: '/ihlr/my-requests', icon: Layers },
+        { name: 'All Requests', path: '/ihlr/all-requests', icon: Layers },
         { name: isAdmin ? 'All Approvals' : 'Approvals', path: '/ihlr/approvals', icon: ClipboardCheck },
         ...(isAdmin ? [{ name: 'User Management', path: '/ihlr/users', icon: Users }] : []),
         { name: 'Notifications', path: '/ihlr/notifications', icon: Bell },
@@ -63,7 +63,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
     : [
         { name: 'Dashboard', path: '/process-audit/dashboard', icon: LayoutDashboard },
         ...(isAdmin ? [{ name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true }] : []),
-        { name: 'All Requests', path: '/process-audit/my-requests', icon: Layers },
+        { name: 'All Requests', path: '/process-audit/all-requests', icon: Layers },
         { name: isAdmin ? 'All Approvals' : 'Approvals', path: '/process-audit/approvals', icon: ClipboardCheck },
         ...(isAdmin ? [{ name: 'User Management', path: '/process-audit/users', icon: Users }] : []),
         { name: 'Notifications', path: '/process-audit/notifications', icon: Bell },

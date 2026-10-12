@@ -34,7 +34,7 @@ import AttachmentPreviewModal from '../../components/common/AttachmentPreviewMod
 import { triggerDirectDownload, resolveAttachmentUrl } from '../../components/common/attachmentUtils';
 import { storage } from '../../utils/storage';
 
-const MyRequests = () => {
+const AllRequests = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const savedUser = storage.getUser();
@@ -1790,4 +1790,4 @@ const MyRequests = () => {
   );
 };
 
-export default MyRequests;
+export default AllRequests;

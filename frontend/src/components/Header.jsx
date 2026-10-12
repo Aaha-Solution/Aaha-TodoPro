@@ -14,7 +14,7 @@ const Header = ({ toggleSidebar }) => {
   let pageTitle = isIhlr ? 'IHLR Analytics & Overview' : 'Creator Dashboard';
   if (location.pathname.includes('/create-request')) {
     pageTitle = isIhlr ? 'Create IHLR Analysis Request' : 'Create Production Request';
-  } else if (location.pathname.includes('/my-requests')) {
+  } else if (location.pathname.includes('/my-requests') || location.pathname.includes('/all-requests')) {
     pageTitle = isIhlr ? 'IHLR Request Tracking' : 'Request Tracking';
   } else if (location.pathname.includes('/notifications')) {
     pageTitle = 'Notifications Centre';

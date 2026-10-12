@@ -41,7 +41,7 @@ import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { isIhlrRequestVisibleToUser } from '../../utils/ihlrAuthUtils';
 import { IHLR_SHIFTS, formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
 
-const IhlrMyRequests = () => {
+const IhlrAllRequests = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -451,7 +451,7 @@ const IhlrMyRequests = () => {
           </div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              {isAdmin ? 'IHLR Master Log & Reports' : 'All IHLR Requests & Analysis Reports'}
+              All Requests
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -998,4 +998,4 @@ const IhlrMyRequests = () => {
   );
 };
 
-export default IhlrMyRequests;
+export default IhlrAllRequests;

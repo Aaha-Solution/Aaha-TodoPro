@@ -17,7 +17,7 @@ import UserManagement from '../features/users/UserManagement';
 // Process Audit Observation Feature
 import ProcessAuditDashboard from '../features/processAudit/Dashboard';
 import CreateRequest from '../features/processAudit/CreateRequest';
-import MyRequests from '../features/processAudit/MyRequests';
+import AllRequests from '../features/processAudit/AllRequests';
 import ProcessAuditApprovals from '../features/processAudit/Approvals';
 import ProcessAuditNotifications from '../features/processAudit/Notifications';
 import ProcessAuditProfile from '../features/processAudit/Profile';
@@ -25,7 +25,7 @@ import ProcessAuditProfile from '../features/processAudit/Profile';
 // IHLR (In-House Line Rejection) Feature
 import IhlrDashboard from '../features/ihlr/Dashboard';
 import IhlrCreateRequest from '../features/ihlr/CreateRequest';
-import IhlrMyRequests from '../features/ihlr/MyRequests';
+import IhlrAllRequests from '../features/ihlr/AllRequests';
 import IhlrApprovals from '../features/ihlr/Approvals';
 import IhlrNotifications from '../features/ihlr/Notifications';
 import IhlrProfile from '../features/ihlr/Profile';
@@ -69,7 +69,8 @@ const AppRoutes = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ProcessAuditDashboard />} />
           <Route path="create-request" element={<CreateRequest />} />
-          <Route path="my-requests" element={<MyRequests />} />
+          <Route path="all-requests" element={<AllRequests />} />
+          <Route path="my-requests" element={<AllRequests />} />
           <Route path="approvals" element={<ProcessAuditApprovals />} />
           <Route path="notifications" element={<ProcessAuditNotifications />} />
           <Route path="profile" element={<ProcessAuditProfile />} />
@@ -82,7 +83,8 @@ const AppRoutes = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<IhlrDashboard />} />
           <Route path="create-request" element={<IhlrCreateRequest />} />
-          <Route path="my-requests" element={<IhlrMyRequests />} />
+          <Route path="all-requests" element={<IhlrAllRequests />} />
+          <Route path="my-requests" element={<IhlrAllRequests />} />
           <Route path="approvals" element={<IhlrApprovals />} />
           <Route path="notifications" element={<IhlrNotifications />} />
           <Route path="profile" element={<IhlrProfile />} />
