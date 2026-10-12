@@ -8,7 +8,6 @@ import {
   Search,
   Eye,
   X,
-  RefreshCw,
   AlertCircle,
   FileText,
   Paperclip,
@@ -690,16 +689,6 @@ const ProcessAuditApprovals = () => {
             Update root causes, corrective actions, standardization details, evidence attachments, and sign off audit closures.
           </p>
         </div>
-
-        <button
-          onClick={loadRequests}
-          disabled={loading}
-          className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 shadow-2xs flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-60 self-start sm:self-auto"
-          title="Refresh database records"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </button>
       </div>
 
       {/* Main Two-Column Split Layout */}

@@ -486,18 +486,8 @@ const ProcessAuditDashboard = () => {
        
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadDashboardData}
-            disabled={loading}
-            className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 shadow-2xs flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-60"
-            title="Refresh dashboard metrics"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
-
-          {canCreate && (
+        {canCreate && (
+          <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/process-audit/create-request')}
               className="px-5 py-2.5 bg-[#2563eb] hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 transition cursor-pointer"
@@ -505,8 +495,8 @@ const ProcessAuditDashboard = () => {
               <Plus className="w-4 h-4" />
               <span>Create Issue</span>
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Filter Bar: Department-wise & Timeline Range Filters */}
