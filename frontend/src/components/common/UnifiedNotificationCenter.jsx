@@ -89,7 +89,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
     window.dispatchEvent(new Event('refreshNotifications'));
   };
 
-  // Handle Card Click: Mark as read if unread and navigate
+  // Handle Card Click: Mark as read if unread and intelligently navigate to Approvals or All Requests
   const handleCardClick = async (item) => {
     if (!item.read) {
       const updated = notifications.map((n) => (n.id === item.id ? { ...n, read: true } : n));
@@ -99,17 +99,40 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
       window.dispatchEvent(new Event('refreshNotifications'));
     }
 
+    const cleanReqNo = item.reqNo ? item.reqNo.replace(/^#/, '').trim() : '';
+    const itemType = String(item.type || '').toLowerCase();
+    const itemBadge = String(item.badgeLabel || '').toUpperCase();
+    const itemFooter = String(item.footerFlag || '').toUpperCase();
+    const itemTitle = String(item.title || '').toLowerCase();
+
+    // Determine if notification represents a closed case
+    const isClosed =
+      ['case_closed', 'closed', 'closure_confirmed'].includes(itemType) ||
+      itemBadge === 'CASE CLOSED' ||
+      itemBadge === 'CONTAINMENT APPROVED' ||
+      itemBadge === 'REPORT LOGGED' ||
+      itemFooter === 'CASE_CLOSED' ||
+      itemTitle.includes('closed') ||
+      itemTitle.includes('closure approved');
+
     if (isIhlr) {
-      // In IHLR, navigate directly to "All Requests" (MyRequests.jsx) with request search
-      const cleanReqNo = item.reqNo ? item.reqNo.replace(/^#/, '').trim() : '';
-      navigate('/ihlr/my-requests', {
+      // If closed, navigate to "All Requests" tab; if action / approval required by closer, navigate to "Approvals" tab
+      const targetPath = isClosed ? '/ihlr/my-requests' : '/ihlr/approvals';
+      navigate(targetPath, {
         state: {
           search: cleanReqNo,
-          highlightReq: cleanReqNo
-        }
+          highlightReq: cleanReqNo,
+        },
       });
     } else {
-      navigate(item.link || '/process-audit/approvals');
+      // In Process Audit
+      const targetPath = isClosed ? '/process-audit/my-requests' : (item.link || '/process-audit/approvals');
+      navigate(targetPath, {
+        state: {
+          search: cleanReqNo,
+          highlightReq: cleanReqNo,
+        },
+      });
     }
   };
 

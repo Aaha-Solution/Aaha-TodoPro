@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   ClipboardCheck,
   CheckCircle2,
@@ -37,6 +38,7 @@ import { isIhlrRequestVisibleToUser } from '../../utils/ihlrAuthUtils';
 import { formatIhlrShiftDisplay } from '../../utils/constants';
 
 const IhlrApprovals = () => {
+  const location = useLocation();
   const { user } = useAuth();
   const { success: modalSuccess, error: modalError, warning: modalWarning } = useModal();
 
@@ -54,7 +56,7 @@ const IhlrApprovals = () => {
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => location.state?.search || '');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [activeModalRequest, setActiveModalRequest] = useState(null);
   const [selectedPreviewAttachment, setSelectedPreviewAttachment] = useState(null);
@@ -268,8 +270,21 @@ const IhlrApprovals = () => {
       const visibleData = isAdmin ? nonClosedData : nonClosedData.filter((r) => isIhlrRequestVisibleToUser(r, user));
       setRequests(visibleData);
 
-      // If a request was already selected, update it with fresh data if visible and still not closed
-      if (selectedRequest) {
+      // Check if a specific request was targeted via navigation (e.g. from Notifications Centre)
+      const targetReqNo = location.state?.highlightReq || location.state?.search;
+      let matchedTarget = null;
+      if (targetReqNo) {
+        const cleanTarget = String(targetReqNo).trim().toLowerCase().replace(/^#/, '');
+        matchedTarget = visibleData.find((r) => {
+          const cleanReq = String(r.req_no || '').trim().toLowerCase().replace(/^#/, '');
+          return cleanReq === cleanTarget || cleanReq === `ihlr-${cleanTarget}` || String(r.id) === cleanTarget;
+        });
+      }
+
+      // If a targeted request was found, populate it immediately
+      if (matchedTarget) {
+        populateForm(matchedTarget);
+      } else if (selectedRequest) {
         const fresh = visibleData.find((r) => r.id === selectedRequest.id);
         if (fresh) {
           populateForm(fresh);
@@ -289,6 +304,12 @@ const IhlrApprovals = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (location.state?.search) {
+      setSearch(location.state.search);
+    }
+  }, [location.state?.search]);
 
   useEffect(() => {
     fetchRequests();
