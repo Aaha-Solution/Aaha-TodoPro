@@ -89,6 +89,8 @@ export const getNotifications = async (req, res) => {
       const d = n.created_at ? new Date(n.created_at) : new Date();
       return {
         id: n.id,
+        user_id: n.user_id,
+        user_name: n.user_name,
         title: n.title,
         message: n.message,
         date: d.toLocaleDateString('en-GB', {
@@ -109,6 +111,7 @@ export const getNotifications = async (req, res) => {
         type: n.type,
         link: n.link || '/process-audit/approvals',
         read: Boolean(n.is_read),
+        is_read: n.is_read,
       };
     });
 

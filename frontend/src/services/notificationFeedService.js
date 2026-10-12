@@ -27,12 +27,33 @@ const formatStreamDate = (dateVal) => {
 
 /**
  * Read state overrides cache (persists read/unread state in localStorage)
+/**
+ * Helper to get a stable, isolated user key for localStorage overrides.
+ */
+export const getNotificationStorageUserKey = (user) => {
+  if (!user) return 'global';
+  if (typeof user === 'string') return user.trim().toLowerCase();
+  const idStr = user.id !== undefined && user.id !== null ? String(user.id).trim() : '';
+  const nameStr = user.name ? String(user.name).trim().toLowerCase() : '';
+  const emailStr = user.email ? String(user.email).trim().toLowerCase() : '';
+  return idStr || nameStr || emailStr || 'global';
+};
+
+/**
+ * Read state overrides cache (persists read/unread state in localStorage per user)
  */
 export const getReadOverrides = (tab, user) => {
   try {
-    const key = `notifications_read_${tab}_${user?.id || user?.name || 'global'}`;
+    const userKey = getNotificationStorageUserKey(user);
+    const key = `notifications_read_${tab}_${userKey}`;
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : {};
+    let parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed && user?.name && userKey !== user.name.trim().toLowerCase()) {
+      const altKey = `notifications_read_${tab}_${user.name.trim().toLowerCase()}`;
+      const altRaw = localStorage.getItem(altKey);
+      if (altRaw) parsed = JSON.parse(altRaw);
+    }
+    return parsed || {};
   } catch {
     return {};
   }
@@ -46,10 +67,15 @@ export const getReadOverride = (tab, user, notifKey) => {
 
 export const setReadOverride = (tab, user, notifKey, isRead) => {
   try {
-    const key = `notifications_read_${tab}_${user?.id || user?.name || 'global'}`;
+    const userKey = getNotificationStorageUserKey(user);
+    const key = `notifications_read_${tab}_${userKey}`;
     const current = getReadOverrides(tab, user);
     current[String(notifKey)] = Boolean(isRead);
     localStorage.setItem(key, JSON.stringify(current));
+    if (user?.name && userKey !== user.name.trim().toLowerCase()) {
+      const altKey = `notifications_read_${tab}_${user.name.trim().toLowerCase()}`;
+      localStorage.setItem(altKey, JSON.stringify(current));
+    }
   } catch (e) {
     console.warn('Failed to save read override in localStorage:', e);
   }

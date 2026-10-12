@@ -796,6 +796,37 @@ export const updateIhlrRequest = async (req, res) => {
             ).catch((e) => console.warn('[Case Closed Admin Notif Error]:', e.message));
           }
 
+          // Also notify each assigned closer that the case has been closed
+          const closedCloserNames = (updated.resp_person || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          if (closedCloserNames.length > 0) {
+            const placeholders = closedCloserNames.map(() => '?').join(',');
+            const [closerRows] = await pool.query(
+              `SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) IN (${placeholders})`,
+              closedCloserNames.map((n) => n.toLowerCase())
+            ).catch(() => [[]]);
+            if (closerRows && closerRows.length > 0) {
+              for (const cUser of closerRows) {
+                await pool.query(
+                  `INSERT INTO ihlr_notifications 
+                   (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+                   VALUES (?, ?, ?, ?, ?, 'case_closed', ?, ?, '/ihlr/my-requests', 0)`,
+                  [
+                    cUser.id,
+                    cUser.name,
+                    cUser.email,
+                    updated.id || id,
+                    reqNo,
+                    `IHLR Case Closed: #${reqNo}`,
+                    `Defect report #${reqNo} (${updated.model || 'Model'}) has been verified and marked as CLOSED.`
+                  ]
+                ).catch((e) => console.warn('[Case Closed Closer Notif Error]:', e.message));
+              }
+            }
+          }
+
           try {
             sendIhlrCloserEmails({
               request: updated,
@@ -857,37 +888,58 @@ export const updateIhlrRequest = async (req, res) => {
             ).catch((e) => console.warn('[Admin Notif Error]:', e.message));
           }
 
-          // Notification C: For Closer / Assigned Person (Acknowledgment)
-          let closerUserId = null;
-          let closerEmail = updated.resp_person_email || '';
-          let closerPersonName = updated.resp_person || closerName;
+          // Notification C: For Each Closer / Assigned Person Individually (Acknowledgment)
+          const closerNamesList = (updated.resp_person || closerName || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
 
-          if (closerPersonName || closerEmail) {
+          const targetClosers = [];
+          if (closerNamesList.length > 0) {
+            const placeholders = closerNamesList.map(() => '?').join(',');
             const [uRows] = await pool.query(
-              'SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
-              [closerPersonName || '', closerEmail || closerPersonName || '']
+              `SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) IN (${placeholders})`,
+              closerNamesList.map((n) => n.toLowerCase())
             ).catch(() => [[]]);
             if (uRows && uRows.length > 0) {
-              closerUserId = uRows[0].id;
-              closerEmail = closerEmail || uRows[0].email;
-              closerPersonName = uRows[0].name || closerPersonName;
+              targetClosers.push(...uRows);
             }
           }
 
-          await pool.query(
-            `INSERT INTO ihlr_notifications 
-             (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-             VALUES (?, ?, ?, ?, ?, 'countermeasure_saved', ?, ?, '/ihlr/approvals', 0)`,
-            [
-              closerUserId,
-              closerPersonName,
-              closerEmail,
-              updated.id || id,
-              reqNo,
-              `Closer Submission Acknowledged: #${reqNo}`,
-              `Your 5-Why root cause analysis and corrective action for #${reqNo} (${updated.model || 'Model'}) have been submitted. The Requester and Quality Admin have been alerted with notification & email to complete the pending validation remarks and status sign-off.`
-            ]
-          ).catch((e) => console.warn('[Closer Notif Error]:', e.message));
+          // If submitting user is authenticated and not in targetClosers, add them
+          if (req.user?.id && !targetClosers.some(u => String(u.id) === String(req.user.id))) {
+            targetClosers.push({
+              id: req.user.id,
+              name: req.user.name,
+              email: req.user.email
+            });
+          }
+
+          // Fallback if targetClosers is still empty
+          if (targetClosers.length === 0 && (closerName || updated.resp_person)) {
+            targetClosers.push({
+              id: null,
+              name: closerName || updated.resp_person,
+              email: updated.resp_person_email || ''
+            });
+          }
+
+          for (const cUser of targetClosers) {
+            await pool.query(
+              `INSERT INTO ihlr_notifications 
+               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, 'countermeasure_saved', ?, ?, '/ihlr/approvals', 0)`,
+              [
+                cUser.id || null,
+                cUser.name,
+                cUser.email || '',
+                updated.id || id,
+                reqNo,
+                `Closer Submission Acknowledged: #${reqNo}`,
+                `Your 5-Why root cause analysis and corrective action for #${reqNo} (${updated.model || 'Model'}) have been submitted. The Requester and Quality Admin have been alerted with notification & email to complete the pending validation remarks and status sign-off.`
+              ]
+            ).catch((e) => console.warn('[Closer Notif Error]:', e.message));
+          }
 
           // Trigger Closer Email Dispatch to Requester, Quality Admins, and Closer
           try {
@@ -1097,6 +1149,9 @@ export const getIhlrNotifications = async (req, res) => {
 
       return {
         id: n.id,
+        user_id: n.user_id,
+        user_name: n.user_name,
+        user_email: n.user_email,
         rawId: n.request_id,
         requestId: n.req_no,
         reqNo: String(n.req_no).startsWith('IHLR-') ? `#${n.req_no}` : `#IHLR-${n.req_no}`,
@@ -1109,6 +1164,7 @@ export const getIhlrNotifications = async (req, res) => {
         subCategory: 'LINE DEFECT REPORT',
         footerFlag,
         read: Boolean(n.is_read),
+        is_read: n.is_read,
         type: n.type,
         link: n.link || '/ihlr/approvals'
       };
