@@ -683,7 +683,7 @@ const CreateRequest = () => {
               onClick={() => navigate('/process-audit/my-requests')}
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
             >
-              {isAdmin ? 'View All Requests' : 'View My Requests'}
+              View All Requests
             </button>
           </div>
         </div>
