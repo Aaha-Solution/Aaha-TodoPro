@@ -125,6 +125,7 @@ const IhlrApprovals = () => {
   const [closerAction, setCloserAction] = useState('');
   const [closerTargetDate, setCloserTargetDate] = useState('');
   const [closerRemarks, setCloserRemarks] = useState('');
+  const [remarksError, setRemarksError] = useState(false);
   const [closerStatus, setCloserStatus] = useState('OPEN');
   const [isReassignOpen, setIsReassignOpen] = useState(false);
   const [reassignedDept, setReassignedDept] = useState('');
@@ -317,6 +318,7 @@ const IhlrApprovals = () => {
     setCloserAction(req.action || '');
     setCloserTargetDate(req.target_date ? req.target_date.split('T')[0] : '');
     setCloserRemarks(req.remarks || '');
+    setRemarksError(false);
     setCloserStatus(req.status || 'OPEN');
     setReassignedDept(req.resp || '');
     setReassignedPerson(req.resp_person || '');
@@ -448,6 +450,13 @@ const IhlrApprovals = () => {
       return;
     }
 
+    if (!closerRemarks || !closerRemarks.trim()) {
+      setRemarksError(true);
+      modalWarning('Remarks is required. Please enter remarks before saving Admin Review & Status Sign-Off.');
+      return;
+    }
+    setRemarksError(false);
+
     if (isReassignOpen) {
       if (!reassignedDept) {
         modalWarning('Please select a department for reassignment.');
@@ -465,7 +474,7 @@ const IhlrApprovals = () => {
 
     try {
       const payload = {
-        remarks: closerRemarks,
+        remarks: closerRemarks.trim(),
         status: isReassignOpen ? 'OPEN' : closerStatus
       };
 
@@ -1358,17 +1367,32 @@ const IhlrApprovals = () => {
                     rows={2}
                     maxLength={1000}
                     value={closerRemarks}
-                    onChange={(e) => setCloserRemarks(e.target.value)}
+                    onChange={(e) => {
+                      setCloserRemarks(e.target.value);
+                      if (remarksError && e.target.value.trim()) {
+                        setRemarksError(false);
+                      }
+                    }}
                     placeholder={
                       !selectedRequest
                         ? 'Click a row on the right to select'
                         : 'Enter remarks and validation summary...'
                     }
-                    className="w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none bg-white border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none bg-white ${
+                      remarksError
+                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                        : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
                   />
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    Provide admin sign-off or review remarks.
-                  </p>
+                  {remarksError ? (
+                    <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
+                      <span>* Remarks is required to save Admin Review and Status Sign-Off.</span>
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Provide admin sign-off or review remarks.
+                    </p>
+                  )}
                 </div>
 
                 {/* Status */}

@@ -532,6 +532,15 @@ export const updateIhlrRequest = async (req, res) => {
       for (const k of allowed) {
         if (req.body[k] !== undefined) safeUpdates[k] = req.body[k];
       }
+
+      // Mandatory validation: If Admin updates remarks or admin review, remarks cannot be empty
+      if (req.body.remarks !== undefined) {
+        const trimmedRemarks = typeof req.body.remarks === 'string' ? req.body.remarks.trim() : '';
+        if (!trimmedRemarks) {
+          return errorResponse(res, 'Remarks is required for Admin Review and Status Sign-Off.', 400);
+        }
+        safeUpdates.remarks = trimmedRemarks;
+      }
     } else {
       if (isRequester) {
         const requesterAllowed = [
