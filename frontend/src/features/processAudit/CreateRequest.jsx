@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
+import { useModal } from '../../context/ModalContext';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
 import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
 import DateInput from '../../components/common/DateInput';
@@ -43,6 +44,7 @@ const DEFAULT_DEPARTMENTS = [
 const CreateRequest = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { success, warning, error: modalError } = useModal();
 
   const getTodayDate = () => {
     const today = new Date();
@@ -67,6 +69,7 @@ const CreateRequest = () => {
     comments: '',
   });
 
+  const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dbUsers, setDbUsers] = useState([]);
   const [deptUsers, setDeptUsers] = useState([]);
@@ -203,6 +206,9 @@ const CreateRequest = () => {
       const exists = prev.includes(name);
       const next = exists ? prev.filter((item) => item !== name) : [...prev, name];
       setFormData((f) => ({ ...f, executor: next.join(', ') }));
+      if (next.length > 0) {
+        setErrors((err) => ({ ...err, executor: false }));
+      }
       return next;
     });
   };
@@ -211,6 +217,9 @@ const CreateRequest = () => {
     const allNames = availableExecutors.map((e) => e.name);
     setSelectedExecutors(allNames);
     setFormData((f) => ({ ...f, executor: allNames.join(', ') }));
+    if (allNames.length > 0) {
+      setErrors((err) => ({ ...err, executor: false }));
+    }
   };
 
   const handleClearAllExecutors = () => {
@@ -289,6 +298,9 @@ const CreateRequest = () => {
   const processFiles = (fileList) => {
     const files = Array.from(fileList || []);
     if (files.length > 0) {
+      if (errors.attachments) {
+        setErrors((prev) => ({ ...prev, attachments: false }));
+      }
       const newAttachments = files.map((file) => {
         const ext = file.name.split('.').pop()?.toUpperCase() || 'FILE';
         const isImage = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'].includes(ext);
@@ -365,42 +377,58 @@ const CreateRequest = () => {
   const canCreate = isIncomingQuality || isAdmin;
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
 
     if (!canCreate) {
-      alert('Only members of the Incoming Quality department can create new requests.');
+      warning('Only members of the Incoming Quality department can create new requests.');
       return;
     }
 
-    if (!formData.product) {
-      alert('Please select a Product.');
-      return;
+    const newErrors = {};
+
+    if (!formData.date || !formData.date.trim()) {
+      newErrors.date = 'Escalation Date is required';
+    }
+    if (!formData.product || !formData.product.trim()) {
+      newErrors.product = 'Product is required';
     }
     if (!formData.model || !formData.model.trim()) {
-      alert('Please enter a Model name.');
-      return;
+      newErrors.model = 'Model is required';
     }
-    if (!formData.processOperation) {
-      alert('Please enter the Process or Operation.');
-      return;
+    if (!formData.processOperation || !formData.processOperation.trim()) {
+      newErrors.processOperation = 'Process / Operation is required';
     }
-    if (!formData.shift) {
-      alert('Please select a Shift.');
-      return;
+    if (!formData.shift || !formData.shift.trim()) {
+      newErrors.shift = 'Shift is required';
     }
-    if (!formData.department) {
-      alert('Please select a Department.');
-      return;
+    if (!formData.issueType || !formData.issueType.trim()) {
+      newErrors.issueType = 'Issue Type is required';
     }
-    if (availableExecutors.length === 0) {
-      alert('There are no users in the selected department. Please choose another department or add users first.');
-      return;
+    if (!formData.priority || !formData.priority.trim()) {
+      newErrors.priority = 'Priority is required';
     }
-    if (!formData.executor && selectedExecutors.length === 0) {
-      alert('Please select at least one person to assign.');
+    if (!formData.issueObservation || !formData.issueObservation.trim()) {
+      newErrors.issueObservation = 'Issue / Observation is required';
+    }
+    if (!attachments || attachments.length === 0) {
+      newErrors.attachments = 'At least one file attachment is required';
+    }
+    if (!formData.department || !formData.department.trim()) {
+      newErrors.department = 'Department is required';
+      newErrors.executor = 'Department must be selected first';
+    } else if (availableExecutors.length === 0) {
+      newErrors.executor = 'There are no users in the selected department';
+    } else if (!formData.executor && selectedExecutors.length === 0) {
+      newErrors.executor = 'Please select at least one person to assign';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      // DO NOT TRIGGER BACKEND!
       return;
     }
 
+    setErrors({});
     setIsSubmitting(true);
 
     // Upload physical attachment files to backend uploads/attachments folder
@@ -460,11 +488,11 @@ const CreateRequest = () => {
       const res = await processAuditService.createRequest(payload);
       const savedId = res?.data?.issue_no || (res?.data?.id ? `PA-${res.data.id}` : formData.requestId);
       window.dispatchEvent(new Event('refreshNotifications'));
-      alert(`Request ${savedId} created successfully!`);
+      await success(`Request ${savedId} created successfully!`);
       navigate('/process-audit/my-requests');
     } catch (err) {
       console.error('Failed to save request in DB:', err);
-      alert(`Request ${formData.requestId} created successfully!`);
+      await success(`Request ${formData.requestId} created successfully!`);
       navigate('/process-audit/my-requests');
     } finally {
       setIsSubmitting(false);
@@ -562,7 +590,7 @@ const CreateRequest = () => {
       </div>
 
       {/* Form Container */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} noValidate className="space-y-6">
         {/* Section 1: Production Details */}
         <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
           <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
@@ -579,143 +607,264 @@ const CreateRequest = () => {
             {/* Row 1 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  ISSUE NO (Auto-Generated)
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                  <span>ISSUE NO (Auto-Generated)</span>
+                  <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
                 <input
                   type="text"
                   disabled
                   value={String(formData.requestId || '').startsWith('PA-') ? formData.requestId : `PA-${formData.requestId || '1'}`}
-                  className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-500 cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-500 cursor-not-allowed select-none"
                 />
                 <span className="text-[10px] text-slate-400 mt-1 block">Unique sequential tracking ID</span>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Escalation Date *
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center">
+                    <span>Escalation Date</span>
+                    <span className="text-red-500 font-bold ml-1">*</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono font-normal">DD/MM/YYYY</span>
                 </label>
                 <DateInput
-                  required
                   value={formData.date || ''}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                  onChange={(e) => {
+                    setFormData({ ...formData, date: e.target.value });
+                    if (errors.date && e.target.value) {
+                      setErrors((prev) => ({ ...prev, date: false }));
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium outline-none transition cursor-pointer ${
+                    errors.date
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
+                      : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
                 />
+                {errors.date && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <span>* {errors.date}</span>
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Product *
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                  <span>Product</span>
+                  <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
                 <select
                   value={formData.product}
-                  onChange={(e) => setFormData({ ...formData, product: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                  onChange={(e) => {
+                    setFormData({ ...formData, product: e.target.value });
+                    if (errors.product && e.target.value) {
+                      setErrors((prev) => ({ ...prev, product: false }));
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium outline-none transition cursor-pointer ${
+                    errors.product
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
+                      : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
                 >
-                  <option value="">Select</option>
+                  <option value="">Select Product</option>
                   <option value="Sets">SMT</option>
                   <option value="Units">RR</option>
                   <option value="Kg">Converter</option>
                   <option value="Batches">Sensor</option>
                   <option value="Sets">FWM</option>
                   <option value="Sets">IU/IG</option>
-                  <option value="Sets">FWM</option>
                   <option value="Sets">Display Unit</option>
                   <option value="Sets">ISG</option>
                   <option value="Sets">TCI/CDI</option>
                 </select>
+                {errors.product && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <span>* {errors.product}</span>
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Model *
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                  <span>Model</span>
+                  <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="Enter model"
                   value={formData.model}
-                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
+                  onChange={(e) => {
+                    setFormData({ ...formData, model: e.target.value });
+                    if (errors.model && e.target.value.trim()) {
+                      setErrors((prev) => ({ ...prev, model: false }));
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium placeholder:text-slate-400 outline-none transition ${
+                    errors.model
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
+                      : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
                 />
+                {errors.model && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <span>* {errors.model}</span>
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Row 2 */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Process / Operation *
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                  <span>Process / Operation</span>
+                  <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="Enter process or operation"
                   value={formData.processOperation}
-                  onChange={(e) => setFormData({ ...formData, processOperation: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
+                  onChange={(e) => {
+                    setFormData({ ...formData, processOperation: e.target.value });
+                    if (errors.processOperation && e.target.value.trim()) {
+                      setErrors((prev) => ({ ...prev, processOperation: false }));
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium placeholder:text-slate-400 outline-none transition ${
+                    errors.processOperation
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
+                      : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
                 />
+                {errors.processOperation && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <span>* {errors.processOperation}</span>
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Shift *
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                  <span>Shift</span>
+                  <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
                 <select
                   value={formData.shift}
-                  onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                  onChange={(e) => {
+                    setFormData({ ...formData, shift: e.target.value });
+                    if (errors.shift && e.target.value) {
+                      setErrors((prev) => ({ ...prev, shift: false }));
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium outline-none transition cursor-pointer ${
+                    errors.shift
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
+                      : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
                 >
-                  <option value="">Select</option>
+                  <option value="">Select Shift</option>
                   <option value="Morning (06:00 - 14:30)">Morning (06:30 - 03:00)</option>
                   <option value="Evening (14:30 - 22:30)">Evening (03:00 - 11:30)</option>
                   <option value="Night (22:30 - 06:00)">Night (11:30 - 06:00)</option>
                   <option value="General (08:30 - 17:00)">General (08:30 - 05:00)</option>
                 </select>
+                {errors.shift && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <span>* {errors.shift}</span>
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Issue Type
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                  <span>Issue Type</span>
+                  <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
                 <select
                   value={formData.issueType}
-                  onChange={(e) => setFormData({ ...formData, issueType: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                  onChange={(e) => {
+                    setFormData({ ...formData, issueType: e.target.value });
+                    if (errors.issueType && e.target.value) {
+                      setErrors((prev) => ({ ...prev, issueType: false }));
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium outline-none transition cursor-pointer ${
+                    errors.issueType
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
+                      : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
                 >
-                  <option value="">Select</option>
+                  <option value="">Select Issue Type</option>
                   <option value="Repeated">Repeated</option>
                   <option value="New">New</option>
                 </select>
+                {errors.issueType && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <span>* {errors.issueType}</span>
+                  </p>
+                )}
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Priority
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                  <span>Priority</span>
+                  <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
                 <select
                   value={formData.priority}
-                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                  onChange={(e) => {
+                    setFormData({ ...formData, priority: e.target.value });
+                    if (errors.priority && e.target.value) {
+                      setErrors((prev) => ({ ...prev, priority: false }));
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium outline-none transition cursor-pointer ${
+                    errors.priority
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
+                      : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
                 >
-                  <option value="">Select</option>
+                  <option value="">Select Priority</option>
                   <option value="High">High</option>
                   <option value="Medium">Medium</option>
                   <option value="Low">Low</option>
                   <option value="Critical">Critical</option>
                 </select>
+                {errors.priority && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <span>* {errors.priority}</span>
+                  </p>
+                )}
               </div>
 
             </div>
 
             {/* Row 3 */}
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Issue / Observation
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                <span>Issue / Observation</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <textarea
                 rows={3}
+                placeholder="Enter detailed issue observation..."
                 value={formData.issueObservation}
-                onChange={(e) => setFormData({ ...formData, issueObservation: e.target.value })}
-                className="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+                onChange={(e) => {
+                  setFormData({ ...formData, issueObservation: e.target.value });
+                  if (errors.issueObservation && e.target.value.trim()) {
+                    setErrors((prev) => ({ ...prev, issueObservation: false }));
+                  }
+                }}
+                className={`w-full p-3.5 border rounded-xl text-xs outline-none transition shadow-2xs ${
+                  errors.issueObservation
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
+                    : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {errors.issueObservation && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.issueObservation}</span>
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -725,7 +874,10 @@ const CreateRequest = () => {
           <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
             <Paperclip className="w-5 h-5 text-slate-700 mt-0.5" />
             <div>
-              <h2 className="text-sm font-bold text-slate-900">2. Attachments & Technical Drawings</h2>
+              <h2 className="text-sm font-bold text-slate-900 flex items-center">
+                <span>2. Attachments & Technical Drawings</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
+              </h2>
               <p className="text-xs text-slate-500">
                 Upload CAD blueprints, PDF drawings, defect photos, or Excel inspection sheets. Click "Annotate" on any drawing, PDF blueprint, or spreadsheet to mark with circles, arrows, lines, and freehand sketches.
               </p>
@@ -736,7 +888,11 @@ const CreateRequest = () => {
           <label
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
-            className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer bg-slate-50/50 hover:bg-slate-50 transition-colors"
+            className={`border-2 border-dashed rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer transition-colors ${
+              errors.attachments
+                ? 'border-rose-400 bg-rose-50/30 hover:bg-rose-50/50'
+                : 'border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-slate-50'
+            }`}
           >
             <input
               type="file"
@@ -745,7 +901,9 @@ const CreateRequest = () => {
               onChange={handleFileUpload}
               className="hidden"
             />
-            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+              errors.attachments ? 'bg-rose-100 text-rose-600' : 'bg-blue-50 text-blue-600'
+            }`}>
               <UploadCloud className="w-5 h-5" />
             </div>
             <p className="text-xs font-semibold text-slate-800">
@@ -755,6 +913,12 @@ const CreateRequest = () => {
               Supports Excel (.xlsx, .xls), PowerPoint (.pptx, .ppt), JPEG/Images, and PDF (Max 25MB per file) • Select multiple files
             </p>
           </label>
+
+          {errors.attachments && (
+            <p className="text-[11px] text-rose-500 font-semibold mt-1.5 flex items-center gap-1">
+              <span>* {errors.attachments}</span>
+            </p>
+          )}
 
           {/* Attached Files List */}
           {attachments.length > 0 && (
@@ -868,11 +1032,11 @@ const CreateRequest = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Department *
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                <span>Department</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <select
-                required
                 value={formData.department}
                 onChange={(e) => {
                   const newDept = e.target.value;
@@ -884,8 +1048,15 @@ const CreateRequest = () => {
                   setSelectedExecutors([]);
                   setExecutorDropdownOpen(false);
                   setExecutorSearch('');
+                  if (errors.department) {
+                    setErrors((prev) => ({ ...prev, department: '' }));
+                  }
                 }}
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-xs font-medium transition cursor-pointer ${
+                  errors.department
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
+                    : 'border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               >
                 <option value="">Select</option>
                 {departmentList.map((dept) => (
@@ -894,12 +1065,18 @@ const CreateRequest = () => {
                   </option>
                 ))}
               </select>
+              {errors.department && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.department}</span>
+                </p>
+              )}
             </div>
 
             <div className="relative" ref={executorDropdownRef}>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                  Assign Executor *
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center">
+                  <span>Assign Executor</span>
+                  <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
                 {formData.department && availableExecutors.length > 0 && selectedExecutors.length > 0 && (
                   <div className="flex items-center gap-2 text-[10px]">
@@ -928,6 +1105,8 @@ const CreateRequest = () => {
                     ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-wait'
                     : availableExecutors.length === 0
                     ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                    : errors.executor
+                    ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 cursor-pointer'
                     : executorDropdownOpen
                     ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 cursor-pointer shadow-xs'
                     : 'bg-white border-slate-200 hover:border-slate-300 text-slate-800 cursor-pointer shadow-2xs'
@@ -987,11 +1166,16 @@ const CreateRequest = () => {
                 </div>
               </div>
 
-              {/* Hidden input for native HTML form validation */}
+              {errors.executor && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.executor}</span>
+                </p>
+              )}
+
+              {/* Hidden input for multi-select */}
               <input
                 type="text"
                 tabIndex={-1}
-                required
                 value={selectedExecutors.join(', ')}
                 onChange={() => {}}
                 className="sr-only"
@@ -1108,7 +1292,10 @@ const CreateRequest = () => {
           <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
             <MessageSquare className="w-5 h-5 text-slate-700 mt-0.5" />
             <div>
-              <h2 className="text-sm font-bold text-slate-900">4.  Comments</h2>
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <span>4. Comments</span>
+                <span className="text-xs font-normal text-slate-400">(Optional)</span>
+              </h2>
               <p className="text-xs text-slate-500">
                 Provide specific handling precautions, tooling notes, or safety instructions.
               </p>
@@ -1116,11 +1303,13 @@ const CreateRequest = () => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Comments
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <span>Comments</span>
+              <span className="text-slate-400 font-normal lowercase">(optional)</span>
             </label>
             <textarea
               rows={3}
+              placeholder="Enter optional comments, remarks, or specific handling notes..."
               value={formData.comments}
               onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
               className="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
