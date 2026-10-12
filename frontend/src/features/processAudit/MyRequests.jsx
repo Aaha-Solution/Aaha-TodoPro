@@ -23,7 +23,9 @@ import {
   ArrowRightLeft,
   History,
   Filter,
-  SlidersHorizontal
+  SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
@@ -80,6 +82,15 @@ const MyRequests = () => {
   const [activeModalRequest, setActiveModalRequest] = useState(null);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [previewImageError, setPreviewImageError] = useState(false);
+
+  // Pagination State (matching Approvals tab with max 10)
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedShift, selectedStage, selectedExecutor, selectedStatus]);
 
   const [creatorRemark, setCreatorRemark] = useState('');
   const [selectedClosureStatus, setSelectedClosureStatus] = useState('Closed');
@@ -495,6 +506,7 @@ const MyRequests = () => {
     setSelectedStage('All Stages');
     setSelectedExecutor('All Executors');
     setSelectedStatus('All Statuses');
+    setCurrentPage(1);
   };
 
   const canUserAccessRequest = (req, u, adminFlag) => {
@@ -580,6 +592,12 @@ const MyRequests = () => {
 
     return matchesSearch && matchesShift && matchesStage && matchesExecutor && matchesStatus;
   });
+
+  const totalRecords = filteredRequests.length;
+  const totalPages = Math.ceil(totalRecords / rowsPerPage) || 1;
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = Math.min(startIndex + rowsPerPage, totalRecords);
+  const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
 
   const handleExportCSV = () => {
     const headers = 'REQUEST ID,DATE,SHIFT,PRODUCTION,STAGE,LINE,CREATOR,EXECUTOR,STATUS\n';
@@ -862,6 +880,7 @@ const MyRequests = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <th className="py-3.5 px-4 text-center w-12 whitespace-nowrap align-middle">SL NO</th>
                   <th className="py-3.5 px-6 whitespace-nowrap align-middle">REQUEST ID</th>
                   <th className="py-3.5 px-4 whitespace-nowrap align-middle">Escalation Date </th>
                   <th className="py-3.5 px-4 whitespace-nowrap align-middle">SHIFT</th>
@@ -876,7 +895,7 @@ const MyRequests = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {filteredRequests.map((req) => {
+                {paginatedRequests.map((req, idx) => {
                   const reqId = req.issue_no || (req.id ? `PA-${req.id}` : 'PA-1');
                   const dateStr = formatDate(req.escalation_date || req.created_at);
                   const prodStr = req.product || '-';
@@ -897,6 +916,9 @@ const MyRequests = () => {
 
                   return (
                     <tr key={req.id} className="hover:bg-slate-50/70 transition">
+                      <td className="py-4 px-4 text-center font-mono font-semibold text-slate-400 align-middle whitespace-nowrap">
+                        {startIndex + idx + 1}
+                      </td>
                       <td className="py-4 px-6 font-bold text-blue-600 align-middle whitespace-nowrap">{reqId}</td>
                       <td className="py-4 px-4 text-slate-600 font-medium align-middle whitespace-nowrap">{dateStr}</td>
                       <td className="py-4 px-4 text-slate-600 font-medium align-middle whitespace-nowrap">{req.shift}</td>
@@ -973,6 +995,53 @@ const MyRequests = () => {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && (
+          <div className="p-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-4 text-xs text-slate-600">
+            <div className="flex items-center gap-2">
+              <span>Rows per page:</span>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none cursor-pointer"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+              </select>
+            </div>
+
+            <div className="font-mono text-[11px] text-slate-500">
+              {totalRecords === 0
+                ? '0–0 of 0'
+                : `${startIndex + 1}–${endIndex} of ${totalRecords}`}
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>
