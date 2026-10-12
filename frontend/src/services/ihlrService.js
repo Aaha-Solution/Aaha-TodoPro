@@ -128,6 +128,15 @@ export const ihlrService = {
       if (filters.status && filters.status !== 'All') {
         data = data.filter(r => r.status === filters.status);
       }
+      if (filters.startDate || filters.endDate) {
+        data = data.filter(r => {
+          const dStr = (r.batch_date || r.created_at || '').split('T')[0];
+          if (!dStr) return false;
+          if (filters.startDate && dStr < filters.startDate) return false;
+          if (filters.endDate && dStr > filters.endDate) return false;
+          return true;
+        });
+      }
       return data;
     }
   },
