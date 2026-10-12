@@ -21,7 +21,9 @@ import {
   MessageSquare,
   ChevronDown,
   ArrowRightLeft,
-  History
+  History,
+  Filter,
+  SlidersHorizontal
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
@@ -68,6 +70,13 @@ const MyRequests = () => {
   const [selectedStage, setSelectedStage] = useState('All Stages');
   const [selectedExecutor, setSelectedExecutor] = useState('All Executors');
   const [selectedStatus, setSelectedStatus] = useState('All Statuses');
+  const [showFilters, setShowFilters] = useState(Boolean(queryRequestId));
+  const hasActiveFilters =
+    Boolean((search || '').trim()) ||
+    selectedShift !== 'All Shifts' ||
+    selectedStage !== 'All Stages' ||
+    selectedExecutor !== 'All Executors' ||
+    selectedStatus !== 'All Statuses';
   const [activeModalRequest, setActiveModalRequest] = useState(null);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [previewImageError, setPreviewImageError] = useState(false);
@@ -720,99 +729,130 @@ const MyRequests = () => {
       </div>
 
       {/* Filter Box */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs space-y-4">
-        {/* Search Bar + Reset Button */}
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search Request ID (e.g. PA-1), Line, Model, Executor, Comments..."
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-            />
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-xs font-black uppercase tracking-tight text-slate-800 flex items-center gap-1.5">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
+              <span>Filter Observations</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowFilters((prev) => !prev)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs border ${
+                showFilters
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/25 ring-2 ring-blue-500/20'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90 hover:border-slate-300'
+              }`}
+              title={showFilters ? 'Hide filter controls' : 'Show filter controls'}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>{showFilters ? 'Hide Filters' : 'Filter'}</span>
+              {hasActiveFilters && !showFilters && (
+                <span className="w-2 h-2 rounded-full bg-blue-500 ring-2 ring-white" />
+              )}
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`} />
+            </button>
           </div>
 
-          <button
-            onClick={handleReset}
-            className="w-full sm:w-auto px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-medium border border-slate-200 shadow-2xs transition whitespace-nowrap cursor-pointer"
-          >
-            Reset Filters
-          </button>
+          {hasActiveFilters && (
+            <button
+              onClick={handleReset}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/90 border border-rose-200/90 rounded-xl transition-all active:scale-95 cursor-pointer shadow-2xs"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Filters</span>
+            </button>
+          )}
         </div>
 
-        {/* 4 Filter Dropdowns */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-              Shift
-            </label>
-            <select
-              value={selectedShift}
-              onChange={(e) => setSelectedShift(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-            >
-              <option>All Shifts</option>
-              <option>Morning</option>
-              <option>Evening</option>
-              <option>Night</option>
-              <option>General</option>
-            </select>
-          </div>
+        {showFilters && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
+            {/* Search Bar */}
+            <div className="relative w-full">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search Request ID (e.g. PA-1), Line, Model, Executor, Comments..."
+                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
 
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-              Stage / Model
-            </label>
-            <select
-              value={selectedStage}
-              onChange={(e) => setSelectedStage(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-            >
-              <option>All Stages</option>
-              <option value="Assembly">Assembly</option>
-              <option value="Inspection">Inspection</option>
-              <option value="Packaging">Packaging</option>
-              <option value="Raw Material">Raw Material</option>
-              <option value="Production">Production</option>
-            </select>
-          </div>
+            {/* 4 Filter Dropdowns */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Shift
+                </label>
+                <select
+                  value={selectedShift}
+                  onChange={(e) => setSelectedShift(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                >
+                  <option>All Shifts</option>
+                  <option>Morning</option>
+                  <option>Evening</option>
+                  <option>Night</option>
+                  <option>General</option>
+                </select>
+              </div>
 
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-              Executor
-            </label>
-            <select
-              value={selectedExecutor}
-              onChange={(e) => setSelectedExecutor(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-            >
-              <option value="All Executors">All Executors</option>
-              {distinctExecutors.map((exec) => (
-                <option key={exec} value={exec}>{exec}</option>
-              ))}
-            </select>
-          </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Stage / Model
+                </label>
+                <select
+                  value={selectedStage}
+                  onChange={(e) => setSelectedStage(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                >
+                  <option>All Stages</option>
+                  <option value="Assembly">Assembly</option>
+                  <option value="Inspection">Inspection</option>
+                  <option value="Packaging">Packaging</option>
+                  <option value="Raw Material">Raw Material</option>
+                  <option value="Production">Production</option>
+                </select>
+              </div>
 
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-              Status
-            </label>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-            >
-              <option value="All Statuses">All Statuses</option>
-              <option value="Pending">Pending</option>
-              <option value={isAdmin ? "In Progress" : "Signed off"}>
-                {isAdmin ? "In Progress" : "Signed off"}
-              </option>
-              <option value="Closed">Closed</option>
-            </select>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Executor
+                </label>
+                <select
+                  value={selectedExecutor}
+                  onChange={(e) => setSelectedExecutor(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                >
+                  <option value="All Executors">All Executors</option>
+                  {distinctExecutors.map((exec) => (
+                    <option key={exec} value={exec}>{exec}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Status
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                >
+                  <option value="All Statuses">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value={isAdmin ? "In Progress" : "Signed off"}>
+                    {isAdmin ? "In Progress" : "Signed off"}
+                  </option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Requests Table */}
