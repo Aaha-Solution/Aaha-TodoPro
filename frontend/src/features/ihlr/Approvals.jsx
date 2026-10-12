@@ -260,11 +260,15 @@ const IhlrApprovals = () => {
     setLoading(true);
     try {
       const data = await ihlrService.getRequests();
+      // Filter out CLOSED requests: once closed they should not be shown in the approvals tab
+      const nonClosedData = (Array.isArray(data) ? data : []).filter(
+        (r) => String(r.status || '').toUpperCase() !== 'CLOSED'
+      );
       // Enforce that closer non-admins only see requests where they are the selected person (resp_person) or creator
-      const visibleData = isAdmin ? data : data.filter((r) => isIhlrRequestVisibleToUser(r, user));
+      const visibleData = isAdmin ? nonClosedData : nonClosedData.filter((r) => isIhlrRequestVisibleToUser(r, user));
       setRequests(visibleData);
 
-      // If a request was already selected, update it with fresh data if visible
+      // If a request was already selected, update it with fresh data if visible and still not closed
       if (selectedRequest) {
         const fresh = visibleData.find((r) => r.id === selectedRequest.id);
         if (fresh) {
@@ -528,8 +532,10 @@ const IhlrApprovals = () => {
       setIsReassignOpen(false);
       setIsReassignUserDropdownOpen(false);
       setReassignUserSearch('');
-      if (updated) {
+      if (updated && String(updated.status || '').toUpperCase() !== 'CLOSED') {
         populateForm(updated);
+      } else {
+        setSelectedRequest(null);
       }
       await fetchRequests();
       modalSuccess(msg);
@@ -551,6 +557,9 @@ const IhlrApprovals = () => {
     // Restrict visibility for closer non-admins strictly to their assigned requests (or created)
     if (!isAdmin && !isIhlrRequestVisibleToUser(r, user)) return false;
 
+    // Never show CLOSED requests in approvals tab
+    if (String(r.status || '').toUpperCase() === 'CLOSED') return false;
+
     const isCompleted = r.status === 'IN_PROGRESS' || r.status === 'APPROVAL_PENDING' || (
       Boolean(r.action && String(r.action).trim()) ||
       Boolean(r.target_date) ||
@@ -568,9 +577,8 @@ const IhlrApprovals = () => {
 
     const matchesStatus =
       selectedStatus === 'All' ||
-      (selectedStatus === 'CLOSED' && r.status === 'CLOSED') ||
-      (selectedStatus === 'IN_PROGRESS' && isCompleted && r.status !== 'CLOSED') ||
-      (selectedStatus === 'OPEN' && !isCompleted && r.status !== 'CLOSED');
+      (selectedStatus === 'IN_PROGRESS' && isCompleted) ||
+      (selectedStatus === 'OPEN' && !isCompleted);
     return matchesSearch && matchesStatus;
   });
 
@@ -1513,7 +1521,6 @@ const IhlrApprovals = () => {
                 <option value="All">All Decisions</option>
                 <option value="OPEN">Pending</option>
                 <option value="IN_PROGRESS">Approval Pending</option>
-                <option value="CLOSED">Closed</option>
               </select>
             </div>
 
