@@ -1935,23 +1935,7 @@ const IhlrApprovals = () => {
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
-                              {isAdmin && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    populateForm(r, true);
-                                    setAdminEditCloser(true);
-                                  }}
-                                  className={`p-1 rounded-md transition cursor-pointer ${
-                                    isSelected && adminEditCloser
-                                      ? 'text-amber-600 bg-amber-50 ring-1 ring-amber-300'
-                                      : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                                  }`}
-                                  title="Admin: Edit & Update Closer Fields"
-                                >
-                                  <Pencil className="w-4 h-4" />
-                                </button>
-                              )}
+
                             </div>
                           </td>
                         </tr>

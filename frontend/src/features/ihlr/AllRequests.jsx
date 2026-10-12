@@ -11,7 +11,6 @@ import {
   Hourglass,
   Layers,
   Plus,
-  Edit2,
   Trash2,
   ExternalLink,
   ChevronDown,
@@ -784,21 +783,7 @@ const IhlrAllRequests = () => {
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          disabled={!isAdmin && r.status === 'CLOSED'}
-                          onClick={() => {
-                            if (!isAdmin && r.status === 'CLOSED') return;
-                            setActiveModalRequest(r);
-                            setModalInitialEdit(true);
-                          }}
-                          className={`p-1.5 rounded-lg transition ${!isAdmin && r.status === 'CLOSED'
-                              ? 'text-slate-300 cursor-not-allowed select-none'
-                              : 'text-slate-500 hover:bg-slate-100 cursor-pointer'
-                            }`}
-                          title={!isAdmin && r.status === 'CLOSED' ? 'Incident Closed — Updates locked for users (Admin only)' : 'Edit Requester Details'}
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
+
                         {isAdmin && (
                           <button
                             onClick={() => handleDelete(r.id, r.req_no)}
