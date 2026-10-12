@@ -130,7 +130,9 @@ const IhlrApprovals = () => {
   // Form State for Closer Fields
   const [closerWhyWhy, setCloserWhyWhy] = useState(['', '', '', '', '']);
   const [closerAction, setCloserAction] = useState('');
+  const [closerActionError, setCloserActionError] = useState(false);
   const [closerTargetDate, setCloserTargetDate] = useState('');
+  const [closerTargetDateError, setCloserTargetDateError] = useState(false);
   const [closerRemarks, setCloserRemarks] = useState('');
   const [remarksError, setRemarksError] = useState(false);
   const [closerStatus, setCloserStatus] = useState('OPEN');
@@ -143,6 +145,7 @@ const IhlrApprovals = () => {
   const [dbUsers, setDbUsers] = useState([]);
   const [existingEvidence, setExistingEvidence] = useState([]);
   const [newEvidenceFiles, setNewEvidenceFiles] = useState([]);
+  const [closerEvidenceError, setCloserEvidenceError] = useState(false);
   const [annotatingItem, setAnnotatingItem] = useState(null);
   const [isSavingCloser, setIsSavingCloser] = useState(false);
   const [isSavingAdmin, setIsSavingAdmin] = useState(false);
@@ -356,7 +359,9 @@ const IhlrApprovals = () => {
     setCloserWhyWhy(paddedWhys);
 
     setCloserAction(req.action || '');
+    setCloserActionError(false);
     setCloserTargetDate(req.target_date ? req.target_date.split('T')[0] : '');
+    setCloserTargetDateError(false);
     setCloserRemarks(req.remarks || '');
     setRemarksError(false);
     setCloserStatus(req.status || 'OPEN');
@@ -370,6 +375,7 @@ const IhlrApprovals = () => {
     const existing = parseAttachments(req.evidence_attachment);
     setExistingEvidence(existing);
     setNewEvidenceFiles([]);
+    setCloserEvidenceError(false);
   };
 
   const handleWhyChange = (index, val) => {
@@ -384,6 +390,7 @@ const IhlrApprovals = () => {
     if (e.target.files && e.target.files.length > 0) {
       const added = Array.from(e.target.files);
       setNewEvidenceFiles((prev) => [...prev, ...added]);
+      setCloserEvidenceError(false);
     }
   };
 
@@ -398,6 +405,7 @@ const IhlrApprovals = () => {
   const handleSaveAnnotation = (annotatedFile) => {
     if (!annotatingItem) return;
     setNewEvidenceFiles((prev) => [...prev, annotatedFile]);
+    setCloserEvidenceError(false);
     setAnnotatingItem(null);
     modalSuccess(`Annotated drawing "${annotatedFile.name}" added to evidence files! Remember to click "Update Closer Log" to save.`);
   };
@@ -420,6 +428,29 @@ const IhlrApprovals = () => {
       modalError('You do not have permission to update fields on this request.');
       return;
     }
+
+    // Mandatory Closer Field Validations
+    if (!closerAction || !closerAction.trim()) {
+      setCloserActionError(true);
+      modalWarning('Action is mandatory. Please enter corrective actions / countermeasures before submitting.');
+      return;
+    }
+    setCloserActionError(false);
+
+    const totalEvidenceCount = (existingEvidence ? existingEvidence.length : 0) + (newEvidenceFiles ? newEvidenceFiles.length : 0);
+    if (totalEvidenceCount === 0) {
+      setCloserEvidenceError(true);
+      modalWarning('Evidence Attachment is mandatory. Please choose and upload at least one evidence document (PPT, JPEG, Excel, or PDF) before submitting.');
+      return;
+    }
+    setCloserEvidenceError(false);
+
+    if (!closerTargetDate || !closerTargetDate.trim()) {
+      setCloserTargetDateError(true);
+      modalWarning('Target Date is mandatory. Please select a completion target date before submitting.');
+      return;
+    }
+    setCloserTargetDateError(false);
 
     setIsSavingCloser(true);
     setSuccessMessage('');
@@ -1021,7 +1052,12 @@ const IhlrApprovals = () => {
                 rows={2}
                 disabled={!canUpdateCloserFields}
                 value={closerAction}
-                onChange={(e) => setCloserAction(e.target.value)}
+                onChange={(e) => {
+                  setCloserAction(e.target.value);
+                  if (closerActionError && e.target.value.trim()) {
+                    setCloserActionError(false);
+                  }
+                }}
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
@@ -1031,8 +1067,17 @@ const IhlrApprovals = () => {
                     ? 'Click pencil icon to edit action / countermeasures...'
                     : 'Read-only (Closer only)'
                 }
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none"
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
+                  closerActionError
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {closerActionError && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* Action is mandatory. Please enter corrective actions / countermeasures.</span>
+                </p>
+              )}
             </div>
 
             {/* Evidence Attachment (Image 1: Format PPT, JPEG, EXCEL & PDF) */}
@@ -1040,6 +1085,7 @@ const IhlrApprovals = () => {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>EVIDENCE ATTACHMENT</span>
+                  <span className="text-rose-500">*</span>
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
@@ -1056,7 +1102,9 @@ const IhlrApprovals = () => {
               </div>
 
               {/* Styled File Input Button (matching Image 2) */}
-              <div className="flex items-center gap-2">
+              <div className={`flex items-center gap-2 p-1 rounded-xl transition ${
+                closerEvidenceError ? 'border border-rose-300 bg-rose-50/20 ring-2 ring-rose-300/30' : ''
+              }`}>
                 <button
                   type="button"
                   disabled={!canUpdateCloserFields}
@@ -1081,6 +1129,11 @@ const IhlrApprovals = () => {
                   className="hidden"
                 />
               </div>
+              {closerEvidenceError && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* Evidence Attachment is mandatory. Please upload at least one evidence document.</span>
+                </p>
+              )}
 
               {/* Existing and newly attached chips */}
               <div className="mt-2 space-y-1">
@@ -1108,6 +1161,7 @@ const IhlrApprovals = () => {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TARGET DATE</span>
+                  <span className="text-rose-500">*</span>
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
@@ -1124,9 +1178,23 @@ const IhlrApprovals = () => {
               <DateInput
                 disabled={!canUpdateCloserFields}
                 value={closerTargetDate}
-                onChange={(e) => setCloserTargetDate(e.target.value)}
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition"
+                onChange={(e) => {
+                  setCloserTargetDate(e.target.value);
+                  if (closerTargetDateError && e.target.value) {
+                    setCloserTargetDateError(false);
+                  }
+                }}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${
+                  closerTargetDateError
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {closerTargetDateError && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* Target Date is mandatory. Please select a completion target date.</span>
+                </p>
+              )}
             </div>
 
             {/* Dedicated Closer Submit Button */}

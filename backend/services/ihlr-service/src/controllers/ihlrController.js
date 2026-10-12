@@ -566,6 +566,32 @@ export const updateIhlrRequest = async (req, res) => {
       }
     }
 
+    // Closer field validations if submitted
+    if (safeUpdates.action !== undefined) {
+      const trimmed = typeof safeUpdates.action === 'string' ? safeUpdates.action.trim() : '';
+      if (!trimmed) {
+        return errorResponse(res, 'Action is mandatory and cannot be empty.', 400);
+      }
+      safeUpdates.action = trimmed;
+    }
+    if (safeUpdates.evidence_attachment !== undefined) {
+      let parsed = [];
+      try {
+        parsed = typeof safeUpdates.evidence_attachment === 'string' ? JSON.parse(safeUpdates.evidence_attachment) : safeUpdates.evidence_attachment;
+      } catch {
+        parsed = [];
+      }
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        return errorResponse(res, 'Evidence Attachment is mandatory. Please provide at least one attachment.', 400);
+      }
+    }
+    if (safeUpdates.target_date !== undefined) {
+      const trimmed = typeof safeUpdates.target_date === 'string' ? safeUpdates.target_date.trim() : '';
+      if (!trimmed) {
+        return errorResponse(res, 'Target Date is mandatory and cannot be empty.', 400);
+      }
+    }
+
     if (!safeUpdates.status && String(existing.status || '').toUpperCase() === 'OPEN') {
       const hasCloserUpdates = safeUpdates.prod_why_why !== undefined || safeUpdates.action !== undefined || safeUpdates.evidence_attachment !== undefined || safeUpdates.target_date !== undefined;
       if (hasCloserUpdates) {
