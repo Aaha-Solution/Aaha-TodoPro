@@ -22,7 +22,9 @@ import {
   Check,
   Calendar,
   RotateCcw,
-  SlidersHorizontal
+  SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -111,6 +113,21 @@ const IhlrMyRequests = () => {
 
   // Export State
   const [showExportModal, setShowExportModal] = useState(false);
+
+  // Pagination State (matching Approvals tab with max 10)
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedShift, selected4M, selectedStatus, startDate, endDate]);
+
+  const totalRecords = requests.length;
+  const totalPages = Math.ceil(totalRecords / rowsPerPage) || 1;
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = Math.min(startIndex + rowsPerPage, totalRecords);
+  const paginatedRequests = requests.slice(startIndex, endIndex);
 
   // Open Export Modal with empty check
   const handleOpenExportModal = () => {
@@ -643,7 +660,7 @@ const IhlrMyRequests = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {requests.length === 0 ? (
+              {paginatedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={15} className="py-12 text-center text-slate-400">
                     <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
@@ -656,11 +673,11 @@ const IhlrMyRequests = () => {
                   </td>
                 </tr>
               ) : (
-                requests.map((r, index) => (
+                paginatedRequests.map((r, index) => (
                   <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
                     {/* SL NO */}
                     <td className="py-3.5 px-3 text-center font-mono font-semibold text-slate-400">
-                      {index + 1}
+                      {startIndex + index + 1}
                     </td>
 
                     {/* Req NO */}
@@ -798,6 +815,51 @@ const IhlrMyRequests = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="p-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-4 text-xs text-slate-600">
+          <div className="flex items-center gap-2">
+            <span>Rows per page:</span>
+            <select
+              value={rowsPerPage}
+              onChange={(e) => {
+                setRowsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none cursor-pointer"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+            </select>
+          </div>
+
+          <div className="font-mono text-[11px] text-slate-500">
+            {totalRecords === 0
+              ? '0–0 of 0'
+              : `${startIndex + 1}–${endIndex} of ${totalRecords}`}
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+              title="Previous Page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+              title="Next Page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
