@@ -827,23 +827,14 @@ const IhlrCreateRequest = () => {
                 <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px]">
                   User Name (Based on Dep) *
                 </label>
-                {formData.resp && getDepartmentUsers(formData.resp).length > 0 && (
+                {formData.resp && getDepartmentUsers(formData.resp).length > 0 && getSelectedUsers().length > 0 && (
                   <div className="flex items-center gap-2 text-[10px]">
-                    {getSelectedUsers().length > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleClearAllUsers}
-                        className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
-                      >
-                        Clear
-                      </button>
-                    )}
                     <button
                       type="button"
-                      onClick={handleSelectAllUsers}
-                      className="text-blue-600 hover:text-blue-700 font-semibold hover:underline cursor-pointer"
+                      onClick={handleClearAllUsers}
+                      className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
                     >
-                      Select all ({getDepartmentUsers(formData.resp).length})
+                      Clear
                     </button>
                   </div>
                 )}

@@ -1332,23 +1332,14 @@ const IhlrApprovals = () => {
                             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600">
                               User Name (Dep Based) *
                             </label>
-                            {reassignedDept && getDepartmentUsers(reassignedDept).length > 0 && (
+                            {reassignedDept && getDepartmentUsers(reassignedDept).length > 0 && getSelectedReassignedUsers().length > 0 && (
                               <div className="flex items-center gap-2 text-[10px]">
-                                {getSelectedReassignedUsers().length > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={handleClearAllReassignUsers}
-                                    className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
-                                  >
-                                    Clear
-                                  </button>
-                                )}
                                 <button
                                   type="button"
-                                  onClick={handleSelectAllReassignUsers}
-                                  className="text-blue-600 hover:text-blue-700 font-semibold hover:underline cursor-pointer"
+                                  onClick={handleClearAllReassignUsers}
+                                  className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
                                 >
-                                  Select all ({getDepartmentUsers(reassignedDept).length})
+                                  Clear
                                 </button>
                               </div>
                             )}

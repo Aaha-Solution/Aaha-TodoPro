@@ -901,23 +901,14 @@ const CreateRequest = () => {
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                   Assign Executor *
                 </label>
-                {formData.department && availableExecutors.length > 0 && (
+                {formData.department && availableExecutors.length > 0 && selectedExecutors.length > 0 && (
                   <div className="flex items-center gap-2 text-[10px]">
-                    {selectedExecutors.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleClearAllExecutors}
-                        className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
-                      >
-                        Clear
-                      </button>
-                    )}
                     <button
                       type="button"
-                      onClick={handleSelectAllExecutors}
-                      className="text-blue-600 hover:text-blue-700 font-semibold hover:underline cursor-pointer"
+                      onClick={handleClearAllExecutors}
+                      className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
                     >
-                      Select all ({availableExecutors.length})
+                      Clear
                     </button>
                   </div>
                 )}
