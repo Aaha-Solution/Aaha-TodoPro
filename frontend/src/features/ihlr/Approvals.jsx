@@ -18,7 +18,8 @@ import {
   X,
   ChevronDown,
   PenTool,
-  Lock
+  Lock,
+  Pencil
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -105,12 +106,16 @@ const IhlrApprovals = () => {
     )
   );
 
+  // Admin Edit Mode for Closer Fields: Toggled via Pencil Icon
+  const [adminEditCloser, setAdminEditCloser] = useState(false);
+
   // 1. Closer Fields (Occurrence Cause 5-Why: W1-W5, Action, Evidence Attachment, Target Date):
-  //    Closer person can submit ONLY ONCE. Quality Admin can update multiple times.
+  //    - Assigned closer person can submit once while request is open/in-progress.
+  //    - Quality Admin can click the Pencil icon to unlock, edit, and update closer fields anytime.
   const canUpdateCloserFields = Boolean(
     selectedRequest && (
-      isAdmin ||
-      (isCloser && !hasCloserSubmitted && !isSelectedClosed)
+      (isAdmin && adminEditCloser) ||
+      (!isAdmin && isCloser && !hasCloserSubmitted && !isSelectedClosed)
     )
   );
 
@@ -331,8 +336,11 @@ const IhlrApprovals = () => {
   }, [user?.name, user?.email, user?.role, user?.department]);
 
   // Populate Closer form fields when a row is clicked
-  const populateForm = (req) => {
+  const populateForm = (req, keepEditMode = false) => {
     setSelectedRequest(req);
+    if (!keepEditMode) {
+      setAdminEditCloser(false);
+    }
     setSuccessMessage('');
     setErrorMessage('');
 
@@ -455,8 +463,9 @@ const IhlrApprovals = () => {
       setSuccessMessage(msg);
       setNewEvidenceFiles([]);
       if (updated) {
-        populateForm(updated);
+        populateForm(updated, false);
       }
+      setAdminEditCloser(false);
       await fetchRequests();
       modalSuccess(msg);
 
@@ -815,9 +824,26 @@ const IhlrApprovals = () => {
               </h2>
             </div>
             {selectedRequest && (
-              <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                {String(selectedRequest.req_no).startsWith('IHLR-') ? selectedRequest.req_no : `#${selectedRequest.req_no}`}
-              </span>
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setAdminEditCloser(!adminEditCloser)}
+                    title={adminEditCloser ? "Disable edit mode for closer fields" : "Enable edit mode for closer fields"}
+                    className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                      adminEditCloser
+                        ? 'bg-amber-500 text-white border-amber-600 hover:bg-amber-600'
+                        : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                    }`}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>{adminEditCloser ? 'Editing Closer Log' : 'Edit Closer Fields'}</span>
+                  </button>
+                )}
+                <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                  {String(selectedRequest.req_no).startsWith('IHLR-') ? selectedRequest.req_no : `#${selectedRequest.req_no}`}
+                </span>
+              </div>
             )}
           </div>
 
@@ -900,16 +926,49 @@ const IhlrApprovals = () => {
             {/* Separator */}
             <div className="pt-2 border-t border-slate-100">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
-                  <span>Occurrence Cause (Production Team - 5 Why)</span>
-                  {selectedRequest && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                      Closer
-                    </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
+                    <span>Occurrence Cause (Production Team - 5 Why)</span>
+                    {selectedRequest && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        Closer
+                      </span>
+                    )}
+                  </span>
+                  {isAdmin && selectedRequest && (
+                    <button
+                      type="button"
+                      onClick={() => setAdminEditCloser(!adminEditCloser)}
+                      title={adminEditCloser ? "Disable edit mode" : "Enable admin editing for closer fields"}
+                      className={`p-1 rounded-md border text-xs transition cursor-pointer flex items-center gap-1 ${
+                        adminEditCloser
+                          ? 'bg-amber-500 text-white border-amber-600 shadow-2xs hover:bg-amber-600'
+                          : 'bg-white hover:bg-slate-100 text-slate-500 hover:text-amber-600 border-slate-200'
+                      }`}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
                   )}
-                </span>
+                </div>
                 <span className="text-[10px] text-slate-400 font-mono">W1 to W5</span>
               </div>
+
+              {/* Admin Edit Mode Alert Banner */}
+              {isAdmin && selectedRequest && adminEditCloser && (
+                <div className="mb-2.5 p-2 px-3 rounded-lg bg-amber-50/90 border border-amber-200/90 text-amber-900 text-xs flex items-center justify-between animate-in fade-in">
+                  <div className="flex items-center gap-1.5">
+                    <Pencil className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="text-[11px] font-semibold">Admin Edit Enabled: Closer 5-Why, Action, Evidence &amp; Target Date unlocked.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAdminEditCloser(false)}
+                    className="text-[10px] font-bold text-amber-700 hover:text-amber-900 underline cursor-pointer shrink-0 ml-2"
+                  >
+                    Lock
+                  </button>
+                </div>
+              )}
 
               {/* 5-Whys Stacked Inputs (Image 1: W1 to W5) */}
               <div className="space-y-1.5">
@@ -928,6 +987,8 @@ const IhlrApprovals = () => {
                           ? 'Select request on right'
                           : canUpdateCloserFields
                           ? `Enter ${label} cause...`
+                          : isAdmin
+                          ? `Click pencil icon to edit ${label}...`
                           : 'Read-only (Closer only)'
                       }
                       className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition"
@@ -946,11 +1007,11 @@ const IhlrApprovals = () => {
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        Closer
+                        {isAdmin ? 'Admin Edit' : 'Closer'}
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        Closer Only (Read-Only)
+                        {isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -966,6 +1027,8 @@ const IhlrApprovals = () => {
                     ? 'Click a row on the right to select'
                     : canUpdateCloserFields
                     ? 'Describe corrective actions taken / countermeasures...'
+                    : isAdmin
+                    ? 'Click pencil icon to edit action / countermeasures...'
                     : 'Read-only (Closer only)'
                 }
                 className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none"
@@ -980,11 +1043,11 @@ const IhlrApprovals = () => {
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        Closer
+                        {isAdmin ? 'Admin Edit' : 'Closer'}
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        Closer Only (Read-Only)
+                        {isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1048,11 +1111,11 @@ const IhlrApprovals = () => {
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        Closer
+                        {isAdmin ? 'Admin Edit' : 'Closer'}
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        Closer Only (Read-Only)
+                        {isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1076,17 +1139,60 @@ const IhlrApprovals = () => {
                 >
                   Select a Request to Update
                 </button>
-              ) : !isAdmin && isSelectedClosed ? (
+              ) : isAdmin ? (
+                adminEditCloser ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveCloser}
+                      disabled={isSavingCloser || isSavingAdmin}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition transform active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {isSavingCloser ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Saving Closer Log...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          <span>Update Closer Log (5-Why &amp; Action)</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdminEditCloser(false);
+                        if (selectedRequest) populateForm(selectedRequest, false);
+                      }}
+                      className="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-600 font-bold text-xs transition cursor-pointer"
+                      title="Cancel Editing"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAdminEditCloser(true)}
+                    className="w-full py-2.5 px-4 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 font-bold text-xs shadow-2xs hover:shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Enable Edit Mode for Closer Fields</span>
+                  </button>
+                )
+              ) : isSelectedClosed ? (
                 <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   <span>Incident Closed — Updates Locked (Admin Only)</span>
                 </div>
-              ) : !isAdmin && hasCloserSubmitted ? (
+              ) : hasCloserSubmitted ? (
                 <div className="w-full py-2.5 px-4 rounded-xl border border-blue-200 bg-blue-50/90 text-blue-900 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-blue-600" />
                   <span>Closer Details Submitted</span>
                 </div>
-              ) : !canUpdateCloserFields && !isAdmin ? (
+              ) : !canUpdateCloserFields ? (
                 <div className="w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-slate-500" />
                   <span>Read Only Access — Assigned Closer or Admin Only</span>
@@ -1106,7 +1212,7 @@ const IhlrApprovals = () => {
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      <span>{isAdmin ? 'Update Closer Log (5-Why & Action)' : 'Submit Closer Log (5-Why & Action)'}</span>
+                      <span>Submit Closer Log (5-Why &amp; Action)</span>
                     </>
                   )}
                 </button>
@@ -1649,14 +1755,33 @@ const IhlrApprovals = () => {
                             {r.remarks || '—'}
                           </td>
                           <td className="py-3.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => setActiveModalRequest(r)}
-                              className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
-                              title="View Full Report"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setActiveModalRequest(r)}
+                                className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                                title="View Full Report"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              {isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    populateForm(r, true);
+                                    setAdminEditCloser(true);
+                                  }}
+                                  className={`p-1 rounded-md transition cursor-pointer ${
+                                    isSelected && adminEditCloser
+                                      ? 'text-amber-600 bg-amber-50 ring-1 ring-amber-300'
+                                      : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                                  }`}
+                                  title="Admin: Edit & Update Closer Fields"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
