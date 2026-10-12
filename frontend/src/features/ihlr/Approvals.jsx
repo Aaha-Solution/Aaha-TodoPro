@@ -138,7 +138,9 @@ const IhlrApprovals = () => {
   const [closerStatus, setCloserStatus] = useState('OPEN');
   const [isReassignOpen, setIsReassignOpen] = useState(false);
   const [reassignedDept, setReassignedDept] = useState('');
+  const [reassignDeptError, setReassignDeptError] = useState(false);
   const [reassignedPerson, setReassignedPerson] = useState('');
+  const [reassignPersonError, setReassignPersonError] = useState(false);
   const [isReassignUserDropdownOpen, setIsReassignUserDropdownOpen] = useState(false);
   const [reassignUserSearch, setReassignUserSearch] = useState('');
   const reassignUserDropdownRef = useRef(null);
@@ -237,6 +239,9 @@ const IhlrApprovals = () => {
       updated = [...current, userName];
     }
     setReassignedPerson(updated.join(', '));
+    if (updated.length > 0) {
+      setReassignPersonError(false);
+    }
   };
 
   const handleRemoveReassignUser = (userName, e) => {
@@ -249,6 +254,9 @@ const IhlrApprovals = () => {
   const handleSelectAllReassignUsers = () => {
     const deptUsers = getDepartmentUsers(reassignedDept).map((u) => u.name);
     setReassignedPerson(deptUsers.join(', '));
+    if (deptUsers.length > 0) {
+      setReassignPersonError(false);
+    }
   };
 
   const handleClearAllReassignUsers = () => {
@@ -257,11 +265,17 @@ const IhlrApprovals = () => {
 
   const handleDeptChange = (newDept) => {
     setReassignedDept(newDept);
+    if (newDept) {
+      setReassignDeptError(false);
+    }
     // Keep selected users who belong to the new department
     const usersInDept = getDepartmentUsers(newDept).map((u) => u.name);
     const current = getSelectedReassignedUsers();
     const valid = current.filter((u) => usersInDept.includes(u));
     setReassignedPerson(valid.join(', '));
+    if (valid.length > 0) {
+      setReassignPersonError(false);
+    }
     setIsReassignUserDropdownOpen(false);
     setReassignUserSearch('');
   };
@@ -429,28 +443,34 @@ const IhlrApprovals = () => {
       return;
     }
 
-    // Mandatory Closer Field Validations
+    // Mandatory Closer Field Validations (errors shown below the inputs)
+    let hasCloserErrors = false;
+
     if (!closerAction || !closerAction.trim()) {
       setCloserActionError(true);
-      modalWarning('Action is mandatory. Please enter corrective actions / countermeasures before submitting.');
-      return;
+      hasCloserErrors = true;
+    } else {
+      setCloserActionError(false);
     }
-    setCloserActionError(false);
 
     const totalEvidenceCount = (existingEvidence ? existingEvidence.length : 0) + (newEvidenceFiles ? newEvidenceFiles.length : 0);
     if (totalEvidenceCount === 0) {
       setCloserEvidenceError(true);
-      modalWarning('Evidence Attachment is mandatory. Please choose and upload at least one evidence document (PPT, JPEG, Excel, or PDF) before submitting.');
-      return;
+      hasCloserErrors = true;
+    } else {
+      setCloserEvidenceError(false);
     }
-    setCloserEvidenceError(false);
 
     if (!closerTargetDate || !closerTargetDate.trim()) {
       setCloserTargetDateError(true);
-      modalWarning('Target Date is mandatory. Please select a completion target date before submitting.');
-      return;
+      hasCloserErrors = true;
+    } else {
+      setCloserTargetDateError(false);
     }
-    setCloserTargetDateError(false);
+
+    if (hasCloserErrors) {
+      return; // DO NOT TRIGGER BACKEND!
+    }
 
     setIsSavingCloser(true);
     setSuccessMessage('');
@@ -524,20 +544,25 @@ const IhlrApprovals = () => {
 
     if (!closerRemarks || !closerRemarks.trim()) {
       setRemarksError(true);
-      modalWarning('Remarks is required. Please enter remarks before saving Admin Review & Status Sign-Off.');
-      return;
+      return; // DO NOT TRIGGER BACKEND!
     }
     setRemarksError(false);
 
     if (isReassignOpen) {
+      let reassignHasErr = false;
       if (!reassignedDept) {
-        modalWarning('Please select a department for reassignment.');
-        return;
+        setReassignDeptError(true);
+        reassignHasErr = true;
+      } else {
+        setReassignDeptError(false);
       }
       if (!reassignedPerson || reassignedPerson.trim() === '') {
-        modalWarning('Please select at least one responsible user to reassign.');
-        return;
+        setReassignPersonError(true);
+        reassignHasErr = true;
+      } else {
+        setReassignPersonError(false);
       }
+      if (reassignHasErr) return; // DO NOT TRIGGER BACKEND!
     }
 
     setIsSavingAdmin(true);
@@ -1383,7 +1408,11 @@ const IhlrApprovals = () => {
                           <select
                             value={reassignedDept}
                             onChange={(e) => handleDeptChange(e.target.value)}
-                            className="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                            className={`w-full px-2.5 py-2 bg-white border rounded-xl font-semibold text-slate-800 text-xs outline-none cursor-pointer ${
+                              reassignDeptError
+                                ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                                : 'border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                            }`}
                           >
                             <option value="">Select Department</option>
                             {departmentList.map((dept) => (
@@ -1392,6 +1421,11 @@ const IhlrApprovals = () => {
                               </option>
                             ))}
                           </select>
+                          {reassignDeptError && (
+                            <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                              * Department is required for reassignment.
+                            </p>
+                          )}
                         </div>
 
                         {/* Department-based User Name (Multi-Select) */}
@@ -1421,7 +1455,9 @@ const IhlrApprovals = () => {
                               }
                             }}
                             className={`w-full min-h-[38px] px-2.5 py-1.5 border rounded-xl text-xs font-semibold transition flex items-center justify-between gap-1.5 ${
-                              !reassignedDept
+                              reassignPersonError
+                                ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 cursor-pointer'
+                                : !reassignedDept
                                 ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                                 : getDepartmentUsers(reassignedDept).length === 0
                                 ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
@@ -1470,6 +1506,11 @@ const IhlrApprovals = () => {
                               />
                             </div>
                           </div>
+                          {reassignPersonError && (
+                            <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                              * Please select at least one responsible user to reassign.
+                            </p>
+                          )}
 
                           {/* Dropdown Menu */}
                           {isReassignUserDropdownOpen && reassignedDept && getDepartmentUsers(reassignedDept).length > 0 && (

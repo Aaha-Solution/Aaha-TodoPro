@@ -95,6 +95,12 @@ const ProcessAuditApprovals = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Field Validation Errors State (to show errors below inputs)
+  const [rootCauseError, setRootCauseError] = useState(false);
+  const [closerActionError, setCloserActionError] = useState(false);
+  const [evidenceError, setEvidenceError] = useState(false);
+  const [closerTargetDateError, setCloserTargetDateError] = useState(false);
+
   // Pagination State
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -290,6 +296,10 @@ const ProcessAuditApprovals = () => {
     setSelectedRequest(req);
     setSuccessMessage('');
     setErrorMessage('');
+    setRootCauseError(false);
+    setCloserActionError(false);
+    setEvidenceError(false);
+    setCloserTargetDateError(false);
 
     setRootCause(req.root_cause || '');
     setCloserAction(req.corrective_action || req.action || '');
@@ -327,6 +337,7 @@ const ProcessAuditApprovals = () => {
     if (e.target.files && e.target.files.length > 0) {
       const added = Array.from(e.target.files);
       setNewEvidenceFiles((prev) => [...prev, ...added]);
+      setEvidenceError(false);
     }
   };
 
@@ -340,7 +351,7 @@ const ProcessAuditApprovals = () => {
 
   // Submit Sign-off / Closer Updates
   const handleSaveCloser = async (e) => {
-    if (e) e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!selectedRequest) return;
 
     // Do not allow re-saving if status is already approved / in progress / signed off / closed
@@ -348,6 +359,43 @@ const ProcessAuditApprovals = () => {
     if (s.includes('approved') || s.includes('close') || s.includes('progress') || s.includes('signed')) {
       setErrorMessage('This request has already been signed off. Saving again is disabled.');
       return;
+    }
+
+    // MANDATORY FIELD VALIDATION: DO NOT TRIGGER BACKEND IF INVALID
+    let hasValidationError = false;
+
+    if (!rootCause || !rootCause.trim()) {
+      setRootCauseError(true);
+      hasValidationError = true;
+    } else {
+      setRootCauseError(false);
+    }
+
+    if (!closerAction || !closerAction.trim()) {
+      setCloserActionError(true);
+      hasValidationError = true;
+    } else {
+      setCloserActionError(false);
+    }
+
+    const totalEvidenceCount = (existingEvidence ? existingEvidence.length : 0) + (newEvidenceFiles ? newEvidenceFiles.length : 0);
+    if (totalEvidenceCount === 0) {
+      setEvidenceError(true);
+      hasValidationError = true;
+    } else {
+      setEvidenceError(false);
+    }
+
+    if (!closerTargetDate || !closerTargetDate.trim()) {
+      setCloserTargetDateError(true);
+      hasValidationError = true;
+    } else {
+      setCloserTargetDateError(false);
+    }
+
+    if (hasValidationError) {
+      setErrorMessage('Please fill in all mandatory fields before submitting.');
+      return; // Stop immediately! Do NOT trigger backend!
     }
 
     setIsSaving(true);
@@ -728,10 +776,22 @@ const ProcessAuditApprovals = () => {
                 rows={2}
                 disabled={!selectedRequest || isSelectedApproved}
                 value={rootCause}
-                onChange={(e) => setRootCause(e.target.value)}
+                onChange={(e) => {
+                  setRootCause(e.target.value);
+                  if (rootCauseError && e.target.value.trim()) setRootCauseError(false);
+                }}
                 placeholder={!selectedRequest ? 'Click a row on the right to select' : isSelectedApproved ? 'Approved - Editing is locked' : 'Identify underlying root cause of deviation/defect...'}
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition resize-none"
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition resize-none ${
+                  rootCauseError
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {rootCauseError && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* Root Cause is mandatory. Please enter root cause.</span>
+                </p>
+              )}
             </div>
 
             {/* Action Field */}
@@ -743,10 +803,22 @@ const ProcessAuditApprovals = () => {
                 rows={2}
                 disabled={!selectedRequest || isSelectedApproved}
                 value={closerAction}
-                onChange={(e) => setCloserAction(e.target.value)}
+                onChange={(e) => {
+                  setCloserAction(e.target.value);
+                  if (closerActionError && e.target.value.trim()) setCloserActionError(false);
+                }}
                 placeholder={!selectedRequest ? 'Click a row on the right to select' : isSelectedApproved ? 'Approved - Editing is locked' : 'Describe corrective actions taken / countermeasures...'}
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition resize-none"
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition resize-none ${
+                  closerActionError
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {closerActionError && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* Corrective Action is mandatory. Please describe corrective actions taken.</span>
+                </p>
+              )}
             </div>
 
             {/* Standardization Details Field */}
@@ -767,14 +839,17 @@ const ProcessAuditApprovals = () => {
             {/* Evidence Attachment */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
-                  EVIDENCE ATTACHMENT
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>EVIDENCE ATTACHMENT</span>
+                  <span className="text-rose-500">*</span>
                 </label>
                 <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
               </div>
 
               {/* Styled File Input Button */}
-              <div className="flex items-center gap-2">
+              <div className={`flex items-center gap-2 p-1 rounded-xl transition ${
+                evidenceError ? 'border border-rose-300 bg-rose-50/20 ring-2 ring-rose-300/30' : ''
+              }`}>
                 <button
                   type="button"
                   disabled={!selectedRequest || isSelectedApproved}
@@ -799,6 +874,11 @@ const ProcessAuditApprovals = () => {
                   className="hidden"
                 />
               </div>
+              {evidenceError && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* Evidence Attachment is mandatory. Please choose and upload at least one evidence document.</span>
+                </p>
+              )}
 
               {/* Existing (saved in DB) and newly selected chips */}
               <div className="mt-2 space-y-1">
@@ -806,7 +886,9 @@ const ProcessAuditApprovals = () => {
                   <AttachmentChipList
                     attachments={existingEvidence}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    onRemove={isSelectedApproved ? undefined : (idx) => handleRemoveExistingEvidence(idx)}
+                    onRemove={isSelectedApproved ? undefined : (idx) => {
+                      handleRemoveExistingEvidence(idx);
+                    }}
                     readonly={isSelectedApproved}
                   />
                 )}
@@ -814,7 +896,9 @@ const ProcessAuditApprovals = () => {
                   <AttachmentChipList
                     attachments={previewableNewFiles}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    onRemove={isSelectedApproved ? undefined : (idx) => handleRemoveNewEvidence(idx)}
+                    onRemove={isSelectedApproved ? undefined : (idx) => {
+                      handleRemoveNewEvidence(idx);
+                    }}
                     readonly={isSelectedApproved}
                   />
                 )}
@@ -823,15 +907,28 @@ const ProcessAuditApprovals = () => {
 
             {/* Target Date */}
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                TARGET DATE
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center gap-1.5">
+                <span>TARGET DATE</span>
+                <span className="text-rose-500">*</span>
               </label>
               <DateInput
                 disabled={!selectedRequest || isSelectedApproved}
                 value={closerTargetDate}
-                onChange={(e) => setCloserTargetDate(e.target.value)}
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition"
+                onChange={(e) => {
+                  setCloserTargetDate(e.target.value);
+                  if (closerTargetDateError && e.target.value) setCloserTargetDateError(false);
+                }}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-slate-800 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition ${
+                  closerTargetDateError
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {closerTargetDateError && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* Target Date is mandatory. Please select a completion target date.</span>
+                </p>
+              )}
             </div>
 
             {/* Action Submit Button */}
