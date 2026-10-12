@@ -263,7 +263,7 @@ const IhlrDashboard = () => {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-sm font-black uppercase tracking-tight text-slate-800">
-                    Filter Issues
+                    Filter Analysis Reports
                   </h2>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
                     <Calendar className="w-3 h-3 text-blue-600" />
