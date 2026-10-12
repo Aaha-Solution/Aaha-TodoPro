@@ -62,6 +62,7 @@ const IhlrCreateRequest = () => {
   const [attachments, setAttachments] = useState([]);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [annotatingItem, setAnnotatingItem] = useState(null);
+  const [errors, setErrors] = useState({});
 
   const getDraftKey = () => {
     let uid = user?.id || user?.email;
@@ -185,6 +186,7 @@ const IhlrCreateRequest = () => {
     setQaWhyWhy(['', '', '', '', '']);
     setAttachments([]);
     setHasRestoredDraft(false);
+    setErrors({});
   };
 
   useEffect(() => {
@@ -287,6 +289,9 @@ const IhlrCreateRequest = () => {
       updated = [...current, userName];
     }
     setFormData({ ...formData, resp_person: updated.join(', ') });
+    if (updated.length > 0) {
+      setErrors((prev) => ({ ...prev, resp_person: false }));
+    }
   };
 
   const handleRemoveUser = (userName, e) => {
@@ -299,6 +304,9 @@ const IhlrCreateRequest = () => {
   const handleSelectAllUsers = () => {
     const deptUsers = getDepartmentUsers(formData.resp).map((u) => u.name);
     setFormData({ ...formData, resp_person: deptUsers.join(', ') });
+    if (deptUsers.length > 0) {
+      setErrors((prev) => ({ ...prev, resp_person: false }));
+    }
   };
 
   const handleClearAllUsers = () => {
@@ -309,6 +317,9 @@ const IhlrCreateRequest = () => {
     const updated = [...qaWhyWhy];
     updated[index] = value;
     setQaWhyWhy(updated);
+    if (index === 0 && value.trim()) {
+      setErrors((prev) => ({ ...prev, w1: false }));
+    }
   };
 
   const getFileMeta = (file) => {
@@ -429,31 +440,46 @@ const IhlrCreateRequest = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!canCreate) {
       warning('Access Denied: Only Administrators from the INCOMING QUALITY department are authorized to create IHLR requests.');
       return;
     }
-    if (!formData.problem || !formData.model) {
-      warning('Please fill in the Problem Description and Model.');
-      return;
+
+    const newErrors = {};
+
+    if (!formData.batch_date || !formData.batch_date.trim()) {
+      newErrors.batch_date = 'Incident Date is required';
     }
-    if (!formData.shift) {
-      warning('Please select a Shift.');
-      return;
+    if (!formData.shift || !formData.shift.trim()) {
+      newErrors.shift = 'Shift is required';
     }
-    if (!formData.four_m) {
-      warning('Please select a 4M Category.');
-      return;
+    if (!formData.model || !formData.model.trim()) {
+      newErrors.model = 'Model Name / Part is required';
     }
-    if (!formData.resp) {
-      warning('Please select a Responsibility department.');
-      return;
+    if (!formData.problem || !formData.problem.trim()) {
+      newErrors.problem = 'Problem / Defect Description is required';
+    }
+    if (!formData.four_m || !formData.four_m.trim()) {
+      newErrors.four_m = '4M Category is required';
+    }
+    if (!formData.resp || !formData.resp.trim()) {
+      newErrors.resp = 'Responsibility department is required';
     }
     if (!formData.resp_person || getSelectedUsers().length === 0) {
-      warning('Please select at least one User Name (Responsible Person) based on the department.');
+      newErrors.resp_person = 'User Name is required';
+    }
+    if (!qaWhyWhy[0] || !qaWhyWhy[0].trim()) {
+      newErrors.w1 = 'Why 1 (W1) is mandatory. Please enter root cause.';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      // DO NOT TRIGGER BACKEND!
       return;
     }
+
+    setErrors({});
 
     setSubmitting(true);
     try {
@@ -624,7 +650,7 @@ const IhlrCreateRequest = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} noValidate className="space-y-6">
         {/* Section 1: Requestor & Incident Information */}
         <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs space-y-5">
           <div className="flex items-start gap-3 pb-4 border-b border-slate-100">
@@ -652,7 +678,6 @@ const IhlrCreateRequest = () => {
                 readOnly
                 value={formData.req_no}
                 className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl font-mono font-bold text-slate-700 focus:outline-none cursor-not-allowed select-none"
-                required
               />
             </div>
 
@@ -664,10 +689,23 @@ const IhlrCreateRequest = () => {
               </label>
               <DateInput
                 value={formData.batch_date}
-                onChange={(e) => setFormData({ ...formData, batch_date: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium"
-                required
+                onChange={(e) => {
+                  setFormData({ ...formData, batch_date: e.target.value });
+                  if (errors.batch_date && e.target.value) {
+                    setErrors((prev) => ({ ...prev, batch_date: false }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition ${
+                  errors.batch_date
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {errors.batch_date && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.batch_date}</span>
+                </p>
+              )}
             </div>
 
             {/* Shift */}
@@ -677,9 +715,17 @@ const IhlrCreateRequest = () => {
               </label>
               <select
                 value={formData.shift}
-                onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium"
-                required
+                onChange={(e) => {
+                  setFormData({ ...formData, shift: e.target.value });
+                  if (errors.shift && e.target.value) {
+                    setErrors((prev) => ({ ...prev, shift: false }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition cursor-pointer ${
+                  errors.shift
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               >
                 <option value="">Select Shift</option>
                 {IHLR_SHIFTS.map((s) => (
@@ -688,6 +734,11 @@ const IhlrCreateRequest = () => {
                   </option>
                 ))}
               </select>
+              {errors.shift && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.shift}</span>
+                </p>
+              )}
             </div>
 
             {/* Model */}
@@ -699,10 +750,23 @@ const IhlrCreateRequest = () => {
                 type="text"
                 placeholder="e.g. OLS LONG ARM"
                 value={formData.model}
-                onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                required
+                onChange={(e) => {
+                  setFormData({ ...formData, model: e.target.value });
+                  if (errors.model && e.target.value.trim()) {
+                    setErrors((prev) => ({ ...prev, model: false }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-xl font-semibold text-slate-900 outline-none transition ${
+                  errors.model
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {errors.model && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.model}</span>
+                </p>
+              )}
             </div>
 
             {/* Problem Description */}
@@ -714,10 +778,23 @@ const IhlrCreateRequest = () => {
                 type="text"
                 placeholder="e.g. Low voltage / Improper sensor solder"
                 value={formData.problem}
-                onChange={(e) => setFormData({ ...formData, problem: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-semibold"
-                required
+                onChange={(e) => {
+                  setFormData({ ...formData, problem: e.target.value });
+                  if (errors.problem && e.target.value.trim()) {
+                    setErrors((prev) => ({ ...prev, problem: false }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition ${
+                  errors.problem
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {errors.problem && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.problem}</span>
+                </p>
+              )}
             </div>
 
             {/* Problem Detected At */}
@@ -784,9 +861,17 @@ const IhlrCreateRequest = () => {
               </label>
               <select
                 value={formData.four_m}
-                onChange={(e) => setFormData({ ...formData, four_m: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold"
-                required
+                onChange={(e) => {
+                  setFormData({ ...formData, four_m: e.target.value });
+                  if (errors.four_m && e.target.value) {
+                    setErrors((prev) => ({ ...prev, four_m: false }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-bold transition cursor-pointer ${
+                  errors.four_m
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               >
                 <option value="">Select 4M Category</option>
                 <option value="MAN">MAN</option>
@@ -794,6 +879,11 @@ const IhlrCreateRequest = () => {
                 <option value="METHOD">METHOD</option>
                 <option value="MATERIAL">MATERIAL</option>
               </select>
+              {errors.four_m && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.four_m}</span>
+                </p>
+              )}
             </div>
 
             {/* Responsibility (Department) */}
@@ -804,12 +894,19 @@ const IhlrCreateRequest = () => {
               <select
                 value={formData.resp}
                 onChange={(e) => {
-                  setFormData({ ...formData, resp: e.target.value, resp_person: '' });
+                  const val = e.target.value;
+                  setFormData({ ...formData, resp: val, resp_person: '' });
                   setIsUserDropdownOpen(false);
                   setUserSearchTerm('');
+                  if (errors.resp && val) {
+                    setErrors((prev) => ({ ...prev, resp: false }));
+                  }
                 }}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold cursor-pointer"
-                required
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-bold cursor-pointer transition ${
+                  errors.resp
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               >
                 <option value="">Select Responsibility</option>
                 <option value="MAINTENANCE">MAINTENANCE</option>
@@ -819,6 +916,11 @@ const IhlrCreateRequest = () => {
                 <option value="MARKETING">MARKETING</option>
                 <option value="INCOMING QUALITY">INCOMING QUALITY</option>
               </select>
+              {errors.resp && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.resp}</span>
+                </p>
+              )}
             </div>
 
             {/* Responsible Person(s) / User Name based on Department - Multi-Select */}
@@ -848,7 +950,9 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 className={`w-full min-h-[42px] px-3 py-2 border rounded-xl text-xs font-medium transition flex items-center justify-between gap-2 ${
-                  !formData.resp
+                  errors.resp_person
+                    ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 cursor-pointer'
+                    : !formData.resp
                     ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                     : getDepartmentUsers(formData.resp).length === 0
                     ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
@@ -897,12 +1001,16 @@ const IhlrCreateRequest = () => {
                   />
                 </div>
               </div>
+              {errors.resp_person && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.resp_person}</span>
+                </p>
+              )}
 
-              {/* Hidden input for HTML form validation */}
+              {/* Hidden input for HTML form accessibility */}
               <input
                 type="text"
                 tabIndex={-1}
-                required
                 value={formData.resp_person}
                 onChange={() => {}}
                 className="sr-only"
@@ -1136,31 +1244,61 @@ const IhlrCreateRequest = () => {
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <ShieldAlert className="w-4 h-4" />
             </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                3. Problem Cause Why-Why Analysis (QA Team)
-              </h2>
-              <p className="text-xs text-slate-500">
-                5-Why investigation path performed by Quality Assurance to isolate root failure.
-              </p>
+            <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                    3. Problem Cause Why-Why Analysis (QA Team)
+                  </h2>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full">
+                    W1 Mandatory *
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  5-Why investigation path performed by Quality Assurance to isolate root failure.
+                </p>
+              </div>
             </div>
           </div>
 
           <div className="space-y-3">
-            {qaWhyWhy.map((val, idx) => (
-              <div key={idx} className="flex items-center gap-3">
-                <span className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 font-mono font-bold text-xs flex items-center justify-center shrink-0">
-                  W{idx + 1}
-                </span>
-                <input
-                  type="text"
-                  placeholder={`Why #${idx + 1} cause...`}
-                  value={val}
-                  onChange={(e) => handleQaWhyChange(idx, e.target.value)}
-                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
-                />
-              </div>
-            ))}
+            {qaWhyWhy.map((val, idx) => {
+              const isW1 = idx === 0;
+              const hasW1Error = isW1 && Boolean(errors.w1);
+              return (
+                <div key={idx} className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`w-8 h-8 rounded-xl font-mono font-bold text-xs flex items-center justify-center shrink-0 border transition ${
+                        isW1
+                          ? hasW1Error
+                            ? 'bg-rose-50 border-rose-300 text-rose-700'
+                            : 'bg-amber-100/80 border-amber-300 text-amber-800'
+                          : 'bg-amber-50 border-amber-200 text-amber-700'
+                      }`}
+                    >
+                      W{idx + 1}{isW1 ? ' *' : ''}
+                    </span>
+                    <input
+                      type="text"
+                      placeholder={`Why #${idx + 1} cause...${isW1 ? ' (Mandatory)' : ''}`}
+                      value={val}
+                      onChange={(e) => handleQaWhyChange(idx, e.target.value)}
+                      className={`flex-1 px-3 py-2 border rounded-xl text-xs text-slate-900 outline-none transition ${
+                        hasW1Error
+                          ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                          : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
+                      }`}
+                    />
+                  </div>
+                  {hasW1Error && (
+                    <p className="text-[11px] text-rose-500 font-semibold pl-11 flex items-center gap-1">
+                      <span>* {errors.w1}</span>
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
