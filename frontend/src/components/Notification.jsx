@@ -62,10 +62,16 @@ const Notification = () => {
   }, []);
 
   const handleItemClick = async (item) => {
+    const activeUser = user || storage.getUser();
+    const targetReqNo = item.reqNo;
+
+    // Immediately mark item and related request as read in Redux so header badge decrements instantly
+    dispatch(markAsRead(item.id));
+    if (item.notifId) dispatch(markAsRead(item.notifId));
+    if (targetReqNo) dispatch(markAsRead(targetReqNo));
+
     if (!item.read) {
-      const activeUser = user || storage.getUser();
-      await markNotificationReadForTab(tabMode, item.notifId, item.rawId, true, activeUser, item.id);
-      dispatch(markAsRead(item.id));
+      markNotificationReadForTab(tabMode, item.notifId, item.rawId, true, activeUser, item.id, targetReqNo);
     }
     setOpen(false);
     navigate(isIhlr ? '/ihlr/notifications' : '/process-audit/notifications');

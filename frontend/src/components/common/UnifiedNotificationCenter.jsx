@@ -18,7 +18,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { useDispatch } from 'react-redux';
 import {
   setNotifications as setReduxNotifications,
-  markAllAsRead as setReduxMarkAllAsRead
+  markAllAsRead as setReduxMarkAllAsRead,
+  markAsRead as setReduxMarkAsRead,
+  decrementUnreadCount as setReduxDecrementUnreadCount
 } from '../../redux/slices/notificationSlice';
 import {
   fetchNotificationsForTab,
@@ -84,22 +86,74 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
     const updated = notifications.map((n) => (n.id === targetId ? { ...n, read: nextRead } : n));
     setNotifications(updated);
     dispatch(setReduxNotifications(updated));
+    if (nextRead) {
+      dispatch(setReduxMarkAsRead(targetId));
+      if (item.notifId) dispatch(setReduxMarkAsRead(item.notifId));
+    }
 
-    await markNotificationReadForTab(tabMode, item.notifId, item.rawId, nextRead, user, item.id);
+    const activeUser = user || storage.getUser();
+    await markNotificationReadForTab(tabMode, item.notifId, item.rawId, nextRead, activeUser, item.id, item.reqNo);
     window.dispatchEvent(new Event('refreshNotifications'));
   };
 
   // Handle Card Click: Mark as read if unread and intelligently navigate to Approvals or All Requests
   const handleCardClick = async (item) => {
-    if (!item.read) {
-      const updated = notifications.map((n) => (n.id === item.id ? { ...n, read: true } : n));
+    const targetReqNo = item.reqNo;
+    const cleanReqNo = item.reqNo ? item.reqNo.replace(/^#/, '').trim() : '';
+
+    // Identify all unread items for this card or related to this same request
+    const itemsToMarkRead = notifications.filter(
+      (n) => (n.id === item.id || (targetReqNo && n.reqNo && n.reqNo === targetReqNo)) && !n.read
+    );
+
+    // Update local and Redux state immediately so badge and unreadCount decrement instantly
+    if (itemsToMarkRead.length > 0 || !item.read) {
+      const updated = notifications.map((n) => {
+        if (n.id === item.id || (targetReqNo && n.reqNo && n.reqNo === targetReqNo)) {
+          return { ...n, read: true };
+        }
+        return n;
+      });
       setNotifications(updated);
       dispatch(setReduxNotifications(updated));
-      await markNotificationReadForTab(tabMode, item.notifId, item.rawId, true, user, item.id);
-      window.dispatchEvent(new Event('refreshNotifications'));
+      dispatch(setReduxMarkAsRead(item.id));
+      if (item.notifId) dispatch(setReduxMarkAsRead(item.notifId));
+      if (targetReqNo) dispatch(setReduxMarkAsRead(targetReqNo));
+
+      // Asynchronously persist read state to database and localStorage
+      const activeUser = user || storage.getUser();
+      (async () => {
+        try {
+          if (itemsToMarkRead.length > 0) {
+            for (const targetItem of itemsToMarkRead) {
+              await markNotificationReadForTab(
+                tabMode,
+                targetItem.notifId,
+                targetItem.rawId,
+                true,
+                activeUser,
+                targetItem.id,
+                targetReqNo
+              );
+            }
+          } else {
+            await markNotificationReadForTab(
+              tabMode,
+              item.notifId,
+              item.rawId,
+              true,
+              activeUser,
+              item.id,
+              targetReqNo
+            );
+          }
+          window.dispatchEvent(new Event('refreshNotifications'));
+        } catch (err) {
+          console.warn('Failed to persist notification read state:', err);
+        }
+      })();
     }
 
-    const cleanReqNo = item.reqNo ? item.reqNo.replace(/^#/, '').trim() : '';
     const itemType = String(item.type || '').toLowerCase();
     const itemBadge = String(item.badgeLabel || '').toUpperCase();
     const itemFooter = String(item.footerFlag || '').toUpperCase();
