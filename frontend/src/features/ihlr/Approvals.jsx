@@ -176,10 +176,17 @@ const IhlrApprovals = () => {
     'INCOMING QUALITY'
   ];
 
+  const isUserActive = (u) => {
+    if (!u) return false;
+    if (u.is_active === false || u.is_active === 0 || u.is_active === '0') return false;
+    const s = String(u.status || 'ACTIVE').trim().toUpperCase();
+    return s !== 'INACTIVE';
+  };
+
   const departmentList = Array.from(
     new Set([
       ...STANDARD_DEPTS,
-      ...dbUsers.map((u) => (u.department || '').trim().toUpperCase()).filter(Boolean)
+      ...dbUsers.filter(isUserActive).map((u) => (u.department || '').trim().toUpperCase()).filter(Boolean)
     ])
   ).sort();
 
@@ -188,7 +195,7 @@ const IhlrApprovals = () => {
     const targetDept = dept.trim().toUpperCase();
     return dbUsers.filter((u) => {
       const uDept = (u.department || '').trim().toUpperCase();
-      return uDept === targetDept;
+      return uDept === targetDept && isUserActive(u);
     });
   };
 

@@ -132,14 +132,21 @@ const MyRequests = () => {
     }
     let isMounted = true;
     setLoadingDeptUsers(true);
+    const isUserActive = (u) => {
+      if (!u) return false;
+      if (u.is_active === false || u.is_active === 0 || u.is_active === '0') return false;
+      const s = String(u.status || 'ACTIVE').trim().toUpperCase();
+      return s !== 'INACTIVE';
+    };
+
     processAuditService.getUsers(reassignDept)
       .then((users) => {
         if (!isMounted) return;
         if (Array.isArray(users) && users.length > 0) {
-          setDeptUsers(users);
+          setDeptUsers(users.filter(isUserActive));
         } else {
           const matched = dbUsers.filter(
-            (u) => (u.department || u.dept || '').trim().toLowerCase() === reassignDept.trim().toLowerCase()
+            (u) => (u.department || u.dept || '').trim().toLowerCase() === reassignDept.trim().toLowerCase() && isUserActive(u)
           );
           setDeptUsers(matched);
         }
@@ -148,7 +155,7 @@ const MyRequests = () => {
         console.error('Failed to fetch executors for department:', err);
         if (isMounted) {
           const matched = dbUsers.filter(
-            (u) => (u.department || u.dept || '').trim().toLowerCase() === reassignDept.trim().toLowerCase()
+            (u) => (u.department || u.dept || '').trim().toLowerCase() === reassignDept.trim().toLowerCase() && isUserActive(u)
           );
           setDeptUsers(matched);
         }
