@@ -460,6 +460,18 @@ const IhlrCreateRequest = () => {
     if (!formData.problem || !formData.problem.trim()) {
       newErrors.problem = 'Problem / Defect Description is required';
     }
+    if (!formData.problem_detected_at || !formData.problem_detected_at.trim()) {
+      newErrors.problem_detected_at = 'Problem Detected At is required';
+    }
+    if (!formData.received_from || !formData.received_from.trim()) {
+      newErrors.received_from = 'Received From (Line/Cell) is required';
+    }
+    if (!formData.analysis_done_by || !formData.analysis_done_by.trim()) {
+      newErrors.analysis_done_by = 'Analysis Done By is required';
+    }
+    if (formData.actual_qty === '' || formData.actual_qty === null || formData.actual_qty === undefined || Number(formData.actual_qty) <= 0) {
+      newErrors.actual_qty = 'Actual Rejected Qty is required (min 1)';
+    }
     if (!formData.four_m || !formData.four_m.trim()) {
       newErrors.four_m = '4M Category is required';
     }
@@ -670,8 +682,9 @@ const IhlrCreateRequest = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
             {/* Req No */}
             <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Req No (Auto-Generated) *
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+                <span>Req No (Auto-Generated)</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <input
                 type="text"
@@ -684,7 +697,10 @@ const IhlrCreateRequest = () => {
             {/* Incident Date */}
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center justify-between">
-                <span>Incident Date *</span>
+                <span className="flex items-center">
+                  <span>Incident Date</span>
+                  <span className="text-red-500 font-bold ml-1">*</span>
+                </span>
                 <span className="text-[10px] text-slate-400 font-mono font-normal">DD/MM/YYYY</span>
               </label>
               <DateInput
@@ -710,8 +726,9 @@ const IhlrCreateRequest = () => {
 
             {/* Shift */}
             <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Shift *
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+                <span>Shift</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <select
                 value={formData.shift}
@@ -743,8 +760,9 @@ const IhlrCreateRequest = () => {
 
             {/* Model */}
             <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Model Name / Part *
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+                <span>Model Name / Part</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <input
                 type="text"
@@ -771,8 +789,9 @@ const IhlrCreateRequest = () => {
 
             {/* Problem Description */}
             <div className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Problem / Defect Description *
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+                <span>Problem / Defect Description</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <input
                 type="text"
@@ -799,65 +818,126 @@ const IhlrCreateRequest = () => {
 
             {/* Problem Detected At */}
             <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Problem Detected At
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+                <span>Problem Detected At</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <input
                 type="text"
                 placeholder="e.g. Final Testing"
                 value={formData.problem_detected_at}
-                onChange={(e) => setFormData({ ...formData, problem_detected_at: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                onChange={(e) => {
+                  setFormData({ ...formData, problem_detected_at: e.target.value });
+                  if (errors.problem_detected_at && e.target.value.trim()) {
+                    setErrors((prev) => ({ ...prev, problem_detected_at: false }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none transition ${
+                  errors.problem_detected_at
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {errors.problem_detected_at && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.problem_detected_at}</span>
+                </p>
+              )}
             </div>
 
             {/* Received From */}
             <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Received From (Line/Cell)
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+                <span>Received From (Line/Cell)</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <input
                 type="text"
                 placeholder="e.g. D3/LINE"
                 value={formData.received_from}
-                onChange={(e) => setFormData({ ...formData, received_from: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                onChange={(e) => {
+                  setFormData({ ...formData, received_from: e.target.value });
+                  if (errors.received_from && e.target.value.trim()) {
+                    setErrors((prev) => ({ ...prev, received_from: false }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none transition ${
+                  errors.received_from
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {errors.received_from && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.received_from}</span>
+                </p>
+              )}
             </div>
 
             {/* Analysis Done By */}
             <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Analysis Done By
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+                <span>Analysis Done By</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <input
                 type="text"
                 placeholder="e.g. GURU"
                 value={formData.analysis_done_by}
-                onChange={(e) => setFormData({ ...formData, analysis_done_by: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium"
+                onChange={(e) => {
+                  setFormData({ ...formData, analysis_done_by: e.target.value });
+                  if (errors.analysis_done_by && e.target.value.trim()) {
+                    setErrors((prev) => ({ ...prev, analysis_done_by: false }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition ${
+                  errors.analysis_done_by
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {errors.analysis_done_by && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.analysis_done_by}</span>
+                </p>
+              )}
             </div>
 
             {/* Actual Quantity */}
             <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Actual Rejected Qty
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+                <span>Actual Rejected Qty</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <input
                 type="number"
                 min="1"
                 placeholder="e.g. 1"
                 value={formData.actual_qty}
-                onChange={(e) => setFormData({ ...formData, actual_qty: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-mono"
+                onChange={(e) => {
+                  setFormData({ ...formData, actual_qty: e.target.value });
+                  if (errors.actual_qty && e.target.value && Number(e.target.value) > 0) {
+                    setErrors((prev) => ({ ...prev, actual_qty: false }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-mono transition ${
+                  errors.actual_qty
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {errors.actual_qty && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.actual_qty}</span>
+                </p>
+              )}
             </div>
 
             {/* 4M Category */}
             <div className="sm:col-span-2 lg:col-span-2">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                4M Category *
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+                <span>4M Category</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <select
                 value={formData.four_m}
@@ -888,8 +968,9 @@ const IhlrCreateRequest = () => {
 
             {/* Responsibility (Department) */}
             <div className="sm:col-span-1 lg:col-span-2">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
-                Responsibility (Resp) *
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+                <span>Responsibility (Resp)</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <select
                 value={formData.resp}
@@ -926,8 +1007,9 @@ const IhlrCreateRequest = () => {
             {/* Responsible Person(s) / User Name based on Department - Multi-Select */}
             <div className="relative sm:col-span-1 lg:col-span-2" ref={userDropdownRef}>
               <div className="flex items-center justify-between mb-1">
-                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-                  User Name (Based on Dep) *
+                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center">
+                  <span>User Name (Based on Dep)</span>
+                  <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
                 {formData.resp && getDepartmentUsers(formData.resp).length > 0 && getSelectedUsers().length > 0 && (
                   <div className="flex items-center gap-2 text-[10px]">
@@ -1250,8 +1332,9 @@ const IhlrCreateRequest = () => {
                   <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
                     3. Problem Cause Why-Why Analysis (QA Team)
                   </h2>
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full">
-                    W1 Mandatory *
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
+                    <span>W1 Mandatory</span>
+                    <span className="text-red-500 font-bold">*</span>
                   </span>
                 </div>
                 <p className="text-xs text-slate-500">
@@ -1277,7 +1360,7 @@ const IhlrCreateRequest = () => {
                           : 'bg-amber-50 border-amber-200 text-amber-700'
                       }`}
                     >
-                      W{idx + 1}{isW1 ? ' *' : ''}
+                      W{idx + 1}{isW1 && <span className="text-red-500 ml-0.5 font-bold">*</span>}
                     </span>
                     <input
                       type="text"
