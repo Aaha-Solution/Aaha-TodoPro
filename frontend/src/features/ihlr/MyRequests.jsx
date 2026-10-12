@@ -75,6 +75,7 @@ const IhlrMyRequests = () => {
 
   // Modal State
   const [activeModalRequest, setActiveModalRequest] = useState(null);
+  const [modalInitialEdit, setModalInitialEdit] = useState(false);
   const [editingCloser, setEditingCloser] = useState(null);
   const [selectedPreviewAttachment, setSelectedPreviewAttachment] = useState(null);
 
@@ -654,7 +655,10 @@ const IhlrMyRequests = () => {
                     <td className="py-3.5 px-3 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1">
                         <button
-                          onClick={() => setActiveModalRequest(r)}
+                          onClick={() => {
+                            setActiveModalRequest(r);
+                            setModalInitialEdit(false);
+                          }}
                           className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
                           title="View Complete Report"
                         >
@@ -664,13 +668,14 @@ const IhlrMyRequests = () => {
                           disabled={!isAdmin && r.status === 'CLOSED'}
                           onClick={() => {
                             if (!isAdmin && r.status === 'CLOSED') return;
-                            setEditingCloser(r);
+                            setActiveModalRequest(r);
+                            setModalInitialEdit(true);
                           }}
                           className={`p-1.5 rounded-lg transition ${!isAdmin && r.status === 'CLOSED'
                               ? 'text-slate-300 cursor-not-allowed select-none'
                               : 'text-slate-500 hover:bg-slate-100 cursor-pointer'
                             }`}
-                          title={!isAdmin && r.status === 'CLOSED' ? 'Incident Closed — Updates locked for users (Admin only)' : 'Update Containment & Status'}
+                          title={!isAdmin && r.status === 'CLOSED' ? 'Incident Closed — Updates locked for users (Admin only)' : 'Edit Requester Details'}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -693,15 +698,17 @@ const IhlrMyRequests = () => {
         </div>
       </div>
 
-      {/* Complete Inspection Modal (Matching Screenshots 1 & 2) */}
+      {/* Complete Inspection & Edit Modal */}
       <IhlrRequestDetailsModal
         isOpen={Boolean(activeModalRequest)}
         request={activeModalRequest}
-        onClose={() => setActiveModalRequest(null)}
-        onEditMode={(req) => {
-          if (!isAdmin && req?.status === 'CLOSED') return;
+        initialEditMode={modalInitialEdit}
+        onClose={() => {
           setActiveModalRequest(null);
-          setEditingCloser(req);
+          setModalInitialEdit(false);
+        }}
+        onUpdated={() => {
+          fetchRequests();
         }}
       />
 

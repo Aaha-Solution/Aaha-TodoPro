@@ -624,9 +624,8 @@ const IhlrDashboard = () => {
         isOpen={Boolean(selectedRequest)}
         request={selectedRequest}
         onClose={() => setSelectedRequest(null)}
-        onEditMode={() => {
-          setSelectedRequest(null);
-          navigate('/ihlr/my-requests');
+        onUpdated={() => {
+          loadData();
         }}
       />
 

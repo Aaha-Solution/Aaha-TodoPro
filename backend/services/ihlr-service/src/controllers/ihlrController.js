@@ -496,13 +496,13 @@ export const updateIhlrRequest = async (req, res) => {
       (createdEmail && userEmail && userEmail === createdEmail)
     );
 
-    if (!isAdmin && !isCloser) {
-      return errorResponse(res, 'You are not authorized to update this IHLR request. Only the assigned closer or admin can submit updates.', 403);
+    if (!isAdmin && !isCloser && !isRequester) {
+      return errorResponse(res, 'You are not authorized to update this IHLR request. Only the requester, assigned closer, or quality admin can update.', 403);
     }
 
     // Single-Submission Rule for Closer:
     // Closer user can submit details ONLY ONCE. Only Quality Admin can update multiple times.
-    if (!isAdmin && isCloser) {
+    if (!isAdmin && isCloser && !isRequester) {
       const isAlreadySubmittedByCloser = Boolean(
         String(existing.status || '').toUpperCase() === 'IN_PROGRESS' ||
         String(existing.status || '').toUpperCase() === 'CLOSED'
@@ -518,20 +518,31 @@ export const updateIhlrRequest = async (req, res) => {
     }
 
     // Role-based field segregation:
-    // - Closer can ONLY update: prod_why_why, action, evidence_attachment, target_date
-    // - Admin can update any field (including remarks, status, resp, resp_person)
+    // - Requester can update: requester details only (batch_date, shift, problem, model, problem_detected_at, received_from, analysis_done_by, defect_image, qa_why_why, actual_qty, four_m, resp, resp_person, resp_person_email)
+    // - Closer can update: prod_why_why, action, evidence_attachment, target_date
+    // - Admin can update any field (including remarks, status, resp, resp_person, qa_why_why, etc.)
     let safeUpdates = {};
     if (isAdmin) {
       const allowed = [
         'req_no', 'batch_date', 'shift', 'problem', 'model', 
         'problem_detected_at', 'received_from', 'analysis_done_by', 
-        'defect_image', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
+        'defect_image', 'qa_why_why', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
         'prod_why_why', 'action', 'evidence_attachment', 'target_date', 'remarks', 'status'
       ];
       for (const k of allowed) {
         if (req.body[k] !== undefined) safeUpdates[k] = req.body[k];
       }
     } else {
+      if (isRequester) {
+        const requesterAllowed = [
+          'batch_date', 'shift', 'problem', 'model', 
+          'problem_detected_at', 'received_from', 'analysis_done_by', 
+          'defect_image', 'qa_why_why', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email'
+        ];
+        for (const k of requesterAllowed) {
+          if (req.body[k] !== undefined) safeUpdates[k] = req.body[k];
+        }
+      }
       if (isCloser) {
         if (req.body.prod_why_why !== undefined) safeUpdates.prod_why_why = req.body.prod_why_why;
         if (req.body.action !== undefined) safeUpdates.action = req.body.action;
@@ -600,6 +611,13 @@ export const updateIhlrRequest = async (req, res) => {
         safeUpdates.prod_why_why = JSON.parse(safeUpdates.prod_why_why);
       } catch {
         safeUpdates.prod_why_why = [safeUpdates.prod_why_why];
+      }
+    }
+    if (safeUpdates.qa_why_why !== undefined && typeof safeUpdates.qa_why_why === 'string') {
+      try {
+        safeUpdates.qa_why_why = JSON.parse(safeUpdates.qa_why_why);
+      } catch {
+        safeUpdates.qa_why_why = [safeUpdates.qa_why_why];
       }
     }
 

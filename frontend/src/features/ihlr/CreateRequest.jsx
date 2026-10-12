@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
   FileText, 
   UploadCloud, 
@@ -20,7 +20,8 @@ import {
   ChevronDown,
   Search,
   Users,
-  PenTool
+  PenTool,
+  Save
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
 import { useAuth } from '../../hooks/useAuth';
@@ -30,11 +31,17 @@ import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
 import { getTodayDateInput, formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { IHLR_SHIFTS } from '../../utils/constants';
+import { parseAttachments } from './IhlrAttachmentView';
 
 const IhlrCreateRequest = () => {
   const { alert, success, error, warning } = useModal();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { user } = useAuth();
+
+  const editId = searchParams.get('id') || searchParams.get('edit') || location.state?.editId;
+  const isEditMode = Boolean(editId);
 
   const userDept = (user?.department || (() => {
     try {
@@ -204,6 +211,34 @@ const IhlrCreateRequest = () => {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (editId) {
+      ihlrService.getRequestById(editId).then((r) => {
+        if (r) {
+          setFormData({
+            req_no: r.req_no || `IHLR-${r.id}`,
+            batch_date: r.batch_date ? String(r.batch_date).split('T')[0] : getTodayDateInput(),
+            shift: r.shift || '',
+            problem: r.problem || '',
+            model: r.model || '',
+            problem_detected_at: r.problem_detected_at || '',
+            received_from: r.received_from || '',
+            analysis_done_by: r.analysis_done_by || '',
+            actual_qty: r.actual_qty || '',
+            four_m: r.four_m || '',
+            resp: r.resp || '',
+            resp_person: r.resp_person || '',
+            status: r.status || 'OPEN'
+          });
+          setAttachments(parseAttachments(r.defect_image));
+          if (Array.isArray(r.qa_why_why) && r.qa_why_why.length > 0) {
+            setQaWhyWhy([...r.qa_why_why, '', '', '', ''].slice(0, 5));
+          }
+        }
+      }).catch(err => console.warn('Failed to load request for edit:', err));
+    }
+  }, [editId]);
 
   const getDepartmentUsers = (dept) => {
     if (!dept) return [];
@@ -461,6 +496,29 @@ const IhlrCreateRequest = () => {
         .filter(Boolean)
         .join(', ');
 
+      if (isEditMode) {
+        await ihlrService.updateRequest(editId, {
+          batch_date: formData.batch_date || new Date().toISOString().split('T')[0],
+          shift: formData.shift,
+          problem: formData.problem,
+          model: formData.model,
+          problem_detected_at: formData.problem_detected_at,
+          received_from: formData.received_from,
+          analysis_done_by: formData.analysis_done_by,
+          actual_qty: formData.actual_qty ? Number(formData.actual_qty) : 1,
+          four_m: formData.four_m,
+          resp: formData.resp,
+          resp_person: formData.resp_person,
+          resp_person_email: combinedAssignedEmails || '',
+          qa_why_why: qaWhyWhy,
+          defect_image: finalAttachments.length > 0 ? JSON.stringify(finalAttachments) : '',
+        });
+        await success(`IHLR Report #${formData.req_no} requester details updated successfully!`);
+        window.dispatchEvent(new Event('refreshNotifications'));
+        navigate('/ihlr/my-requests');
+        return;
+      }
+
       await ihlrService.createRequest({
         ...formData,
         batch_date: formData.batch_date || new Date().toISOString().split('T')[0],
@@ -533,10 +591,12 @@ const IhlrCreateRequest = () => {
             <span>Back to Dashboard</span>
           </button>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Create IHLR Analysis Report
+            {isEditMode ? `Edit Requester Details (${formData.req_no})` : 'Create IHLR Analysis Report'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Log line rejection incident, 5-Why problem root cause, and occurrence containment.
+            {isEditMode 
+              ? 'Update line rejection incident details, defect description, attachments, and QA 5-Why analysis.'
+              : 'Log line rejection incident, 5-Why problem root cause, and occurrence containment.'}
           </p>
         </div>
       </div>
@@ -1120,8 +1180,17 @@ const IhlrCreateRequest = () => {
             disabled={submitting}
             className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 disabled:opacity-50 cursor-pointer"
           >
-            <Send className="w-4 h-4" />
-            <span>{submitting ? 'Submitting...' : 'Submit Report'}</span>
+            {isEditMode ? (
+              <>
+                <Check className="w-4 h-4 stroke-[2.5]" />
+                <span>{submitting ? 'Updating...' : 'Update Requester Details'}</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                <span>{submitting ? 'Submitting...' : 'Submit Report'}</span>
+              </>
+            )}
           </button>
         </div>
       </form>

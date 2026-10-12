@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Eye, 
   X, 
@@ -16,7 +16,14 @@ import {
   Wrench,
   UserCheck,
   FileSpreadsheet,
-  Check
+  Check,
+  Edit2,
+  Trash2,
+  UploadCloud,
+  Plus,
+  Search,
+  Users,
+  ChevronDown
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -29,6 +36,7 @@ import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
+import { ihlrService } from '../../services/ihlrService';
 
 /**
  * Meaningful IHLR (In-House Line Rejection) Inspection & Analysis Report Modal:
@@ -37,8 +45,8 @@ import { useAuth } from '../../hooks/useAuth';
  *   1. Requester Details (Incident info, defect description, defect attachments, QA 5-Why)
  *   2. Closer Details (Production 5-Why, containment actions, closer evidence, target date, remarks, sign-off)
  */
-const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
-  const { error: modalError } = useModal();
+const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initialEditMode = false, onUpdated }) => {
+  const { error: modalError, success: modalSuccess } = useModal();
   const { user } = useAuth();
 
   const userDept = (user?.department || (() => {
@@ -54,10 +62,221 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
   const isIncomingQuality = userDept === 'INCOMING QUALITY';
   const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
 
+  const [localRequest, setLocalRequest] = useState(request);
   const [activeTab, setActiveTab] = useState('requester'); // 'requester' | 'closer'
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFormat, setExportFormat] = useState('excel'); // 'excel' | 'pdf'
+
+  // Requester Edit Mode States
+  const [isEditMode, setIsEditMode] = useState(Boolean(initialEditMode));
+  const [isSavingRequester, setIsSavingRequester] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    batch_date: '',
+    shift: 'Shift 1',
+    model: '',
+    four_m: 'MAN',
+    resp: 'PRODUCTION',
+    resp_person: '',
+    actual_qty: 1,
+    problem_detected_at: '',
+    received_from: '',
+    analysis_done_by: '',
+    problem: '',
+    occurrence_cause: ''
+  });
+  const [editAttachments, setEditAttachments] = useState([]);
+  const [newFiles, setNewFiles] = useState([]);
+  const [editQaWhyWhy, setEditQaWhyWhy] = useState(['', '', '', '', '']);
+  const [dbUsers, setDbUsers] = useState([]);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const userDropdownRef = useRef(null);
+
+  const req = localRequest || request;
+
+  const isRequester = Boolean(
+    req && (
+      (req.created_by_id && user?.id && String(req.created_by_id) === String(user.id)) ||
+      (req.created_by && user?.name && req.created_by.trim().toLowerCase() === user.name.trim().toLowerCase()) ||
+      (req.created_by_email && user?.email && req.created_by_email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+      (!req.created_by && !req.created_by_email)
+    )
+  );
+
+  const isClosed =
+    (req?.status || '').toUpperCase() === 'CLOSED' ||
+    (req?.status || '').toUpperCase() === 'APPROVED';
+
+  const canEditRequester = Boolean(req && (isAdmin || isRequester) && (!isClosed || isAdmin));
+
+  const initEditState = (targetReq = req) => {
+    if (!targetReq) return;
+    let bDate = '';
+    if (targetReq.batch_date) {
+      try {
+        bDate = String(targetReq.batch_date).split('T')[0];
+      } catch {
+        bDate = '';
+      }
+    }
+    setEditFormData({
+      batch_date: bDate || new Date().toISOString().split('T')[0],
+      shift: targetReq.shift || 'Shift 1',
+      model: targetReq.model || '',
+      four_m: targetReq.four_m || 'MAN',
+      resp: targetReq.resp || 'PRODUCTION',
+      resp_person: targetReq.resp_person || '',
+      actual_qty: targetReq.actual_qty || 1,
+      problem_detected_at: targetReq.problem_detected_at || '',
+      received_from: targetReq.received_from || '',
+      analysis_done_by: targetReq.analysis_done_by || '',
+      problem: targetReq.problem || '',
+      occurrence_cause: targetReq.occurrence_cause || targetReq.detailed_observation || targetReq.problem || ''
+    });
+    setEditAttachments(parseAttachments(targetReq.defect_image));
+    setNewFiles([]);
+    setEditQaWhyWhy(
+      Array.isArray(targetReq.qa_why_why) && targetReq.qa_why_why.length > 0
+        ? [...targetReq.qa_why_why, '', '', '', ''].slice(0, 5)
+        : ['', '', '', '', '']
+    );
+  };
+
+  useEffect(() => {
+    setLocalRequest(request);
+    if (isOpen && request) {
+      initEditState(request);
+      if (initialEditMode) {
+        setIsEditMode(true);
+        setActiveTab('requester');
+      } else {
+        setIsEditMode(false);
+      }
+    }
+  }, [request?.id, isOpen, initialEditMode]);
+
+  useEffect(() => {
+    if (isOpen) {
+      ihlrService.getUsers().then(users => {
+        if (Array.isArray(users)) setDbUsers(users);
+      }).catch(() => {});
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target)) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getDepartmentUsers = (dept) => {
+    if (!dept) return [];
+    const targetDept = dept.trim().toUpperCase();
+    return dbUsers.filter((u) => {
+      const uDept = (u.department || '').trim().toUpperCase();
+      return uDept === targetDept;
+    });
+  };
+
+  const getSelectedUsers = () => {
+    if (!editFormData.resp_person) return [];
+    return editFormData.resp_person
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  };
+
+  const handleToggleUser = (userName) => {
+    const current = getSelectedUsers();
+    let updated;
+    if (current.includes(userName)) {
+      updated = current.filter((u) => u !== userName);
+    } else {
+      updated = [...current, userName];
+    }
+    setEditFormData(prev => ({ ...prev, resp_person: updated.join(', ') }));
+  };
+
+  const handleRemoveExistingAttachment = (indexToRemove) => {
+    setEditAttachments(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleRemoveNewFile = (indexToRemove) => {
+    setNewFiles(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleNewFilesSelect = (e) => {
+    const selected = Array.from(e.target.files || []);
+    if (selected.length > 0) {
+      setNewFiles(prev => [...prev, ...selected]);
+    }
+    e.target.value = '';
+  };
+
+  const handleSaveRequesterDetails = async () => {
+    if (!editFormData.model?.trim()) {
+      modalError('Please provide a Model Name / Part.');
+      return;
+    }
+    if (!editFormData.problem?.trim()) {
+      modalError('Please describe the Defect Problem / Phenomenon.');
+      return;
+    }
+    if (!editFormData.resp) {
+      modalError('Please select a Responsibility Department.');
+      return;
+    }
+
+    setIsSavingRequester(true);
+    try {
+      let newlyUploaded = [];
+      if (newFiles.length > 0) {
+        newlyUploaded = await ihlrService.uploadAttachments(newFiles);
+      }
+
+      const finalAttachments = [...editAttachments, ...newlyUploaded];
+
+      const requesterUpdates = {
+        batch_date: editFormData.batch_date,
+        shift: editFormData.shift,
+        model: editFormData.model.trim(),
+        four_m: editFormData.four_m,
+        resp: editFormData.resp,
+        resp_person: editFormData.resp_person,
+        actual_qty: Number(editFormData.actual_qty) || 1,
+        problem_detected_at: editFormData.problem_detected_at?.trim() || '',
+        received_from: editFormData.received_from?.trim() || '',
+        analysis_done_by: editFormData.analysis_done_by?.trim() || '',
+        problem: editFormData.problem.trim(),
+        occurrence_cause: editFormData.occurrence_cause?.trim() || '',
+        defect_image: finalAttachments.length > 0 ? JSON.stringify(finalAttachments) : '',
+        qa_why_why: editQaWhyWhy
+      };
+
+      const result = await ihlrService.updateRequest(req.id, requesterUpdates);
+      const mergedUpdated = {
+        ...req,
+        ...requesterUpdates,
+        ...(result || {})
+      };
+
+      setLocalRequest(mergedUpdated);
+      setIsEditMode(false);
+      setNewFiles([]);
+      onUpdated?.(mergedUpdated);
+      modalSuccess('Requester details updated successfully!');
+    } catch (err) {
+      console.error('Failed to update requester details:', err);
+      modalError(err.message || 'Failed to update requester details. Please try again.');
+    } finally {
+      setIsSavingRequester(false);
+    }
+  };
 
   useEffect(() => {
     setActiveTab('requester');
@@ -65,12 +284,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
 
   if (!isOpen || !request) return null;
 
-  const isClosed =
-    (request.status || '').toUpperCase() === 'CLOSED' ||
-    (request.status || '').toUpperCase() === 'APPROVED';
-
-  const attachments = parseAttachments(request.defect_image);
-  const evidenceAttachments = parseAttachments(request.evidence_attachment);
+  const attachments = parseAttachments(req.defect_image);
+  const evidenceAttachments = parseAttachments(req.evidence_attachment);
 
   const formatDate = (dateStr) => {
     return formatDateDDMMYYYY(dateStr);
@@ -343,20 +558,44 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                   <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
                     IHLR Rejection Analysis Report
                   </h3>
-                  {isAdmin && onEditMode && (
-                    <button
-                      type="button"
-                      onClick={() => onEditMode(request)}
-                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[11px] font-bold rounded-full uppercase tracking-wider transition shadow-2xs cursor-pointer"
-                    >
-                      EDIT MODE
-                    </button>
+                  {canEditRequester && (
+                    isEditMode ? (
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 bg-amber-500 text-white text-[10px] font-black rounded-full uppercase tracking-wider animate-pulse">
+                          EDITING REQUESTER DETAILS
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            initEditState(req);
+                            setIsEditMode(false);
+                          }}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded-full uppercase tracking-wider transition cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          initEditState(req);
+                          setIsEditMode(true);
+                          setActiveTab('requester');
+                        }}
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[11px] font-bold rounded-full uppercase tracking-wider transition shadow-2xs cursor-pointer flex items-center gap-1.5"
+                        title="Edit Requester Details"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>EDIT MODE</span>
+                      </button>
+                    )
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Tracking details for:{' '}
                   <strong className="text-slate-900 font-mono">
-                    {request.req_no || `IHLR-${request.id}`}
+                    {req?.req_no || `IHLR-${req?.id}`}
                   </strong>
                 </p>
               </div>
@@ -565,7 +804,436 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                   </div>
                 </div>
               </div>
+            ) : isEditMode ? (
+              /* TAB 1: REQUESTER DETAILS - EDIT MODE */
+              <div className="space-y-6 animate-in fade-in duration-150">
+                {/* 📁 1. GENERAL INFORMATION & DEFECT PARAMETERS (EDITABLE) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
+                      <Folder className="w-4 h-4" />
+                      <span>1. INCIDENT &amp; LINE DEFECT DETAILS</span>
+                    </div>
+                    <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 uppercase tracking-wider">
+                      Requester Edit Active
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs p-4 rounded-2xl bg-slate-50/90 border border-slate-200">
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        REQ NO
+                      </span>
+                      <div className="px-3 py-2 bg-slate-200/80 rounded-xl font-bold font-mono text-slate-700 border border-slate-300/80 text-xs">
+                        {req.req_no || `IHLR-${req.id}`}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        INCIDENT DATE <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={editFormData.batch_date}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, batch_date: e.target.value }))}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        SHIFT <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={editFormData.shift}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, shift: e.target.value }))}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                      >
+                        <option value="Shift 1">Shift 1 (06:30 AM - 03:00 PM)</option>
+                        <option value="Shift 2">Shift 2 (03:00 PM - 11:30 PM)</option>
+                        <option value="Shift 3">Shift 3 (11:30 PM - 06:30 AM)</option>
+                        <option value="General">General (08:30 AM - 05:00 PM)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        STATUS (PRESERVED)
+                      </span>
+                      <div className="pt-1">
+                        {getStatusBadge(req.status)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        4M CATEGORY <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={editFormData.four_m}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, four_m: e.target.value }))}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-amber-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                      >
+                        <option value="MAN">MAN</option>
+                        <option value="MACHINE">MACHINE</option>
+                        <option value="METHOD">METHOD</option>
+                        <option value="MATERIAL">MATERIAL</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        RESPONSIBILITY (DEPT) <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={editFormData.resp}
+                        onChange={(e) => {
+                          const nextDept = e.target.value;
+                          setEditFormData(prev => ({ ...prev, resp: nextDept, resp_person: '' }));
+                        }}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                      >
+                        <option value="PRODUCTION">PRODUCTION</option>
+                        <option value="QUALITY">QUALITY</option>
+                        <option value="MAINTENANCE">MAINTENANCE</option>
+                        <option value="SCM">SCM</option>
+                        <option value="LOGISTICS">LOGISTICS</option>
+                        <option value="HR">HR</option>
+                      </select>
+                    </div>
+
+                    {/* RESPONSIBILITY (PERSON) MULTI-SELECT DROPDOWN */}
+                    <div className="relative sm:col-span-2" ref={userDropdownRef}>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        RESPONSIBILITY PERSON(S)
+                      </label>
+                      <div
+                        onClick={() => setIsUserDropdownOpen(prev => !prev)}
+                        className="w-full min-h-[38px] px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs cursor-pointer flex items-center justify-between gap-2 hover:border-slate-400 focus:ring-2 focus:ring-blue-500/20 transition"
+                      >
+                        <div className="flex items-center gap-1.5 flex-wrap min-w-0 py-0.5">
+                          {getSelectedUsers().length > 0 ? (
+                            getSelectedUsers().map((uName) => (
+                              <span
+                                key={uName}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-800 text-[11px] font-semibold border border-blue-200"
+                              >
+                                <span>{uName}</span>
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleUser(uName);
+                                  }}
+                                  className="text-blue-500 hover:text-blue-800 cursor-pointer ml-0.5"
+                                >
+                                  ×
+                                </span>
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-slate-400 text-xs">Select assigned person(s)...</span>
+                          )}
+                        </div>
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
+                      </div>
+
+                      {/* Dropdown Menu */}
+                      {isUserDropdownOpen && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                          <div className="p-2 border-b border-slate-100 bg-slate-50/80">
+                            <div className="relative">
+                              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                              <input
+                                type="text"
+                                value={userSearchTerm}
+                                onChange={(e) => setUserSearchTerm(e.target.value)}
+                                placeholder="Search by name..."
+                                className="w-full pl-8 pr-3 py-1 bg-white border border-slate-200 rounded-lg text-xs outline-none"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          </div>
+                          <div className="max-h-48 overflow-y-auto p-1 divide-y divide-slate-50 text-xs">
+                            {getDepartmentUsers(editFormData.resp)
+                              .filter((u) => {
+                                const q = userSearchTerm.toLowerCase();
+                                return (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+                              })
+                              .map((u) => {
+                                const isChecked = getSelectedUsers().includes(u.name);
+                                return (
+                                  <div
+                                    key={u.id || u.name}
+                                    onClick={() => handleToggleUser(u.name)}
+                                    className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition select-none ${
+                                      isChecked ? 'bg-blue-50 text-blue-900 font-semibold' : 'hover:bg-slate-50 text-slate-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isChecked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300'}`}>
+                                        {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                      </div>
+                                      <span>{u.name}</span>
+                                    </div>
+                                    {u.department && <span className="text-[10px] text-slate-400">{u.department}</span>}
+                                  </div>
+                                );
+                              })}
+                            {getDepartmentUsers(editFormData.resp).length === 0 && (
+                              <div className="p-3 text-center text-slate-400 italic text-[11px]">
+                                No registered users found for {editFormData.resp}.
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-[11px]">
+                            <span className="text-slate-500">{getSelectedUsers().length} selected</span>
+                            <button
+                              type="button"
+                              onClick={() => setIsUserDropdownOpen(false)}
+                              className="px-2.5 py-0.5 bg-blue-600 text-white rounded-lg font-bold"
+                            >
+                              Done
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        MODEL NAME / PART <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.model}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, model: e.target.value }))}
+                        placeholder="Model name / Part description"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        REJECTED QTY <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={editFormData.actual_qty}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, actual_qty: e.target.value }))}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        DETECTED AT
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.problem_detected_at}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, problem_detected_at: e.target.value }))}
+                        placeholder="e.g. Line 2 Assembly"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        RECEIVED FROM LINE
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.received_from}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, received_from: e.target.value }))}
+                        placeholder="e.g. Line 1"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        ANALYSIS DONE BY
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.analysis_done_by}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, analysis_done_by: e.target.value }))}
+                        placeholder="QA Officer / Analyst Name"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 📄 2. DEFECT PROBLEM DESCRIPTION (EDITABLE) */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
+                    <FileText className="w-4 h-4" />
+                    <span>2. DEFECT PROBLEM DESCRIPTION</span>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        PROBLEM / DEFECT PHENOMENON <span className="text-rose-500">*</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={editFormData.problem}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, problem: e.target.value }))}
+                        placeholder="Describe the defect phenomenon in detail..."
+                        className="w-full p-3 bg-white border border-slate-300 rounded-2xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition leading-relaxed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        DETAILED DEFECT OCCURRENCE &amp; OBSERVATION
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={editFormData.occurrence_cause}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, occurrence_cause: e.target.value }))}
+                        placeholder="Additional notes on defect occurrence, root observations, or line conditions..."
+                        className="w-full p-3 bg-white border border-slate-300 rounded-2xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition leading-relaxed"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 📎 3. ATTACHMENTS & EVIDENCE MANAGEMENT (EDITABLE) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
+                      <Paperclip className="w-4 h-4" />
+                      <span>3. DEFECT EVIDENCE &amp; ATTACHMENTS</span>
+                    </div>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      {editAttachments.length + newFiles.length} file(s) attached
+                    </span>
+                  </div>
+
+                  {/* Existing Attachments with Delete Action */}
+                  {editAttachments.length > 0 && (
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                        Current Files (Click eye to preview, trash to remove)
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {editAttachments.map((att, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 shadow-2xs group"
+                          >
+                            <span className="truncate max-w-[200px]">{att.name || att.filename || `File-${idx + 1}`}</span>
+                            <button
+                              type="button"
+                              onClick={() => setPreviewAttachment(att)}
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded-md transition cursor-pointer"
+                              title="Preview File"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExistingAttachment(idx)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition cursor-pointer"
+                              title="Remove File"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Newly Added Files */}
+                  {newFiles.length > 0 && (
+                    <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-2">
+                      <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider block mb-1">
+                        Newly Selected Files (To be uploaded on save)
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {newFiles.map((file, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-xs font-medium text-blue-900 shadow-2xs"
+                          >
+                            <span className="truncate max-w-[200px]">{file.name}</span>
+                            <span className="text-[10px] text-slate-400">({(file.size / 1024).toFixed(1)} KB)</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveNewFile(idx)}
+                              className="p-1 text-rose-500 hover:bg-rose-50 rounded-md transition cursor-pointer"
+                              title="Remove"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* File Upload Trigger */}
+                  <label className="flex items-center justify-center gap-2.5 p-4 rounded-2xl border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/60 hover:bg-blue-50/40 transition cursor-pointer text-xs font-semibold text-slate-700">
+                    <UploadCloud className="w-4 h-4 text-blue-600" />
+                    <span>Upload Additional Evidence (Images, PDF, Excel, Word, PPT)</span>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleNewFilesSelect}
+                      className="hidden"
+                      accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                    />
+                  </label>
+                </div>
+
+                {/* 🔬 4. QA 5-WHY ROOT CAUSE ANALYSIS (EDITABLE) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-amber-600 text-xs font-bold uppercase tracking-wider">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>4. QA PROBLEM CAUSE (5-WHY ROOT CAUSE ANALYSIS)</span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-mono">Logged by Requester / QA</span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200 space-y-3 text-xs">
+                    <div className="flex items-center gap-2 pb-2 border-b border-amber-200/60">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                        QA Problem Cause (5-Why Breakdown)
+                      </h4>
+                    </div>
+                    <div className="space-y-2.5">
+                      {['W1', 'W2', 'W3', 'W4', 'W5'].map((wLabel, idx) => (
+                        <div key={idx} className="flex items-center gap-2.5">
+                          <span className="px-2.5 py-1.5 rounded-lg font-mono font-black text-[11px] bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                            {wLabel}:
+                          </span>
+                          <input
+                            type="text"
+                            value={editQaWhyWhy[idx] || ''}
+                            onChange={(e) => {
+                              const copy = [...editQaWhyWhy];
+                              copy[idx] = e.target.value;
+                              setEditQaWhyWhy(copy);
+                            }}
+                            placeholder={`QA Root Cause Level ${idx + 1}...`}
+                            className="flex-1 px-3 py-1.5 bg-white border border-amber-200/80 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             ) : (
+              /* TAB 1: REQUESTER DETAILS - VIEW MODE */
               <div className="space-y-6 animate-in fade-in duration-150">
                 {/* 📁 1. GENERAL INFORMATION & DEFECT PARAMETERS */}
                 <div className="space-y-3">
@@ -580,7 +1248,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                         REQ NO
                       </span>
                       <span className="font-bold text-slate-900 font-mono text-sm">
-                        {request.req_no || `IHLR-${request.id}`}
+                        {req.req_no || `IHLR-${req.id}`}
                       </span>
                     </div>
 
@@ -589,7 +1257,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                         INCIDENT DATE
                       </span>
                       <span className="font-medium text-slate-800">
-                        {formatDate(request.batch_date)}
+                        {formatDate(req.batch_date)}
                       </span>
                     </div>
 
@@ -599,11 +1267,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                       </span>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="font-semibold text-slate-800">
-                          {formatIhlrShiftDisplay(request.shift)}
+                          {formatIhlrShiftDisplay(req.shift)}
                         </span>
-                        {getIhlrShiftDetails(request.shift)?.timeDisplay && (
+                        {getIhlrShiftDetails(req.shift)?.timeDisplay && (
                           <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-mono font-medium border border-blue-100">
-                            {getIhlrShiftDetails(request.shift).timeDisplay}
+                            {getIhlrShiftDetails(req.shift).timeDisplay}
                           </span>
                         )}
                       </div>
@@ -613,7 +1281,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
                         STATUS
                       </span>
-                      {getStatusBadge(request.status)}
+                      {getStatusBadge(req.status)}
                     </div>
 
                     <div>
@@ -621,7 +1289,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                         4M CATEGORY
                       </span>
                       <span className="font-bold text-amber-700 font-mono">
-                        {request.four_m || 'N/A'}
+                        {req.four_m || 'N/A'}
                       </span>
                     </div>
 
@@ -630,11 +1298,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                         RESPONSIBILITY (DEPT)
                       </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        {request.resp || 'N/A'}
+                        {req.resp || 'N/A'}
                       </span>
-                      {request.resp_person && (
+                      {req.resp_person && (
                         <span className="block text-[11px] text-blue-600 font-semibold mt-0.5">
-                          {request.resp_person}
+                          {req.resp_person}
                         </span>
                       )}
                     </div>
@@ -644,7 +1312,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                         MODEL NAME / PART
                       </span>
                       <span className="font-bold text-slate-900">
-                        {request.model || 'N/A'}
+                        {req.model || 'N/A'}
                       </span>
                     </div>
 
@@ -653,7 +1321,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                         REJECTED QTY
                       </span>
                       <span className="font-bold text-slate-900 font-mono">
-                        {request.actual_qty || '1'}
+                        {req.actual_qty || '1'}
                       </span>
                     </div>
 
@@ -662,7 +1330,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                         DETECTED AT
                       </span>
                       <span className="font-medium text-slate-800">
-                        {request.problem_detected_at || 'Line Inspection'}
+                        {req.problem_detected_at || 'Line Inspection'}
                       </span>
                     </div>
 
@@ -671,7 +1339,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                         RECEIVED FROM LINE
                       </span>
                       <span className="font-medium text-slate-800 font-mono">
-                        {request.received_from || 'Assembly Line'}
+                        {req.received_from || 'Assembly Line'}
                       </span>
                     </div>
 
@@ -680,7 +1348,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                         ANALYSIS DONE BY
                       </span>
                       <span className="font-bold text-slate-900 block">
-                        {request.analysis_done_by || 'Admin'}
+                        {req.analysis_done_by || 'Admin'}
                       </span>
                     </div>
                   </div>
@@ -699,7 +1367,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                         PROBLEM / DEFECT PHENOMENON
                       </span>
                       <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 leading-relaxed font-normal min-h-[50px]">
-                        {request.problem || 'No defect description logged.'}
+                        {req.problem || 'No defect description logged.'}
                       </div>
                     </div>
 
@@ -708,7 +1376,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                         DETAILED DEFECT OCCURRENCE &amp; OBSERVATION
                       </span>
                       <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 leading-relaxed font-normal min-h-[60px]">
-                        {request.occurrence_cause || request.problem || 'No detailed occurrence observations recorded.'}
+                        {req.occurrence_cause || req.problem || 'No detailed occurrence observations recorded.'}
                       </div>
                     </div>
                   </div>
@@ -751,7 +1419,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                       </h4>
                     </div>
                     <div className="space-y-2">
-                      {(request.qa_why_why || []).map((w, idx) =>
+                      {(req.qa_why_why || []).map((w, idx) =>
                         w ? (
                           <div key={idx} className="flex items-start gap-2">
                             <span className="font-mono font-bold text-amber-700 shrink-0">W{idx + 1}:</span>
@@ -759,7 +1427,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
                           </div>
                         ) : null
                       )}
-                      {(!request.qa_why_why || request.qa_why_why.filter(Boolean).length === 0) && (
+                      {(!req.qa_why_why || req.qa_why_why.filter(Boolean).length === 0) && (
                         <p className="text-slate-400 italic">No QA 5-Why analysis recorded.</p>
                       )}
                     </div>
@@ -794,44 +1462,89 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode }) => {
 
           {/* Modal Footer */}
           <div className="p-4 sm:p-5 border-t border-slate-100 bg-white flex items-center justify-between shrink-0">
-            <div>
-              {isClosed && activeTab === 'closer' ? (
-                evidenceAttachments.length > 0 && (
-                  <span className="text-xs text-slate-400 font-medium">
-                    {evidenceAttachments.length} closer evidence attachment{evidenceAttachments.length > 1 ? 's' : ''} available
-                  </span>
-                )
-              ) : (
-                attachments.length > 0 && (
-                  <span className="text-xs text-slate-400 font-medium">
-                    {attachments.length} attachment{attachments.length > 1 ? 's' : ''} available
-                  </span>
-                )
-              )}
-            </div>
+            {isEditMode ? (
+              <>
+                <div className="flex items-center gap-2 text-xs text-slate-600">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                  <span className="font-semibold text-slate-800">Updating Requester Details only.</span>
+                  <span className="hidden sm:inline text-slate-400">Closer details and status are preserved.</span>
+                </div>
 
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowExportModal(true);
-                }}
-                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
-                id="modal-export-btn"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export Report</span>
-              </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      initEditState(req);
+                      setIsEditMode(false);
+                    }}
+                    disabled={isSavingRequester}
+                    className="px-4 py-2 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl border border-slate-300 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
 
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl border border-slate-300 transition cursor-pointer"
-              >
-                Close Details
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    onClick={handleSaveRequesterDetails}
+                    disabled={isSavingRequester}
+                    className="flex items-center gap-1.5 px-5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingRequester ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Saving Changes...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 stroke-[2.5]" />
+                        <span>Save Requester Details</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  {isClosed && activeTab === 'closer' ? (
+                    evidenceAttachments.length > 0 && (
+                      <span className="text-xs text-slate-400 font-medium">
+                        {evidenceAttachments.length} closer evidence attachment{evidenceAttachments.length > 1 ? 's' : ''} available
+                      </span>
+                    )
+                  ) : (
+                    attachments.length > 0 && (
+                      <span className="text-xs text-slate-400 font-medium">
+                        {attachments.length} attachment{attachments.length > 1 ? 's' : ''} available
+                      </span>
+                    )
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowExportModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                    id="modal-export-btn"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export Report</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl border border-slate-300 transition cursor-pointer"
+                  >
+                    Close Details
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
