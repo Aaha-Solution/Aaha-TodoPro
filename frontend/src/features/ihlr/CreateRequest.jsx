@@ -369,6 +369,9 @@ const IhlrCreateRequest = () => {
   const processFiles = (fileList) => {
     const files = Array.from(fileList || []);
     if (files.length > 0) {
+      if (errors.attachments) {
+        setErrors((prev) => ({ ...prev, attachments: false }));
+      }
       const newAttachments = files.map((file) => {
         const ext = file.name.split('.').pop()?.toUpperCase() || 'FILE';
         const isImage = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'].includes(ext);
@@ -480,6 +483,9 @@ const IhlrCreateRequest = () => {
     }
     if (!formData.resp_person || getSelectedUsers().length === 0) {
       newErrors.resp_person = 'User Name is required';
+    }
+    if (!attachments || attachments.length === 0) {
+      newErrors.attachments = 'Defect evidence attachment is mandatory. Please upload at least one file.';
     }
     if (!qaWhyWhy[0] || !qaWhyWhy[0].trim()) {
       newErrors.w1 = 'Why 1 (W1) is mandatory. Please enter root cause.';
@@ -1190,8 +1196,9 @@ const IhlrCreateRequest = () => {
           <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
             <Paperclip className="w-5 h-5 text-slate-700 mt-0.5" />
             <div>
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                2. Defect Evidence / Attachment Upload (Images, PDF, Word, Excel, PPT)
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center">
+                <span>2. Defect Evidence / Attachment Upload (Images, PDF, Word, Excel, PPT)</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </h2>
               <p className="text-xs text-slate-500">
                 Upload defect evidence
@@ -1203,7 +1210,11 @@ const IhlrCreateRequest = () => {
           <label
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
-            className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer bg-slate-50/50 hover:bg-slate-50 transition-colors"
+            className={`border-2 border-dashed rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer transition-colors ${
+              errors.attachments
+                ? 'border-rose-400 bg-rose-50/30 hover:bg-rose-50/50'
+                : 'border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-slate-50'
+            }`}
           >
             <input
               type="file"
@@ -1212,7 +1223,9 @@ const IhlrCreateRequest = () => {
               onChange={handleFileUpload}
               className="hidden"
             />
-            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+              errors.attachments ? 'bg-rose-100 text-rose-600' : 'bg-blue-50 text-blue-600'
+            }`}>
               <UploadCloud className="w-5 h-5" />
             </div>
             <p className="text-xs font-semibold text-slate-800">
@@ -1222,6 +1235,12 @@ const IhlrCreateRequest = () => {
               Supports Images, PDF, Word, Excel (.xlsx, .xls, .csv), and PowerPoint (Max 25MB per file) • Select multiple files
             </p>
           </label>
+
+          {errors.attachments && (
+            <p className="text-[11px] text-rose-500 font-semibold mt-1.5 flex items-center gap-1">
+              <span>* {errors.attachments}</span>
+            </p>
+          )}
 
           {/* Attached Files List */}
           {attachments.length > 0 && (
