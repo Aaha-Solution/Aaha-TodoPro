@@ -68,7 +68,7 @@ const Notification = () => {
       dispatch(markAsRead(item.id));
     }
     setOpen(false);
-    navigate(item.link || (isIhlr ? '/ihlr/my-requests' : '/process-audit/approvals'));
+    navigate(isIhlr ? '/ihlr/notifications' : '/process-audit/notifications');
   };
 
   const handleMarkAllRead = async () => {
@@ -138,7 +138,7 @@ const Notification = () => {
             {notifications.length === 0 ? (
               <p className="p-6 text-center text-xs text-slate-400">No notifications in stream</p>
             ) : (
-              notifications.map((item) => {
+              notifications.slice(0, 1).map((item) => {
                 const badgeColor =
                   item.accentColor === 'emerald'
                     ? 'bg-emerald-600'
