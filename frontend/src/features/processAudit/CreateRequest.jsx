@@ -54,7 +54,21 @@ const CreateRequest = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const [formData, setFormData] = useState({
+  const getDraftKey = () => {
+    let uid = user?.id || user?.email;
+    if (!uid) {
+      try {
+        const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+        if (u) {
+          const parsed = JSON.parse(u);
+          uid = parsed?.id || parsed?.email;
+        }
+      } catch {}
+    }
+    return `process_audit_create_request_draft_${uid || 'default'}`;
+  };
+
+  const defaultFormData = {
     requestId: 'PA-1',
     date: getTodayDate(),
     product: '',
@@ -67,7 +81,114 @@ const CreateRequest = () => {
     department: '',
     executor: '',
     comments: '',
+  };
+
+  const getSavedDraft = () => {
+    try {
+      const key = getDraftKey();
+      const raw =
+        sessionStorage.getItem(key) ||
+        sessionStorage.getItem('process_audit_create_request_draft') ||
+        localStorage.getItem(key) ||
+        localStorage.getItem('process_audit_create_request_draft');
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn('Failed to parse Process Audit draft:', e);
+    }
+    return null;
+  };
+
+  const [formData, setFormData] = useState(() => {
+    const saved = getSavedDraft();
+    if (saved?.formData) {
+      return {
+        ...defaultFormData,
+        ...saved.formData,
+        date: saved.formData.date || getTodayDate(),
+      };
+    }
+    return defaultFormData;
   });
+
+  const [selectedExecutors, setSelectedExecutors] = useState(() => {
+    const saved = getSavedDraft();
+    if (Array.isArray(saved?.selectedExecutors)) {
+      return saved.selectedExecutors;
+    }
+    return [];
+  });
+
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(() => {
+    const saved = getSavedDraft();
+    if (saved?.formData) {
+      const d = saved.formData;
+      return Boolean(
+        d.product ||
+        d.model ||
+        d.processOperation ||
+        d.shift ||
+        d.issueType ||
+        d.priority ||
+        d.issueObservation ||
+        d.department ||
+        d.comments ||
+        (Array.isArray(saved?.selectedExecutors) && saved.selectedExecutors.length > 0)
+      );
+    }
+    return false;
+  });
+
+  // Auto-save form inputs to sessionStorage so data is preserved across tab switching
+  useEffect(() => {
+    const key = getDraftKey();
+    const isDirty = Boolean(
+      formData.product ||
+      formData.model ||
+      formData.processOperation ||
+      formData.shift ||
+      formData.issueType ||
+      formData.priority ||
+      formData.issueObservation ||
+      formData.department ||
+      formData.comments ||
+      (selectedExecutors && selectedExecutors.length > 0)
+    );
+
+    if (isDirty) {
+      try {
+        sessionStorage.setItem(
+          key,
+          JSON.stringify({
+            formData,
+            selectedExecutors,
+            updatedAt: new Date().toISOString(),
+          })
+        );
+      } catch (err) {
+        console.warn('Process Audit draft save error:', err);
+      }
+    }
+  }, [formData, selectedExecutors]);
+
+  const handleResetForm = () => {
+    const key = getDraftKey();
+    try {
+      sessionStorage.removeItem(key);
+      sessionStorage.removeItem('process_audit_create_request_draft');
+      localStorage.removeItem(key);
+      localStorage.removeItem('process_audit_create_request_draft');
+    } catch {}
+    setFormData((prev) => ({
+      ...defaultFormData,
+      requestId: prev.requestId || 'PA-1',
+    }));
+    setSelectedExecutors([]);
+    setAttachments([]);
+    setHasRestoredDraft(false);
+    setErrors({});
+  };
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,7 +196,6 @@ const CreateRequest = () => {
   const [deptUsers, setDeptUsers] = useState([]);
   const [loadingExecutors, setLoadingExecutors] = useState(false);
 
-  const [selectedExecutors, setSelectedExecutors] = useState([]);
   const [executorDropdownOpen, setExecutorDropdownOpen] = useState(false);
   const [executorSearch, setExecutorSearch] = useState('');
   const executorDropdownRef = useRef(null);
@@ -487,11 +607,25 @@ const CreateRequest = () => {
     try {
       const res = await processAuditService.createRequest(payload);
       const savedId = res?.data?.issue_no || (res?.data?.id ? `PA-${res.data.id}` : formData.requestId);
+      const draftKey = getDraftKey();
+      try {
+        sessionStorage.removeItem(draftKey);
+        sessionStorage.removeItem('process_audit_create_request_draft');
+        localStorage.removeItem(draftKey);
+        localStorage.removeItem('process_audit_create_request_draft');
+      } catch {}
       window.dispatchEvent(new Event('refreshNotifications'));
       await success(`Request ${savedId} created successfully!`);
       navigate('/process-audit/my-requests');
     } catch (err) {
       console.error('Failed to save request in DB:', err);
+      const draftKey = getDraftKey();
+      try {
+        sessionStorage.removeItem(draftKey);
+        sessionStorage.removeItem('process_audit_create_request_draft');
+        localStorage.removeItem(draftKey);
+        localStorage.removeItem('process_audit_create_request_draft');
+      } catch {}
       await success(`Request ${formData.requestId} created successfully!`);
       navigate('/process-audit/my-requests');
     } finally {
@@ -588,6 +722,25 @@ const CreateRequest = () => {
           </div>
         )}
       </div>
+
+      {/* Draft Restored Banner */}
+      {hasRestoredDraft && (
+        <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50/90 border border-blue-200/90 rounded-xl text-xs text-blue-800 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+            <span>
+              <strong>Draft Restored:</strong> Your form inputs were preserved across tab switching.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetForm}
+            className="text-xs text-blue-700 hover:text-red-600 font-semibold underline ml-3 cursor-pointer shrink-0 transition"
+          >
+            Discard Draft
+          </button>
+        </div>
+      )}
 
       {/* Form Container */}
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
@@ -1319,6 +1472,13 @@ const CreateRequest = () => {
 
         {/* Bottom Actions Bar */}
         <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={handleResetForm}
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+          >
+            Clear Form
+          </button>
           <button
             type="submit"
             disabled={isSubmitting}
