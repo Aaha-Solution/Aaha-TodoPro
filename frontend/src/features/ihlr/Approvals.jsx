@@ -466,13 +466,10 @@ const IhlrApprovals = () => {
     try {
       const payload = {
         remarks: closerRemarks,
-        status: closerStatus
+        status: isReassignOpen ? 'OPEN' : closerStatus
       };
 
       if (isReassignOpen) {
-        if (closerStatus !== 'CLOSED') {
-          payload.status = 'OPEN';
-        }
 
         if (reassignedDept) {
           payload.resp = reassignedDept;
@@ -1124,6 +1121,7 @@ const IhlrApprovals = () => {
                           setReassignUserSearch('');
                           setReassignedDept(selectedRequest?.resp || '');
                           setReassignedPerson(selectedRequest?.resp_person || '');
+                          setCloserStatus('OPEN');
                         }}
                         className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs border border-blue-200 shadow-2xs transition flex items-center gap-1.5 cursor-pointer shrink-0"
                       >
@@ -1149,6 +1147,7 @@ const IhlrApprovals = () => {
                             setReassignUserSearch('');
                             setReassignedDept(selectedRequest?.resp || '');
                             setReassignedPerson(selectedRequest?.resp_person || '');
+                            setCloserStatus(selectedRequest?.status || 'OPEN');
                           }}
                           className="text-[11px] text-slate-500 hover:text-rose-600 font-semibold cursor-pointer underline flex items-center gap-1"
                         >
@@ -1391,16 +1390,31 @@ const IhlrApprovals = () => {
                     </label>
                   </div>
                   <select
-                    value={closerStatus}
+                    value={isReassignOpen ? 'OPEN' : closerStatus}
                     onChange={(e) => setCloserStatus(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border rounded-xl font-bold text-slate-800 outline-none transition bg-white border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                    disabled={isReassignOpen}
+                    className={`w-full px-3.5 py-2.5 border rounded-xl font-bold text-slate-800 outline-none transition bg-white border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${
+                      isReassignOpen ? 'cursor-not-allowed bg-slate-50 text-slate-700' : 'cursor-pointer'
+                    }`}
                   >
                     <option value="OPEN">PENDING (Awaiting Closer)</option>
-                    <option value="IN_PROGRESS">APPROVAL PENDING (Closer Completed)</option>
-                    <option value="CLOSED">CLOSED</option>
+                    {!isReassignOpen && (
+                      <>
+                        <option value="IN_PROGRESS">APPROVAL PENDING (Closer Completed)</option>
+                        <option value="CLOSED">CLOSED</option>
+                      </>
+                    )}
                   </select>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    Select OPEN, IN PROGRESS, or CLOSED to finalize status.
+                  <p className="text-[10px] mt-0.5">
+                    {isReassignOpen ? (
+                      <span className="text-amber-600 font-semibold">
+                        Reassigning closer: status is locked to PENDING (Awaiting Closer) for the new assignee.
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">
+                        Select OPEN, IN PROGRESS, or CLOSED to finalize status.
+                      </span>
+                    )}
                   </p>
                 </div>
 
