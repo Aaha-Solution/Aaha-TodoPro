@@ -289,7 +289,7 @@ const UserManagement = () => {
       editingUser.originalDepartment &&
       editingUser.department !== editingUser.originalDepartment
     ) {
-      errs.department = `Cannot change department: "${editingUser.name}" has existing requests / audit records associated with "${editingUser.originalDepartment}".`;
+      errs.department = 'Cannot change department (user has existing records).';
     }
 
     if (trimmedPass && trimmedPass.length < 6) {
@@ -1255,7 +1255,7 @@ const UserManagement = () => {
                     </label>
                     {editingUser.hasData && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                        <Lock className="w-3 h-3 text-amber-600" /> Locked (Has Records)
+                        <Lock className="w-3 h-3 text-amber-600" /> Locked
                       </span>
                     )}
                   </div>
@@ -1273,13 +1273,9 @@ const UserManagement = () => {
                       <option key={dept} value={dept}>{dept}</option>
                     ))}
                   </select>
-                  {editingUser.hasData ? (
+                  {editingUser.hasData && (
                     <p className="text-[10px] text-amber-600 mt-1 font-medium">
-                      Department cannot be modified because this user has existing requests/records in {editingUser.originalDepartment || editingUser.department}.
-                    </p>
-                  ) : (
-                    <p className="text-[10px] text-emerald-600 mt-1 font-medium">
-                      ✓ No existing records linked. Department can be modified.
+                      Cannot be modified (has existing records).
                     </p>
                   )}
                   {editFormErrors.department && (
