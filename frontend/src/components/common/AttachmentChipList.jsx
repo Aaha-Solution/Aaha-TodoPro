@@ -23,12 +23,9 @@ const AttachmentChipList = ({
     <div className="flex flex-wrap items-center gap-2 pt-1">
       {list.map((file, idx) => {
         const meta = getFileMeta(file.type, file.name);
-        const isAnnotatable = Boolean(
+        const isImage = Boolean(
           file.isImage || 
-          file.isPdf || 
-          (file.type || '').toUpperCase() === 'PDF' || 
-          file.name?.toLowerCase().endsWith('.pdf') || 
-          ['PNG', 'JPG', 'JPEG', 'WEBP'].includes((file.type || '').toUpperCase())
+          ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP', 'SVG'].includes((file.type || file.name?.split('.').pop() || '').toUpperCase())
         );
 
         return (
@@ -57,7 +54,7 @@ const AttachmentChipList = ({
             </div>
 
             {/* Quick Annotate Drawing Button */}
-            {onAnnotate && isAnnotatable && (
+            {onAnnotate && isImage && (
               <button
                 type="button"
                 onClick={(e) => {

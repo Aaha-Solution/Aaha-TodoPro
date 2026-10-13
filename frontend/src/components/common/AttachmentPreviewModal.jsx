@@ -48,7 +48,7 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose, onAnnotate }) => 
 
   const isImage = attachment.isImage !== undefined
     ? attachment.isImage
-    : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || Boolean(activeUrl?.startsWith('data:image'));
+    : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG', 'BMP'].includes(ext) || Boolean(activeUrl?.startsWith('data:image'));
   const isPdf = attachment.isPdf !== undefined
     ? attachment.isPdf
     : ext === 'PDF' || Boolean(activeUrl?.toLowerCase().includes('.pdf'));
@@ -124,7 +124,7 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose, onAnnotate }) => 
               </div>
             )}
 
-            {onAnnotate && (isImage || isPdf) && (
+            {onAnnotate && isImage && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -134,10 +134,10 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose, onAnnotate }) => 
                   onAnnotate(attachment);
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition cursor-pointer shadow-2xs"
-                title="Annotate technical drawing (draw circles, arrows, lines, sketches)"
+                title="Annotate image (draw circles, arrows, lines, sketches)"
               >
                 <PenTool className="w-3.5 h-3.5 text-amber-600" />
-                <span className="hidden sm:inline">Annotate Drawing</span>
+                <span className="hidden sm:inline">Annotate Image</span>
               </button>
             )}
 

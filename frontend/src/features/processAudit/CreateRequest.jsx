@@ -1032,7 +1032,7 @@ const CreateRequest = () => {
                 <span className="text-red-500 font-bold ml-1">*</span>
               </h2>
               <p className="text-xs text-slate-500">
-                Upload CAD blueprints, PDF drawings, defect photos, or Excel inspection sheets. Click "Annotate" on any drawing, PDF blueprint, or spreadsheet to mark with circles, arrows, lines, and freehand sketches.
+                Upload CAD blueprints, PDF drawings, defect photos, or Excel inspection sheets. Click "Annotate" on any photo or spreadsheet to mark with circles, arrows, lines, and freehand sketches.
               </p>
             </div>
           </div>
@@ -1117,7 +1117,8 @@ const CreateRequest = () => {
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
-                      {(file.isImage || file.isPdf || (file.type || '').toUpperCase() === 'PDF' || file.name?.toLowerCase().endsWith('.pdf')) && (
+                      {/* Annotate - ONLY for image files */}
+                      {(file.isImage || ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP', 'SVG'].includes((file.type || file.name?.split('.').pop() || '').toUpperCase())) && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1125,7 +1126,7 @@ const CreateRequest = () => {
                             setAnnotatingItem({ attachment: file, index: idx });
                           }}
                           className="px-2 py-1 rounded-lg text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 flex items-center gap-1 transition cursor-pointer shadow-2xs"
-                          title="Annotate technical drawing or PDF blueprint (draw circle, arrows, lines, sketches)"
+                          title="Annotate image"
                         >
                           <PenTool className="w-3 h-3 text-amber-600" />
                           <span className="hidden sm:inline">Annotate</span>
@@ -1505,6 +1506,7 @@ const CreateRequest = () => {
         attachment={previewAttachment}
         onClose={() => setPreviewAttachment(null)}
         onAnnotate={(att) => {
+          if (!att) return;
           const idx = attachments.findIndex((a) => a === att || a.name === att?.name);
           if (idx !== -1) {
             setAnnotatingItem({ attachment: attachments[idx], index: idx });
