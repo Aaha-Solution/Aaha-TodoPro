@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Eye, 
   X, 
@@ -547,9 +548,15 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     }
   };
 
-  return (
+  if (!isOpen || !req) return null;
+
+  return createPortal(
     <>
-      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150">
+      <div 
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150"
+        style={{ zIndex: 99990 }}
+        onClick={onClose}
+      >
         <div 
           className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
@@ -1567,13 +1574,14 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       <ExportSelectionModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
-        title={`Export Report ${String(request.req_no || '').startsWith('IHLR-') ? request.req_no : `#${request.req_no}`}`}
+        title={`Export Report ${String(req?.req_no || '').startsWith('IHLR-') ? req?.req_no : `#${req?.req_no}`}`}
         subtitle="Choose whether to download as Excel or PDF document"
         scopeText="Single Inspection Report"
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       />
-    </>
+    </>,
+    document.body
   );
 };
 
