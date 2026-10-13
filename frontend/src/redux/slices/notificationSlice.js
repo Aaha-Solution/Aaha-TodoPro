@@ -20,11 +20,10 @@ export const notificationSlice = createSlice({
         const matches =
           item.id === target ||
           item.notifId === target ||
-          item.rawId === target ||
           String(item.id) === String(target) ||
           String(item.id) === `notif-${target}` ||
           String(item.notifId) === String(target) ||
-          (item.reqNo && target && (item.reqNo === target || item.reqNo === `#${target}` || `#${item.reqNo}` === target));
+          (!item.notifId && item.rawId === target);
         if (matches && !item.read) {
           item.read = true;
           anyChanged = true;

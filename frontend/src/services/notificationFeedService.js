@@ -158,9 +158,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
         // falling back to database read status.
         const savedRead =
           getReadOverride('ihlr', resolvedUser, notifIdStr) ??
-          getReadOverride('ihlr', resolvedUser, n.id) ??
-          (reqNoKey ? getReadOverride('ihlr', resolvedUser, reqNoKey) : null) ??
-          (n.rawId ? getReadOverride('ihlr', resolvedUser, `req-${n.rawId}`) : null);
+          getReadOverride('ihlr', resolvedUser, n.id);
         const isItemRead = savedRead !== null ? savedRead : Boolean(n.read || Number(n.is_read) === 1);
 
         streamList.push({
@@ -335,8 +333,7 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
 
         const savedRead =
           getReadOverride('process-audit', activeUser, `pa-notif-${n.id}`) ??
-          getReadOverride('process-audit', activeUser, n.id) ??
-          (reqNo ? getReadOverride('process-audit', activeUser, reqNo) : null);
+          getReadOverride('process-audit', activeUser, n.id);
         const isRead = savedRead !== null ? savedRead : Boolean(n.read || n.is_read);
 
         streamList.push({
@@ -383,8 +380,8 @@ export const markNotificationReadForTab = async (tab, notifId, rawId, isRead = t
   // Save read override in localStorage
   if (fullId) setReadOverride(tab, activeUser, fullId, isRead);
   if (notifId) setReadOverride(tab, activeUser, notifId, isRead);
-  if (rawId) setReadOverride(tab, activeUser, `req-${rawId}`, isRead);
-  if (reqNo) setReadOverride(tab, activeUser, reqNo, isRead);
+  if (!notifId && rawId) setReadOverride(tab, activeUser, `req-${rawId}`, isRead);
+  if (!notifId && reqNo) setReadOverride(tab, activeUser, reqNo, isRead);
 
   const idToMark = notifId;
   if (!idToMark) return;

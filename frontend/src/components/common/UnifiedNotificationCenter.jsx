@@ -92,7 +92,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
     }
 
     const activeUser = user || storage.getUser();
-    await markNotificationReadForTab(tabMode, item.notifId, item.rawId, nextRead, activeUser, item.id, item.reqNo);
+    await markNotificationReadForTab(tabMode, item.notifId, item.rawId, nextRead, activeUser, item.id, item.notifId ? null : item.reqNo);
     window.dispatchEvent(new Event('refreshNotifications'));
   };
 
@@ -101,15 +101,15 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
     const targetReqNo = item.reqNo;
     const cleanReqNo = item.reqNo ? item.reqNo.replace(/^#/, '').trim() : '';
 
-    // Identify all unread items for this card or related to this same request
+    // Identify unread item for this card specifically
     const itemsToMarkRead = notifications.filter(
-      (n) => (n.id === item.id || (targetReqNo && n.reqNo && n.reqNo === targetReqNo)) && !n.read
+      (n) => n.id === item.id && !n.read
     );
 
     // Update local and Redux state immediately so badge and unreadCount decrement instantly
     if (itemsToMarkRead.length > 0 || !item.read) {
       const updated = notifications.map((n) => {
-        if (n.id === item.id || (targetReqNo && n.reqNo && n.reqNo === targetReqNo)) {
+        if (n.id === item.id) {
           return { ...n, read: true };
         }
         return n;
@@ -118,7 +118,6 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
       dispatch(setReduxNotifications(updated));
       dispatch(setReduxMarkAsRead(item.id));
       if (item.notifId) dispatch(setReduxMarkAsRead(item.notifId));
-      if (targetReqNo) dispatch(setReduxMarkAsRead(targetReqNo));
 
       // Asynchronously persist read state to database and localStorage
       const activeUser = user || storage.getUser();
@@ -133,7 +132,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                 true,
                 activeUser,
                 targetItem.id,
-                targetReqNo
+                targetItem.notifId ? null : targetReqNo
               );
             }
           } else {
@@ -144,7 +143,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
               true,
               activeUser,
               item.id,
-              targetReqNo
+              item.notifId ? null : targetReqNo
             );
           }
           window.dispatchEvent(new Event('refreshNotifications'));

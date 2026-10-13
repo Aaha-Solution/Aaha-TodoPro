@@ -17,6 +17,9 @@ export const getGatewayBaseUrl = () => {
 };
 
 export const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined' && window.location && window.location.port === '5173') {
+    return '/api';
+  }
   return `${getGatewayBaseUrl()}/api`;
 };
 

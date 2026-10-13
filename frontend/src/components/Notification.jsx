@@ -65,13 +65,12 @@ const Notification = () => {
     const activeUser = user || storage.getUser();
     const targetReqNo = item.reqNo;
 
-    // Immediately mark item and related request as read in Redux so header badge decrements instantly
+    // Immediately mark item as read in Redux so header badge decrements instantly
     dispatch(markAsRead(item.id));
     if (item.notifId) dispatch(markAsRead(item.notifId));
-    if (targetReqNo) dispatch(markAsRead(targetReqNo));
 
     if (!item.read) {
-      markNotificationReadForTab(tabMode, item.notifId, item.rawId, true, activeUser, item.id, targetReqNo);
+      markNotificationReadForTab(tabMode, item.notifId, item.rawId, true, activeUser, item.id, item.notifId ? null : targetReqNo);
     }
     setOpen(false);
     navigate(isIhlr ? '/ihlr/notifications' : '/process-audit/notifications');
