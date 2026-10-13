@@ -91,6 +91,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   const [editAttachments, setEditAttachments] = useState([]);
   const [newFiles, setNewFiles] = useState([]);
   const [editQaWhyWhy, setEditQaWhyWhy] = useState(['', '', '', '', '']);
+  const [editErrors, setEditErrors] = useState({});
   const [dbUsers, setDbUsers] = useState([]);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
@@ -144,6 +145,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         ? [...targetReq.qa_why_why, '', '', '', ''].slice(0, 5)
         : ['', '', '', '', '']
     );
+    setEditErrors({});
   };
 
   useEffect(() => {
@@ -210,6 +212,9 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       updated = [...current, userName];
     }
     setEditFormData(prev => ({ ...prev, resp_person: updated.join(', ') }));
+    if (updated.length > 0) {
+      setEditErrors(prev => ({ ...prev, resp_person: '' }));
+    }
   };
 
   const handleRemoveExistingAttachment = (indexToRemove) => {
@@ -224,23 +229,66 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     const selected = Array.from(e.target.files || []);
     if (selected.length > 0) {
       setNewFiles(prev => [...prev, ...selected]);
+      setEditErrors(prev => ({ ...prev, attachments: '' }));
     }
     e.target.value = '';
   };
 
   const handleSaveRequesterDetails = async () => {
-    if (!editFormData.model?.trim()) {
-      modalError('Please provide a Model Name / Part.');
+    const newErrors = {};
+
+    if (!editFormData.batch_date || !editFormData.batch_date.trim()) {
+      newErrors.batch_date = 'Incident Date is required';
+    }
+    if (!editFormData.shift || !editFormData.shift.trim()) {
+      newErrors.shift = 'Shift is required';
+    }
+    if (!editFormData.four_m || !editFormData.four_m.trim()) {
+      newErrors.four_m = '4M Category is required';
+    }
+    if (!editFormData.resp || !editFormData.resp.trim()) {
+      newErrors.resp = 'Responsibility department is required';
+    }
+    if (!editFormData.resp_person || getSelectedUsers().length === 0) {
+      newErrors.resp_person = 'Responsibility Person is required';
+    }
+    if (!editFormData.model || !editFormData.model.trim()) {
+      newErrors.model = 'Model Name / Part is required';
+    }
+    if (
+      editFormData.actual_qty === '' ||
+      editFormData.actual_qty === null ||
+      editFormData.actual_qty === undefined ||
+      Number(editFormData.actual_qty) <= 0
+    ) {
+      newErrors.actual_qty = 'Actual Rejected Qty is required (min 1)';
+    }
+    if (!editFormData.problem_detected_at || !editFormData.problem_detected_at.trim()) {
+      newErrors.problem_detected_at = 'Problem Detected At is required';
+    }
+    if (!editFormData.received_from || !editFormData.received_from.trim()) {
+      newErrors.received_from = 'Received From (Line/Cell) is required';
+    }
+    if (!editFormData.analysis_done_by || !editFormData.analysis_done_by.trim()) {
+      newErrors.analysis_done_by = 'Analysis Done By is required';
+    }
+    if (!editFormData.problem || !editFormData.problem.trim()) {
+      newErrors.problem = 'Problem / Defect Description is required';
+    }
+    if (editAttachments.length + newFiles.length === 0) {
+      newErrors.attachments = 'Defect evidence attachment is mandatory. Please upload at least one file.';
+    }
+    if (!editQaWhyWhy[0] || !editQaWhyWhy[0].trim()) {
+      newErrors.w1 = 'Why 1 (W1) is mandatory. Please enter root cause.';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setEditErrors(newErrors);
+      modalError('Please fill in all mandatory fields indicated in red.');
       return;
     }
-    if (!editFormData.problem?.trim()) {
-      modalError('Please describe the Defect Problem / Phenomenon.');
-      return;
-    }
-    if (!editFormData.resp) {
-      modalError('Please select a Responsibility Department.');
-      return;
-    }
+
+    setEditErrors({});
 
     setIsSavingRequester(true);
     try {
@@ -1206,9 +1254,23 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <input
                         type="date"
                         value={editFormData.batch_date}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, batch_date: e.target.value }))}
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                        onChange={(e) => {
+                          setEditFormData(prev => ({ ...prev, batch_date: e.target.value }));
+                          if (editErrors.batch_date && e.target.value) {
+                            setEditErrors(prev => ({ ...prev, batch_date: '' }));
+                          }
+                        }}
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 outline-none transition ${
+                          editErrors.batch_date
+                            ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                            : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
+                        }`}
                       />
+                      {editErrors.batch_date && (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                          <span>* {editErrors.batch_date}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -1217,14 +1279,28 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </label>
                       <select
                         value={editFormData.shift}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, shift: e.target.value }))}
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                        onChange={(e) => {
+                          setEditFormData(prev => ({ ...prev, shift: e.target.value }));
+                          if (editErrors.shift && e.target.value) {
+                            setEditErrors(prev => ({ ...prev, shift: '' }));
+                          }
+                        }}
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 outline-none transition ${
+                          editErrors.shift
+                            ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                            : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
+                        }`}
                       >
                         <option value="Shift 1">Shift 1 (06:30 AM - 03:00 PM)</option>
                         <option value="Shift 2">Shift 2 (03:00 PM - 11:30 PM)</option>
                         <option value="Shift 3">Shift 3 (11:30 PM - 06:30 AM)</option>
                         <option value="General">General (08:30 AM - 05:00 PM)</option>
                       </select>
+                      {editErrors.shift && (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                          <span>* {editErrors.shift}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -1242,14 +1318,28 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </label>
                       <select
                         value={editFormData.four_m}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, four_m: e.target.value }))}
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-amber-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                        onChange={(e) => {
+                          setEditFormData(prev => ({ ...prev, four_m: e.target.value }));
+                          if (editErrors.four_m && e.target.value) {
+                            setEditErrors(prev => ({ ...prev, four_m: '' }));
+                          }
+                        }}
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-bold outline-none transition ${
+                          editErrors.four_m
+                            ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-rose-800'
+                            : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-amber-800'
+                        }`}
                       >
                         <option value="MAN">MAN</option>
                         <option value="MACHINE">MACHINE</option>
                         <option value="METHOD">METHOD</option>
                         <option value="MATERIAL">MATERIAL</option>
                       </select>
+                      {editErrors.four_m && (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                          <span>* {editErrors.four_m}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -1261,8 +1351,15 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         onChange={(e) => {
                           const nextDept = e.target.value;
                           setEditFormData(prev => ({ ...prev, resp: nextDept, resp_person: '' }));
+                          if (editErrors.resp && nextDept) {
+                            setEditErrors(prev => ({ ...prev, resp: '' }));
+                          }
                         }}
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-bold text-slate-900 outline-none transition ${
+                          editErrors.resp
+                            ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                            : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
+                        }`}
                       >
                         <option value="PRODUCTION">PRODUCTION</option>
                         <option value="QUALITY">QUALITY</option>
@@ -1271,16 +1368,25 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         <option value="LOGISTICS">LOGISTICS</option>
                         <option value="HR">HR</option>
                       </select>
+                      {editErrors.resp && (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                          <span>* {editErrors.resp}</span>
+                        </p>
+                      )}
                     </div>
 
                     {/* RESPONSIBILITY (PERSON) MULTI-SELECT DROPDOWN */}
                     <div className="relative sm:col-span-2" ref={userDropdownRef}>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        RESPONSIBILITY PERSON(S)
+                        RESPONSIBILITY PERSON(S) <span className="text-rose-500">*</span>
                       </label>
                       <div
                         onClick={() => setIsUserDropdownOpen(prev => !prev)}
-                        className="w-full min-h-[38px] px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs cursor-pointer flex items-center justify-between gap-2 hover:border-slate-400 focus:ring-2 focus:ring-blue-500/20 transition"
+                        className={`w-full min-h-[38px] px-3 py-1.5 rounded-xl text-xs cursor-pointer flex items-center justify-between gap-2 transition ${
+                          editErrors.resp_person
+                            ? 'border border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20'
+                            : 'bg-white border border-slate-300 hover:border-slate-400 focus:ring-2 focus:ring-blue-500/20'
+                        }`}
                       >
                         <div className="flex items-center gap-1.5 flex-wrap min-w-0 py-0.5">
                           {getSelectedUsers().length > 0 ? (
@@ -1307,6 +1413,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         </div>
                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
                       </div>
+                      {editErrors.resp_person && (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                          <span>* {editErrors.resp_person}</span>
+                        </p>
+                      )}
 
                       {/* Dropdown Menu */}
                       {isUserDropdownOpen && (
@@ -1377,10 +1488,24 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <input
                         type="text"
                         value={editFormData.model}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, model: e.target.value }))}
+                        onChange={(e) => {
+                          setEditFormData(prev => ({ ...prev, model: e.target.value }));
+                          if (editErrors.model && e.target.value.trim()) {
+                            setEditErrors(prev => ({ ...prev, model: '' }));
+                          }
+                        }}
                         placeholder="Model name / Part description"
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition ${
+                          editErrors.model
+                            ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                            : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
+                        }`}
                       />
+                      {editErrors.model && (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                          <span>* {editErrors.model}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -1391,48 +1516,104 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         type="number"
                         min="1"
                         value={editFormData.actual_qty}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, actual_qty: e.target.value }))}
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                        onChange={(e) => {
+                          setEditFormData(prev => ({ ...prev, actual_qty: e.target.value }));
+                          if (editErrors.actual_qty && e.target.value && Number(e.target.value) > 0) {
+                            setEditErrors(prev => ({ ...prev, actual_qty: '' }));
+                          }
+                        }}
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold text-slate-900 outline-none transition ${
+                          editErrors.actual_qty
+                            ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                            : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
+                        }`}
                       />
+                      {editErrors.actual_qty && (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                          <span>* {editErrors.actual_qty}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        DETECTED AT
+                        DETECTED AT <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
                         value={editFormData.problem_detected_at}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, problem_detected_at: e.target.value }))}
+                        onChange={(e) => {
+                          setEditFormData(prev => ({ ...prev, problem_detected_at: e.target.value }));
+                          if (editErrors.problem_detected_at && e.target.value.trim()) {
+                            setEditErrors(prev => ({ ...prev, problem_detected_at: '' }));
+                          }
+                        }}
                         placeholder="e.g. Line 2 Assembly"
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                        className={`w-full px-3 py-2 rounded-xl text-xs text-slate-900 outline-none transition ${
+                          editErrors.problem_detected_at
+                            ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                            : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
+                        }`}
                       />
+                      {editErrors.problem_detected_at && (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                          <span>* {editErrors.problem_detected_at}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        RECEIVED FROM LINE
+                        RECEIVED FROM LINE <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
                         value={editFormData.received_from}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, received_from: e.target.value }))}
+                        onChange={(e) => {
+                          setEditFormData(prev => ({ ...prev, received_from: e.target.value }));
+                          if (editErrors.received_from && e.target.value.trim()) {
+                            setEditErrors(prev => ({ ...prev, received_from: '' }));
+                          }
+                        }}
                         placeholder="e.g. Line 1"
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                        className={`w-full px-3 py-2 rounded-xl text-xs text-slate-900 outline-none transition ${
+                          editErrors.received_from
+                            ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                            : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
+                        }`}
                       />
+                      {editErrors.received_from && (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                          <span>* {editErrors.received_from}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div className="sm:col-span-2">
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        ANALYSIS DONE BY
+                        ANALYSIS DONE BY <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
                         value={editFormData.analysis_done_by}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, analysis_done_by: e.target.value }))}
+                        onChange={(e) => {
+                          setEditFormData(prev => ({ ...prev, analysis_done_by: e.target.value }));
+                          if (editErrors.analysis_done_by && e.target.value.trim()) {
+                            setEditErrors(prev => ({ ...prev, analysis_done_by: '' }));
+                          }
+                        }}
                         placeholder="QA Officer / Analyst Name"
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition ${
+                          editErrors.analysis_done_by
+                            ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                            : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
+                        }`}
                       />
+                      {editErrors.analysis_done_by && (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                          <span>* {editErrors.analysis_done_by}</span>
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1452,10 +1633,24 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <textarea
                         rows={3}
                         value={editFormData.problem}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, problem: e.target.value }))}
+                        onChange={(e) => {
+                          setEditFormData(prev => ({ ...prev, problem: e.target.value }));
+                          if (editErrors.problem && e.target.value.trim()) {
+                            setEditErrors(prev => ({ ...prev, problem: '' }));
+                          }
+                        }}
                         placeholder="Describe the defect phenomenon in detail..."
-                        className="w-full p-3 bg-white border border-slate-300 rounded-2xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition leading-relaxed"
+                        className={`w-full p-3 rounded-2xl text-xs text-slate-900 outline-none transition leading-relaxed ${
+                          editErrors.problem
+                            ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                            : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
+                        }`}
                       />
+                      {editErrors.problem && (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                          <span>* {editErrors.problem}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -1479,6 +1674,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
                       <Paperclip className="w-4 h-4" />
                       <span>3. DEFECT EVIDENCE &amp; ATTACHMENTS</span>
+                      <span className="text-rose-500 font-bold">*</span>
                     </div>
                     <span className="text-[11px] text-slate-500 font-medium">
                       {editAttachments.length + newFiles.length} file(s) attached
@@ -1549,8 +1745,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   )}
 
                   {/* File Upload Trigger */}
-                  <label className="flex items-center justify-center gap-2.5 p-4 rounded-2xl border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/60 hover:bg-blue-50/40 transition cursor-pointer text-xs font-semibold text-slate-700">
-                    <UploadCloud className="w-4 h-4 text-blue-600" />
+                  <label className={`flex items-center justify-center gap-2.5 p-4 rounded-2xl border-2 border-dashed transition cursor-pointer text-xs font-semibold ${
+                    editErrors.attachments
+                      ? 'border-rose-400 bg-rose-50/30 hover:border-rose-500 text-rose-700'
+                      : 'border-slate-300 hover:border-blue-500 bg-slate-50/60 hover:bg-blue-50/40 text-slate-700'
+                  }`}>
+                    <UploadCloud className={`w-4 h-4 ${editErrors.attachments ? 'text-rose-500' : 'text-blue-600'}`} />
                     <span>Upload Additional Evidence (Images, PDF, Excel, Word, PPT)</span>
                     <input
                       type="file"
@@ -1560,6 +1760,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                     />
                   </label>
+                  {editErrors.attachments && (
+                    <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                      <span>* {editErrors.attachments}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* 🔬 4. QA 5-WHY ROOT CAUSE ANALYSIS (EDITABLE) */}
@@ -1569,7 +1774,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <ShieldCheck className="w-4 h-4" />
                       <span>4. QA PROBLEM CAUSE (5-WHY ROOT CAUSE ANALYSIS)</span>
                     </div>
-                    <span className="text-[11px] text-slate-400 font-mono">Logged by Requester / QA</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
+                      <span>W1 Mandatory</span>
+                      <span className="text-red-500 font-bold">*</span>
+                    </span>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200 space-y-3 text-xs">
@@ -1580,24 +1788,48 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </h4>
                     </div>
                     <div className="space-y-2.5">
-                      {['W1', 'W2', 'W3', 'W4', 'W5'].map((wLabel, idx) => (
-                        <div key={idx} className="flex items-center gap-2.5">
-                          <span className="px-2.5 py-1.5 rounded-lg font-mono font-black text-[11px] bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
-                            {wLabel}:
-                          </span>
-                          <input
-                            type="text"
-                            value={editQaWhyWhy[idx] || ''}
-                            onChange={(e) => {
-                              const copy = [...editQaWhyWhy];
-                              copy[idx] = e.target.value;
-                              setEditQaWhyWhy(copy);
-                            }}
-                            placeholder={`QA Root Cause Level ${idx + 1}...`}
-                            className="flex-1 px-3 py-1.5 bg-white border border-amber-200/80 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition"
-                          />
-                        </div>
-                      ))}
+                      {['W1', 'W2', 'W3', 'W4', 'W5'].map((wLabel, idx) => {
+                        const isW1 = idx === 0;
+                        const hasW1Error = isW1 && Boolean(editErrors.w1);
+                        return (
+                          <div key={idx} className="space-y-1">
+                            <div className="flex items-center gap-2.5">
+                              <span className={`px-2.5 py-1.5 rounded-lg font-mono font-black text-[11px] border shrink-0 transition ${
+                                isW1
+                                  ? hasW1Error
+                                    ? 'bg-rose-50 border-rose-300 text-rose-700'
+                                    : 'bg-amber-100 text-amber-800 border-amber-200'
+                                  : 'bg-amber-100 text-amber-800 border-amber-200'
+                              }`}>
+                                {wLabel}:{isW1 && <span className="text-rose-500 ml-0.5 font-bold">*</span>}
+                              </span>
+                              <input
+                                type="text"
+                                value={editQaWhyWhy[idx] || ''}
+                                onChange={(e) => {
+                                  const copy = [...editQaWhyWhy];
+                                  copy[idx] = e.target.value;
+                                  setEditQaWhyWhy(copy);
+                                  if (isW1 && editErrors.w1 && e.target.value.trim()) {
+                                    setEditErrors(prev => ({ ...prev, w1: '' }));
+                                  }
+                                }}
+                                placeholder={`QA Root Cause Level ${idx + 1}...${isW1 ? ' (Mandatory)' : ''}`}
+                                className={`flex-1 px-3 py-1.5 rounded-xl text-xs text-slate-800 outline-none transition ${
+                                  hasW1Error
+                                    ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                                    : 'bg-white border border-amber-200/80 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
+                                }`}
+                              />
+                            </div>
+                            {hasW1Error && (
+                              <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1 pl-10">
+                                <span>* {editErrors.w1}</span>
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
