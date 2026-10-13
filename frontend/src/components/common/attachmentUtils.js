@@ -448,3 +448,65 @@ export const triggerDirectDownload = async (url, filename = 'download', file = n
     return false;
   }
 };
+
+/**
+ * Universal helper to load an image attachment as base64 data for embedding in Excel & PDF.
+ * Handles in-memory Blobs, data URLs, and remote streaming URLs.
+ */
+export const fetchAttachmentImageBase64 = async (att, moduleOverride = 'ihlr') => {
+  if (!att) return null;
+  const name = att.name || att.filename || (typeof att === 'string' ? att : 'image.png');
+
+  // Case 1: In-memory File/Blob
+  if (att.file && att.file instanceof Blob) {
+    try {
+      return await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result;
+          if (typeof dataUrl !== 'string') return resolve(null);
+          const parts = dataUrl.split(',');
+          const ext = parts[0]?.includes('png') ? 'png' : 'jpeg';
+          resolve({ base64: parts[1], dataUrl, extension: ext, name });
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(att.file);
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  // Case 2: Data URL string
+  const rawUrl = att.url || (typeof att === 'string' ? att : '') || att.path;
+  if (typeof rawUrl === 'string' && rawUrl.startsWith('data:image')) {
+    const parts = rawUrl.split(',');
+    const ext = parts[0]?.includes('png') ? 'png' : 'jpeg';
+    return { base64: parts[1], dataUrl: rawUrl, extension: ext, name };
+  }
+
+  // Case 3: Stream from resolved gateway URL
+  const streamUrl = resolveAttachmentUrl(att, moduleOverride);
+  if (!streamUrl) return null;
+
+  try {
+    const res = await fetch(streamUrl);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result;
+        if (typeof dataUrl !== 'string') return resolve(null);
+        const parts = dataUrl.split(',');
+        const ext = blob.type?.includes('png') ? 'png' : 'jpeg';
+        resolve({ base64: parts[1], dataUrl, extension: ext, name });
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.warn('Could not fetch attachment image for export:', err);
+    return null;
+  }
+};

@@ -27,12 +27,14 @@ import {
   ChevronDown
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { parseAttachments, getFileMeta } from './IhlrAttachmentView';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
+import { resolveAttachmentUrl } from '../../components/common/attachmentUtils';
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
@@ -339,60 +341,309 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     );
   };
 
-  // Export this single report to Excel (.xlsx)
-  const handleExportExcel = () => {
+  // Helper to fetch an image attachment as base64 for embedding in Excel and PDF
+  const fetchAttachmentImageBase64 = async (att) => {
+    if (!att) return null;
+    const name = att.name || att.filename || (typeof att === 'string' ? att : 'image.png');
+
+    // Case 1: In-memory File/Blob
+    if (att.file && att.file instanceof Blob) {
+      try {
+        return await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const dataUrl = reader.result;
+            if (typeof dataUrl !== 'string') return resolve(null);
+            const parts = dataUrl.split(',');
+            const ext = parts[0]?.includes('png') ? 'png' : 'jpeg';
+            resolve({ base64: parts[1], dataUrl, extension: ext, name });
+          };
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(att.file);
+        });
+      } catch {
+        return null;
+      }
+    }
+
+    // Case 2: Data URL string
+    const rawUrl = att.url || (typeof att === 'string' ? att : '') || att.path;
+    if (typeof rawUrl === 'string' && rawUrl.startsWith('data:image')) {
+      const parts = rawUrl.split(',');
+      const ext = parts[0]?.includes('png') ? 'png' : 'jpeg';
+      return { base64: parts[1], dataUrl: rawUrl, extension: ext, name };
+    }
+
+    // Case 3: Stream from resolved gateway URL
+    const streamUrl = resolveAttachmentUrl(att, 'ihlr');
+    if (!streamUrl) return null;
+
+    try {
+      const res = await fetch(streamUrl);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result;
+          if (typeof dataUrl !== 'string') return resolve(null);
+          const parts = dataUrl.split(',');
+          const ext = blob.type?.includes('png') ? 'png' : 'jpeg';
+          resolve({ base64: parts[1], dataUrl, extension: ext, name });
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch (err) {
+      console.warn('Could not fetch attachment image for export:', err);
+      return null;
+    }
+  };
+
+  // Collect all image attachments from defect and evidence lists
+  const getExportImages = async () => {
+    const isImg = (a) => {
+      if (!a) return false;
+      if (a.isImage) return true;
+      const n = a.name || a.filename || (typeof a === 'string' ? a : '');
+      const ext = (n.split('.').pop() || '').toUpperCase();
+      return ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP', 'SVG'].includes(ext);
+    };
+
+    const items = [
+      ...attachments.filter(isImg).map((a) => ({ ...a, label: 'Defect Image' })),
+      ...evidenceAttachments.filter(isImg).map((a) => ({ ...a, label: 'Closer Evidence Image' }))
+    ];
+
+    const results = await Promise.all(
+      items.map(async (item) => {
+        const data = await fetchAttachmentImageBase64(item);
+        if (!data) return null;
+        return { ...data, label: item.label };
+      })
+    );
+    return results.filter(Boolean);
+  };
+
+  // Export this single report to Excel (.xlsx) with embedded images and all fields
+  const handleExportExcel = async () => {
     try {
       const reqNo = String(request.req_no || '').startsWith('IHLR-') ? request.req_no : `#${request.req_no}`;
       const batchDate = formatDate(request.batch_date);
       const shiftStr = formatShift(request.shift);
+      const safeReqNo = String(request.req_no).replace(/[^a-zA-Z0-9_-]/g, '_');
 
-      const data = [
-        { Field: 'REPORT NUMBER', Value: reqNo },
-        { Field: 'COMPANY', Value: 'India Nippon Electricals Limited' },
-        { Field: 'BATCH / DEFECT DATE', Value: batchDate },
-        { Field: 'SHIFT', Value: shiftStr },
-        { Field: 'CURRENT STATUS', Value: request.status || 'OPEN' },
-        { Field: 'MODEL / PART', Value: request.model || '—' },
-        { Field: 'DEFECT DETECTED AT', Value: request.problem_detected_at || '—' },
-        { Field: 'RECEIVED FROM (LINE)', Value: request.received_from || '—' },
-        { Field: 'ANALYSIS DONE BY', Value: request.analysis_done_by || '—' },
-        { Field: '4M CLASSIFICATION', Value: request.four_m || '—' },
-        { Field: 'RESPONSIBLE DEPT', Value: request.resp || '—' },
-        { Field: 'RESPONSIBLE IN-CHARGE', Value: request.resp_person || '—' },
-        { Field: 'DEFECT PROBLEM / PHENOMENON', Value: request.problem || '—' },
-        { Field: 'DETAILED OBSERVATION', Value: request.problem_description || request.detailed_observation || '—' },
-        { Field: 'QA 5-WHY: WHY 1', Value: request.why_why?.[0] || '—' },
-        { Field: 'QA 5-WHY: WHY 2', Value: request.why_why?.[1] || '—' },
-        { Field: 'QA 5-WHY: WHY 3', Value: request.why_why?.[2] || '—' },
-        { Field: 'QA 5-WHY: WHY 4', Value: request.why_why?.[3] || '—' },
-        { Field: 'QA 5-WHY: WHY 5', Value: request.why_why?.[4] || '—' },
-        { Field: 'PROD OCCURRENCE CAUSE: WHY 1', Value: request.prod_why_why?.[0] || '—' },
-        { Field: 'PROD OCCURRENCE CAUSE: WHY 2', Value: request.prod_why_why?.[1] || '—' },
-        { Field: 'PROD OCCURRENCE CAUSE: WHY 3', Value: request.prod_why_why?.[2] || '—' },
-        { Field: 'PROD OCCURRENCE CAUSE: WHY 4', Value: request.prod_why_why?.[3] || '—' },
-        { Field: 'PROD OCCURRENCE CAUSE: WHY 5', Value: request.prod_why_why?.[4] || '—' },
-        { Field: 'CONTAINMENT ACTION / COUNTERMEASURE', Value: request.action || '—' },
-        { Field: 'TARGET COMPLETION DATE', Value: request.target_date || '—' },
-        { Field: 'REMARKS', Value: request.remarks || '—' },
-        { Field: 'ATTACHMENTS', Value: attachments.map((a) => a.name).join(', ') || 'None' }
+      // Fetch images for embedding in Excel
+      const exportImages = await getExportImages();
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'India Nippon Electricals Limited';
+      workbook.created = new Date();
+
+      const worksheet = workbook.addWorksheet('IHLR Analysis Report', {
+        properties: { defaultRowHeight: 22 },
+        views: [{ showGridLines: true }]
+      });
+
+      // Define columns
+      worksheet.columns = [
+        { width: 32 }, // Col A: Field Label
+        { width: 44 }, // Col B: Value
+        { width: 44 }  // Col C: Extra / Occurrence Cause
       ];
 
-      const worksheet = XLSX.utils.json_to_sheet(data);
-      worksheet['!cols'] = [{ wch: 35 }, { wch: 60 }];
+      // Palette & Styles
+      const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } }; // slate-800
+      const sectionFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } }; // blue-600
+      const amberSectionFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD97706' } }; // amber-600
+      const emeraldSectionFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } }; // emerald-600
+      const subHeaderFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; // slate-100
+      const whiteFont = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+      const boldFont = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+      const regularFont = { name: 'Arial', size: 10, color: { argb: 'FF334155' } };
+      const thinBorder = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+      };
 
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'IHLR Details');
-      const safeReqNo = String(request.req_no).replace(/[^a-zA-Z0-9_-]/g, '_');
-      XLSX.writeFile(workbook, `IHLR_Report_${safeReqNo}_${batchDate}.xlsx`);
+      // Header Banner
+      worksheet.mergeCells('A1:C1');
+      const titleCell = worksheet.getCell('A1');
+      titleCell.value = 'INDIA NIPPON ELECTRICALS LIMITED';
+      titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      titleCell.fill = headerFill;
+      worksheet.getRow(1).height = 32;
+
+      worksheet.mergeCells('A2:C2');
+      const subTitleCell = worksheet.getCell('A2');
+      subTitleCell.value = `IN-HOUSE LINE REJECTION (IHLR) ANALYSIS REPORT  |  ${reqNo}`;
+      subTitleCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFBFDBFE' } };
+      subTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      subTitleCell.fill = headerFill;
+      worksheet.getRow(2).height = 24;
+
+      worksheet.addRow([]); // Blank spacer
+
+      const addSectionHeader = (title, fill) => {
+        const row = worksheet.addRow([title, '', '']);
+        const rowNum = row.number;
+        worksheet.mergeCells(`A${rowNum}:C${rowNum}`);
+        const cell = worksheet.getCell(`A${rowNum}`);
+        cell.font = whiteFont;
+        cell.fill = fill;
+        cell.alignment = { vertical: 'middle', indent: 1 };
+        row.height = 26;
+      };
+
+      const addFieldRow = (field, value, extra = '') => {
+        const row = worksheet.addRow([field, String(value ?? '—'), String(extra ?? '')]);
+        row.height = 22;
+        const cellA = row.getCell(1);
+        const cellB = row.getCell(2);
+        const cellC = row.getCell(3);
+
+        cellA.font = boldFont;
+        cellA.fill = subHeaderFill;
+        cellA.border = thinBorder;
+        cellA.alignment = { vertical: 'middle', indent: 1 };
+
+        cellB.font = regularFont;
+        cellB.border = thinBorder;
+        cellB.alignment = { vertical: 'middle', wrapText: true };
+
+        cellC.font = regularFont;
+        cellC.border = thinBorder;
+        cellC.alignment = { vertical: 'middle', wrapText: true };
+      };
+
+      // 1. General & Defect Information
+      addSectionHeader('1. BASIC & DEFECT CLASSIFICATION DETAILS', sectionFill);
+      addFieldRow('REPORT NUMBER', reqNo);
+      addFieldRow('CURRENT STATUS', request.status || 'OPEN');
+      addFieldRow('BATCH / DEFECT DATE', batchDate);
+      addFieldRow('SHIFT', shiftStr);
+      addFieldRow('MODEL / PART', request.model || '—');
+      addFieldRow('ACTUAL / REJECTED QTY', request.actual_qty ? `${request.actual_qty} Nos` : '1 Nos');
+      addFieldRow('DEFECT DETECTED AT', request.problem_detected_at || '—');
+      addFieldRow('RECEIVED FROM (LINE)', request.received_from || '—');
+      addFieldRow('ANALYSIS DONE BY', request.analysis_done_by || '—');
+      addFieldRow('4M CLASSIFICATION', request.four_m || '—');
+      addFieldRow('RESPONSIBLE DEPARTMENT', request.resp || '—');
+      addFieldRow('RESPONSIBLE IN-CHARGE', request.resp_person || '—');
+      addFieldRow('RAISED BY (CREATED BY)', request.created_by || '—');
+      addFieldRow('CREATED DATE & TIME', request.created_at ? formatDate(request.created_at) : '—');
+
+      worksheet.addRow([]); // Blank spacer
+
+      // 2. Defect Problem & Description
+      addSectionHeader('2. DEFECT PROBLEM & OBSERVATION DESCRIPTION', sectionFill);
+      addFieldRow('DEFECT PROBLEM / PHENOMENON', request.problem || '—');
+      addFieldRow('DETAILED OBSERVATION', request.problem_description || request.detailed_observation || '—');
+      addFieldRow('INITIAL OCCURRENCE CAUSE', request.occurrence_cause || '—');
+
+      worksheet.addRow([]); // Blank spacer
+
+      // 3. 5-Why Root Cause Analysis
+      addSectionHeader('3. 5-WHY ROOT CAUSE ANALYSIS', amberSectionFill);
+      const subHeaderRow = worksheet.addRow(['5-WHY LEVEL', 'QA PROBLEM CAUSE (5-WHY)', 'PRODUCTION OCCURRENCE CAUSE (5-WHY)']);
+      subHeaderRow.height = 24;
+      subHeaderRow.eachCell((c) => {
+        c.font = boldFont;
+        c.fill = subHeaderFill;
+        c.border = thinBorder;
+        c.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+
+      for (let i = 0; i < 5; i++) {
+        const qa = request.why_why?.[i] || request.qa_why_why?.[i] || '—';
+        const prod = request.prod_why_why?.[i] || '—';
+        const r = worksheet.addRow([`Why ${i + 1}`, qa, prod]);
+        r.height = 22;
+        r.getCell(1).font = boldFont;
+        r.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        r.getCell(1).border = thinBorder;
+        r.getCell(2).font = regularFont;
+        r.getCell(2).border = thinBorder;
+        r.getCell(2).alignment = { wrapText: true, vertical: 'middle' };
+        r.getCell(3).font = regularFont;
+        r.getCell(3).border = thinBorder;
+        r.getCell(3).alignment = { wrapText: true, vertical: 'middle' };
+      }
+
+      worksheet.addRow([]); // Blank spacer
+
+      // 4. Containment Action & Closure
+      addSectionHeader('4. CONTAINMENT ACTION & CLOSER SIGN-OFF', emeraldSectionFill);
+      addFieldRow('CONTAINMENT COUNTERMEASURE', request.action || 'Containment action pending closer review.');
+      addFieldRow('TARGET COMPLETION DATE', formatDate(request.target_date));
+      addFieldRow('REMARKS / CLOSER NOTES', request.remarks || '—');
+      addFieldRow('CLOSER STATUS', request.status === 'CLOSED' ? 'Closed' : 'Pending Closer');
+      addFieldRow('CLOSED BY', request.closed_by || (request.status === 'CLOSED' ? request.resp_person : '—'));
+      addFieldRow('CLOSED DATE', request.closed_at ? formatDate(request.closed_at) : '—');
+      addFieldRow('DEFECT ATTACHMENT FILES', attachments.map((a) => a.name).join(', ') || 'None');
+      addFieldRow('CLOSER EVIDENCE FILES', evidenceAttachments.map((a) => a.name).join(', ') || 'None');
+
+      // 5. EMBEDDED IMAGES IN EXCEL
+      if (exportImages.length > 0) {
+        worksheet.addRow([]); // Blank spacer
+        addSectionHeader('5. DEFECT & EVIDENCE ATTACHMENT IMAGES', headerFill);
+
+        for (const img of exportImages) {
+          const imgTitleRow = worksheet.addRow([`${img.label}: ${img.name}`, '', '']);
+          const imgTitleRowNum = imgTitleRow.number;
+          worksheet.mergeCells(`A${imgTitleRowNum}:C${imgTitleRowNum}`);
+          const cell = worksheet.getCell(`A${imgTitleRowNum}`);
+          cell.font = boldFont;
+          cell.fill = subHeaderFill;
+          cell.alignment = { vertical: 'middle', indent: 1 };
+          imgTitleRow.height = 24;
+
+          const startRow = worksheet.rowCount + 1;
+          for (let r = 0; r < 16; r++) {
+            worksheet.addRow(['', '', '']);
+          }
+
+          try {
+            const imageId = workbook.addImage({
+              base64: img.base64,
+              extension: img.extension === 'png' ? 'png' : 'jpeg'
+            });
+
+            worksheet.addImage(imageId, {
+              tl: { col: 0.5, row: startRow - 0.8 },
+              ext: { width: 440, height: 280 }
+            });
+          } catch (e) {
+            console.warn('Could not embed image in Excel:', e);
+          }
+        }
+      }
+
+      // Generate file and trigger download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `IHLR_Report_${safeReqNo}_${batchDate}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+
       setShowExportModal(false);
+      modalSuccess(`Exported report #${reqNo} to Excel with all fields and embedded images.`);
     } catch (err) {
       console.error('Failed to export report to Excel:', err);
       modalError('Failed to export report to Excel: ' + err.message);
     }
   };
 
-  // Export this single report to PDF (.pdf)
-  const handleExportPdf = () => {
+  // Export this single report to PDF (.pdf) with embedded images and all fields
+  const handleExportPdf = async () => {
     try {
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -403,6 +654,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       const reqNo = String(request.req_no || '').startsWith('IHLR-') ? request.req_no : `#${request.req_no}`;
       const batchDate = formatDate(request.batch_date);
       const shiftStr = formatShift(request.shift);
+      const safeReqNo = String(request.req_no).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+      // Fetch images for embedding in PDF
+      const exportImages = await getExportImages();
 
       // Header Banner
       doc.setFillColor(30, 41, 59); // slate-800
@@ -422,7 +677,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       autoTable(doc, {
         startY: 85,
         theme: 'plain',
-        styles: { fontSize: 9, cellPadding: 3 },
+        styles: { fontSize: 8.5, cellPadding: 3 },
         body: [
           [
             { content: 'Report No:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
@@ -443,45 +698,58 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             shiftStr
           ],
           [
-            { content: 'Model:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+            { content: 'Model / Part:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
             request.model || '—',
+            { content: 'Actual Qty:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+            request.actual_qty ? `${request.actual_qty} Nos` : '1 Nos'
+          ],
+          [
             { content: 'Detected At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            request.problem_detected_at || '—'
-          ],
-          [
+            request.problem_detected_at || '—',
             { content: 'Received From:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            request.received_from || '—',
-            { content: 'Analysis By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            request.analysis_done_by || '—'
+            request.received_from || '—'
           ],
           [
+            { content: 'Analysis By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+            request.analysis_done_by || '—',
             { content: '4M Category:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            request.four_m || '—',
+            request.four_m || '—'
+          ],
+          [
             { content: 'Responsibility:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            `${request.resp || '—'} ${request.resp_person ? `(${request.resp_person})` : ''}`
+            `${request.resp || '—'} ${request.resp_person ? `(${request.resp_person})` : ''}`,
+            { content: 'Raised By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+            request.created_by || '—'
+          ],
+          [
+            { content: 'Created At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+            request.created_at ? formatDate(request.created_at) : '—',
+            { content: '', styles: {} },
+            ''
           ]
         ]
       });
 
       // Section 2: Defect Problem Description
-      const lastY = doc.lastAutoTable.finalY + 10;
+      const lastY = doc.lastAutoTable.finalY + 8;
       autoTable(doc, {
         startY: lastY,
-        head: [['DEFECT PROBLEM & PHENOMENON DESCRIPTION']],
+        head: [['DEFECT PROBLEM & OBSERVATION DESCRIPTION']],
         body: [
           [`Problem: ${request.problem || '—'}`],
-          [`Detailed Occurrence: ${request.problem_description || request.detailed_observation || '—'}`]
+          [`Detailed Occurrence: ${request.problem_description || request.detailed_observation || '—'}`],
+          ...(request.occurrence_cause ? [[`Initial Occurrence Cause: ${request.occurrence_cause}`]] : [])
         ],
         theme: 'grid',
         headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
-        styles: { fontSize: 8.5, cellPadding: 5 }
+        styles: { fontSize: 8.5, cellPadding: 4 }
       });
 
       // Section 3: 5-Why Analysis
-      const whyY = doc.lastAutoTable.finalY + 10;
+      const whyY = doc.lastAutoTable.finalY + 8;
       const whyRows = [];
       for (let i = 0; i < 5; i++) {
-        const qa = request.why_why?.[i];
+        const qa = request.why_why?.[i] || request.qa_why_why?.[i];
         const prod = request.prod_why_why?.[i];
         if (qa || prod || i === 0) {
           whyRows.push([`Why ${i + 1}`, qa || '—', prod || '—']);
@@ -495,28 +763,60 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         theme: 'grid',
         headStyles: { fillColor: [245, 158, 11], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
         columnStyles: {
-          0: { cellWidth: 50, fontStyle: 'bold', halign: 'center' },
-          1: { cellWidth: 232 },
-          2: { cellWidth: 232 }
+          0: { cellWidth: 45, fontStyle: 'bold', halign: 'center' },
+          1: { cellWidth: 235 },
+          2: { cellWidth: 235 }
         },
-        styles: { fontSize: 8, cellPadding: 4 }
+        styles: { fontSize: 8, cellPadding: 3.5 }
       });
 
       // Section 4: Containment Action & Closure
-      const actionY = doc.lastAutoTable.finalY + 10;
+      const actionY = doc.lastAutoTable.finalY + 8;
       autoTable(doc, {
         startY: actionY,
-        head: [['CONTAINMENT COUNTERMEASURE & CLOSURE']],
+        head: [['CONTAINMENT COUNTERMEASURE & CLOSURE SIGN-OFF']],
         body: [
           [`Corrective Action: ${request.action || 'Containment action pending review.'}`],
-          [`Target Date: ${request.target_date || 'N/A'}  |  Responsible Person: ${request.resp_person || request.resp || 'Quality Team'}`],
+          [`Target Date: ${formatDate(request.target_date)}  |  Responsible Person: ${request.resp_person || request.resp || 'Quality Team'}`],
           ...(request.remarks ? [[`Remarks: ${request.remarks}`]] : []),
-          ...(attachments.length > 0 ? [[`Evidence Attachments (${attachments.length}): ${attachments.map((a) => a.name).join(', ')}`]] : [])
+          [`Closure Sign-off: ${request.status === 'CLOSED' ? `Closed by ${request.closed_by || request.resp_person || 'Quality Admin'} on ${formatDate(request.closed_at || request.target_date)}` : 'Pending Closer Sign-off'}`],
+          ...(attachments.length > 0 ? [[`Defect Attachments (${attachments.length}): ${attachments.map((a) => a.name).join(', ')}`]] : []),
+          ...(evidenceAttachments.length > 0 ? [[`Closer Evidence Attachments (${evidenceAttachments.length}): ${evidenceAttachments.map((a) => a.name).join(', ')}`]] : [])
         ],
         theme: 'grid',
         headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
-        styles: { fontSize: 8.5, cellPadding: 5 }
+        styles: { fontSize: 8.5, cellPadding: 4 }
       });
+
+      // Section 5: EMBEDDED IMAGES IN PDF
+      if (exportImages.length > 0) {
+        let currentY = doc.lastAutoTable.finalY + 15;
+
+        for (const img of exportImages) {
+          if (currentY + 230 > doc.internal.pageSize.height - 40) {
+            doc.addPage();
+            currentY = 40;
+          }
+
+          doc.setFillColor(241, 245, 249);
+          doc.rect(40, currentY, 515, 20, 'F');
+          doc.setDrawColor(203, 213, 225);
+          doc.rect(40, currentY, 515, 20, 'S');
+
+          doc.setFontSize(8.5);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(30, 41, 59);
+          doc.text(`${img.label}: ${img.name}`, 50, currentY + 14);
+
+          try {
+            doc.addImage(img.dataUrl, img.extension.toUpperCase(), 40, currentY + 24, 340, 190);
+          } catch (imgErr) {
+            console.warn('Failed to embed image in PDF:', imgErr);
+          }
+
+          currentY += 225;
+        }
+      }
 
       // Footer
       const pageCount = doc.internal.getNumberOfPages();
@@ -531,20 +831,20 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         );
       }
 
-      const safeReqNo = String(request.req_no).replace(/[^a-zA-Z0-9_-]/g, '_');
       doc.save(`IHLR_Report_${safeReqNo}_${batchDate}.pdf`);
       setShowExportModal(false);
+      modalSuccess(`Exported report #${reqNo} to PDF with all fields and embedded images.`);
     } catch (err) {
       console.error('Failed to export report to PDF:', err);
       modalError('Failed to export report to PDF: ' + err.message);
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (exportFormat === 'excel') {
-      handleExportExcel();
+      await handleExportExcel();
     } else {
-      handleExportPdf();
+      await handleExportPdf();
     }
   };
 
