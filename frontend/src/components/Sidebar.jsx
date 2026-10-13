@@ -69,6 +69,60 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
         { name: 'Notifications', path: '/process-audit/notifications', icon: Bell },
       ];
 
+  const isItemActive = (item) => {
+    const cur = location.pathname.toLowerCase().replace(/\/+$/, '');
+    const target = item.path.toLowerCase().replace(/\/+$/, '');
+
+    // Exact match
+    if (cur === target) return true;
+
+    // Both /all-requests and /my-requests map to "All Requests"
+    const isTargetRequests = target.endsWith('/all-requests') || target.endsWith('/my-requests');
+    const isCurRequests = cur.endsWith('/all-requests') || cur.endsWith('/my-requests');
+    if (isTargetRequests && isCurRequests) {
+      const isTargetIhlr = target.startsWith('/ihlr');
+      const isCurIhlr = cur.startsWith('/ihlr');
+      if (isTargetIhlr === isCurIhlr) return true;
+    }
+
+    // Approvals: handle subpaths or exact
+    if (target.endsWith('/approvals') && (cur.endsWith('/approvals') || cur.includes('/approvals/'))) {
+      const isTargetIhlr = target.startsWith('/ihlr');
+      const isCurIhlr = cur.startsWith('/ihlr');
+      if (isTargetIhlr === isCurIhlr) return true;
+    }
+
+    // Users: handle subpaths
+    if (target.endsWith('/users') && (cur.endsWith('/users') || cur.includes('/users/'))) {
+      const isTargetIhlr = target.startsWith('/ihlr');
+      const isCurIhlr = cur.startsWith('/ihlr');
+      if (isTargetIhlr === isCurIhlr) return true;
+    }
+
+    // Dashboard
+    if (target.endsWith('/dashboard') && cur.endsWith('/dashboard')) {
+      const isTargetIhlr = target.startsWith('/ihlr');
+      const isCurIhlr = cur.startsWith('/ihlr');
+      if (isTargetIhlr === isCurIhlr) return true;
+    }
+
+    // Create Request
+    if (target.endsWith('/create-request') && cur.endsWith('/create-request')) {
+      const isTargetIhlr = target.startsWith('/ihlr');
+      const isCurIhlr = cur.startsWith('/ihlr');
+      if (isTargetIhlr === isCurIhlr) return true;
+    }
+
+    // Notifications
+    if (target.endsWith('/notifications') && cur.endsWith('/notifications')) {
+      const isTargetIhlr = target.startsWith('/ihlr');
+      const isCurIhlr = cur.startsWith('/ihlr');
+      if (isTargetIhlr === isCurIhlr) return true;
+    }
+
+    return false;
+  };
+
   return (
     <>
       {/* Mobile overlay */}
@@ -148,15 +202,16 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
                   onClick={() => {
                     if (window.innerWidth < 1024) closeSidebar();
                   }}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-semibold transition-all duration-150 ${
-                      isActive
+                  className={({ isActive: navLinkIsActive }) => {
+                    const active = navLinkIsActive || isItemActive(item);
+                    return `flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-semibold transition-all duration-150 ${
+                      active
                         ? isIhlr
                           ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
                           : 'bg-[#2563eb] text-white shadow-lg shadow-blue-600/30'
                         : 'text-slate-400 hover:bg-[#131b2e] hover:text-white'
-                    }`
-                  }
+                    }`;
+                  }}
                 >
                   <Icon className="w-4 h-4 stroke-[2]" />
                   <span className="flex-1 text-left">{item.name}</span>

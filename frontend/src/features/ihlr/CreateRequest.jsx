@@ -566,7 +566,7 @@ const IhlrCreateRequest = () => {
         });
         await success(`IHLR Report #${formData.req_no} requester details updated successfully!`);
         window.dispatchEvent(new Event('refreshNotifications'));
-        navigate('/ihlr/my-requests');
+        navigate('/ihlr/all-requests');
         return;
       }
 
@@ -591,7 +591,7 @@ const IhlrCreateRequest = () => {
       } catch {}
       await success(`IHLR Analysis Report ${formData.req_no} submitted successfully!`);
       window.dispatchEvent(new Event('refreshNotifications'));
-      navigate('/ihlr/my-requests');
+      navigate('/ihlr/all-requests');
     } catch (err) {
       error('Failed to submit IHLR Report: ' + err.message);
     } finally {
@@ -618,7 +618,7 @@ const IhlrCreateRequest = () => {
               Go to Dashboard
             </button>
             <button
-              onClick={() => navigate('/ihlr/my-requests')}
+              onClick={() => navigate('/ihlr/all-requests')}
               className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition cursor-pointer"
             >
               View Requests

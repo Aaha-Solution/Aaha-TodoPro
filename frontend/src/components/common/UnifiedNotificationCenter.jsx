@@ -169,8 +169,14 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
       itemTitle.includes('closure approved');
 
     if (isIhlr) {
-      // If closed, navigate to "All Requests" tab; if action / approval required by closer, navigate to "Approvals" tab
-      const targetPath = isClosed ? '/ihlr/my-requests' : '/ihlr/approvals';
+      let targetPath;
+      if (isClosed) {
+        targetPath = '/ihlr/all-requests';
+      } else if (item.link) {
+        targetPath = item.link.replace('/my-requests', '/all-requests');
+      } else {
+        targetPath = '/ihlr/approvals';
+      }
       navigate(targetPath, {
         state: {
           search: cleanReqNo,
@@ -178,8 +184,14 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
         },
       });
     } else {
-      // In Process Audit
-      const targetPath = isClosed ? '/process-audit/my-requests' : (item.link || '/process-audit/approvals');
+      let targetPath;
+      if (isClosed) {
+        targetPath = '/process-audit/all-requests';
+      } else if (item.link) {
+        targetPath = item.link.replace('/my-requests', '/all-requests');
+      } else {
+        targetPath = '/process-audit/approvals';
+      }
       navigate(targetPath, {
         state: {
           search: cleanReqNo,
@@ -414,7 +426,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                 ? AlertCircle
                 : Layers;
 
-            const defaultLink = isIhlr ? '/ihlr/my-requests' : '/process-audit/approvals';
+            const defaultLink = isIhlr ? '/ihlr/all-requests' : '/process-audit/approvals';
 
             return (
               <div

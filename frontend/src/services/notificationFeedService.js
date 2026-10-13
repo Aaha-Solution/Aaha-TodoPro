@@ -269,7 +269,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
               footerFlag: 'SYSTEM_LOGS',
               read: isReqRead,
               type: 'closed',
-              link: '/ihlr/my-requests',
+              link: '/ihlr/all-requests',
             });
           } else if (isInProgress) {
             streamList.push({
@@ -286,7 +286,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
               footerFlag: 'ACTION_REQUIRED',
               read: isReqRead,
               type: 'in_progress',
-              link: '/ihlr/my-requests',
+              link: '/ihlr/all-requests',
             });
           } else {
             streamList.push({
@@ -303,7 +303,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
               footerFlag: 'ACTION_REQUIRED',
               read: isReqRead,
               type: 'open',
-              link: '/ihlr/my-requests',
+              link: '/ihlr/all-requests',
             });
           }
         }
@@ -373,7 +373,7 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           footerFlag,
           read: isRead,
           type: n.type || 'info',
-          link: n.link || (isApproval ? '/process-audit/approvals' : '/process-audit/my-requests'),
+          link: n.link || (isApproval ? '/process-audit/approvals' : '/process-audit/all-requests'),
         });
       });
     }

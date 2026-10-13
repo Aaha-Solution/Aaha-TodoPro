@@ -616,7 +616,7 @@ const CreateRequest = () => {
       } catch {}
       window.dispatchEvent(new Event('refreshNotifications'));
       await success(`Request ${savedId} created successfully!`);
-      navigate('/process-audit/my-requests');
+      navigate('/process-audit/all-requests');
     } catch (err) {
       console.error('Failed to save request in DB:', err);
       const draftKey = getDraftKey();
@@ -627,7 +627,7 @@ const CreateRequest = () => {
         localStorage.removeItem('process_audit_create_request_draft');
       } catch {}
       await success(`Request ${formData.requestId} created successfully!`);
-      navigate('/process-audit/my-requests');
+      navigate('/process-audit/all-requests');
     } finally {
       setIsSubmitting(false);
     }
@@ -680,7 +680,7 @@ const CreateRequest = () => {
               Go to Dashboard
             </button>
             <button
-              onClick={() => navigate('/process-audit/my-requests')}
+              onClick={() => navigate('/process-audit/all-requests')}
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
             >
               View All Requests
