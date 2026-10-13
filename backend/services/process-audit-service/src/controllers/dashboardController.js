@@ -61,6 +61,34 @@ export const getDashboardMetrics = async (req, res) => {
 
     const auditPerformance = totalRequests > 0 ? Number((((approved + closed) / totalRequests) * 100).toFixed(1)) : 100.0;
 
+    // Fetch department breakdown distribution (respecting timeline date filters)
+    let deptQuery = 'SELECT UPPER(TRIM(department)) as dept, COUNT(*) as count FROM process_audit_requests';
+    const deptConditions = [];
+    const deptParams = [];
+    if (month && month !== 'All') {
+      deptConditions.push("(DATE_FORMAT(escalation_date, '%Y-%m') = ? OR DATE_FORMAT(created_at, '%Y-%m') = ?)");
+      deptParams.push(month, month);
+    }
+    if (startDate) {
+      deptConditions.push('DATE(COALESCE(escalation_date, created_at)) >= ?');
+      deptParams.push(startDate);
+    }
+    if (endDate) {
+      deptConditions.push('DATE(COALESCE(escalation_date, created_at)) <= ?');
+      deptParams.push(endDate);
+    }
+    if (deptConditions.length > 0) {
+      deptQuery += ' WHERE ' + deptConditions.join(' AND ');
+    }
+    deptQuery += ' GROUP BY UPPER(TRIM(department))';
+
+    const [deptRows] = await pool.query(deptQuery, deptParams).catch(() => [[]]);
+    const departmentBreakdown = {};
+    (deptRows || []).forEach(r => {
+      const d = (r.dept || '').trim();
+      if (d) departmentBreakdown[d] = Number(r.count) || 0;
+    });
+
     const data = {
       totalRequests,
       pendingExecution,
@@ -72,7 +100,8 @@ export const getDashboardMetrics = async (req, res) => {
       inExecution: inProgress,
       pendingApproval: 0,
       openCapa: rejected,
-      auditPerformance
+      auditPerformance,
+      departmentBreakdown
     };
     return successResponse(res, data, 'Process audit dashboard metrics retrieved from DB');
   } catch (error) {
