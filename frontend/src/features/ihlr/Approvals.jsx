@@ -102,9 +102,16 @@ const IhlrApprovals = () => {
     selectedRequest && (
       String(selectedRequest.status || '').toUpperCase() === 'IN_PROGRESS' ||
       String(selectedRequest.status || '').toUpperCase() === 'CLOSED' ||
-      String(selectedRequest.status || '').toUpperCase() === 'APPROVAL_PENDING'
+      String(selectedRequest.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
+      (
+        Boolean(selectedRequest.action && String(selectedRequest.action).trim()) &&
+        Boolean(selectedRequest.target_date)
+      )
     )
   );
+
+  // Closer fields data is still to be updated for the selected request
+  const isCloserDataToBeUpdated = Boolean(selectedRequest && !hasCloserSubmitted);
 
   // Admin Edit Mode for Closer Fields: Toggled via Pencil Icon
   const [adminEditCloser, setAdminEditCloser] = useState(false);
@@ -135,7 +142,8 @@ const IhlrApprovals = () => {
   const [closerTargetDateError, setCloserTargetDateError] = useState(false);
   const [closerRemarks, setCloserRemarks] = useState('');
   const [remarksError, setRemarksError] = useState(false);
-  const [closerStatus, setCloserStatus] = useState('OPEN');
+  const [closerStatus, setCloserStatus] = useState('');
+  const [statusError, setStatusError] = useState(false);
   const [isReassignOpen, setIsReassignOpen] = useState(false);
   const [reassignedDept, setReassignedDept] = useState('');
   const [reassignDeptError, setReassignDeptError] = useState(false);
@@ -378,7 +386,8 @@ const IhlrApprovals = () => {
     setCloserTargetDateError(false);
     setCloserRemarks(req.remarks || '');
     setRemarksError(false);
-    setCloserStatus(req.status || 'OPEN');
+    setCloserStatus('');
+    setStatusError(false);
     setReassignedDept(req.resp || '');
     setReassignedPerson(req.resp_person || '');
     setIsReassignOpen(false);
@@ -547,11 +556,22 @@ const IhlrApprovals = () => {
       return;
     }
 
+    if (!isReassignOpen && isCloserDataToBeUpdated) {
+      modalWarning('Action & Target Date must be completed before Admin Sign-Off.');
+      return;
+    }
+
     if (!closerRemarks || !closerRemarks.trim()) {
       setRemarksError(true);
       return; // DO NOT TRIGGER BACKEND!
     }
     setRemarksError(false);
+
+    if (!isReassignOpen && !closerStatus) {
+      setStatusError(true);
+      return; // DO NOT TRIGGER BACKEND!
+    }
+    setStatusError(false);
 
     if (isReassignOpen) {
       let reassignHasErr = false;
@@ -577,7 +597,7 @@ const IhlrApprovals = () => {
     try {
       const payload = {
         remarks: closerRemarks.trim(),
-        status: isReassignOpen ? 'OPEN' : closerStatus
+        status: isReassignOpen ? 'OPEN' : (closerStatus || 'CLOSED')
       };
 
       if (isReassignOpen) {
@@ -1000,20 +1020,6 @@ const IhlrApprovals = () => {
                       </span>
                     )}
                   </span>
-                  {isAdmin && selectedRequest && (
-                    <button
-                      type="button"
-                      onClick={() => setAdminEditCloser(!adminEditCloser)}
-                      title={adminEditCloser ? "Disable edit mode" : "Enable admin editing for closer fields"}
-                      className={`p-1 rounded-md border text-xs transition cursor-pointer flex items-center gap-1 ${
-                        adminEditCloser
-                          ? 'bg-amber-500 text-white border-amber-600 shadow-2xs hover:bg-amber-600'
-                          : 'bg-white hover:bg-slate-100 text-slate-500 hover:text-amber-600 border-slate-200'
-                      }`}
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                  )}
                 </div>
                 <span className="text-[10px] text-slate-400 font-mono">W1 to W5</span>
               </div>
@@ -1023,7 +1029,7 @@ const IhlrApprovals = () => {
                 <div className="mb-2.5 p-2 px-3 rounded-lg bg-amber-50/90 border border-amber-200/90 text-amber-900 text-xs flex items-center justify-between animate-in fade-in">
                   <div className="flex items-center gap-1.5">
                     <Pencil className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="text-[11px] font-semibold">Admin Edit Enabled: Closer 5-Why, Action, Evidence &amp; Target Date unlocked.</span>
+                    <span className="text-[11px] font-semibold">Admin Edit Active: Closer fields unlocked for editing.</span>
                   </div>
                   <button
                     type="button"
@@ -1053,7 +1059,7 @@ const IhlrApprovals = () => {
                           : canUpdateCloserFields
                           ? `Enter ${label} cause...`
                           : isAdmin
-                          ? `Click pencil icon to edit ${label}...`
+                          ? `Click Edit Closer Fields below to edit ${label}...`
                           : 'Read-only (Closer only)'
                       }
                       className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition"
@@ -1076,7 +1082,7 @@ const IhlrApprovals = () => {
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1098,7 +1104,7 @@ const IhlrApprovals = () => {
                     : canUpdateCloserFields
                     ? 'Describe corrective actions taken / countermeasures...'
                     : isAdmin
-                    ? 'Click pencil icon to edit action / countermeasures...'
+                    ? 'Click Edit Closer Fields below to edit...'
                     : 'Read-only (Closer only)'
                 }
                 className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
@@ -1258,7 +1264,7 @@ const IhlrApprovals = () => {
                       ) : (
                         <>
                           <Save className="w-4 h-4" />
-                          <span>Update Closer Log (5-Why &amp; Action)</span>
+                          <span>Save Closer Changes</span>
                         </>
                       )}
                     </button>
@@ -1284,7 +1290,7 @@ const IhlrApprovals = () => {
                     className="w-full py-2.5 px-4 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 font-bold text-xs shadow-2xs hover:shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Pencil className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Enable Edit Mode for Closer Fields</span>
+                    <span>Edit Closer Fields</span>
                   </button>
                 )
               ) : isSelectedClosed ? (
@@ -1346,23 +1352,33 @@ const IhlrApprovals = () => {
 
                 {/* Pending Sign-Off Alert Banner or Disabled Notice Banner */}
                 {adminEditCloser ? (
-                  <div className="p-2.5 rounded-xl border border-amber-300 bg-amber-50/90 text-amber-900 text-[11px] flex items-start gap-2 animate-in fade-in">
-                    <Lock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="p-2.5 px-3 rounded-xl border border-amber-300 bg-amber-50/90 text-amber-900 text-[11px] flex items-center gap-2 animate-in fade-in">
+                    <Lock className="w-4 h-4 text-amber-600 shrink-0" />
                     <div className="leading-tight">
-                      <span className="font-bold">Admin Review Disabled: </span>
+                      <span className="font-bold">Review Paused: </span>
                       <span className="text-amber-800">
-                        Closer fields are currently being edited above. Save or cancel closer log updates to re-enable Admin Review &amp; Sign-Off.
+                        Finish closer editing above to resume Admin Sign-Off.
+                      </span>
+                    </div>
+                  </div>
+                ) : isCloserDataToBeUpdated ? (
+                  <div className="p-2.5 px-3 rounded-xl border border-amber-200 bg-amber-50/80 text-amber-900 text-[11px] flex items-center gap-2 animate-in fade-in">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div className="leading-tight">
+                      <span className="font-bold">Closer Pending: </span>
+                      <span className="text-amber-800">
+                        Action &amp; Target Date required before Admin Sign-Off.
                       </span>
                     </div>
                   </div>
                 ) : (
                   selectedRequest && !isSelectedClosed && (
-                    <div className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/70 text-amber-900 text-[11px] flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="p-2.5 px-3 rounded-xl border border-amber-200 bg-amber-50/70 text-amber-900 text-[11px] flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                       <div className="leading-tight">
-                        <span className="font-bold">Admin Sign-Off: </span>
+                        <span className="font-bold">Ready for Review: </span>
                         <span className="text-amber-800">
-                          Review closer countermeasures, optionally reassign, add validation remarks, and finalize status below.
+                          Add remarks and finalize status below.
                         </span>
                       </div>
                     </div>
@@ -1431,7 +1447,8 @@ const IhlrApprovals = () => {
                             setReassignUserSearch('');
                             setReassignedDept(selectedRequest?.resp || '');
                             setReassignedPerson(selectedRequest?.resp_person || '');
-                            setCloserStatus(selectedRequest?.status || 'OPEN');
+                            setCloserStatus('');
+                            setStatusError(false);
                           }}
                           className="text-[11px] text-slate-500 hover:text-rose-600 font-semibold cursor-pointer underline flex items-center gap-1"
                         >
@@ -1648,10 +1665,10 @@ const IhlrApprovals = () => {
                   <textarea
                     rows={2}
                     maxLength={1000}
-                    disabled={!selectedRequest || adminEditCloser}
+                    disabled={!selectedRequest || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
                     value={closerRemarks}
                     onChange={(e) => {
-                      if (adminEditCloser) return;
+                      if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
                       setCloserRemarks(e.target.value);
                       if (remarksError && e.target.value.trim()) {
                         setRemarksError(false);
@@ -1661,11 +1678,13 @@ const IhlrApprovals = () => {
                       !selectedRequest
                         ? 'Click a row on the right to select'
                         : adminEditCloser
-                        ? 'Disabled while editing closer fields above...'
+                        ? 'Disabled while editing closer fields...'
+                        : isCloserDataToBeUpdated && !isReassignOpen
+                        ? 'Awaiting closer Action & Target Date...'
                         : 'Enter remarks and validation summary...'
                     }
                     className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none ${
-                      adminEditCloser
+                      adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
                         ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed select-none'
                         : remarksError
                         ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
@@ -1674,7 +1693,11 @@ const IhlrApprovals = () => {
                   />
                   {adminEditCloser ? (
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      Remarks field is disabled while editing closer log.
+                      Disabled while editing closer fields.
+                    </p>
+                  ) : isCloserDataToBeUpdated && !isReassignOpen ? (
+                    <p className="text-[10px] text-amber-700 mt-0.5 font-medium">
+                      Closer Action &amp; Target Date required first.
                     </p>
                   ) : remarksError ? (
                     <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
@@ -1708,41 +1731,61 @@ const IhlrApprovals = () => {
                   <select
                     value={isReassignOpen ? 'OPEN' : closerStatus}
                     onChange={(e) => {
-                      if (adminEditCloser) return;
+                      if (adminEditCloser || isReassignOpen || isCloserDataToBeUpdated) return;
                       setCloserStatus(e.target.value);
+                      if (e.target.value) setStatusError(false);
                     }}
-                    disabled={isReassignOpen || adminEditCloser || !selectedRequest}
+                    disabled={adminEditCloser || !selectedRequest || isReassignOpen || isCloserDataToBeUpdated}
                     className={`w-full px-3.5 py-2.5 border rounded-xl font-bold outline-none transition ${
-                      adminEditCloser
+                      adminEditCloser || isCloserDataToBeUpdated
                         ? 'cursor-not-allowed bg-slate-100 border-slate-200 text-slate-400 select-none'
                         : isReassignOpen
                         ? 'cursor-not-allowed bg-slate-50 border-slate-200 text-slate-700'
-                        : 'bg-white border-slate-200 text-slate-800 cursor-pointer focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                        : statusError
+                        ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 text-rose-700'
+                        : closerStatus === 'CLOSED'
+                        ? 'bg-white border-slate-200 text-emerald-700 cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'
+                        : 'bg-white border-slate-200 text-slate-600 cursor-pointer focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                     }`}
                   >
-                    <option value="OPEN">PENDING (Awaiting Closer)</option>
-                    {!isReassignOpen && (
+                    {isReassignOpen ? (
+                      <option value="OPEN">PENDING (Awaiting Closer)</option>
+                    ) : (
                       <>
-                        <option value="IN_PROGRESS">APPROVAL PENDING (Closer Completed)</option>
+                        <option value="">Select Status...</option>
                         <option value="CLOSED">CLOSED</option>
                       </>
                     )}
                   </select>
-                  <p className="text-[10px] mt-0.5">
-                    {adminEditCloser ? (
-                      <span className="text-slate-400">
-                        Status dropdown is disabled while editing closer log.
-                      </span>
-                    ) : isReassignOpen ? (
-                      <span className="text-amber-600 font-semibold">
-                        Reassigning closer: status is locked to PENDING (Awaiting Closer) for the new assignee.
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">
-                        Select OPEN, IN PROGRESS, or CLOSED to finalize status.
-                      </span>
-                    )}
-                  </p>
+                  {statusError ? (
+                    <p className="text-[10px] text-rose-500 font-semibold mt-0.5">
+                      * Please select status to finalize admin sign-off.
+                    </p>
+                  ) : (
+                    <p className="text-[10px] mt-0.5">
+                      {adminEditCloser ? (
+                        <span className="text-slate-400">
+                          Disabled while editing closer fields.
+                        </span>
+                      ) : isCloserDataToBeUpdated ? (
+                        <span className="text-amber-700 font-medium">
+                          Status unlocks after closer submission.
+                        </span>
+                      ) : isReassignOpen ? (
+                        <span className="text-amber-700 font-medium">
+                          Status locked to PENDING for new assignee.
+                        </span>
+                      ) : closerStatus === 'CLOSED' ? (
+                        <span className="text-emerald-600 font-semibold">
+                          Status will be finalized to CLOSED.
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">
+                          Select CLOSED to finalize admin sign-off.
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
 
                 {/* Dedicated Admin Actions Submit Button */}
@@ -1763,7 +1806,17 @@ const IhlrApprovals = () => {
                       title="Admin Sign-Off disabled while editing closer fields"
                     >
                       <Lock className="w-4 h-4 text-slate-400" />
-                      <span>Admin Sign-Off Disabled (Closer Edit Active)</span>
+                      <span>Sign-Off Locked (Closer Edit Active)</span>
+                    </button>
+                  ) : isCloserDataToBeUpdated && !isReassignOpen ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-2.5 px-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                      title="Action & Target Date required before Admin Sign-Off"
+                    >
+                      <Lock className="w-4 h-4 text-amber-600" />
+                      <span>Sign-Off Locked (Closer Pending)</span>
                     </button>
                   ) : (
                     <button
