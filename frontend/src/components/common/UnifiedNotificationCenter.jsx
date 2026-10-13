@@ -420,8 +420,10 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
               <div
                 key={item.id}
                 onClick={() => handleCardClick(item)}
-                className={`bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-150 cursor-pointer flex flex-col gap-3.5 border-l-4 ${borderAccent} ${
-                  !item.read ? 'ring-1 ring-blue-500/10' : ''
+                className={`rounded-2xl p-5 border transition-all duration-150 cursor-pointer flex flex-col gap-3.5 border-l-4 ${borderAccent} ${
+                  !item.read
+                    ? 'bg-white border-blue-200/90 ring-2 ring-blue-500/20 shadow-xs hover:shadow-md hover:border-blue-300'
+                    : 'bg-white/95 border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300 opacity-95'
                 }`}
               >
                 {/* Top Row: Icon + Badge + ReqNo + Dept + Title + Timestamp & Subcategory */}
@@ -447,16 +449,29 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                       </span>
                     )}
 
-                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                    <h3 className={`text-xs sm:text-sm truncate ${!item.read ? 'font-extrabold text-slate-900' : 'font-semibold text-slate-700'}`}>
                       {item.title}
                     </h3>
                   </div>
 
-                  {/* Right side: Time + Subcategory Tag */}
-                  <div className="flex flex-col items-start sm:items-end shrink-0">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{item.timeDisplay}</span>
+                  {/* Right side: Read/Unread Tag + Time + Subcategory */}
+                  <div className="flex flex-col items-start sm:items-end shrink-0 gap-1">
+                    <div className="flex items-center gap-2">
+                      {!item.read ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                          UNREAD
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-slate-100 text-slate-500 border border-slate-200/80">
+                          <Check className="w-3 h-3 text-slate-400" />
+                          READ
+                        </span>
+                      )}
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{item.timeDisplay}</span>
+                      </div>
                     </div>
                     {item.subCategory && (
                       <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold mt-0.5">
@@ -504,11 +519,24 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                         e.stopPropagation();
                         toggleRead(item.id);
                       }}
-                      className="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-wider transition cursor-pointer"
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-wider transition-all duration-150 cursor-pointer shadow-2xs select-none ${
+                        !item.read
+                          ? 'bg-slate-100 hover:bg-slate-200 border-2 border-slate-900 text-black font-black hover:shadow-xs active:scale-95'
+                          : 'bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-400 hover:text-slate-600 font-bold active:scale-95'
+                      }`}
                       title={item.read ? 'Mark as Unread' : 'Mark as Read'}
                     >
-                      <Mail className="w-3.5 h-3.5" />
-                      <span>{item.read ? 'MARK UNREAD' : 'MARK READ'}</span>
+                      {!item.read ? (
+                        <>
+                          <CheckCheck className="w-3.5 h-3.5 text-black stroke-[2.5]" />
+                          <span className="text-black font-black tracking-wider">MARK AS READ</span>
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="text-slate-400 font-bold tracking-wider">MARK AS UNREAD</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
