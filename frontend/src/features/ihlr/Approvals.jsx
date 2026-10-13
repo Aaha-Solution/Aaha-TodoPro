@@ -527,6 +527,7 @@ const IhlrApprovals = () => {
       }
       setAdminEditCloser(false);
       await fetchRequests();
+      window.dispatchEvent(new Event('refreshNotifications'));
       modalSuccess(msg);
 
       setTimeout(() => {

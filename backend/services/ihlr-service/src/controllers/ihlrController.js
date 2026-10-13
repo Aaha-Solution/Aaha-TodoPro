@@ -1083,8 +1083,6 @@ export const getIhlrNotifications = async (req, res) => {
         conditions.push("type = 'submission_confirmed'");
         conditions.push("type = 'case_closed'");
         conditions.push("type = 'ihlr_reassigned'");
-        conditions.push("type = 'assignment_required'");
-        conditions.push("type = 'countermeasure_saved'");
       }
 
       if (conditions.length > 0) {
@@ -1257,25 +1255,39 @@ export const markAllIhlrNotificationsRead = async (req, res) => {
     const userName = (req.body?.user || req.body?.user_name || req.query.user || req.query.user_name || req.user?.name || '').trim();
     const userId = req.body?.user_id || req.query.user_id || req.user?.id;
     const userEmail = (req.body?.user_email || req.query.user_email || req.user?.email || '').trim().toLowerCase();
+    const userRole = (req.body?.role || req.query.role || req.user?.role || '').trim().toUpperCase();
+    const userDept = (req.body?.department || req.query.department || req.user?.department || '').trim().toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY' || userName.toLowerCase().includes('admin');
 
     if (pool) {
-      const conditions = [];
-      const params = [];
-      if (userId) {
-        conditions.push('user_id = ?');
-        params.push(userId);
-      }
-      if (userName) {
-        conditions.push('LOWER(TRIM(user_name)) = LOWER(TRIM(?))');
-        params.push(userName);
-      }
-      if (userEmail) {
-        conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
-        params.push(userEmail);
-      }
+      if (isAdmin) {
+        await pool.query(
+          `UPDATE ihlr_notifications SET is_read = 1 WHERE 
+           user_id = ? OR 
+           LOWER(TRIM(user_name)) LIKE '%admin%' OR 
+           LOWER(TRIM(user_email)) LIKE '%admin%' OR 
+           type IN ('closer_completed_pending_review', 'closer_completed_pending_admin_signoff', 'submission_confirmed', 'case_closed', 'ihlr_reassigned')`,
+          [userId || 1]
+        );
+      } else {
+        const conditions = [];
+        const params = [];
+        if (userId) {
+          conditions.push('user_id = ?');
+          params.push(userId);
+        }
+        if (userName) {
+          conditions.push('LOWER(TRIM(user_name)) = LOWER(TRIM(?))');
+          params.push(userName);
+        }
+        if (userEmail) {
+          conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
+          params.push(userEmail);
+        }
 
-      if (conditions.length > 0) {
-        await pool.query(`UPDATE ihlr_notifications SET is_read = 1 WHERE ${conditions.join(' OR ')}`, params);
+        if (conditions.length > 0) {
+          await pool.query(`UPDATE ihlr_notifications SET is_read = 1 WHERE ${conditions.join(' OR ')}`, params);
+        }
       }
     }
     broadcastEvent('notifications:refresh', { module: 'ihlr', action: 'mark_all_read', userId, userName });

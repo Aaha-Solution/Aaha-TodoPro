@@ -116,25 +116,30 @@ export const fetchIhlrNotificationsFeed = async (user) => {
 
     if (Array.isArray(apiNotifs) && apiNotifs.length > 0) {
       apiNotifs.forEach((n) => {
-        // Enforce user visibility safeguard: non-admins only see notifications meant for them
-        if (!isAdmin) {
-          const uName = (resolvedUser?.name || '').trim().toLowerCase();
-          const uEmail = (resolvedUser?.email || '').trim().toLowerCase();
-          const uId = String(resolvedUser?.id || '');
+        const uName = (resolvedUser?.name || '').trim().toLowerCase();
+        const uEmail = (resolvedUser?.email || '').trim().toLowerCase();
+        const uId = String(resolvedUser?.id || '');
 
-          const nName = (n.user_name || '').trim().toLowerCase();
-          const nEmail = (n.user_email || '').trim().toLowerCase();
-          const nId = String(n.user_id || '');
+        const nName = (n.user_name || '').trim().toLowerCase();
+        const nEmail = (n.user_email || '').trim().toLowerCase();
+        const nId = String(n.user_id || '');
 
-          const nNameList = nName.split(',').map((s) => s.trim()).filter(Boolean);
-          const nEmailList = nEmail.split(',').map((s) => s.trim()).filter(Boolean);
+        const nNameList = nName.split(',').map((s) => s.trim()).filter(Boolean);
+        const nEmailList = nEmail.split(',').map((s) => s.trim()).filter(Boolean);
 
-          const isDirectMatch =
-            (uId && nId && uId === nId) ||
-            (uName && nName && (uName === nName || nNameList.includes(uName))) ||
-            (uEmail && nEmail && (uEmail === nEmail || nEmailList.includes(uEmail)));
+        const isDirectMatch =
+          (uId && nId && uId === nId) ||
+          (uName && nName && (uName === nName || nNameList.includes(uName))) ||
+          (uEmail && nEmail && (uEmail === nEmail || nEmailList.includes(uEmail)));
 
-          if (!isDirectMatch) return;
+        // Non-admins only see notifications directly addressed to them
+        if (!isAdmin && !isDirectMatch) return;
+
+        // Personal action & acknowledgment notifications:
+        // 'assignment_required' ("assigned to you by Admin") and 'countermeasure_saved' ("Your 5-Why analysis... submitted")
+        // are personal to the assignee/closer and MUST NEVER duplicate into other users' streams (including Admin)
+        if ((n.type === 'assignment_required' || n.type === 'countermeasure_saved') && !isDirectMatch) {
+          return;
         }
 
         const isClosedNotif =
@@ -154,12 +159,24 @@ export const fetchIhlrNotificationsFeed = async (user) => {
         const reqNoKey = n.reqNo || (n.requestId ? (String(n.requestId).startsWith('#') ? n.requestId : `#${n.requestId}`) : '');
 
         // Authoritative read status:
-        // Local user override takes immediate precedence to prevent network race conditions when clicking cards,
-        // falling back to database read status.
-        const savedRead =
-          getReadOverride('ihlr', resolvedUser, notifIdStr) ??
-          getReadOverride('ihlr', resolvedUser, n.id);
-        const isItemRead = savedRead !== null ? savedRead : Boolean(n.read || Number(n.is_read) === 1);
+        // Database is the ground truth for persisted notifications.
+        // If DB has is_read field (0 or 1), use it directly: if is_read === 0, it is DEFINITIVELY UNREAD.
+        let isItemRead = false;
+        if (n.is_read !== undefined && n.is_read !== null) {
+          isItemRead = Number(n.is_read) === 1;
+          if (!isItemRead) {
+            // Clean up any stale local override for this active unread notification
+            setReadOverride('ihlr', resolvedUser, notifIdStr, false);
+            setReadOverride('ihlr', resolvedUser, n.id, false);
+          }
+        } else {
+          const savedRead =
+            getReadOverride('ihlr', resolvedUser, notifIdStr) ??
+            getReadOverride('ihlr', resolvedUser, n.id);
+          isItemRead = savedRead !== null ? savedRead : Boolean(n.read);
+        }
+
+        if (streamList.some((s) => s.id === notifIdStr)) return;
 
         streamList.push({
           id: notifIdStr,
@@ -331,10 +348,15 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         const rawReq = n.requestId || n.issue_no || '';
         const reqNo = rawReq ? (String(rawReq).startsWith('#') ? rawReq : `#${rawReq}`) : '#PA';
 
-        const savedRead =
-          getReadOverride('process-audit', activeUser, `pa-notif-${n.id}`) ??
-          getReadOverride('process-audit', activeUser, n.id);
-        const isRead = savedRead !== null ? savedRead : Boolean(n.read || n.is_read);
+        let isRead = false;
+        if (n.is_read !== undefined && n.is_read !== null) {
+          isRead = Number(n.is_read) === 1;
+        } else {
+          const savedRead =
+            getReadOverride('process-audit', activeUser, `pa-notif-${n.id}`) ??
+            getReadOverride('process-audit', activeUser, n.id);
+          isRead = savedRead !== null ? savedRead : Boolean(n.read);
+        }
 
         streamList.push({
           id: `pa-notif-${n.id}`,
