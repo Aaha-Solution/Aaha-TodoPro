@@ -141,7 +141,6 @@ const IhlrDashboard = () => {
       icon: Layers,
       iconBg: 'bg-blue-50 text-blue-600',
       subtitleColor: 'text-blue-600',
-      filterStatus: 'All',
     },
     {
       title: 'Pending',
@@ -150,7 +149,6 @@ const IhlrDashboard = () => {
       icon: AlertCircle,
       iconBg: 'bg-rose-50 text-rose-600',
       subtitleColor: 'text-rose-600',
-      filterStatus: 'OPEN',
     },
     {
       title: 'Approval Pending',
@@ -159,7 +157,6 @@ const IhlrDashboard = () => {
       icon: Clock,
       iconBg: 'bg-amber-50 text-amber-600',
       subtitleColor: 'text-amber-600',
-      filterStatus: 'IN_PROGRESS',
     },
     {
       title: 'Closed',
@@ -168,7 +165,6 @@ const IhlrDashboard = () => {
       icon: CheckCircle2,
       iconBg: 'bg-emerald-50 text-emerald-600',
       subtitleColor: 'text-emerald-600',
-      filterStatus: 'CLOSED',
     },
   ];
 
@@ -463,24 +459,14 @@ const IhlrDashboard = () => {
         </div>
       </div>
 
-      {/* KPI Cards Row (Clickable to filter by status) */}
+      {/* KPI Cards Row (Static Overview Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, index) => {
           const Icon = kpi.icon;
-          const isSelected = selectedStatus === kpi.filterStatus;
           return (
             <div
               key={index}
-              onClick={() => {
-                setSelectedStatus((prev) => (prev === kpi.filterStatus ? 'All' : kpi.filterStatus));
-                setShowFilters(true);
-              }}
-              className={`bg-white rounded-2xl p-5 sm:p-6 border transition-all cursor-pointer select-none hover:shadow-md hover:-translate-y-0.5 ${
-                isSelected
-                  ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-sm'
-                  : 'border-slate-200/90 shadow-2xs'
-              }`}
-              title={`Click to filter by ${kpi.title}`}
+              className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs select-none"
             >
               <div className="flex items-center justify-between mb-4">
                 <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{kpi.title}</span>
