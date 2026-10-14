@@ -40,6 +40,56 @@ import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
 import { ihlrService } from '../../services/ihlrService';
+import nipponLogo from '../../assets/Nippon Logo.png';
+
+// Helper to convert company logo to Base64 for jsPDF embedding
+const loadLogoBase64 = async () => {
+  const tryFetch = async (url) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  };
+
+  const tryCanvas = (url) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  };
+
+  const sources = [nipponLogo, '/images/logo.png', '/assets/Nippon Logo.png'];
+  for (const src of sources) {
+    if (!src) continue;
+    let b64 = await tryFetch(src);
+    if (!b64) b64 = await tryCanvas(src);
+    if (b64) return b64;
+  }
+  return null;
+};
 
 /**
  * Meaningful IHLR (In-House Line Rejection) Inspection & Analysis Report Modal:
@@ -762,24 +812,35 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
       // Fetch images for embedding in PDF
       const exportImages = await getExportImages();
+      const logoData = await loadLogoBase64();
 
       // Header Banner
       doc.setFillColor(30, 41, 59); // slate-800
-      doc.rect(40, 30, 515, 45, 'F');
+      doc.rect(40, 30, 515, 48, 'F');
+
+      let bannerTextX = 55;
+      if (logoData) {
+        try {
+          doc.addImage(logoData, 'PNG', 48, 36, 36, 36);
+          bannerTextX = 92;
+        } catch (imgErr) {
+          console.warn('Could not add logo to PDF:', imgErr);
+        }
+      }
 
       doc.setFontSize(14);
       doc.setFont(undefined, 'bold');
       doc.setTextColor(255, 255, 255);
-      doc.text('INDIA NIPPON ELECTRICALS LIMITED', 55, 52);
+      doc.text('INDIA NIPPON ELECTRICALS LIMITED', bannerTextX, 52);
 
       doc.setFontSize(9);
       doc.setFont(undefined, 'normal');
       doc.setTextColor(191, 219, 254);
-      doc.text(`IN-HOUSE LINE REJECTION (IHLR) ANALYSIS REPORT  |  ${reqNo}`, 55, 66);
+      doc.text(`IN-HOUSE LINE REJECTION (IHLR) ANALYSIS REPORT  |  ${reqNo}`, bannerTextX, 66);
 
       // Section 1: Basic Information
       autoTable(doc, {
-        startY: 85,
+        startY: 88,
         theme: 'plain',
         styles: { fontSize: 8.5, cellPadding: 3 },
         body: [

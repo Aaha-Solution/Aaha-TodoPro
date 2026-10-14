@@ -39,6 +39,56 @@ import { useAuth } from '../../hooks/useAuth';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { isIhlrRequestVisibleToUser } from '../../utils/ihlrAuthUtils';
 import { formatIhlrShiftDisplay } from '../../utils/constants';
+import nipponLogo from '../../assets/Nippon Logo.png';
+
+// Helper to convert company logo to Base64 for jsPDF embedding
+const loadLogoBase64 = async () => {
+  const tryFetch = async (url) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  };
+
+  const tryCanvas = (url) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  };
+
+  const sources = [nipponLogo, '/images/logo.png', '/assets/Nippon Logo.png'];
+  for (const src of sources) {
+    if (!src) continue;
+    let b64 = await tryFetch(src);
+    if (!b64) b64 = await tryCanvas(src);
+    if (b64) return b64;
+  }
+  return null;
+};
 
 const IhlrApprovals = () => {
   const location = useLocation();
@@ -1006,6 +1056,9 @@ const IhlrApprovals = () => {
         })
       );
 
+      // Preload official company logo
+      const logoData = await loadLogoBase64();
+
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'pt',
@@ -1014,30 +1067,52 @@ const IhlrApprovals = () => {
 
       const today = new Date().toISOString().slice(0, 10);
 
-      // Top Title and Company Branding
-      doc.setFontSize(16);
+      // Top Title and Company Branding with Logo
+      let textStartX = 24;
+      if (logoData) {
+        try {
+          // Embed official INEL circular logo (42x42 pt)
+          doc.addImage(logoData, 'PNG', 24, 16, 42, 42);
+          textStartX = 74;
+        } catch (imgErr) {
+          console.warn('Could not add logo to PDF:', imgErr);
+          textStartX = 24;
+        }
+      }
+
+      doc.setFontSize(15);
+      doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 41, 59);
-      doc.text('INDIA NIPPON ELECTRICALS LIMITED', 40, 36);
+      doc.text('INDIA NIPPON ELECTRICALS LIMITED', textStartX, 30);
 
-      doc.setFontSize(11);
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'bold');
       doc.setTextColor(217, 119, 6);
-      doc.text('IHLR Sign-off & Closer Approvals Queue', 40, 52);
+      doc.text('IHLR Sign-off & Closer Approvals Queue', textStartX, 44);
 
-      doc.setFontSize(9);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
       doc.setTextColor(100, 116, 139);
-      doc.text(`Generated: ${today} | Total Queue Records: ${filtered.length} | Status Filter: ${selectedStatus}`, 40, 68);
+      doc.text(`Generated: ${today} | Total Queue Records: ${filtered.length} | Status Filter: ${selectedStatus}`, textStartX, 56);
 
+      // Right-aligned Document Label
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(148, 163, 184);
+      doc.text('APPROVALS & CLOSER MANAGEMENT', doc.internal.pageSize.width - 24, 30, { align: 'right' });
+
+      // Super Headings & Full Detailed Column Headers (14 columns covering ALL fields)
       const tableHeaders = [
         [
           {
             content: 'REQUESTOR (DEFECT INVESTIGATION & QA 5-WHY)',
-            colSpan: 7,
+            colSpan: 10,
             styles: {
               fillColor: [254, 243, 199], // amber-100
               textColor: [120, 53, 15],  // amber-900
               halign: 'center',
               fontStyle: 'bold',
-              fontSize: 8.5
+              fontSize: 8
             }
           },
           {
@@ -1048,7 +1123,7 @@ const IhlrApprovals = () => {
               textColor: [124, 45, 18],  // orange-900
               halign: 'center',
               fontStyle: 'bold',
-              fontSize: 8.5
+              fontSize: 8
             }
           },
           {
@@ -1059,20 +1134,23 @@ const IhlrApprovals = () => {
               textColor: [30, 41, 59],   // slate-800
               halign: 'center',
               fontStyle: 'bold',
-              fontSize: 8.5
+              fontSize: 8
             }
           }
         ],
         [
-          'SL',
+          'SL NO',
           'REQ NO',
           'DATE / SHIFT',
+          'PROBLEM',
           'MODEL / QTY',
-          'PROBLEM / DETECTED AT',
+          'DETECTED AT',
+          'RECEIVED FROM',
+          'ANALYSIS BY',
           'DEFECT FILE',
           '4M / RESP',
           'OCCURRENCE CAUSE',
-          'ACTION',
+          'ACTION TAKEN',
           'TARGET DATE',
           'STATUS'
         ]
@@ -1085,52 +1163,70 @@ const IhlrApprovals = () => {
           ? ''
           : (defectFiles.map((a) => a.name).join(', ') || '—');
 
+        let respStr = r.four_m || '—';
+        if (r.resp) respStr += `\n${r.resp}`;
+        if (r.resp_person) respStr += `\n(${r.resp_person})`;
+
+        const occCause = r.occurrence_cause || r.detailed_observation || r.prod_why_why?.[0] || '—';
+
+        let statusStr = (r.status || 'OPEN').replace(/_/g, ' ');
+        if (r.remarks && r.remarks.trim()) {
+          statusStr += `\n[${r.remarks.trim()}]`;
+        }
+
         return [
           idx + 1,
           String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
           `${formatDateDDMMYYYY(r.batch_date)}\n${formatIhlrShiftDisplay(r.shift, true)}`,
+          r.problem || '—',
           `${r.model || '—'}\n(${r.actual_qty ? `${r.actual_qty} Nos` : '1 Nos'})`,
-          `${r.problem || '—'}\n[${r.problem_detected_at || '—'}]`,
+          r.problem_detected_at || '—',
+          r.received_from || '—',
+          r.analysis_done_by || '—',
           fileCellText,
-          `${r.four_m || '—'}\n${r.resp || '—'}${r.resp_person ? ` (${r.resp_person})` : ''}`,
-          r.prod_why_why?.[0] || '—',
+          respStr,
+          occCause,
           r.action || '—',
-          formatDateDDMMYYYY(r.target_date),
-          r.status || 'OPEN'
+          formatDateDDMMYYYY(r.target_date) || '—',
+          statusStr
         ];
       });
 
       autoTable(doc, {
         head: tableHeaders,
         body: tableRows,
-        startY: 80,
+        startY: 68,
         theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 4, valign: 'middle', overflow: 'linebreak' },
-        headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        margin: { left: 24, right: 24, top: 16, bottom: 20 },
+        styles: { fontSize: 7, cellPadding: 3, valign: 'middle', overflow: 'linebreak' },
+        headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 7.5 },
         columnStyles: {
-          0: { cellWidth: 24, halign: 'center' },
-          1: { cellWidth: 54, fontStyle: 'bold', halign: 'center' },
-          2: { cellWidth: 68 },
-          3: { cellWidth: 72 },
-          4: { cellWidth: 120 },
-          5: { cellWidth: 68, minCellHeight: 38, halign: 'center', valign: 'middle' },
-          6: { cellWidth: 72 },
-          7: { cellWidth: 76 },
-          8: { cellWidth: 100 },
-          9: { cellWidth: 50, halign: 'center' },
-          10: { cellWidth: 50, halign: 'center', fontStyle: 'bold' }
+          0: { cellWidth: 22, halign: 'center' },
+          1: { cellWidth: 46, fontStyle: 'bold', halign: 'center' },
+          2: { cellWidth: 56, halign: 'center' },
+          3: { cellWidth: 76 },
+          4: { cellWidth: 54 },
+          5: { cellWidth: 50 },
+          6: { cellWidth: 50 },
+          7: { cellWidth: 50 },
+          8: { cellWidth: 62, minCellHeight: 36, halign: 'center', valign: 'middle' },
+          9: { cellWidth: 56, halign: 'center' },
+          10: { cellWidth: 68 },
+          11: { cellWidth: 78 },
+          12: { cellWidth: 56, halign: 'center' },
+          13: { cellWidth: 58, halign: 'center', fontStyle: 'bold' }
         },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didDrawCell: (data) => {
-          if (data.section === 'body' && data.column.index === 5) {
+          if (data.section === 'body' && data.column.index === 8) {
             const imgObj = rowImages[data.row.index];
             if (imgObj && imgObj.dataUrl) {
               try {
                 const padding = 2;
                 const cellW = data.cell.width - padding * 2;
                 const cellH = data.cell.height - padding * 2;
-                const imgW = Math.min(cellW, 60);
-                const imgH = Math.min(cellH, 32);
+                const imgW = Math.min(cellW, 56);
+                const imgH = Math.min(cellH, 30);
                 const x = data.cell.x + (data.cell.width - imgW) / 2;
                 const y = data.cell.y + (data.cell.height - imgH) / 2;
                 doc.addImage(imgObj.dataUrl, imgObj.extension === 'png' ? 'PNG' : 'JPEG', x, y, imgW, imgH);
@@ -1146,8 +1242,8 @@ const IhlrApprovals = () => {
           doc.setTextColor(148, 163, 184);
           doc.text(
             `Page ${data.pageNumber} of ${pageCount}`,
-            doc.internal.pageSize.width - 80,
-            doc.internal.pageSize.height - 20
+            doc.internal.pageSize.width - 60,
+            doc.internal.pageSize.height - 15
           );
         }
       });
