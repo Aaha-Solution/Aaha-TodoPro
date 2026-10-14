@@ -407,9 +407,9 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     (request?.status || '').toUpperCase() === 'IN_PROGRESS' ||
     (request?.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
     (request && (
-      Boolean(request.action && String(request.action).trim()) ||
-      Boolean(request.target_date) ||
-      (Array.isArray(request.prod_why_why) && request.prod_why_why.some(w => Boolean(w && String(w).trim())))
+      Boolean(request.action && String(request.action).trim()) &&
+      Boolean(request.target_date) &&
+      Boolean(request.prod_why_why?.[0] && String(request.prod_why_why[0]).trim())
     ))
   );
 
@@ -1175,9 +1175,15 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 {/* 2. Occurrence Cause (Production Team - 5-Why) */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
-                      <ShieldAlert className="w-4 h-4" />
-                      <span>Occurrence Cause (Production Team - 5-Why Analysis)</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
+                        <ShieldAlert className="w-4 h-4" />
+                        <span>Occurrence Cause (Production Team - 5-Why Analysis)</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
+                        <span>W1 Mandatory</span>
+                        <span className="text-red-500 font-bold">*</span>
+                      </span>
                     </div>
                     <span className="text-[11px] text-slate-400 font-mono">W1 to W5 Breakdown</span>
                   </div>
@@ -1195,7 +1201,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         return validWhys.map((item, idx) => (
                           <div key={idx} className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
                             <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
-                              {item.label}:
+                              {item.label}:{item.label === 'W1' && <span className="text-red-500 font-bold ml-0.5">*</span>}
                             </span>
                             <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
                               {item.val}
@@ -1208,7 +1214,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       return (
                         <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
                           <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
-                            W1:
+                            W1:<span className="text-red-500 font-bold ml-0.5">*</span>
                           </span>
                           <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
                             <span className="text-slate-400 italic">No entry recorded</span>
@@ -2085,9 +2091,15 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 {/* 🔬 4. QA 5-WHY ROOT CAUSE ANALYSIS */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-amber-600 text-xs font-bold uppercase tracking-wider">
-                      <ShieldCheck className="w-4 h-4" />
-                      <span>4. QA PROBLEM CAUSE (5-WHY ROOT CAUSE ANALYSIS)</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-amber-600 text-xs font-bold uppercase tracking-wider">
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>4. QA PROBLEM CAUSE (5-WHY ROOT CAUSE ANALYSIS)</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
+                        <span>W1 Mandatory</span>
+                        <span className="text-red-500 font-bold">*</span>
+                      </span>
                     </div>
                     <span className="text-[11px] text-slate-400 font-mono">Logged by Requester / QA</span>
                   </div>
@@ -2100,17 +2112,34 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </h4>
                     </div>
                     <div className="space-y-2">
-                      {(req.qa_why_why || []).map((w, idx) =>
-                        w ? (
-                          <div key={idx} className="flex items-start gap-2">
-                            <span className="font-mono font-bold text-amber-700 shrink-0">W{idx + 1}:</span>
-                            <span className="text-slate-800 leading-relaxed font-medium">{w}</span>
+                      {(() => {
+                        const validWhys = (Array.isArray(req.qa_why_why) ? req.qa_why_why : [])
+                          .map((w, idx) => ({
+                            label: `W${idx + 1}`,
+                            val: typeof w === 'string' ? w.trim() : (w ? String(w).trim() : '')
+                          }))
+                          .filter((item) => item.val.length > 0);
+
+                        if (validWhys.length > 0) {
+                          return validWhys.map((item, idx) => (
+                            <div key={idx} className="flex items-start gap-2">
+                              <span className="font-mono font-bold text-amber-700 shrink-0">
+                                {item.label}:{item.label === 'W1' && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                              </span>
+                              <span className="text-slate-800 leading-relaxed font-medium">{item.val}</span>
+                            </div>
+                          ));
+                        }
+
+                        return (
+                          <div className="flex items-start gap-2">
+                            <span className="font-mono font-bold text-amber-700 shrink-0">
+                              W1:<span className="text-red-500 font-bold ml-0.5">*</span>
+                            </span>
+                            <span className="text-slate-400 italic">No entry recorded</span>
                           </div>
-                        ) : null
-                      )}
-                      {(!req.qa_why_why || req.qa_why_why.filter(Boolean).length === 0) && (
-                        <p className="text-slate-400 italic">No QA 5-Why analysis recorded.</p>
-                      )}
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>

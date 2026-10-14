@@ -157,7 +157,8 @@ const IhlrApprovals = () => {
       String(selectedRequest.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
       (
         Boolean(selectedRequest.action && String(selectedRequest.action).trim()) &&
-        Boolean(selectedRequest.target_date)
+        Boolean(selectedRequest.target_date) &&
+        Boolean(selectedRequest.prod_why_why?.[0] && String(selectedRequest.prod_why_why[0]).trim())
       )
     )
   );
@@ -188,6 +189,7 @@ const IhlrApprovals = () => {
 
   // Form State for Closer Fields
   const [closerWhyWhy, setCloserWhyWhy] = useState(['', '', '', '', '']);
+  const [closerW1Error, setCloserW1Error] = useState(false);
   const [closerAction, setCloserAction] = useState('');
   const [closerActionError, setCloserActionError] = useState(false);
   const [closerTargetDate, setCloserTargetDate] = useState('');
@@ -442,6 +444,7 @@ const IhlrApprovals = () => {
       whyArray[4] || ''
     ];
     setCloserWhyWhy(paddedWhys);
+    setCloserW1Error(false);
 
     setCloserAction(req.action || '');
     setCloserActionError(false);
@@ -470,6 +473,9 @@ const IhlrApprovals = () => {
       updated[index] = val;
       return updated;
     });
+    if (index === 0 && val && val.trim()) {
+      setCloserW1Error(false);
+    }
   };
 
   const handleFileSelect = (e) => {
@@ -517,6 +523,13 @@ const IhlrApprovals = () => {
 
     // Mandatory Closer Field Validations (errors shown below the inputs)
     let hasCloserErrors = false;
+
+    if (!closerWhyWhy[0] || !closerWhyWhy[0].trim()) {
+      setCloserW1Error(true);
+      hasCloserErrors = true;
+    } else {
+      setCloserW1Error(false);
+    }
 
     if (!closerAction || !closerAction.trim()) {
       setCloserActionError(true);
@@ -1448,6 +1461,10 @@ const IhlrApprovals = () => {
                       </span>
                     )}
                   </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
+                    <span>W1 Mandatory</span>
+                    <span className="text-red-500 font-bold">*</span>
+                  </span>
                 </div>
                 <span className="text-[10px] text-slate-400 font-mono">W1 to W5</span>
               </div>
@@ -1471,29 +1488,44 @@ const IhlrApprovals = () => {
 
               {/* 5-Whys Stacked Inputs (Image 1: W1 to W5) */}
               <div className="space-y-1.5">
-                {['W1', 'W2', 'W3', 'W4', 'W5'].map((label, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <span className="w-8 shrink-0 text-[11px] font-black font-mono text-rose-600">
-                      {label}:
-                    </span>
-                    <input
-                      type="text"
-                      disabled={!canUpdateCloserFields}
-                      value={closerWhyWhy[idx] || ''}
-                      onChange={(e) => handleWhyChange(idx, e.target.value)}
-                      placeholder={
-                        !selectedRequest
-                          ? 'Select request on right'
-                          : canUpdateCloserFields
-                          ? `Enter ${label} cause...`
-                          : isAdmin
-                          ? `Click Edit Closer Fields below to edit ${label}...`
-                          : 'Read-only (Closer only)'
-                      }
-                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition"
-                    />
-                  </div>
-                ))}
+                {['W1', 'W2', 'W3', 'W4', 'W5'].map((label, idx) => {
+                  const isW1 = idx === 0;
+                  const hasW1Error = isW1 && closerW1Error;
+                  return (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-8 shrink-0 text-[11px] font-black font-mono ${hasW1Error ? 'text-rose-700' : 'text-rose-600'}`}>
+                          {label}:{isW1 && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                        </span>
+                        <input
+                          type="text"
+                          disabled={!canUpdateCloserFields}
+                          value={closerWhyWhy[idx] || ''}
+                          onChange={(e) => handleWhyChange(idx, e.target.value)}
+                          placeholder={
+                            !selectedRequest
+                              ? 'Select request on right'
+                              : canUpdateCloserFields
+                              ? `Enter ${label} cause...${isW1 ? ' (Mandatory)' : ''}`
+                              : isAdmin
+                              ? `Click Edit Closer Fields below to edit ${label}...`
+                              : 'Read-only (Closer only)'
+                          }
+                          className={`w-full px-3 py-1.5 rounded-lg text-slate-800 outline-none transition disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed ${
+                            hasW1Error
+                              ? 'bg-rose-50/20 border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
+                              : 'bg-white border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                          }`}
+                        />
+                      </div>
+                      {hasW1Error && (
+                        <p className="text-[11px] text-rose-500 font-semibold pl-10 flex items-center gap-1">
+                          <span>* Why 1 (W1) is mandatory. Please enter occurrence cause.</span>
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
