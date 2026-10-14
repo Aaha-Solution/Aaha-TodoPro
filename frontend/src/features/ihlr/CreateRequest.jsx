@@ -9,7 +9,6 @@ import {
   Send, 
   ShieldAlert, 
   Trash2, 
-  ArrowLeft,
   FileSpreadsheet,
   File as FileIcon,
   Presentation,
@@ -634,13 +633,6 @@ const IhlrCreateRequest = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <button
-            onClick={() => navigate('/ihlr/dashboard')}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 mb-1 transition cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Dashboard</span>
-          </button>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             {isEditMode ? `Edit Requester Details (${formData.req_no})` : 'Create IHLR Analysis Report'}
           </h1>
