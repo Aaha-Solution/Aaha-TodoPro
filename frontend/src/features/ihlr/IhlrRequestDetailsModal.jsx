@@ -1183,19 +1183,39 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   </div>
 
                   <div className="grid grid-cols-1 gap-2.5 text-xs">
-                    {['W1', 'W2', 'W3', 'W4', 'W5'].map((wLabel, idx) => {
-                      const val = request.prod_why_why?.[idx];
+                    {(() => {
+                      const validWhys = (Array.isArray(request.prod_why_why) ? request.prod_why_why : [])
+                        .map((w, idx) => ({
+                          label: `W${idx + 1}`,
+                          val: typeof w === 'string' ? w.trim() : (w ? String(w).trim() : '')
+                        }))
+                        .filter((item) => item.val.length > 0);
+
+                      if (validWhys.length > 0) {
+                        return validWhys.map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                            <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                              {item.label}:
+                            </span>
+                            <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
+                              {item.val}
+                            </span>
+                          </div>
+                        ));
+                      }
+
+                      // If no data recorded, show only one clean box with W1
                       return (
-                        <div key={idx} className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
                           <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
-                            {wLabel}:
+                            W1:
                           </span>
                           <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
-                            {val || <span className="text-slate-400 italic">No entry recorded</span>}
+                            <span className="text-slate-400 italic">No entry recorded</span>
                           </span>
                         </div>
                       );
-                    })}
+                    })()}
                   </div>
                 </div>
 
