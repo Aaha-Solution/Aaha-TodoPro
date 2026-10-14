@@ -1347,25 +1347,6 @@ const IhlrApprovals = () => {
             </div>
             {selectedRequest && (
               <div className="flex items-center gap-2">
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = !adminEditCloser;
-                      setAdminEditCloser(next);
-                      if (next) setIsReassignOpen(false);
-                    }}
-                    title={adminEditCloser ? "Disable edit mode for closer fields" : "Enable edit mode for closer fields"}
-                    className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
-                      adminEditCloser
-                        ? 'bg-amber-500 text-white border-amber-600 hover:bg-amber-600'
-                        : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                    <span>{adminEditCloser ? 'Editing Closer Log' : 'Edit Closer Fields'}</span>
-                  </button>
-                )}
                 <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                   {String(selectedRequest.req_no).startsWith('IHLR-') ? selectedRequest.req_no : `#${selectedRequest.req_no}`}
                 </span>
@@ -1460,10 +1441,6 @@ const IhlrApprovals = () => {
                         Closer
                       </span>
                     )}
-                  </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
-                    <span>W1 Mandatory</span>
-                    <span className="text-red-500 font-bold">*</span>
                   </span>
                 </div>
                 <span className="text-[10px] text-slate-400 font-mono">W1 to W5</span>

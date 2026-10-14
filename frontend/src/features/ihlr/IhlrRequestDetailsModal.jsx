@@ -1180,15 +1180,9 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 {/* 2. Occurrence Cause (Production Team - 5-Why) */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
-                        <ShieldAlert className="w-4 h-4" />
-                        <span>Occurrence Cause (Production Team - 5-Why Analysis)</span>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
-                        <span>W1 Mandatory</span>
-                        <span className="text-red-500 font-bold">*</span>
-                      </span>
+                    <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
+                      <ShieldAlert className="w-4 h-4" />
+                      <span>Occurrence Cause (Production Team - 5-Why Analysis)</span>
                     </div>
                     <span className="text-[11px] text-slate-400 font-mono">W1 to W5 Breakdown</span>
                   </div>
@@ -2096,15 +2090,9 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 {/* 🔬 4. QA 5-WHY ROOT CAUSE ANALYSIS */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-2 text-amber-600 text-xs font-bold uppercase tracking-wider">
-                        <ShieldCheck className="w-4 h-4" />
-                        <span>4. QA PROBLEM CAUSE (5-WHY ROOT CAUSE ANALYSIS)</span>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
-                        <span>W1 Mandatory</span>
-                        <span className="text-red-500 font-bold">*</span>
-                      </span>
+                    <div className="flex items-center gap-2 text-amber-600 text-xs font-bold uppercase tracking-wider">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>4. QA PROBLEM CAUSE (5-WHY ROOT CAUSE ANALYSIS)</span>
                     </div>
                     <span className="text-[11px] text-slate-400 font-mono">Logged by Requester / QA</span>
                   </div>
