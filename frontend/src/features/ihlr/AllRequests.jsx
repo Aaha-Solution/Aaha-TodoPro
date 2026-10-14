@@ -12,7 +12,6 @@ import {
   Hourglass,
   Layers,
   Plus,
-  Trash2,
   ExternalLink,
   ChevronDown,
   Paperclip,
@@ -1157,16 +1156,6 @@ const IhlrAllRequests = () => {
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
-
-                        {isAdmin && (
-                          <button
-                            onClick={() => handleDelete(r.id, r.req_no)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                            title="Delete Report"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
                       </div>
                     </td>
                   </tr>

@@ -990,7 +990,7 @@ const UserManagement = () => {
                   {(addFormErrors.employeeId || isAddEmpDuplicate) && (
                     <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
-                      <span>{addFormErrors.employeeId || `Employee ID "${formData.employeeId}" is already registered in DB.`}</span>
+                      <span>{addFormErrors.employeeId || `Employee ID "${formData.employeeId}" is already registered.`}</span>
                     </p>
                   )}
                 </div>
