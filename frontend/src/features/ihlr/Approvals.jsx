@@ -282,6 +282,17 @@ const IhlrApprovals = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Reset reassign form when no request is selected
+  useEffect(() => {
+    if (!selectedRequest) {
+      setIsReassignOpen(false);
+      setIsReassignUserDropdownOpen(false);
+      setReassignedDept('');
+      setReassignedPerson('');
+      setReassignUserSearch('');
+    }
+  }, [selectedRequest]);
+
   const getSelectedReassignedUsers = () => {
     if (!reassignedPerson) return [];
     return reassignedPerson
@@ -1803,16 +1814,16 @@ const IhlrApprovals = () => {
                 )}
                 {/* Reassign Closer (Optional - Button trigger to expand) */}
                 <div className="space-y-2">
-                  {!isReassignOpen ? (
+                  {!isReassignOpen || !selectedRequest ? (
                     <div className={`flex items-center justify-between p-2.5 rounded-xl border transition ${
-                      adminEditCloser
+                      adminEditCloser || !selectedRequest
                         ? 'bg-slate-100/70 border-slate-200 text-slate-400'
                         : 'bg-slate-50 border-slate-200/90'
                     }`}>
                       <div className="flex items-center gap-2">
-                        <UserCheck className={`w-4 h-4 ${adminEditCloser ? 'text-slate-400' : 'text-blue-600'}`} />
+                        <UserCheck className={`w-4 h-4 ${adminEditCloser || !selectedRequest ? 'text-slate-400' : 'text-blue-600'}`} />
                         <div className="text-left">
-                          <div className={`text-[11px] font-bold flex items-center gap-1.5 ${adminEditCloser ? 'text-slate-500' : 'text-slate-800'}`}>
+                          <div className={`text-[11px] font-bold flex items-center gap-1.5 ${adminEditCloser || !selectedRequest ? 'text-slate-500' : 'text-slate-800'}`}>
                             <span>Reassign Closer</span>
                             <span className="text-[9px] font-bold px-1.5 py-0.2 bg-purple-50 text-purple-700 rounded border border-purple-200">
                               Admin
@@ -1820,15 +1831,17 @@ const IhlrApprovals = () => {
                             <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
                           </div>
                           <div className="text-[10px] text-slate-500">
-                            Current: <strong className={adminEditCloser ? 'text-slate-600' : 'text-slate-700'}>{selectedRequest?.resp_person || 'Not Assigned'}</strong> ({selectedRequest?.resp || 'N/A'})
+                            Current: <strong className={adminEditCloser || !selectedRequest ? 'text-slate-600' : 'text-slate-700'}>
+                              {selectedRequest ? (selectedRequest.resp_person || 'Not Assigned') : 'No Request Selected'}
+                            </strong> ({selectedRequest?.resp || 'N/A'})
                           </div>
                         </div>
                       </div>
                       <button
                         type="button"
-                        disabled={adminEditCloser}
+                        disabled={adminEditCloser || !selectedRequest}
                         onClick={() => {
-                          if (adminEditCloser) return;
+                          if (adminEditCloser || !selectedRequest) return;
                           setIsReassignOpen(true);
                           setIsReassignUserDropdownOpen(false);
                           setReassignUserSearch('');
@@ -1836,8 +1849,15 @@ const IhlrApprovals = () => {
                           setReassignedPerson(selectedRequest?.resp_person || '');
                           setCloserStatus('OPEN');
                         }}
+                        title={
+                          !selectedRequest
+                            ? 'Select a request first to reassign closer'
+                            : adminEditCloser
+                            ? 'Disabled while editing closer fields'
+                            : 'Reassign Closer'
+                        }
                         className={`px-2.5 py-1.5 rounded-lg font-bold text-xs border shadow-2xs transition flex items-center gap-1.5 shrink-0 ${
-                          adminEditCloser
+                          adminEditCloser || !selectedRequest
                             ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed select-none'
                             : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 cursor-pointer'
                         }`}
