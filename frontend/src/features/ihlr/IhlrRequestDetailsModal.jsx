@@ -1035,7 +1035,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
                     IHLR Rejection Analysis Report
                   </h3>
-                  {canEditRequester && (
+                  {canEditRequester && activeTab === 'requester' && (
                     isEditMode ? (
                       <div className="flex items-center gap-2">
                         <span className="px-3 py-1 bg-amber-500 text-white text-[10px] font-black rounded-full uppercase tracking-wider animate-pulse">
@@ -1104,7 +1104,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('closer')}
+              onClick={() => {
+                if (isEditMode) {
+                  setIsEditMode(false);
+                }
+                setActiveTab('closer');
+              }}
               className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
                 activeTab === 'closer'
                   ? isClosed
@@ -2159,7 +2164,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   </div>
                   <button
                     type="button"
-                    onClick={() => setActiveTab('closer')}
+                    onClick={() => {
+                      if (isEditMode) {
+                        setIsEditMode(false);
+                      }
+                      setActiveTab('closer');
+                    }}
                     className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
                   >
                     <span>View Closer Details</span>
@@ -2172,7 +2182,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
           {/* Modal Footer */}
           <div className="p-4 sm:p-5 border-t border-slate-100 bg-white flex items-center justify-between shrink-0">
-            {isEditMode ? (
+            {isEditMode && activeTab === 'requester' ? (
               <>
                 <div className="flex items-center gap-2 text-xs text-slate-600">
                   <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
