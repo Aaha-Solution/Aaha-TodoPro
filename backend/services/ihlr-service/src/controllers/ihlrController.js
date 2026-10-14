@@ -655,6 +655,35 @@ export const updateIhlrRequest = async (req, res) => {
         safeUpdates.status = 'OPEN';
       }
       // Keep existing closer values (5-Why, Action, Evidence, Target Date) intact so the reassigned person can view/edit them
+
+      let currentHistory = [];
+      if (existing.reassignment_history) {
+        if (Array.isArray(existing.reassignment_history)) {
+          currentHistory = existing.reassignment_history;
+        } else if (typeof existing.reassignment_history === 'string') {
+          try {
+            const parsed = JSON.parse(existing.reassignment_history);
+            currentHistory = Array.isArray(parsed) ? parsed : [parsed];
+          } catch {
+            currentHistory = [];
+          }
+        }
+      }
+
+      const reassignEntry = {
+        reassigned_at: new Date().toISOString(),
+        reassigned_by: req.user?.name || safeUpdates.user?.name || body.user?.name || 'Quality Admin',
+        reassigned_by_id: req.user?.id || safeUpdates.user?.id || body.user?.id || null,
+        reassigned_by_email: req.user?.email || safeUpdates.user?.email || body.user?.email || null,
+        prev_resp: prevRespDept,
+        prev_resp_person: prevRespPerson,
+        new_resp: newRespDept,
+        new_resp_person: newRespPerson,
+        remarks: safeUpdates.remarks || ''
+      };
+
+      currentHistory.push(reassignEntry);
+      safeUpdates.reassignment_history = currentHistory;
     }
 
     // Clean dates and JSON structures safely

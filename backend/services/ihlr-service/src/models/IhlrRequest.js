@@ -17,7 +17,8 @@ export const IhlrRequest = {
           ...r,
           status: resolveIhlrStatus(r),
           qa_why_why: typeof r.qa_why_why === 'string' ? JSON.parse(r.qa_why_why) : (r.qa_why_why || []),
-          prod_why_why: typeof r.prod_why_why === 'string' ? JSON.parse(r.prod_why_why) : (r.prod_why_why || [])
+          prod_why_why: typeof r.prod_why_why === 'string' ? JSON.parse(r.prod_why_why) : (r.prod_why_why || []),
+          reassignment_history: typeof r.reassignment_history === 'string' ? JSON.parse(r.reassignment_history) : (r.reassignment_history || [])
         }));
       }
     } catch (err) {
@@ -36,7 +37,8 @@ export const IhlrRequest = {
             ...r,
             status: resolveIhlrStatus(r),
             qa_why_why: typeof r.qa_why_why === 'string' ? JSON.parse(r.qa_why_why) : (r.qa_why_why || []),
-            prod_why_why: typeof r.prod_why_why === 'string' ? JSON.parse(r.prod_why_why) : (r.prod_why_why || [])
+            prod_why_why: typeof r.prod_why_why === 'string' ? JSON.parse(r.prod_why_why) : (r.prod_why_why || []),
+            reassignment_history: typeof r.reassignment_history === 'string' ? JSON.parse(r.reassignment_history) : (r.reassignment_history || [])
           };
         }
       }
@@ -197,6 +199,11 @@ export const IhlrRequest = {
         if (updates.prod_why_why !== undefined) {
           fields.push('prod_why_why = ?');
           values.push(typeof updates.prod_why_why === 'string' ? updates.prod_why_why : JSON.stringify(updates.prod_why_why));
+        }
+
+        if (updates.reassignment_history !== undefined) {
+          fields.push('reassignment_history = ?');
+          values.push(typeof updates.reassignment_history === 'string' ? updates.reassignment_history : JSON.stringify(updates.reassignment_history));
         }
 
         if (fields.length > 0) {

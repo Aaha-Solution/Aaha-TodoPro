@@ -224,7 +224,7 @@ const IhlrAllRequests = () => {
         views: [{ showGridLines: true }]
       });
 
-      // 31 Columns configuration
+      // 33 Columns configuration
       const colWidths = [
         // 1-21: REQUESTOR (Defect Investigation & QA 5-Why)
         8,  // 1: SL NO
@@ -257,9 +257,12 @@ const IhlrAllRequests = () => {
         32, // 27: CONTAINMENT ACTION
         14, // 28: TARGET DATE
         28, // 29: CLOSER EVIDENCE / ATTACHMENTS
-        // 30-31: REMARKS & STATUS
-        24, // 30: REMARKS
-        14  // 31: STATUS
+        // 30-31: REASSIGNMENT TRACKING
+        16, // 30: REASSIGNED STATUS
+        38, // 31: REASSIGNMENT DETAILS
+        // 32-33: REMARKS & STATUS
+        24, // 32: REMARKS
+        14  // 33: STATUS
       ];
 
       colWidths.forEach((w, i) => {
@@ -284,7 +287,14 @@ const IhlrAllRequests = () => {
       superCloser.alignment = { vertical: 'middle', horizontal: 'center' };
 
       worksheet.mergeCells('AD1:AE1');
-      const superStatus = worksheet.getCell('AD1');
+      const superReassign = worksheet.getCell('AD1');
+      superReassign.value = 'REASSIGNMENT TRACKING';
+      superReassign.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF4C1D95' } }; // violet-900
+      superReassign.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } }; // violet-100
+      superReassign.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      worksheet.mergeCells('AF1:AG1');
+      const superStatus = worksheet.getCell('AF1');
       superStatus.value = 'REMARKS & STATUS';
       superStatus.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E293B' } }; // slate-800
       superStatus.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; // slate-100
@@ -315,7 +325,9 @@ const IhlrAllRequests = () => {
         // 22-29 Closer
         'PROD WHY 1', 'PROD WHY 2', 'PROD WHY 3', 'PROD WHY 4', 'PROD WHY 5',
         'CONTAINMENT ACTION', 'TARGET DATE', 'CLOSER EVIDENCE / ATTACHMENTS',
-        // 30-31 Remarks & Status
+        // 30-31 Reassignment Tracking
+        'REASSIGNED STATUS', 'REASSIGNMENT DETAILS',
+        // 32-33 Remarks & Status
         'REMARKS', 'STATUS'
       ];
 
@@ -339,6 +351,10 @@ const IhlrAllRequests = () => {
           // Closer Sub-Header
           cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF7C2D12' } };
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFED7AA' } }; // orange-200
+        } else if (colNum <= 31) {
+          // Reassignment Tracking Sub-Header
+          cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF4C1D95' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDD6FE' } }; // violet-200
         } else {
           // Remarks & Status Sub-Header
           cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF1E293B' } };
@@ -362,6 +378,41 @@ const IhlrAllRequests = () => {
         const evidenceFiles = parseAttachments(r.evidence_attachment);
         const imgObj = rowImages[idx];
         const rowNum = idx + 3;
+
+        let reassignList = r.reassignment_history;
+        if (typeof reassignList === 'string') {
+          try {
+            reassignList = JSON.parse(reassignList);
+          } catch {
+            reassignList = [];
+          }
+        }
+        const hasReassignments = Array.isArray(reassignList) && reassignList.length > 0;
+        const reassignedStatus = hasReassignments ? 'Yes' : 'No';
+
+        let reassignmentDetails = '—';
+        if (hasReassignments) {
+          if (reassignList.length === 1) {
+            const entry = reassignList[0];
+            const prev = [entry.prev_resp_person, entry.prev_resp ? `(${entry.prev_resp})` : ''].filter(Boolean).join(' ');
+            const next = [entry.new_resp_person, entry.new_resp ? `(${entry.new_resp})` : ''].filter(Boolean).join(' ');
+            const dateStr = entry.reassigned_at ? formatDateDDMMYYYY(entry.reassigned_at) : '';
+            const by = entry.reassigned_by ? `by ${entry.reassigned_by}` : '';
+            const on = dateStr ? `on ${dateStr}` : '';
+            const meta = [by, on].filter(Boolean).join(' ');
+            reassignmentDetails = `From: ${prev || '—'} → To: ${next || '—'}${meta ? ` (${meta})` : ''}${entry.remarks ? ` | Remarks: ${entry.remarks}` : ''}`;
+          } else {
+            reassignmentDetails = reassignList.map((entry, i) => {
+              const prev = [entry.prev_resp_person, entry.prev_resp ? `(${entry.prev_resp})` : ''].filter(Boolean).join(' ');
+              const next = [entry.new_resp_person, entry.new_resp ? `(${entry.new_resp})` : ''].filter(Boolean).join(' ');
+              const dateStr = entry.reassigned_at ? formatDateDDMMYYYY(entry.reassigned_at) : '';
+              const by = entry.reassigned_by ? `by ${entry.reassigned_by}` : '';
+              const on = dateStr ? `on ${dateStr}` : '';
+              const meta = [by, on].filter(Boolean).join(' ');
+              return `${i + 1}. From: ${prev || '—'} → To: ${next || '—'}${meta ? ` (${meta})` : ''}${entry.remarks ? ` | Remarks: ${entry.remarks}` : ''}`;
+            }).join('\n');
+          }
+        }
 
         const rowData = [
           // 1-21 Requestor (Strictly in CreateRequest form order!)
@@ -397,13 +448,17 @@ const IhlrAllRequests = () => {
           formatDateDDMMYYYY(r.target_date),
           evidenceFiles.map((a) => a.name).join(', ') || 'None',
 
-          // 30-31 Remarks & Status
+          // 30-31 Reassignment Tracking
+          reassignedStatus,
+          reassignmentDetails,
+
+          // 32-33 Remarks & Status
           r.remarks || '—',
           r.status || 'OPEN'
         ];
 
         const row = worksheet.addRow(rowData);
-        row.height = imgObj ? 56 : 24;
+        row.height = imgObj ? 56 : (hasReassignments && reassignList.length > 1 ? Math.max(36, reassignList.length * 18) : 24);
 
         row.eachCell((cell) => {
           cell.font = regularFont;
@@ -421,7 +476,8 @@ const IhlrAllRequests = () => {
         row.getCell(14).alignment = { vertical: 'middle', horizontal: 'center' }; // DEFECT EVIDENCE
         row.getCell(21).alignment = { vertical: 'middle', horizontal: 'center' }; // CREATED AT
         row.getCell(28).alignment = { vertical: 'middle', horizontal: 'center' }; // TARGET DATE
-        row.getCell(31).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
+        row.getCell(30).alignment = { vertical: 'middle', horizontal: 'center' }; // REASSIGNED STATUS
+        row.getCell(33).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
 
         // Embed image thumbnail into Column 14 (DEFECT EVIDENCE / ATTACHMENT - 0-indexed col 13.12)
         if (imgObj && imgObj.base64) {
