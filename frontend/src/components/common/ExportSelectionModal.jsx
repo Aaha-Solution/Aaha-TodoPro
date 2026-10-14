@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Download, 
   X, 
@@ -42,9 +43,9 @@ const ExportSelectionModal = ({
     }
   };
 
-  return (
+  return createPortal(
     <div 
-      className="fixed inset-0 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 !m-0 !mt-0 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
       style={{ zIndex: 99999 }}
       onClick={onClose}
     >
@@ -187,7 +188,8 @@ const ExportSelectionModal = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

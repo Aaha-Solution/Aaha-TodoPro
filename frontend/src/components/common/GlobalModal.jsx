@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   CheckCircle2, 
   AlertTriangle, 
@@ -94,9 +95,9 @@ const GlobalModal = ({
   // Split lines for multi-line formatting
   const formattedLines = typeof message === 'string' ? message.split('\n') : [message];
 
-  return (
+  return createPortal(
     <div 
-      className="fixed inset-0 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+      className="fixed inset-0 !m-0 !mt-0 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
       style={{ zIndex: 999999 }}
       onClick={onCancel}
     >
@@ -182,7 +183,8 @@ const GlobalModal = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

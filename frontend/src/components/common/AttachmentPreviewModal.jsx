@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, 
   Download, 
@@ -60,9 +61,9 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose, onAnnotate }) => 
     ? attachment.isWord
     : ['DOC', 'DOCX'].includes(ext) || Boolean(activeUrl?.toLowerCase().includes('.doc'));
 
-  return (
+  return createPortal(
     <div 
-      className="fixed inset-0 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 !m-0 !mt-0 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200"
       style={{ zIndex: 99999 }}
       onClick={onClose}
     >
@@ -275,7 +276,8 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose, onAnnotate }) => 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

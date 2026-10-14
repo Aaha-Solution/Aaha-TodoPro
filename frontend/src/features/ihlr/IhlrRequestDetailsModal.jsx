@@ -724,7 +724,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   return createPortal(
     <>
       <div 
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150"
+        className="fixed inset-0 !m-0 !mt-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150"
         style={{ zIndex: 99990 }}
         onClick={onClose}
       >

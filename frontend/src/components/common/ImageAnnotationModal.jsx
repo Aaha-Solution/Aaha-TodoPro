@@ -440,7 +440,7 @@ const ImageAnnotationModal = ({ isOpen, imageAttachment, onClose, onSave }) => {
   if (!isOpen || !imageAttachment) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 select-none animate-in fade-in duration-150">
+    <div className="fixed inset-0 !m-0 !mt-0 z-[99999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 select-none animate-in fade-in duration-150">
       <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-5xl h-[92vh] max-h-[920px] flex flex-col shadow-2xl overflow-hidden">
         
         {/* Top Header (White Theme) */}
