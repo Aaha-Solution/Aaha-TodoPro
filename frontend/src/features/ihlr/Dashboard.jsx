@@ -149,8 +149,15 @@ const IhlrDashboard = () => {
     if (endDate) {
       filters.endDate = endDate;
     }
-    const data = await ihlrService.getRequests(filters);
-    return Array.isArray(data) && data.length > 0 ? data : (stats.recentRequests || []);
+    try {
+      const data = await ihlrService.getRequests(filters);
+      if (Array.isArray(data)) {
+        return data;
+      }
+    } catch (err) {
+      console.warn('Failed to fetch filtered requests for export, falling back to loaded dashboard requests:', err);
+    }
+    return stats.recentRequests || [];
   };
 
   const handleOpenExportModal = () => {

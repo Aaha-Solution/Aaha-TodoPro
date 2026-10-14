@@ -211,6 +211,11 @@ export const getIhlrRequests = async (req, res) => {
           const s = (r.status || '').toUpperCase();
           return s === 'OPEN' || s === 'PENDING';
         });
+      } else if (targetStatus === 'IN_PROGRESS' || targetStatus === 'IN-PROGRESS' || targetStatus === 'APPROVAL_PENDING' || targetStatus === 'APPROVAL PENDING') {
+        requests = requests.filter(r => {
+          const s = (r.status || '').toUpperCase();
+          return s === 'IN_PROGRESS' || s === 'IN-PROGRESS' || s === 'APPROVAL_PENDING' || s === 'APPROVAL PENDING';
+        });
       } else {
         requests = requests.filter(r => (r.status || '').toUpperCase() === targetStatus);
       }
