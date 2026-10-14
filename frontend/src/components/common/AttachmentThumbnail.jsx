@@ -55,10 +55,13 @@ const AttachmentThumbnail = ({ rawAttachment, onClick }) => {
           </div>
         )}
 
-        {/* Multi-item pill indicator */}
+        {/* Multi-item pill indicator: exact count up to 5, and 5+ when greater than 5 */}
         {count > 1 && (
-          <span className="absolute -top-1.5 -right-1.5 px-1 py-0.2 rounded-full text-[9px] font-black font-mono bg-blue-600 text-white shadow-xs">
-            +{count - 1}
+          <span 
+            className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-black font-mono bg-blue-600 text-white shadow-xs flex items-center justify-center leading-none"
+            title={`${count} attached files`}
+          >
+            {count > 5 ? '5+' : count}
           </span>
         )}
       </div>
