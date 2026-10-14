@@ -797,44 +797,42 @@ const IhlrApprovals = () => {
         views: [{ showGridLines: true }]
       });
 
-      // 33 Columns configuration
+      // 31 Columns configuration
       const colWidths = [
-        // 1-23: REQUESTOR (Defect Investigation & QA 5-Why)
+        // 1-21: REQUESTOR (Defect Investigation & QA 5-Why)
         8,  // 1: SL NO
         14, // 2: REQ NO
-        14, // 3: DATE
+        14, // 3: INCIDENT DATE
         12, // 4: SHIFT
-        18, // 5: MODEL / PART
-        14, // 6: ACTUAL QTY
-        20, // 7: DEFECT DETECTED AT
-        20, // 8: RECEIVED FROM (LINE)
-        18, // 9: ANALYSIS BY
-        20, // 10: DEFECT FILE / IMAGE (Thumbnail)
-        16, // 11: 4M CLASSIFICATION
-        18, // 12: RESPONSIBLE DEPT
-        22, // 13: RESPONSIBLE IN-CHARGE
-        30, // 14: DEFECT PROBLEM / PHENOMENON
-        32, // 15: DETAILED OBSERVATION
-        24, // 16: INITIAL OCCURRENCE CAUSE
-        20, // 17: QA WHY 1
-        20, // 18: QA WHY 2
-        20, // 19: QA WHY 3
-        20, // 20: QA WHY 4
-        20, // 21: QA WHY 5
-        18, // 22: RAISED BY
-        14, // 23: CREATED AT
-        // 24-31: CLOSER (Production Containment)
-        20, // 24: PROD WHY 1
-        20, // 25: PROD WHY 2
-        20, // 26: PROD WHY 3
-        20, // 27: PROD WHY 4
-        20, // 28: PROD WHY 5
-        32, // 29: CONTAINMENT ACTION
-        14, // 30: TARGET DATE
-        28, // 31: EVIDENCE ATTACHMENTS
-        // 32-33: REMARKS & STATUS
-        24, // 32: REMARKS
-        14  // 33: STATUS
+        20, // 5: MODEL NAME / PART
+        32, // 6: PROBLEM / DEFECT DESCRIPTION
+        20, // 7: PROBLEM DETECTED AT
+        22, // 8: RECEIVED FROM (LINE/CELL)
+        18, // 9: ANALYSIS DONE BY
+        16, // 10: ACTUAL REJECTED QTY
+        16, // 11: 4M CATEGORY
+        18, // 12: RESPONSIBILITY (RESP)
+        22, // 13: USER NAME (BASED ON DEP)
+        22, // 14: DEFECT EVIDENCE / ATTACHMENT (Thumbnail)
+        20, // 15: QA WHY 1
+        20, // 16: QA WHY 2
+        20, // 17: QA WHY 3
+        20, // 18: QA WHY 4
+        20, // 19: QA WHY 5
+        18, // 20: RAISED BY
+        14, // 21: CREATED AT
+        // 22-29: CLOSER (Production Containment)
+        20, // 22: PROD WHY 1
+        20, // 23: PROD WHY 2
+        20, // 24: PROD WHY 3
+        20, // 25: PROD WHY 4
+        20, // 26: PROD WHY 5
+        32, // 27: CONTAINMENT ACTION
+        14, // 28: TARGET DATE
+        28, // 29: CLOSER EVIDENCE / ATTACHMENTS
+        // 30-31: REMARKS & STATUS
+        24, // 30: REMARKS
+        14  // 31: STATUS
       ];
 
       colWidths.forEach((w, i) => {
@@ -844,22 +842,22 @@ const IhlrApprovals = () => {
       // ==============================================================
       // ROW 1: SUPER HEADINGS (Phase Header Row matching user design)
       // ==============================================================
-      worksheet.mergeCells('A1:W1');
+      worksheet.mergeCells('A1:U1');
       const superReq = worksheet.getCell('A1');
       superReq.value = 'REQUESTOR (DEFECT INVESTIGATION & QA 5-WHY)';
       superReq.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF78350F' } }; // amber-900
       superReq.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // amber-100
       superReq.alignment = { vertical: 'middle', horizontal: 'center' };
 
-      worksheet.mergeCells('X1:AE1');
-      const superCloser = worksheet.getCell('X1');
+      worksheet.mergeCells('V1:AC1');
+      const superCloser = worksheet.getCell('V1');
       superCloser.value = 'CLOSER (PRODUCTION CONTAINMENT)';
       superCloser.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF7C2D12' } }; // orange-900
       superCloser.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEDD5' } }; // orange-100
       superCloser.alignment = { vertical: 'middle', horizontal: 'center' };
 
-      worksheet.mergeCells('AF1:AG1');
-      const superStatus = worksheet.getCell('AF1');
+      worksheet.mergeCells('AD1:AE1');
+      const superStatus = worksheet.getCell('AD1');
       superStatus.value = 'REMARKS & STATUS';
       superStatus.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E293B' } }; // slate-800
       superStatus.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; // slate-100
@@ -880,17 +878,17 @@ const IhlrApprovals = () => {
       // ROW 2: SUB-COLUMN HEADERS (Grouped strictly by Super Headings)
       // ==============================================================
       const subHeaders = [
-        // 1-23 Requestor
-        'SL NO', 'REQ NO', 'DATE', 'SHIFT', 'MODEL / PART', 'ACTUAL QTY',
-        'DEFECT DETECTED AT', 'RECEIVED FROM (LINE)', 'ANALYSIS BY', 'DEFECT FILE / IMAGE',
-        '4M CLASSIFICATION', 'RESPONSIBLE DEPT', 'RESPONSIBLE IN-CHARGE',
-        'DEFECT PROBLEM / PHENOMENON', 'DETAILED OBSERVATION', 'INITIAL OCCURRENCE CAUSE',
+        // 1-21 Requestor (Strictly in CreateRequest form order!)
+        'SL NO', 'REQ NO', 'INCIDENT DATE', 'SHIFT', 'MODEL NAME / PART',
+        'PROBLEM / DEFECT DESCRIPTION', 'PROBLEM DETECTED AT', 'RECEIVED FROM (LINE/CELL)',
+        'ANALYSIS DONE BY', 'ACTUAL REJECTED QTY', '4M CATEGORY',
+        'RESPONSIBILITY (RESP)', 'USER NAME (BASED ON DEP)', 'DEFECT EVIDENCE / ATTACHMENT',
         'QA WHY 1', 'QA WHY 2', 'QA WHY 3', 'QA WHY 4', 'QA WHY 5',
         'RAISED BY', 'CREATED AT',
-        // 24-31 Closer
+        // 22-29 Closer
         'PROD WHY 1', 'PROD WHY 2', 'PROD WHY 3', 'PROD WHY 4', 'PROD WHY 5',
-        'CONTAINMENT ACTION', 'TARGET DATE', 'EVIDENCE ATTACHMENTS',
-        // 32-33 Remarks & Status
+        'CONTAINMENT ACTION', 'TARGET DATE', 'CLOSER EVIDENCE / ATTACHMENTS',
+        // 30-31 Remarks & Status
         'REMARKS', 'STATUS'
       ];
 
@@ -906,11 +904,11 @@ const IhlrApprovals = () => {
           right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
         };
 
-        if (colNum <= 23) {
+        if (colNum <= 21) {
           // Requestor Sub-Header
           cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF78350F' } };
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE68A' } }; // amber-200
-        } else if (colNum <= 31) {
+        } else if (colNum <= 29) {
           // Closer Sub-Header
           cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF7C2D12' } };
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFED7AA' } }; // orange-200
@@ -939,23 +937,21 @@ const IhlrApprovals = () => {
         const rowNum = idx + 3;
 
         const rowData = [
-          // 1-23 Requestor
+          // 1-21 Requestor (Strictly in CreateRequest form order!)
           idx + 1,
           String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
           formatDateDDMMYYYY(r.batch_date),
           formatIhlrShiftDisplay(r.shift, true),
           r.model || '—',
-          r.actual_qty ? `${r.actual_qty} Nos` : '1 Nos',
+          r.problem || '—',
           r.problem_detected_at || '—',
           r.received_from || '—',
           r.analysis_done_by || '—',
-          imgObj ? '' : (defectFiles.map((a) => a.name).join(', ') || '—'),
+          r.actual_qty ? `${r.actual_qty} Nos` : '1 Nos',
           r.four_m || '—',
           r.resp || '—',
           r.resp_person || '—',
-          r.problem || '—',
-          r.problem_description || r.detailed_observation || '—',
-          r.occurrence_cause || '—',
+          imgObj ? '' : (defectFiles.map((a) => a.name).join(', ') || '—'),
           r.why_why?.[0] || r.qa_why_why?.[0] || '—',
           r.why_why?.[1] || r.qa_why_why?.[1] || '—',
           r.why_why?.[2] || r.qa_why_why?.[2] || '—',
@@ -964,7 +960,7 @@ const IhlrApprovals = () => {
           r.created_by || '—',
           r.created_at ? formatDateDDMMYYYY(r.created_at) : '—',
 
-          // 24-31 Closer
+          // 22-29 Closer
           r.prod_why_why?.[0] || '—',
           r.prod_why_why?.[1] || '—',
           r.prod_why_why?.[2] || '—',
@@ -974,7 +970,7 @@ const IhlrApprovals = () => {
           formatDateDDMMYYYY(r.target_date),
           evidenceFiles.map((a) => a.name).join(', ') || 'None',
 
-          // 32-33 Remarks & Status
+          // 30-31 Remarks & Status
           r.remarks || '—',
           r.status || 'OPEN'
         ];
@@ -989,16 +985,18 @@ const IhlrApprovals = () => {
         });
 
         // Center align specific columns
-        row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(3).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(10).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(30).alignment = { vertical: 'middle', horizontal: 'center' };
-        row.getCell(33).alignment = { vertical: 'middle', horizontal: 'center' };
+        row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };  // SL NO
+        row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };  // REQ NO
+        row.getCell(3).alignment = { vertical: 'middle', horizontal: 'center' };  // INCIDENT DATE
+        row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };  // SHIFT
+        row.getCell(10).alignment = { vertical: 'middle', horizontal: 'center' }; // ACTUAL REJECTED QTY
+        row.getCell(11).alignment = { vertical: 'middle', horizontal: 'center' }; // 4M CATEGORY
+        row.getCell(14).alignment = { vertical: 'middle', horizontal: 'center' }; // DEFECT EVIDENCE
+        row.getCell(21).alignment = { vertical: 'middle', horizontal: 'center' }; // CREATED AT
+        row.getCell(28).alignment = { vertical: 'middle', horizontal: 'center' }; // TARGET DATE
+        row.getCell(31).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
 
-        // Embed image thumbnail into Column 10 (DEFECT FILE / IMAGE)
+        // Embed image thumbnail into Column 14 (DEFECT EVIDENCE / ATTACHMENT - 0-indexed col 13.12)
         if (imgObj && imgObj.base64) {
           try {
             const imgId = workbook.addImage({
@@ -1006,7 +1004,7 @@ const IhlrApprovals = () => {
               extension: imgObj.extension === 'png' ? 'png' : 'jpeg'
             });
             worksheet.addImage(imgId, {
-              tl: { col: 9.12, row: rowNum - 0.88 },
+              tl: { col: 13.12, row: rowNum - 0.88 },
               ext: { width: 85, height: 48 },
               editAs: 'oneCell'
             });
