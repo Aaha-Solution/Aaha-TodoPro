@@ -26,13 +26,12 @@ import {
   Users,
   ChevronDown
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { parseAttachments, getFileMeta } from './IhlrAttachmentView';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
+import { exportIhlrToExcel, loadLogoBase64, isImageAttachment, formatReassignmentHistory } from './ihlrExportUtils';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import { resolveAttachmentUrl } from '../../components/common/attachmentUtils';
 import { useModal } from '../../context/ModalContext';
@@ -40,56 +39,6 @@ import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
 import { ihlrService } from '../../services/ihlrService';
-import nipponLogo from '../../assets/Nippon Logo.png';
-
-// Helper to convert company logo to Base64 for jsPDF embedding
-const loadLogoBase64 = async () => {
-  const tryFetch = async (url) => {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const blob = await res.blob();
-      return await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(blob);
-      });
-    } catch {
-      return null;
-    }
-  };
-
-  const tryCanvas = (url) => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'Anonymous';
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth || img.width;
-          canvas.height = img.naturalHeight || img.height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/png'));
-        } catch {
-          resolve(null);
-        }
-      };
-      img.onerror = () => resolve(null);
-      img.src = url;
-    });
-  };
-
-  const sources = [nipponLogo, '/images/logo.png', '/assets/Nippon Logo.png'];
-  for (const src of sources) {
-    if (!src) continue;
-    let b64 = await tryFetch(src);
-    if (!b64) b64 = await tryCanvas(src);
-    if (b64) return b64;
-  }
-  return null;
-};
 
 /**
  * Meaningful IHLR (In-House Line Rejection) Inspection & Analysis Report Modal:
@@ -523,7 +472,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     return results.filter(Boolean);
   };
 
-  // Export this single report to Excel (.xlsx) matching the standard table with Super Headings and embedded image (like Image 2)
+  // Export this single report to Excel (.xlsx) using common IHLR export utility
   const handleExportExcel = async () => {
     try {
       const targetReq = req || request;
@@ -537,310 +486,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       const safeReqNo = String(targetReq.req_no || 'Report').replace(/[^a-zA-Z0-9_-]/g, '_');
       const today = new Date().toISOString().slice(0, 10);
 
-      // Preload image thumbnail for the defect file
-      const defectFiles = attachments;
-      const evidenceFiles = evidenceAttachments;
-      const isImg = (a) => {
-        if (!a) return false;
-        if (a.isImage) return true;
-        const n = a.name || a.filename || (typeof a === 'string' ? a : '');
-        const ext = (n.split('.').pop() || '').toLowerCase();
-        return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg'].includes(ext);
-      };
-
-      const firstImg = defectFiles.find(isImg);
-      let imgObj = null;
-      if (firstImg) {
-        imgObj = await fetchAttachmentImageBase64(firstImg);
-      }
-
-      const workbook = new ExcelJS.Workbook();
-      workbook.creator = 'India Nippon Electricals Limited';
-      workbook.created = new Date();
-
-      const worksheet = workbook.addWorksheet('IHLR Analysis Log', {
-        views: [{ showGridLines: true }]
+      await exportIhlrToExcel({
+        requests: [targetReq],
+        fileName: `IHLR_Report_${safeReqNo}_${today}.xlsx`,
+        sheetName: 'IHLR Analysis Log'
       });
-
-      // 33 Columns configuration
-      const colWidths = [
-        // 1-21: REQUESTOR (Defect Investigation & QA 5-Why)
-        8,  // 1: SL NO
-        14, // 2: REQ NO
-        14, // 3: INCIDENT DATE
-        12, // 4: SHIFT
-        20, // 5: MODEL NAME / PART
-        32, // 6: PROBLEM / DEFECT DESCRIPTION
-        20, // 7: PROBLEM DETECTED AT
-        22, // 8: RECEIVED FROM (LINE/CELL)
-        18, // 9: ANALYSIS DONE BY
-        16, // 10: ACTUAL REJECTED QTY
-        16, // 11: 4M CATEGORY
-        18, // 12: RESPONSIBILITY (RESP)
-        22, // 13: USER NAME (BASED ON DEP)
-        22, // 14: DEFECT EVIDENCE / ATTACHMENT (Thumbnail)
-        20, // 15: QA WHY 1
-        20, // 16: QA WHY 2
-        20, // 17: QA WHY 3
-        20, // 18: QA WHY 4
-        20, // 19: QA WHY 5
-        18, // 20: RAISED BY
-        14, // 21: CREATED AT
-        // 22-29: CLOSER (Production Containment)
-        20, // 22: PROD WHY 1
-        20, // 23: PROD WHY 2
-        20, // 24: PROD WHY 3
-        20, // 25: PROD WHY 4
-        20, // 26: PROD WHY 5
-        32, // 27: CONTAINMENT ACTION
-        14, // 28: TARGET DATE
-        28, // 29: CLOSER EVIDENCE / ATTACHMENTS
-        // 30-31: REASSIGNMENT TRACKING
-        16, // 30: REASSIGNED STATUS
-        38, // 31: REASSIGNMENT DETAILS
-        // 32-33: REMARKS & STATUS
-        24, // 32: REMARKS
-        14  // 33: STATUS
-      ];
-
-      colWidths.forEach((w, i) => {
-        worksheet.getColumn(i + 1).width = w;
-      });
-
-      // ==============================================================
-      // ROW 1: SUPER HEADINGS (Phase Header Row matching user design)
-      // ==============================================================
-      worksheet.mergeCells('A1:U1');
-      const superReq = worksheet.getCell('A1');
-      superReq.value = 'REQUESTOR (DEFECT INVESTIGATION & QA 5-WHY)';
-      superReq.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF78350F' } }; // amber-900
-      superReq.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // amber-100
-      superReq.alignment = { vertical: 'middle', horizontal: 'center' };
-
-      worksheet.mergeCells('V1:AC1');
-      const superCloser = worksheet.getCell('V1');
-      superCloser.value = 'CLOSER (PRODUCTION CONTAINMENT)';
-      superCloser.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF7C2D12' } }; // orange-900
-      superCloser.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEDD5' } }; // orange-100
-      superCloser.alignment = { vertical: 'middle', horizontal: 'center' };
-
-      worksheet.mergeCells('AD1:AE1');
-      const superReassign = worksheet.getCell('AD1');
-      superReassign.value = 'REASSIGNMENT TRACKING';
-      superReassign.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF4C1D95' } }; // violet-900
-      superReassign.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } }; // violet-100
-      superReassign.alignment = { vertical: 'middle', horizontal: 'center' };
-
-      worksheet.mergeCells('AF1:AG1');
-      const superStatus = worksheet.getCell('AF1');
-      superStatus.value = 'REMARKS & STATUS';
-      superStatus.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E293B' } }; // slate-800
-      superStatus.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; // slate-100
-      superStatus.alignment = { vertical: 'middle', horizontal: 'center' };
-
-      const superRow = worksheet.getRow(1);
-      superRow.height = 30;
-      superRow.eachCell({ includeEmpty: true }, (c) => {
-        c.border = {
-          top: { style: 'medium', color: { argb: 'FFCBD5E1' } },
-          bottom: { style: 'medium', color: { argb: 'FFCBD5E1' } },
-          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
-        };
-      });
-
-      // ==============================================================
-      // ROW 2: SUB-COLUMN HEADERS (Grouped strictly by Super Headings)
-      // ==============================================================
-      const subHeaders = [
-        // 1-21 Requestor (Strictly in CreateRequest form order!)
-        'SL NO', 'REQ NO', 'INCIDENT DATE', 'SHIFT', 'MODEL NAME / PART',
-        'PROBLEM / DEFECT DESCRIPTION', 'PROBLEM DETECTED AT', 'RECEIVED FROM (LINE/CELL)',
-        'ANALYSIS DONE BY', 'ACTUAL REJECTED QTY', '4M CATEGORY',
-        'RESPONSIBILITY (RESP)', 'USER NAME (BASED ON DEP)', 'DEFECT EVIDENCE / ATTACHMENT',
-        'QA WHY 1', 'QA WHY 2', 'QA WHY 3', 'QA WHY 4', 'QA WHY 5',
-        'RAISED BY', 'CREATED AT',
-        // 22-29 Closer
-        'PROD WHY 1', 'PROD WHY 2', 'PROD WHY 3', 'PROD WHY 4', 'PROD WHY 5',
-        'CONTAINMENT ACTION', 'TARGET DATE', 'CLOSER EVIDENCE / ATTACHMENTS',
-        // 30-31 Reassignment Tracking
-        'REASSIGNED STATUS', 'REASSIGNMENT DETAILS',
-        // 32-33 Remarks & Status
-        'REMARKS', 'STATUS'
-      ];
-
-      const headerRow2 = worksheet.addRow(subHeaders);
-      headerRow2.height = 28;
-
-      headerRow2.eachCell((cell, colNum) => {
-        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-          bottom: { style: 'medium', color: { argb: 'FF94A3B8' } },
-          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
-        };
-
-        if (colNum <= 21) {
-          // Requestor Sub-Header
-          cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF78350F' } };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE68A' } }; // amber-200
-        } else if (colNum <= 29) {
-          // Closer Sub-Header
-          cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF7C2D12' } };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFED7AA' } }; // orange-200
-        } else if (colNum <= 31) {
-          // Reassignment Tracking Sub-Header
-          cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF4C1D95' } };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDD6FE' } }; // violet-200
-        } else {
-          // Remarks & Status Sub-Header
-          cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF1E293B' } };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }; // slate-200
-        }
-      });
-
-      // ==============================================================
-      // ROW 3: DATA ROW (Single particular request)
-      // ==============================================================
-      const regularFont = { name: 'Arial', size: 9.5, color: { argb: 'FF1E293B' } };
-      const thinBorder = {
-        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
-      };
-
-      let reassignList = targetReq.reassignment_history;
-      if (typeof reassignList === 'string') {
-        try {
-          reassignList = JSON.parse(reassignList);
-        } catch {
-          reassignList = [];
-        }
-      }
-      const hasReassignments = Array.isArray(reassignList) && reassignList.length > 0;
-      const reassignedStatus = hasReassignments ? 'Yes' : 'No';
-
-      let reassignmentDetails = '—';
-      if (hasReassignments) {
-        if (reassignList.length === 1) {
-          const entry = reassignList[0];
-          const prev = [entry.prev_resp_person, entry.prev_resp ? `(${entry.prev_resp})` : ''].filter(Boolean).join(' ');
-          const next = [entry.new_resp_person, entry.new_resp ? `(${entry.new_resp})` : ''].filter(Boolean).join(' ');
-          const dateStr = entry.reassigned_at ? formatDateDDMMYYYY(entry.reassigned_at) : '';
-          const by = entry.reassigned_by ? `by ${entry.reassigned_by}` : '';
-          const on = dateStr ? `on ${dateStr}` : '';
-          const meta = [by, on].filter(Boolean).join(' ');
-          reassignmentDetails = `From: ${prev || '—'} → To: ${next || '—'}${meta ? ` (${meta})` : ''}${entry.remarks ? ` | Remarks: ${entry.remarks}` : ''}`;
-        } else {
-          reassignmentDetails = reassignList.map((entry, i) => {
-            const prev = [entry.prev_resp_person, entry.prev_resp ? `(${entry.prev_resp})` : ''].filter(Boolean).join(' ');
-            const next = [entry.new_resp_person, entry.new_resp ? `(${entry.new_resp})` : ''].filter(Boolean).join(' ');
-            const dateStr = entry.reassigned_at ? formatDateDDMMYYYY(entry.reassigned_at) : '';
-            const by = entry.reassigned_by ? `by ${entry.reassigned_by}` : '';
-            const on = dateStr ? `on ${dateStr}` : '';
-            const meta = [by, on].filter(Boolean).join(' ');
-            return `${i + 1}. From: ${prev || '—'} → To: ${next || '—'}${meta ? ` (${meta})` : ''}${entry.remarks ? ` | Remarks: ${entry.remarks}` : ''}`;
-          }).join('\n');
-        }
-      }
-
-      const rowData = [
-        // 1-21 Requestor (Strictly in CreateRequest form order!)
-        1,
-        String(targetReq.req_no).startsWith('IHLR-') ? targetReq.req_no : `#${targetReq.req_no}`,
-        formatDateDDMMYYYY(targetReq.batch_date),
-        formatIhlrShiftDisplay(targetReq.shift, true),
-        targetReq.model || '—',
-        targetReq.problem || '—',
-        targetReq.problem_detected_at || '—',
-        targetReq.received_from || '—',
-        targetReq.analysis_done_by || '—',
-        targetReq.actual_qty ? `${targetReq.actual_qty} Nos` : '1 Nos',
-        targetReq.four_m || '—',
-        targetReq.resp || '—',
-        targetReq.resp_person || '—',
-        imgObj ? '' : (defectFiles.map((a) => a.name).join(', ') || '—'),
-        targetReq.why_why?.[0] || targetReq.qa_why_why?.[0] || '—',
-        targetReq.why_why?.[1] || targetReq.qa_why_why?.[1] || '—',
-        targetReq.why_why?.[2] || targetReq.qa_why_why?.[2] || '—',
-        targetReq.why_why?.[3] || targetReq.qa_why_why?.[3] || '—',
-        targetReq.why_why?.[4] || targetReq.qa_why_why?.[4] || '—',
-        targetReq.created_by || '—',
-        targetReq.created_at ? formatDateDDMMYYYY(targetReq.created_at) : '—',
-
-        // 22-29 Closer
-        targetReq.prod_why_why?.[0] || '—',
-        targetReq.prod_why_why?.[1] || '—',
-        targetReq.prod_why_why?.[2] || '—',
-        targetReq.prod_why_why?.[3] || '—',
-        targetReq.prod_why_why?.[4] || '—',
-        targetReq.action || '—',
-        formatDateDDMMYYYY(targetReq.target_date),
-        evidenceFiles.map((a) => a.name).join(', ') || 'None',
-
-        // 30-31 Reassignment Tracking
-        reassignedStatus,
-        reassignmentDetails,
-
-        // 32-33 Remarks & Status
-        targetReq.remarks || '—',
-        targetReq.status || 'OPEN'
-      ];
-
-      const row = worksheet.addRow(rowData);
-      row.height = imgObj ? 56 : (hasReassignments && reassignList.length > 1 ? Math.max(36, reassignList.length * 18) : 24);
-
-      row.eachCell((cell) => {
-        cell.font = regularFont;
-        cell.border = thinBorder;
-        cell.alignment = { vertical: 'middle', wrapText: true };
-      });
-
-      // Center align specific columns
-      row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };  // SL NO
-      row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };  // REQ NO
-      row.getCell(3).alignment = { vertical: 'middle', horizontal: 'center' };  // INCIDENT DATE
-      row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };  // SHIFT
-      row.getCell(10).alignment = { vertical: 'middle', horizontal: 'center' }; // ACTUAL REJECTED QTY
-      row.getCell(11).alignment = { vertical: 'middle', horizontal: 'center' }; // 4M CATEGORY
-      row.getCell(14).alignment = { vertical: 'middle', horizontal: 'center' }; // DEFECT EVIDENCE
-      row.getCell(21).alignment = { vertical: 'middle', horizontal: 'center' }; // CREATED AT
-      row.getCell(28).alignment = { vertical: 'middle', horizontal: 'center' }; // TARGET DATE
-      row.getCell(30).alignment = { vertical: 'middle', horizontal: 'center' }; // REASSIGNED STATUS
-      row.getCell(33).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
-
-      // Embed image thumbnail into Column 14 (DEFECT EVIDENCE / ATTACHMENT) - row 3 is 0-indexed as row 2.12
-      if (imgObj && imgObj.base64) {
-        try {
-          const imgId = workbook.addImage({
-            base64: imgObj.base64,
-            extension: imgObj.extension === 'png' ? 'png' : 'jpeg'
-          });
-          worksheet.addImage(imgId, {
-            tl: { col: 13.12, row: 2.12 },
-            ext: { width: 85, height: 48 },
-            editAs: 'oneCell'
-          });
-        } catch (e) {
-          console.warn('Could not add image to Excel:', e);
-        }
-      }
-
-      // Generate file and trigger download
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      });
-      const downloadUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `IHLR_Report_${safeReqNo}_${today}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(downloadUrl);
 
       setShowExportModal(false);
       modalSuccess(`Exported report #${reqNo} to Excel successfully.`);
@@ -990,6 +640,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       });
 
       // Section 4: Containment Action & Closure
+      const { hasReassignments, reassignmentDetails } = formatReassignmentHistory(request.reassignment_history);
       const actionY = doc.lastAutoTable.finalY + 8;
       autoTable(doc, {
         startY: actionY,
@@ -997,6 +648,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         body: [
           [`Corrective Action: ${request.action || 'Containment action pending review.'}`],
           [`Target Date: ${formatDate(request.target_date)}  |  Responsible Person: ${request.resp_person || request.resp || 'Quality Team'}`],
+          ...(hasReassignments ? [[`Reassignment History: ${reassignmentDetails}`]] : []),
           ...(request.remarks ? [[`Remarks: ${request.remarks}`]] : []),
           [`Closure Sign-off: ${request.status === 'CLOSED' ? `Closed by ${request.closed_by || request.resp_person || 'Quality Admin'} on ${formatDate(request.closed_at || request.target_date)}` : 'Pending Closer Sign-off'}`],
           ...(attachments.length > 0 ? [[`Defect Attachments (${attachments.length}): ${attachments.map((a) => a.name).join(', ')}`]] : []),
