@@ -187,6 +187,11 @@ const IhlrApprovals = () => {
 
   const isLockedForCloserUser = !isAdmin && (isSelectedClosed || hasCloserSubmitted);
 
+  // Reassign Closer is disabled when no request is selected, or when review fields are disabled/pending closer submission, or closed
+  const isReassignDisabled = Boolean(
+    !selectedRequest || isCloserDataToBeUpdated || isSelectedClosed || adminEditCloser
+  );
+
   // Form State for Closer Fields
   const [closerWhyWhy, setCloserWhyWhy] = useState(['', '', '', '', '']);
   const [closerW1Error, setCloserW1Error] = useState(false);
@@ -284,16 +289,16 @@ const IhlrApprovals = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Reset reassign form when no request is selected
+  // Reset reassign form when no request is selected or when reassign is disabled
   useEffect(() => {
-    if (!selectedRequest) {
+    if (isReassignDisabled) {
       setIsReassignOpen(false);
       setIsReassignUserDropdownOpen(false);
       setReassignedDept('');
       setReassignedPerson('');
       setReassignUserSearch('');
     }
-  }, [selectedRequest]);
+  }, [isReassignDisabled]);
 
   const getSelectedReassignedUsers = () => {
     if (!reassignedPerson) return [];
@@ -1825,22 +1830,26 @@ const IhlrApprovals = () => {
                 <div className="space-y-2">
                   {!isReassignOpen || !selectedRequest ? (
                     <div className={`flex items-center justify-between p-2.5 rounded-xl border transition ${
-                      adminEditCloser || !selectedRequest
-                        ? 'bg-slate-100/70 border-slate-200 text-slate-400'
+                      isReassignDisabled
+                        ? 'bg-slate-100/70 border-slate-200 text-slate-400 select-none'
                         : 'bg-slate-50 border-slate-200/90'
                     }`}>
                       <div className="flex items-center gap-2">
-                        <UserCheck className={`w-4 h-4 ${adminEditCloser || !selectedRequest ? 'text-slate-400' : 'text-blue-600'}`} />
+                        <UserCheck className={`w-4 h-4 ${isReassignDisabled ? 'text-slate-400' : 'text-blue-600'}`} />
                         <div className="text-left">
-                          <div className={`text-[11px] font-bold flex items-center gap-1.5 ${adminEditCloser || !selectedRequest ? 'text-slate-500' : 'text-slate-800'}`}>
+                          <div className={`text-[11px] font-bold flex items-center gap-1.5 ${isReassignDisabled ? 'text-slate-500' : 'text-slate-800'}`}>
                             <span>Reassign Closer</span>
-                            <span className="text-[9px] font-bold px-1.5 py-0.2 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                              isReassignDisabled
+                                ? 'bg-slate-200/60 text-slate-500 border-slate-300/80'
+                                : 'bg-purple-50 text-purple-700 border-purple-200'
+                            }`}>
                               Admin
                             </span>
                             <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
                           </div>
                           <div className="text-[10px] text-slate-500">
-                            Current: <strong className={adminEditCloser || !selectedRequest ? 'text-slate-600' : 'text-slate-700'}>
+                            Current: <strong className={isReassignDisabled ? 'text-slate-600' : 'text-slate-700'}>
                               {selectedRequest ? (selectedRequest.resp_person || 'Not Assigned') : 'No Request Selected'}
                             </strong> ({selectedRequest?.resp || 'N/A'})
                           </div>
@@ -1848,9 +1857,9 @@ const IhlrApprovals = () => {
                       </div>
                       <button
                         type="button"
-                        disabled={adminEditCloser || !selectedRequest}
+                        disabled={isReassignDisabled}
                         onClick={() => {
-                          if (adminEditCloser || !selectedRequest) return;
+                          if (isReassignDisabled) return;
                           setIsReassignOpen(true);
                           setIsReassignUserDropdownOpen(false);
                           setReassignUserSearch('');
@@ -1861,12 +1870,16 @@ const IhlrApprovals = () => {
                         title={
                           !selectedRequest
                             ? 'Select a request first to reassign closer'
+                            : isSelectedClosed
+                            ? 'Incident closed — closer cannot be reassigned'
+                            : isCloserDataToBeUpdated
+                            ? 'Disabled while closer submission is pending'
                             : adminEditCloser
                             ? 'Disabled while editing closer fields'
                             : 'Reassign Closer'
                         }
                         className={`px-2.5 py-1.5 rounded-lg font-bold text-xs border shadow-2xs transition flex items-center gap-1.5 shrink-0 ${
-                          adminEditCloser || !selectedRequest
+                          isReassignDisabled
                             ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed select-none'
                             : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 cursor-pointer'
                         }`}
