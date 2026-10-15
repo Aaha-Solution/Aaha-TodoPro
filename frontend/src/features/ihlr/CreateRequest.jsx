@@ -323,7 +323,7 @@ const IhlrCreateRequest = () => {
 
   const getFileMeta = (file) => {
     const ext = (file?.type || (file?.name ? file.name.split('.').pop() : '') || '').toUpperCase();
-    if (file?.isImage || ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'].includes(ext)) {
+    if (file?.isImage || ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG', 'JFIF', 'BMP'].includes(ext)) {
       return {
         badgeBg: 'bg-blue-50 text-blue-600 border-blue-200',
         icon: ImageIcon,
@@ -373,7 +373,7 @@ const IhlrCreateRequest = () => {
       }
       const newAttachments = files.map((file) => {
         const ext = file.name.split('.').pop()?.toUpperCase() || 'FILE';
-        const isImage = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'].includes(ext);
+        const isImage = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG', 'JFIF', 'BMP'].includes(ext);
         const isPdf = ext === 'PDF';
         const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
         const isPpt = ['PPT', 'PPTX', 'PPSX'].includes(ext);
@@ -1211,7 +1211,7 @@ const IhlrCreateRequest = () => {
             <input
               type="file"
               multiple
-              accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.csv,.ppt,.pptx,.doc,.docx,application/pdf,image/jpeg,image/png,image/*,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".pdf,.png,.jpg,.jpeg,.jfif,.webp,.bmp,.xlsx,.xls,.csv,.ppt,.pptx,.doc,.docx,application/pdf,image/jpeg,image/png,image/jfif,image/pjpeg,image/*,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={handleFileUpload}
               className="hidden"
             />
@@ -1279,7 +1279,7 @@ const IhlrCreateRequest = () => {
 
                     <div className="flex items-center gap-1 shrink-0">
                       {/* Annotate - ONLY for image files */}
-                      {(file.isImage || ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP', 'SVG'].includes((file.type || file.name?.split('.').pop() || '').toUpperCase())) && (
+                      {(file.isImage || ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP', 'SVG', 'JFIF'].includes((file.type || file.name?.split('.').pop() || '').toUpperCase())) && (
                         <button
                           type="button"
                           onClick={(e) => {

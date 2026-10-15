@@ -17,8 +17,22 @@ export const getAttachment = async (req, res) => {
       return errorResponse(res, 'Attachment not found in database', 404);
     }
 
-    const mimeType = fileRecord.mime_type || 'application/octet-stream';
+    let mimeType = fileRecord.mime_type || 'application/octet-stream';
     const filename = fileRecord.original_name || fileRecord.filename || 'attachment';
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext === 'jfif' || ext === 'jpg' || ext === 'jpeg') {
+      mimeType = 'image/jpeg';
+    } else if (ext === 'png') {
+      mimeType = 'image/png';
+    } else if (ext === 'webp') {
+      mimeType = 'image/webp';
+    } else if (ext === 'gif') {
+      mimeType = 'image/gif';
+    } else if (ext === 'svg') {
+      mimeType = 'image/svg+xml';
+    } else if (ext === 'pdf') {
+      mimeType = 'application/pdf';
+    }
 
     const isDownload = req.query.download === '1' || req.query.download === 'true';
     const dispositionType = isDownload ? 'attachment' : 'inline';
@@ -50,8 +64,12 @@ export const downloadAttachment = async (req, res) => {
       return errorResponse(res, 'Attachment not found in database', 404);
     }
 
-    const mimeType = fileRecord.mime_type || 'application/octet-stream';
+    let mimeType = fileRecord.mime_type || 'application/octet-stream';
     const filename = fileRecord.original_name || fileRecord.filename || 'attachment';
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext === 'jfif' || ext === 'jpg' || ext === 'jpeg' || mimeType === 'image/jfif' || mimeType === 'image/pjpeg') {
+      mimeType = 'image/jpeg';
+    }
 
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Length', fileRecord.file_data.length);

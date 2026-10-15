@@ -144,7 +144,7 @@ export const getFullAttachmentUrl = resolveAttachmentUrl;
 export const getFileMeta = (type = '', name = '') => {
   const ext = (type || name.split('.').pop() || 'FILE').toUpperCase();
 
-  if (['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext)) {
+  if (['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG', 'JFIF', 'BMP'].includes(ext)) {
     return {
       typeLabel: 'IMAGE',
       badgeBg: 'bg-purple-100 text-purple-700 border-purple-200',
@@ -220,7 +220,7 @@ export const normalizeAttachment = (item, defaultModule = '') => {
       cleanUrl.split('/').pop() ||
       (trimmed.startsWith('data:image') ? 'attachment-image.png' : 'document');
     const ext = filename.split('.').pop()?.toUpperCase() || (trimmed.startsWith('data:image') ? 'PNG' : 'FILE');
-    const isImage = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || trimmed.startsWith('data:image');
+    const isImage = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG', 'JFIF', 'BMP'].includes(ext) || trimmed.startsWith('data:image');
     const isPdf = ext === 'PDF' || cleanUrl.toLowerCase().endsWith('.pdf');
     const isExcel =
       ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext) ||
@@ -258,7 +258,7 @@ export const normalizeAttachment = (item, defaultModule = '') => {
     const isImage =
       item.isImage !== undefined
         ? item.isImage
-        : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext) || (resolvedUrl && resolvedUrl.startsWith('data:image'));
+        : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG', 'JFIF', 'BMP'].includes(ext) || (resolvedUrl && resolvedUrl.startsWith('data:image'));
     const isPdf = item.isPdf !== undefined ? item.isPdf : ext === 'PDF' || (resolvedUrl && resolvedUrl.toLowerCase().endsWith('.pdf'));
     const isExcel =
       item.isExcel !== undefined

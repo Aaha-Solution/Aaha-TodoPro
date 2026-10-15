@@ -148,7 +148,7 @@ const ProcessAuditApprovals = () => {
         ? item.split('/').pop().split('\\').pop() || 'Attachment'
         : item.name || item.filename || (url ? url.split('/').pop() : 'Attachment');
     const ext = (item.type || name.split('.').pop() || 'FILE').toUpperCase();
-    const isImage = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext);
+    const isImage = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG', 'JFIF', 'BMP'].includes(ext);
     const isPdf = ext === 'PDF';
     const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
     const isWord = ['DOC', 'DOCX'].includes(ext);
@@ -964,7 +964,7 @@ const ProcessAuditApprovals = () => {
   // Convert new files to previewable objects
   const previewableNewFiles = newEvidenceFiles.map((f) => {
     const ext = f.name.split('.').pop()?.toUpperCase() || 'FILE';
-    const isImage = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext);
+    const isImage = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG', 'JFIF', 'BMP'].includes(ext);
     const isPdf = ext === 'PDF';
     const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
     const isWord = ['DOC', 'DOCX'].includes(ext);
@@ -1296,7 +1296,7 @@ const ProcessAuditApprovals = () => {
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  accept=".ppt,.pptx,.pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp"
+                  accept=".ppt,.pptx,.pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.jfif,.webp,.bmp,image/jpeg,image/png,image/jfif,image/pjpeg,image/*"
                   onChange={handleFileSelect}
                   className="hidden"
                 />

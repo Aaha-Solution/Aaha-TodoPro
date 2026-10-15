@@ -454,7 +454,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       if (a.isImage) return true;
       const n = a.name || a.filename || (typeof a === 'string' ? a : '');
       const ext = (n.split('.').pop() || '').toUpperCase();
-      return ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP', 'SVG'].includes(ext);
+      return ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP', 'SVG', 'JFIF'].includes(ext);
     };
 
     const items = [
@@ -1549,7 +1549,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       multiple
                       onChange={handleNewFilesSelect}
                       className="hidden"
-                      accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                      accept=".jpg,.jpeg,.jfif,.png,.webp,.bmp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/jpeg,image/png,image/jfif,image/pjpeg,image/*"
                     />
                   </label>
                   {editErrors.attachments && (

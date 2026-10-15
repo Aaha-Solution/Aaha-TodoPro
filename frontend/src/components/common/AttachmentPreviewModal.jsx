@@ -49,7 +49,7 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose, onAnnotate }) => 
 
   const isImage = attachment.isImage !== undefined
     ? attachment.isImage
-    : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG', 'BMP'].includes(ext) || Boolean(activeUrl?.startsWith('data:image'));
+    : ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG', 'BMP', 'JFIF'].includes(ext) || Boolean(activeUrl?.startsWith('data:image'));
   const isPdf = attachment.isPdf !== undefined
     ? attachment.isPdf
     : ext === 'PDF' || Boolean(activeUrl?.toLowerCase().includes('.pdf'));

@@ -230,7 +230,7 @@ const ProcessAuditDashboard = () => {
 
   const getFileMeta = (file) => {
     const ext = ((file?.type || file?.name?.split('.').pop()) || '').toUpperCase();
-    const isImage = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG'].includes(ext);
+    const isImage = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG', 'JFIF', 'BMP'].includes(ext);
     const isPdf = ext === 'PDF';
     const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
     const isPpt = ['PPT', 'PPTX', 'PPSX'].includes(ext);

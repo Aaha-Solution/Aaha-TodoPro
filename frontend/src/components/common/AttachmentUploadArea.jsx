@@ -68,7 +68,7 @@ const AttachmentUploadArea = ({
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.csv"
+          accept=".pdf,.png,.jpg,.jpeg,.jfif,.webp,.bmp,.doc,.docx,.xls,.xlsx,.csv,image/jpeg,image/png,image/jfif,image/pjpeg,image/*"
           onChange={(e) => {
             if (e.target.files) {
               handleFiles(e.target.files);
@@ -124,7 +124,7 @@ const AttachmentUploadArea = ({
             attachments={files.map((f) => {
               if (f instanceof File) {
                 const ext = f.name.split('.').pop()?.toUpperCase() || 'FILE';
-                const isImage = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG'].includes(ext);
+                const isImage = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG', 'JFIF', 'BMP'].includes(ext);
                 const isPdf = ext === 'PDF';
                 const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
                 const isWord = ['DOC', 'DOCX'].includes(ext);

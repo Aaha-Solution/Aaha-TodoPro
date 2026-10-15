@@ -25,7 +25,7 @@ const AttachmentChipList = ({
         const meta = getFileMeta(file.type, file.name);
         const isImage = Boolean(
           file.isImage || 
-          ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP', 'SVG'].includes((file.type || file.name?.split('.').pop() || '').toUpperCase())
+          ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP', 'SVG', 'JFIF'].includes((file.type || file.name?.split('.').pop() || '').toUpperCase())
         );
 
         return (

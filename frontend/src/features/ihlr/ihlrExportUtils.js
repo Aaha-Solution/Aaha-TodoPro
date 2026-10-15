@@ -15,7 +15,7 @@ export const isImageAttachment = (att) => {
   if (att.isImage) return true;
   const n = att.name || att.filename || (typeof att === 'string' ? att : '');
   const ext = (n.split('.').pop() || '').toLowerCase();
-  return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg'].includes(ext);
+  return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg', 'jfif'].includes(ext);
 };
 
 /**

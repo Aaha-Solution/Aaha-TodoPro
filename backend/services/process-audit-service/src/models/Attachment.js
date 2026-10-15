@@ -39,7 +39,10 @@ export const Attachment = {
     const cleanBase = path.basename(originalName, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e6);
     const filename = `${cleanBase}-${uniqueSuffix}${ext}`;
-    const mimeType = file.mimetype || 'application/octet-stream';
+    let mimeType = file.mimetype || 'application/octet-stream';
+    if (ext.toLowerCase() === '.jfif') {
+      mimeType = 'image/jpeg';
+    }
     const fileSize = file.size || (file.buffer ? file.buffer.length : 0);
     const fileBuffer = file.buffer;
 

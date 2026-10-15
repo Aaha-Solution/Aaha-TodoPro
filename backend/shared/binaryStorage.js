@@ -67,6 +67,11 @@ export const saveBinaryFiles = async (files = [], options = {}) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e6);
     const uniqueFilename = `${cleanBase}-${uniqueSuffix}.${ext.toLowerCase()}`;
 
+    let mimeType = file.mimetype || 'application/octet-stream';
+    if (ext.toLowerCase() === 'jfif' || mimeType === 'image/jfif' || mimeType === 'image/pjpeg') {
+      mimeType = 'image/jpeg';
+    }
+
     let savedId = null;
 
     try {
@@ -74,7 +79,7 @@ export const saveBinaryFiles = async (files = [], options = {}) => {
         const [result] = await pool.query(
           `INSERT INTO app_attachments (module_name, ref_id, filename, original_name, mime_type, file_size, file_data)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [module_name, ref_id, uniqueFilename, file.originalname, file.mimetype || 'application/octet-stream', file.size, file.buffer]
+          [module_name, ref_id, uniqueFilename, file.originalname, mimeType, file.size, file.buffer]
         );
         savedId = result.insertId;
       }
@@ -90,7 +95,7 @@ export const saveBinaryFiles = async (files = [], options = {}) => {
         ref_id,
         filename: uniqueFilename,
         original_name: file.originalname,
-        mime_type: file.mimetype || 'application/octet-stream',
+        mime_type: mimeType,
         file_size: file.size,
         file_data: file.buffer,
         created_at: new Date().toISOString()
@@ -164,7 +169,24 @@ export const streamBinaryFile = async (req, res) => {
     const isDownload = req.query.download === '1' || req.query.download === 'true';
     const dispositionType = isDownload ? 'attachment' : 'inline';
 
-    res.setHeader('Content-Type', attachment.mime_type || 'application/octet-stream');
+    let mimeType = attachment.mime_type || 'application/octet-stream';
+    const filename = attachment.original_name || attachment.filename || '';
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext === 'jfif' || ext === 'jpg' || ext === 'jpeg' || mimeType === 'image/jfif' || mimeType === 'image/pjpeg') {
+      mimeType = 'image/jpeg';
+    } else if (ext === 'png') {
+      mimeType = 'image/png';
+    } else if (ext === 'webp') {
+      mimeType = 'image/webp';
+    } else if (ext === 'gif') {
+      mimeType = 'image/gif';
+    } else if (ext === 'svg') {
+      mimeType = 'image/svg+xml';
+    } else if (ext === 'pdf') {
+      mimeType = 'application/pdf';
+    }
+
+    res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Length', attachment.file_size || attachment.file_data.length);
     res.setHeader(
       'Content-Disposition',
