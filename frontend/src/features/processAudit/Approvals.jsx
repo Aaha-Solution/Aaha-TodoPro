@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -29,7 +29,12 @@ import {
   ChevronLeft,
   ChevronRight,
   History,
-  Folder
+  Folder,
+  ShieldAlert,
+  Pencil,
+  Lock,
+  UserCheck,
+  ChevronDown
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -91,11 +96,14 @@ const ProcessAuditApprovals = () => {
   const [standardizationDetails, setStandardizationDetails] = useState('');
   const [closerTargetDate, setCloserTargetDate] = useState('');
   const [closerRemarks, setCloserRemarks] = useState('');
-  const [closerStatus, setCloserStatus] = useState('Approved');
+  const [closerStatus, setCloserStatus] = useState('Closed');
   const [existingEvidence, setExistingEvidence] = useState([]);
   const [newEvidenceFiles, setNewEvidenceFiles] = useState([]);
   const [annotatingItem, setAnnotatingItem] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingCloser, setIsSavingCloser] = useState(false);
+  const [isSavingAdmin, setIsSavingAdmin] = useState(false);
+  const [adminEditCloser, setAdminEditCloser] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -104,6 +112,20 @@ const ProcessAuditApprovals = () => {
   const [closerActionError, setCloserActionError] = useState(false);
   const [evidenceError, setEvidenceError] = useState(false);
   const [closerTargetDateError, setCloserTargetDateError] = useState(false);
+  const [remarksError, setRemarksError] = useState(false);
+  const [statusError, setStatusError] = useState(false);
+
+  // Reassignment State
+  const [isReassignOpen, setIsReassignOpen] = useState(false);
+  const [reassignedDept, setReassignedDept] = useState('');
+  const [reassignedPerson, setReassignedPerson] = useState('');
+  const [reassignReason, setReassignReason] = useState('');
+  const [reassignDeptError, setReassignDeptError] = useState(false);
+  const [reassignPersonError, setReassignPersonError] = useState(false);
+  const [isReassignUserDropdownOpen, setIsReassignUserDropdownOpen] = useState(false);
+  const [reassignUserSearch, setReassignUserSearch] = useState('');
+  const reassignUserDropdownRef = useRef(null);
+  const [dbUsers, setDbUsers] = useState([]);
 
   // Pagination State
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -243,6 +265,169 @@ const ProcessAuditApprovals = () => {
     return false;
   };
 
+  // Operational permissions:
+  // 1. Closer Fields (Root Cause, Action, Standardization, Evidence, Target Date):
+  //    - Assigned Executor can edit and submit closer log.
+  //    - Quality Admin can click "Edit Closer Fields" to unlock, edit, and update closer fields anytime.
+  const isSelectedClosed = Boolean(
+    selectedRequest && String(selectedRequest.status || '').toUpperCase().includes('CLOSE')
+  );
+
+  const hasCloserSubmitted = Boolean(
+    selectedRequest && (
+      Boolean(selectedRequest.action && String(selectedRequest.action).trim()) ||
+      Boolean(selectedRequest.corrective_action && String(selectedRequest.corrective_action).trim()) ||
+      Boolean(selectedRequest.root_cause && String(selectedRequest.root_cause).trim()) ||
+      Boolean(selectedRequest.target_date) ||
+      (selectedRequest.action_attachments && parseAttachments(selectedRequest.action_attachments).length > 0)
+    )
+  );
+
+  const isCloser = Boolean(
+    selectedRequest && matchesExecutorUser(selectedRequest.executor, currentUser?.name, currentUser?.email)
+  );
+
+  const isCloserDataToBeUpdated = Boolean(
+    !closerAction || !closerAction.trim() || !closerTargetDate
+  );
+
+  const canUpdateCloserFields = Boolean(
+    selectedRequest && (
+      (isAdmin && adminEditCloser) ||
+      (!isAdmin && isCloser && !hasCloserSubmitted && !isSelectedClosed)
+    )
+  );
+
+  const canUpdateAdminFields = Boolean(
+    selectedRequest && isAdmin
+  );
+
+  const isLockedForCloserUser = !isAdmin && (isSelectedClosed || hasCloserSubmitted);
+
+  // Reassign Closer is disabled when no request is selected, or when review fields are disabled/pending closer submission, or closed
+  const isReassignDisabled = Boolean(
+    !selectedRequest || isCloserDataToBeUpdated || isSelectedClosed || adminEditCloser
+  );
+
+  // Fetch users for department-based reassignment
+  useEffect(() => {
+    let isMounted = true;
+    processAuditService.getUsers()
+      .then((users) => {
+        if (isMounted && Array.isArray(users)) {
+          setDbUsers(users);
+        }
+      })
+      .catch((err) => console.warn('Could not fetch DB users in Process Audit Approvals:', err));
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const STANDARD_DEPTS = [
+    'PRODUCTION',
+    'MAINTENANCE',
+    'PED',
+    'MATERIALS',
+    'MARKETING',
+    'INCOMING QUALITY'
+  ];
+
+  const isUserActive = (u) => {
+    if (!u) return false;
+    if (u.is_active === false || u.is_active === 0 || u.is_active === '0') return false;
+    const s = String(u.status || 'ACTIVE').trim().toUpperCase();
+    return s !== 'INACTIVE';
+  };
+
+  const departmentList = Array.from(
+    new Set([
+      ...STANDARD_DEPTS,
+      ...dbUsers.filter(isUserActive).map((u) => (u.department || '').trim().toUpperCase()).filter(Boolean)
+    ])
+  ).sort();
+
+  const getDepartmentUsers = (dept) => {
+    if (!dept) return [];
+    const targetDept = dept.trim().toUpperCase();
+    return dbUsers.filter((u) => {
+      const uDept = (u.department || '').trim().toUpperCase();
+      return uDept === targetDept && isUserActive(u);
+    });
+  };
+
+  // Close Reassign User Dropdown on Outside Click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (reassignUserDropdownRef.current && !reassignUserDropdownRef.current.contains(e.target)) {
+        setIsReassignUserDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Reset reassign form when no request is selected or when reassign is disabled
+  useEffect(() => {
+    if (isReassignDisabled) {
+      setIsReassignOpen(false);
+      setIsReassignUserDropdownOpen(false);
+      setReassignedDept('');
+      setReassignedPerson('');
+      setReassignUserSearch('');
+    }
+  }, [isReassignDisabled]);
+
+  const getSelectedReassignedUsers = () => {
+    if (!reassignedPerson) return [];
+    return reassignedPerson
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  };
+
+  const handleToggleReassignUser = (userName) => {
+    const current = getSelectedReassignedUsers();
+    let updated;
+    if (current.includes(userName)) {
+      updated = current.filter((u) => u !== userName);
+    } else {
+      updated = [...current, userName];
+    }
+    setReassignedPerson(updated.join(', '));
+    if (updated.length > 0) {
+      setReassignPersonError(false);
+    }
+  };
+
+  const handleRemoveReassignUser = (userName, e) => {
+    if (e) e.stopPropagation();
+    const current = getSelectedReassignedUsers();
+    const updated = current.filter((u) => u !== userName);
+    setReassignedPerson(updated.join(', '));
+  };
+
+  const handleClearAllReassignUsers = () => {
+    setReassignedPerson('');
+  };
+
+  const handleDeptChange = (newDept) => {
+    setReassignedDept(newDept);
+    if (newDept) {
+      setReassignDeptError(false);
+    }
+    const usersInDept = getDepartmentUsers(newDept).map((u) => u.name);
+    const current = getSelectedReassignedUsers();
+    const valid = current.filter((u) => usersInDept.includes(u));
+    setReassignedPerson(valid.join(', '));
+    if (valid.length > 0) {
+      setReassignPersonError(false);
+    }
+    setIsReassignUserDropdownOpen(false);
+    setReassignUserSearch('');
+  };
+
   const loadRequests = async () => {
     setLoading(true);
     try {
@@ -268,6 +453,8 @@ const ProcessAuditApprovals = () => {
             String(r.issue_no || '').toLowerCase() === String(queryRequestId).toLowerCase()
         );
         if (match) populateForm(match);
+      } else if (list.length > 0) {
+        populateForm(list[0]);
       }
     } catch (err) {
       console.error('Failed to load approval requests from DB:', err);
@@ -296,14 +483,19 @@ const ProcessAuditApprovals = () => {
   }, [user?.name, user?.role]);
 
   // Populate form fields when a row is clicked
-  const populateForm = (req) => {
+  const populateForm = (req, keepEditMode = false) => {
     setSelectedRequest(req);
+    if (!keepEditMode) {
+      setAdminEditCloser(false);
+    }
     setSuccessMessage('');
     setErrorMessage('');
     setRootCauseError(false);
     setCloserActionError(false);
     setEvidenceError(false);
     setCloserTargetDateError(false);
+    setRemarksError(false);
+    setStatusError(false);
 
     setRootCause(req.root_cause || '');
     setCloserAction(req.corrective_action || req.action || '');
@@ -315,23 +507,15 @@ const ProcessAuditApprovals = () => {
           : req.target_date
         : ''
     );
-    setCloserRemarks('');
+    setCloserRemarks(req.creator_remark || req.comments || req.remarks || '');
+    setCloserStatus('');
+    setReassignedDept(req.department || '');
+    setReassignedPerson(req.executor || '');
+    setIsReassignOpen(false);
+    setIsReassignUserDropdownOpen(false);
+    setReassignUserSearch('');
 
-    // Status mapping
-    const s = req.status || 'Pending';
-    if (s.toLowerCase().includes('approved')) {
-      setCloserStatus('Approved');
-    } else if (s.toLowerCase().includes('close')) {
-      setCloserStatus('Closed');
-    } else if (s.toLowerCase().includes('reject')) {
-      setCloserStatus('Rejected');
-    } else if (s.toLowerCase() === 'open' || s.toLowerCase().includes('open')) {
-      setCloserStatus('Open');
-    } else {
-      setCloserStatus('Approved');
-    }
-
-    // Evidence attachments: only load executor's saved action_attachments from DB (never creator's initial attachments)
+    // Evidence attachments
     const existing = req.action_attachments ? parseAttachments(req.action_attachments) : [];
     setExistingEvidence(existing);
     setNewEvidenceFiles([]);
@@ -358,34 +542,41 @@ const ProcessAuditApprovals = () => {
     setNewEvidenceFiles((prev) => [...prev, annotatedFile]);
     setEvidenceError(false);
     setAnnotatingItem(null);
-    setSuccessMessage(`Annotated drawing "${annotatedFile.name}" added to evidence files! Remember to click "Submit" to save.`);
+    setSuccessMessage(`Annotated drawing "${annotatedFile.name}" added to evidence files! Remember to click "Save Closer Changes" or "Submit Closer Log" to save.`);
   };
 
-  // Submit Sign-off / Closer Updates
+  // 1. Submit Closer Updates (Root Cause, Action, Standardization, Evidence, Target Date)
   const handleSaveCloser = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!selectedRequest) return;
 
-    // Do not allow re-saving if status is already approved / in progress / signed off / closed
-    const s = String(selectedRequest.status || '').toLowerCase();
-    if (s.includes('approved') || s.includes('close') || s.includes('progress') || s.includes('signed')) {
-      setErrorMessage('This request has already been signed off. Saving again is disabled.');
+    if (isLockedForCloserUser) {
+      if (isSelectedClosed) {
+        setErrorMessage('This request is closed. Only Admin can update closed requests.');
+      } else {
+        setErrorMessage('Closer details have already been submitted once for this request. Only Quality Admin has permission to make multiple updates.');
+      }
       return;
     }
 
-    // MANDATORY FIELD VALIDATION: DO NOT TRIGGER BACKEND IF INVALID
-    let hasValidationError = false;
+    if (!canUpdateCloserFields && !isAdmin) {
+      setErrorMessage('You do not have permission to update fields on this request.');
+      return;
+    }
+
+    // Mandatory Closer Field Validations
+    let hasCloserErrors = false;
 
     if (!rootCause || !rootCause.trim()) {
       setRootCauseError(true);
-      hasValidationError = true;
+      hasCloserErrors = true;
     } else {
       setRootCauseError(false);
     }
 
     if (!closerAction || !closerAction.trim()) {
       setCloserActionError(true);
-      hasValidationError = true;
+      hasCloserErrors = true;
     } else {
       setCloserActionError(false);
     }
@@ -393,24 +584,24 @@ const ProcessAuditApprovals = () => {
     const totalEvidenceCount = (existingEvidence ? existingEvidence.length : 0) + (newEvidenceFiles ? newEvidenceFiles.length : 0);
     if (totalEvidenceCount === 0) {
       setEvidenceError(true);
-      hasValidationError = true;
+      hasCloserErrors = true;
     } else {
       setEvidenceError(false);
     }
 
     if (!closerTargetDate || !closerTargetDate.trim()) {
       setCloserTargetDateError(true);
-      hasValidationError = true;
+      hasCloserErrors = true;
     } else {
       setCloserTargetDateError(false);
     }
 
-    if (hasValidationError) {
-      setErrorMessage('Please fill in all mandatory fields before submitting.');
-      return; // Stop immediately! Do NOT trigger backend!
+    if (hasCloserErrors) {
+      setErrorMessage('Please fill in all mandatory closer fields before submitting.');
+      return;
     }
 
-    setIsSaving(true);
+    setIsSavingCloser(true);
     setSuccessMessage('');
     setErrorMessage('');
 
@@ -419,12 +610,14 @@ const ProcessAuditApprovals = () => {
       if (newEvidenceFiles.length > 0) {
         uploadedList = await processAuditService.uploadAttachments(newEvidenceFiles);
       }
-
-      // Combine existing with newly uploaded (matching IHLR method)
       const combinedEvidence = [...existingEvidence, ...uploadedList];
       const reqId = selectedRequest.id || selectedRequest.issue_no;
+      const displayId = selectedRequest.issue_no || (selectedRequest.id ? `PA-${selectedRequest.id}` : `#${selectedRequest.id}`);
 
-      const targetStatus = closerStatus === 'Rejected' ? 'Rejected' : 'In Progress';
+      const targetStatus = !isAdmin && (selectedRequest.status || '').toLowerCase() !== 'closed'
+        ? 'In Progress'
+        : (selectedRequest.status || 'In Progress');
+
       const payload = {
         status: targetStatus,
         root_cause: rootCause.trim(),
@@ -432,45 +625,157 @@ const ProcessAuditApprovals = () => {
         standardization_details: standardizationDetails.trim(),
         action_attachments: combinedEvidence,
         target_date: closerTargetDate || null,
-        rejectionReason: closerStatus === 'Rejected' ? (errorMessage || 'Rejected by executor') : null,
-        rejection_reason: closerStatus === 'Rejected' ? (errorMessage || 'Rejected by executor') : null,
-        action_taken_by: user?.name || user?.email || 'Assigned Executor',
-        approved_by: user?.name || user?.email || 'Assigned Executor',
-        approved_by_id: user?.id || null,
-        approved_by_email: user?.email || null,
-        approved_by_role: user?.role || null
+        action_taken_by: currentUser?.name || currentUser?.email || 'Assigned Executor',
+        approved_by: currentUser?.name || currentUser?.email || 'Assigned Executor',
+        approved_by_id: currentUser?.id || null,
+        approved_by_email: currentUser?.email || null,
+        approved_by_role: currentUser?.role || null
       };
 
       const updated = await processAuditService.updateRequestStatus(reqId, targetStatus, payload);
 
-      const displayId =
-        selectedRequest.issue_no ||
-        (selectedRequest.id ? `PA-${selectedRequest.id}` : `#${selectedRequest.id}`);
-      setSuccessMessage(`Sign-off updated successfully for ${displayId}!`);
+      const msg = isAdmin
+        ? `Closer root cause & corrective action updated successfully for ${displayId}!`
+        : `Closer details submitted successfully for ${displayId}! Quality Admin will review and sign off status.`;
+
+      setSuccessMessage(msg);
       setNewEvidenceFiles([]);
+      setAdminEditCloser(false);
 
       const mergedUpdated = { ...selectedRequest, ...payload, ...updated, status: targetStatus };
       setSelectedRequest(mergedUpdated);
-      if (updated) {
-        populateForm(mergedUpdated);
-      }
-
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.id === selectedRequest.id || r.issue_no === selectedRequest.issue_no ? mergedUpdated : r
-        )
-      );
-
+      populateForm(mergedUpdated, false);
       await loadRequests();
 
       setTimeout(() => {
         setSuccessMessage('');
       }, 4000);
     } catch (err) {
-      console.error('Failed to update sign-off log:', err);
-      setErrorMessage(err.response?.data?.message || err.message || 'Failed to update fields');
+      console.error('Failed to update closer fields:', err);
+      setErrorMessage(err.response?.data?.message || err.message || 'Failed to update closer log');
     } finally {
-      setIsSaving(false);
+      setIsSavingCloser(false);
+    }
+  };
+
+  // 2. Submit Admin Sign-Off Updates (Remarks, Status, Reassignment) - Independent
+  const handleSaveAdmin = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!selectedRequest) return;
+
+    if (adminEditCloser) {
+      setErrorMessage('Admin Sign-Off is disabled while editing closer fields. Please save or cancel closer log updates first.');
+      return;
+    }
+
+    if (!isAdmin) {
+      setErrorMessage('Only Quality Admin has permission to update Admin Review and sign off status.');
+      return;
+    }
+
+    if (!isReassignOpen && isCloserDataToBeUpdated) {
+      setErrorMessage('Corrective Action & Target Date must be completed before Admin Sign-Off.');
+      return;
+    }
+
+    if (!closerRemarks || !closerRemarks.trim()) {
+      setRemarksError(true);
+      return;
+    }
+    setRemarksError(false);
+
+    if (!isReassignOpen && !closerStatus) {
+      setStatusError(true);
+      return;
+    }
+    setStatusError(false);
+
+    if (isReassignOpen) {
+      let reassignHasErr = false;
+      if (!reassignedDept) {
+        setReassignDeptError(true);
+        reassignHasErr = true;
+      } else {
+        setReassignDeptError(false);
+      }
+      if (!reassignedPerson || reassignedPerson.trim() === '') {
+        setReassignPersonError(true);
+        reassignHasErr = true;
+      } else {
+        setReassignPersonError(false);
+      }
+      if (reassignHasErr) return;
+    }
+
+    setIsSavingAdmin(true);
+    setSuccessMessage('');
+    setErrorMessage('');
+
+    const reqId = selectedRequest.id || selectedRequest.issue_no;
+    const displayId = selectedRequest.issue_no || (selectedRequest.id ? `PA-${selectedRequest.id}` : `#${selectedRequest.id}`);
+
+    try {
+      if (isReassignOpen) {
+        await processAuditService.reassignRequest(reqId, {
+          new_department: reassignedDept,
+          new_executor: reassignedPerson,
+          reason: closerRemarks.trim(),
+          reassigned_by: currentUser?.name || 'Quality Admin',
+          reassigned_by_id: currentUser?.id || null,
+          role: currentUser?.role || 'ADMIN',
+          user_department: userDept || 'INCOMING QUALITY'
+        });
+
+        await processAuditService.updateRequestStatus(reqId, 'Open', {
+          creator_remark: closerRemarks.trim(),
+          remark: closerRemarks.trim(),
+          closed_by: currentUser?.name || null
+        });
+
+        const msg = `Request #${displayId} status updated & reassigned to ${reassignedPerson} (${reassignedDept}) successfully!`;
+        setSuccessMessage(msg);
+        setIsReassignOpen(false);
+        setIsReassignUserDropdownOpen(false);
+        setReassignUserSearch('');
+        await loadRequests();
+      } else {
+        const targetStatus = closerStatus === 'CLOSED' ? 'Closed' : (closerStatus === 'OPEN' ? 'Open' : closerStatus);
+
+        const payload = {
+          creator_remark: closerRemarks.trim(),
+          remark: closerRemarks.trim(),
+          closed_by: currentUser?.name || 'Quality Admin',
+          closed_by_id: currentUser?.id || null,
+          approved_by: currentUser?.name || 'Quality Admin',
+          approved_by_id: currentUser?.id || null,
+          approved_by_email: currentUser?.email || null,
+          approved_by_role: currentUser?.role || 'ADMIN'
+        };
+
+        const updated = await processAuditService.updateRequestStatus(reqId, targetStatus, payload);
+        const msg = `Admin review remarks & status sign-off (${targetStatus}) updated successfully for ${displayId}!`;
+        setSuccessMessage(msg);
+
+        if (targetStatus === 'Closed') {
+          const merged = { ...selectedRequest, ...payload, ...updated, status: 'Closed' };
+          setSelectedRequest(merged);
+          populateForm(merged);
+        } else if (updated) {
+          const merged = { ...selectedRequest, ...payload, ...updated, status: targetStatus };
+          setSelectedRequest(merged);
+          populateForm(merged);
+        }
+        await loadRequests();
+      }
+
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 4000);
+    } catch (err) {
+      console.error('Failed to update admin fields:', err);
+      setErrorMessage(err.response?.data?.message || err.message || 'Failed to update admin review & status');
+    } finally {
+      setIsSavingAdmin(false);
     }
   };
 
@@ -708,7 +1013,7 @@ const ProcessAuditApprovals = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
         {/* ============================================================== */}
-        {/* LEFT COLUMN: Update Sign-off Log Form                         */}
+        {/* LEFT COLUMN: Update Closer / Sign-off Log Form (Matching IHLR)  */}
         {/* ============================================================== */}
         <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-5 sticky top-4">
 
@@ -727,28 +1032,32 @@ const ProcessAuditApprovals = () => {
                 <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                   {selectedRequest.issue_no || (selectedRequest.id ? `PA-${selectedRequest.id}` : `#${selectedRequest.id}`)}
                 </span>
-                {isSelectedApproved && (
-                  <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold ${
-                    isAdmin
-                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  }`}>
-                    {isAdmin ? 'IN PROGRESS' : 'SIGNED OFF'}
+                {adminEditCloser && (
+                  <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                    ADMIN EDIT ACTIVE
                   </span>
                 )}
               </div>
             )}
           </div>
 
-          {/* Approved & Locked Notice */}
-          {isSelectedApproved && (
-            <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 animate-in fade-in ${
-              isAdmin
-                ? 'bg-indigo-50 border-indigo-200 text-indigo-800'
-                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-            }`}>
-              <Check className="w-4 h-4 shrink-0" />
-              <span>This request is already <strong>{isAdmin ? 'In Progress' : 'Signed off'}</strong></span>
+          {/* Admin Edit Mode Active Banner */}
+          {adminEditCloser && (
+            <div className="p-2.5 px-3 rounded-xl border border-amber-300 bg-amber-50/90 text-amber-900 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="font-bold">Admin Edit Mode Active: Update closer fields below</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminEditCloser(false);
+                  if (selectedRequest) populateForm(selectedRequest, false);
+                }}
+                className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
+              >
+                Cancel
+              </button>
             </div>
           )}
 
@@ -769,21 +1078,110 @@ const ProcessAuditApprovals = () => {
           {/* Form Fields */}
           <form onSubmit={handleSaveCloser} className="space-y-4 text-xs">
 
+            {/* 1. Request Reference Fields (Disabled grey boxes matching IHLR) */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  AUDIT REQ NO <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  disabled
+                  value={selectedRequest ? (selectedRequest.issue_no || (selectedRequest.id ? `PA-${selectedRequest.id}` : `#${selectedRequest.id}`)) : ''}
+                  placeholder="Click a row on the right to select"
+                  className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed select-none outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  REQUESTED DATE <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  disabled
+                  value={selectedRequest ? (selectedRequest.escalation_date ? selectedRequest.escalation_date.split('T')[0] : (selectedRequest.created_at ? selectedRequest.created_at.split('T')[0] : '')) : ''}
+                  placeholder="Click a row on the right to select"
+                  className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed select-none outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  PROBLEM / OPERATION <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  disabled
+                  value={selectedRequest ? `${selectedRequest.issue_observation || selectedRequest.problem || ''} (${selectedRequest.process_operation || selectedRequest.model || 'N/A'})` : ''}
+                  placeholder="Click a row on the right to select"
+                  className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed select-none outline-none truncate"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  CURRENT ASSIGNED EXECUTOR <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  disabled
+                  value={selectedRequest ? `${selectedRequest.executor || 'Not Assigned'} (${selectedRequest.department || 'N/A'})` : ''}
+                  placeholder="Click a row on the right to select"
+                  className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed select-none outline-none truncate"
+                />
+              </div>
+            </div>
+
+            {/* Separator */}
+            <div className="pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
+                    <span>Occurrence Cause &amp; Action (Executor Sign-Off)</span>
+                    {selectedRequest && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        Closer
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Root Cause Field */}
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                ROOT CAUSE <span className="text-rose-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>ROOT CAUSE</span>
+                  <span className="text-rose-500">*</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        {isAdmin ? 'Admin Edit' : 'Closer'}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
+                      </span>
+                    )
+                  )}
+                </label>
+              </div>
               <textarea
                 rows={2}
-                disabled={!selectedRequest || isSelectedApproved}
+                disabled={!canUpdateCloserFields}
                 value={rootCause}
                 onChange={(e) => {
                   setRootCause(e.target.value);
                   if (rootCauseError && e.target.value.trim()) setRootCauseError(false);
                 }}
-                placeholder={!selectedRequest ? 'Click a row on the right to select' : isSelectedApproved ? 'Approved - Editing is locked' : 'Identify underlying root cause of deviation/defect...'}
-                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition resize-none ${
+                placeholder={!selectedRequest ? 'Click a row on the right to select' : !canUpdateCloserFields ? 'Locked - Read only' : 'Identify underlying root cause of deviation/defect...'}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
                   rootCauseError
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
@@ -796,21 +1194,35 @@ const ProcessAuditApprovals = () => {
               )}
             </div>
 
-            {/* Action Field */}
+            {/* Corrective Action Field */}
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-               CORRECTIVE ACTION <span className="text-rose-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>CORRECTIVE ACTION</span>
+                  <span className="text-rose-500">*</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        {isAdmin ? 'Admin Edit' : 'Closer'}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
+                      </span>
+                    )
+                  )}
+                </label>
+              </div>
               <textarea
                 rows={2}
-                disabled={!selectedRequest || isSelectedApproved}
+                disabled={!canUpdateCloserFields}
                 value={closerAction}
                 onChange={(e) => {
                   setCloserAction(e.target.value);
                   if (closerActionError && e.target.value.trim()) setCloserActionError(false);
                 }}
-                placeholder={!selectedRequest ? 'Click a row on the right to select' : isSelectedApproved ? 'Approved - Editing is locked' : 'Describe corrective actions taken / countermeasures...'}
-                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition resize-none ${
+                placeholder={!selectedRequest ? 'Click a row on the right to select' : !canUpdateCloserFields ? 'Locked - Read only' : 'Describe corrective actions taken / countermeasures...'}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
                   closerActionError
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
@@ -825,16 +1237,18 @@ const ProcessAuditApprovals = () => {
 
             {/* Standardization Details Field */}
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                STANDARDIZATION DETAILS
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                  STANDARDIZATION DETAILS
+                </label>
+              </div>
               <textarea
                 rows={2}
-                disabled={!selectedRequest || isSelectedApproved}
+                disabled={!canUpdateCloserFields}
                 value={standardizationDetails}
                 onChange={(e) => setStandardizationDetails(e.target.value)}
-                placeholder={!selectedRequest ? 'Click a row on the right to select' : isSelectedApproved ? 'Approved - Editing is locked' : 'Detail SOP revisions, Work Instructions, poka-yoke, or line standards...'}
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition resize-none"
+                placeholder={!selectedRequest ? 'Click a row on the right to select' : !canUpdateCloserFields ? 'Locked - Read only' : 'Detail SOP revisions, Work Instructions, poka-yoke, or line standards...'}
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none"
               />
             </div>
 
@@ -844,6 +1258,17 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>EVIDENCE ATTACHMENT</span>
                   <span className="text-rose-500">*</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        {isAdmin ? 'Admin Edit' : 'Closer'}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
+                      </span>
+                    )
+                  )}
                 </label>
                 <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
               </div>
@@ -854,7 +1279,7 @@ const ProcessAuditApprovals = () => {
               }`}>
                 <button
                   type="button"
-                  disabled={!selectedRequest || isSelectedApproved}
+                  disabled={!canUpdateCloserFields}
                   onClick={() => fileInputRef.current && fileInputRef.current.click()}
                   className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                 >
@@ -888,22 +1313,18 @@ const ProcessAuditApprovals = () => {
                   <AttachmentChipList
                     attachments={existingEvidence}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    onAnnotate={!isSelectedApproved ? (file) => setAnnotatingItem({ attachment: file }) : undefined}
-                    onRemove={isSelectedApproved ? undefined : (idx) => {
-                      handleRemoveExistingEvidence(idx);
-                    }}
-                    readonly={isSelectedApproved}
+                    onAnnotate={canUpdateCloserFields ? (file) => setAnnotatingItem({ attachment: file }) : undefined}
+                    onRemove={canUpdateCloserFields ? (idx) => handleRemoveExistingEvidence(idx) : undefined}
+                    readonly={!canUpdateCloserFields}
                   />
                 )}
                 {previewableNewFiles.length > 0 && (
                   <AttachmentChipList
                     attachments={previewableNewFiles}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    onAnnotate={!isSelectedApproved ? (file) => setAnnotatingItem({ attachment: file }) : undefined}
-                    onRemove={isSelectedApproved ? undefined : (idx) => {
-                      handleRemoveNewEvidence(idx);
-                    }}
-                    readonly={isSelectedApproved}
+                    onAnnotate={canUpdateCloserFields ? (file) => setAnnotatingItem({ attachment: file }) : undefined}
+                    onRemove={canUpdateCloserFields ? (idx) => handleRemoveNewEvidence(idx) : undefined}
+                    readonly={!canUpdateCloserFields}
                   />
                 )}
               </div>
@@ -911,18 +1332,31 @@ const ProcessAuditApprovals = () => {
 
             {/* Target Date */}
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center gap-1.5">
-                <span>TARGET DATE</span>
-                <span className="text-rose-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>TARGET DATE</span>
+                  <span className="text-rose-500">*</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        {isAdmin ? 'Admin Edit' : 'Closer'}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
+                      </span>
+                    )
+                  )}
+                </label>
+              </div>
               <DateInput
-                disabled={!selectedRequest || isSelectedApproved}
+                disabled={!canUpdateCloserFields}
                 value={closerTargetDate}
                 onChange={(e) => {
                   setCloserTargetDate(e.target.value);
                   if (closerTargetDateError && e.target.value) setCloserTargetDateError(false);
                 }}
-                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-slate-800 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition ${
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${
                   closerTargetDateError
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
@@ -935,63 +1369,628 @@ const ProcessAuditApprovals = () => {
               )}
             </div>
 
-            {/* Action Submit Button */}
-              
-            <div className="pt-2">
+            {/* Dedicated Closer Submit Button */}
+            <div className="pt-1">
               {!selectedRequest ? (
                 <button
                   type="button"
                   disabled
-                  className="w-full py-3 px-4 rounded-xl border border-blue-200/80 bg-blue-50/50 text-blue-400 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs"
+                  className="w-full py-2.5 px-4 rounded-xl border border-blue-200/80 bg-blue-50/50 text-blue-400 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs"
                 >
-                  Select a Request to Validate
+                  Select a Request to Update
                 </button>
-              ) : isSelectedApproved ? (
-                <div className="space-y-1.5">
-                  {selectedRequest?.status?.toLowerCase().includes('close') ? (
+              ) : isAdmin ? (
+                adminEditCloser ? (
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      disabled
-                      className="w-full py-3 px-4 rounded-xl border border-red-300 bg-red-50 text-red-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                      onClick={handleSaveCloser}
+                      disabled={isSavingCloser || isSavingAdmin}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition transform active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
-                      <CheckCircle2 className="w-4 h-4 text-red-600" />
-                      <span>Closed</span>
+                      {isSavingCloser ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Saving Closer Log...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          <span>Save Closer Changes</span>
+                        </>
+                      )}
                     </button>
-                  ) : (
                     <button
                       type="button"
-                      disabled
-                      className={`w-full py-3 px-4 rounded-xl border font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2 ${
-                        isAdmin
-                          ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
-                          : 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                      }`}
+                      onClick={() => {
+                        setAdminEditCloser(false);
+                        if (selectedRequest) populateForm(selectedRequest, false);
+                      }}
+                      className="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-600 font-bold text-xs transition cursor-pointer"
+                      title="Cancel Editing"
                     >
-                      <Check className="w-4 h-4" />
-                      <span>{isAdmin ? 'In Progress' : 'Signed off'}</span>
+                      <X className="w-4 h-4" />
                     </button>
-                  )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdminEditCloser(true);
+                      setIsReassignOpen(false);
+                    }}
+                    className="w-full py-2.5 px-4 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 font-bold text-xs shadow-2xs hover:shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Edit Closer Fields</span>
+                  </button>
+                )
+              ) : isSelectedClosed ? (
+                <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Incident Closed — Updates Locked (Admin Only)</span>
+                </div>
+              ) : hasCloserSubmitted ? (
+                <div className="w-full py-2.5 px-4 rounded-xl border border-blue-200 bg-blue-50/90 text-blue-900 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                  <span>Closer Details Submitted</span>
+                </div>
+              ) : !canUpdateCloserFields ? (
+                <div className="w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-slate-500" />
+                  <span>Read Only Access — Assigned Executor or Admin Only</span>
                 </div>
               ) : (
                 <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition transform active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+                  type="button"
+                  onClick={handleSaveCloser}
+                  disabled={isSavingCloser || isSavingAdmin}
+                  className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition transform active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSaving ? (
+                  {isSavingCloser ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Submitting ....</span>
+                      <span>Saving Closer Log...</span>
                     </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      <span>Submit</span>
+                      <span>Submit Closer Log (Root Cause &amp; Action)</span>
                     </>
                   )}
                 </button>
               )}
             </div>
+
+            {/* Remarks, Status & Reassign - STRICTLY FOR QUALITY ADMIN */}
+            {isAdmin && (
+              <div className="pt-4 mt-2 border-t border-slate-200/90 space-y-3.5">
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                    <ShieldAlert className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Admin Review &amp; Sign-Off</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                      Admin Only
+                    </span>
+                    {adminEditCloser && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-300 flex items-center gap-1">
+                        <Lock className="w-2.5 h-2.5" />
+                        <span>Disabled</span>
+                      </span>
+                    )}
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">Independent Update</span>
+                </div>
+
+                {/* Pending Sign-Off Alert Banner or Disabled Notice Banner */}
+                {adminEditCloser ? (
+                  <div className="p-2.5 px-3 rounded-xl border border-amber-300 bg-amber-50/90 text-amber-900 text-[11px] flex items-center gap-2 animate-in fade-in">
+                    <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div className="leading-tight">
+                      <span className="font-bold">Review Paused: </span>
+                      <span className="text-amber-800">
+                        Finish closer editing above to resume Admin Sign-Off.
+                      </span>
+                    </div>
+                  </div>
+                ) : isCloserDataToBeUpdated ? (
+                  <div className="p-2.5 px-3 rounded-xl border border-amber-200 bg-amber-50/80 text-amber-900 text-[11px] flex items-center gap-2 animate-in fade-in">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div className="leading-tight">
+                      <span className="font-bold">Closer Pending: </span>
+                      <span className="text-amber-800">
+                        Action &amp; Target Date required before Admin Sign-Off.
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  selectedRequest && !isSelectedClosed && (
+                    <div className="p-2.5 px-3 rounded-xl border border-amber-200 bg-amber-50/70 text-amber-900 text-[11px] flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <div className="leading-tight">
+                        <span className="font-bold">Ready for Review: </span>
+                        <span className="text-amber-800">
+                          Add remarks and finalize status below.
+                        </span>
+                      </div>
+                    </div>
+                  )
+                )}
+
+                {/* Reassign Closer (Optional - Button trigger to expand) */}
+                <div className="space-y-2">
+                  {!isReassignOpen || !selectedRequest ? (
+                    <div className={`flex items-center justify-between p-2.5 rounded-xl border transition ${
+                      isReassignDisabled
+                        ? 'bg-slate-100/70 border-slate-200 text-slate-400 select-none'
+                        : 'bg-slate-50 border-slate-200/90'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <UserCheck className={`w-4 h-4 ${isReassignDisabled ? 'text-slate-400' : 'text-blue-600'}`} />
+                        <div className="text-left">
+                          <div className={`text-[11px] font-bold flex items-center gap-1.5 ${isReassignDisabled ? 'text-slate-500' : 'text-slate-800'}`}>
+                            <span>Reassign Closer</span>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                              isReassignDisabled
+                                ? 'bg-slate-200/60 text-slate-500 border-slate-300/80'
+                                : 'bg-purple-50 text-purple-700 border-purple-200'
+                            }`}>
+                              Admin
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            Current: <strong className={isReassignDisabled ? 'text-slate-600' : 'text-slate-700'}>
+                              {selectedRequest ? (selectedRequest.executor || 'Not Assigned') : 'No Request Selected'}
+                            </strong> ({selectedRequest?.department || 'N/A'})
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={isReassignDisabled}
+                        onClick={() => {
+                          if (isReassignDisabled) return;
+                          setIsReassignOpen(true);
+                          setIsReassignUserDropdownOpen(false);
+                          setReassignUserSearch('');
+                          setReassignedDept(selectedRequest?.department || '');
+                          setReassignedPerson(selectedRequest?.executor || '');
+                          setCloserStatus('OPEN');
+                        }}
+                        title={
+                          !selectedRequest
+                            ? 'Select a request first to reassign closer'
+                            : isSelectedClosed
+                            ? 'Request closed — executor cannot be reassigned'
+                            : isCloserDataToBeUpdated
+                            ? 'Disabled while closer submission is pending'
+                            : adminEditCloser
+                            ? 'Disabled while editing closer fields'
+                            : 'Reassign Closer'
+                        }
+                        className={`px-2.5 py-1.5 rounded-lg font-bold text-xs border shadow-2xs transition flex items-center gap-1.5 shrink-0 ${
+                          isReassignDisabled
+                            ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed select-none'
+                            : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 cursor-pointer'
+                        }`}
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>Reassign</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 rounded-xl border border-blue-200/90 space-y-2.5 animate-in fade-in">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-blue-200/60">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                          <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                          <span>REASSIGN CLOSER</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                            Admin
+                          </span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsReassignOpen(false);
+                            setIsReassignUserDropdownOpen(false);
+                            setReassignUserSearch('');
+                            setReassignedDept(selectedRequest?.department || '');
+                            setReassignedPerson(selectedRequest?.executor || '');
+                            setCloserStatus('');
+                            setStatusError(false);
+                          }}
+                          className="text-[11px] text-slate-500 hover:text-rose-600 font-semibold cursor-pointer underline flex items-center gap-1"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {/* Department */}
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                            Department *
+                          </label>
+                          <select
+                            value={reassignedDept}
+                            onChange={(e) => handleDeptChange(e.target.value)}
+                            className={`w-full px-2.5 py-2 bg-white border rounded-xl font-semibold text-slate-800 text-xs outline-none cursor-pointer ${
+                              reassignDeptError
+                                ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                                : 'border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                            }`}
+                          >
+                            <option value="">Select Department</option>
+                            {departmentList.map((dept) => (
+                              <option key={dept} value={dept}>
+                                {dept}
+                              </option>
+                            ))}
+                          </select>
+                          {reassignDeptError && (
+                            <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                              * Department is required for reassignment.
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Department-based User Name (Multi-Select) */}
+                        <div className="relative" ref={reassignUserDropdownRef}>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                              Executor Name *
+                            </label>
+                            {reassignedDept && getDepartmentUsers(reassignedDept).length > 0 && getSelectedReassignedUsers().length > 0 && (
+                              <div className="flex items-center gap-2 text-[10px]">
+                                <button
+                                  type="button"
+                                  onClick={handleClearAllReassignUsers}
+                                  className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
+                                >
+                                  Clear
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Trigger Box */}
+                          <div
+                            onClick={() => {
+                              if (reassignedDept && getDepartmentUsers(reassignedDept).length > 0) {
+                                setIsReassignUserDropdownOpen((prev) => !prev);
+                              }
+                            }}
+                            className={`w-full min-h-[38px] px-2.5 py-1.5 border rounded-xl text-xs font-semibold transition flex items-center justify-between gap-1.5 ${
+                              reassignPersonError
+                                ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 cursor-pointer'
+                                : !reassignedDept
+                                ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                                : getDepartmentUsers(reassignedDept).length === 0
+                                ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                                : isReassignUserDropdownOpen
+                                ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 cursor-pointer shadow-xs'
+                                : 'bg-white border-slate-300 hover:border-slate-400 text-slate-800 cursor-pointer'
+                            }`}
+                          >
+                            <div className="flex-1 flex flex-wrap items-center gap-1 min-w-0">
+                              {!reassignedDept ? (
+                                <span className="text-slate-400 font-normal">Select Dept First</span>
+                              ) : getDepartmentUsers(reassignedDept).length === 0 ? (
+                                <span className="text-slate-400 font-normal">No users in this dept</span>
+                              ) : getSelectedReassignedUsers().length === 0 ? (
+                                <span className="text-slate-400 font-normal">Select Executor(s)...</span>
+                              ) : (
+                                getSelectedReassignedUsers().map((userName) => (
+                                  <span
+                                    key={userName}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-semibold"
+                                  >
+                                    <span className="truncate max-w-[130px]">{userName}</span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleRemoveReassignUser(userName, e)}
+                                      className="p-0.5 hover:bg-blue-200/60 rounded text-blue-600 hover:text-blue-900 transition cursor-pointer"
+                                      title={`Remove ${userName}`}
+                                    >
+                                      <X className="w-2.5 h-2.5" />
+                                    </button>
+                                  </span>
+                                ))
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0 text-slate-400">
+                              {getSelectedReassignedUsers().length > 0 && (
+                                <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-md text-[10px] font-bold">
+                                  {getSelectedReassignedUsers().length}
+                                </span>
+                              )}
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                  isReassignUserDropdownOpen ? 'rotate-180 text-blue-600' : ''
+                                }`}
+                              />
+                            </div>
+                          </div>
+                          {reassignPersonError && (
+                            <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                              * Please select at least one responsible executor to reassign.
+                            </p>
+                          )}
+
+                          {/* Dropdown Menu */}
+                          {isReassignUserDropdownOpen && reassignedDept && getDepartmentUsers(reassignedDept).length > 0 && (
+                            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                              {getDepartmentUsers(reassignedDept).length > 2 && (
+                                <div className="p-1.5 border-b border-slate-100 bg-slate-50/70">
+                                  <div className="relative">
+                                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
+                                    <input
+                                      type="text"
+                                      value={reassignUserSearch}
+                                      onChange={(e) => setReassignUserSearch(e.target.value)}
+                                      placeholder="Search user..."
+                                      className="w-full pl-6 pr-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="max-h-52 overflow-y-auto p-1 divide-y divide-slate-50">
+                                {getDepartmentUsers(reassignedDept)
+                                  .filter((u) => {
+                                    const q = reassignUserSearch.toLowerCase();
+                                    return (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+                                  })
+                                  .map((u) => {
+                                    const isChecked = getSelectedReassignedUsers().includes(u.name);
+                                    return (
+                                      <div
+                                        key={u.id || u.name}
+                                        onClick={() => handleToggleReassignUser(u.name)}
+                                        className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition select-none text-xs ${
+                                          isChecked
+                                            ? 'bg-blue-50/80 text-blue-900 font-semibold'
+                                            : 'hover:bg-slate-50 text-slate-700'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                                          <div
+                                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition shrink-0 ${
+                                              isChecked
+                                                ? 'bg-blue-600 border-blue-600 text-white'
+                                                : 'border-slate-300 bg-white'
+                                            }`}
+                                          >
+                                            {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                          </div>
+                                          <div className="min-w-0">
+                                            <div className="truncate font-semibold">{u.name}</div>
+                                            {u.email && (
+                                              <div className="text-[10px] text-slate-400 truncate">
+                                                {u.email}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                        {isChecked && (
+                                          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider shrink-0">
+                                            Selected
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-tight">
+                        Selecting a new department and executor will transfer the root cause and countermeasure responsibility to them.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Remarks */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                      <span>REMARKS</span>
+                      <span className="text-rose-500">*</span>
+                      {selectedRequest && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                          Admin
+                        </span>
+                      )}
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {1000 - closerRemarks.length} chars left
+                    </span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    maxLength={1000}
+                    disabled={!selectedRequest || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
+                    value={closerRemarks}
+                    onChange={(e) => {
+                      if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
+                      setCloserRemarks(e.target.value);
+                      if (remarksError && e.target.value.trim()) {
+                        setRemarksError(false);
+                      }
+                    }}
+                    placeholder={
+                      !selectedRequest
+                        ? 'Click a row on the right to select'
+                        : adminEditCloser
+                        ? 'Disabled while editing closer fields...'
+                        : isCloserDataToBeUpdated && !isReassignOpen
+                        ? 'Awaiting closer Action & Target Date...'
+                        : 'Enter remarks and validation summary...'
+                    }
+                    className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none ${
+                      adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
+                        ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed select-none'
+                        : remarksError
+                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                        : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
+                  />
+                  {adminEditCloser ? (
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Disabled while editing closer fields.
+                    </p>
+                  ) : isCloserDataToBeUpdated && !isReassignOpen ? (
+                    <p className="text-[10px] text-amber-700 mt-0.5 font-medium">
+                      Closer Action &amp; Target Date required first.
+                    </p>
+                  ) : remarksError ? (
+                    <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
+                      <span>* Remarks is required to save Admin Review and Status Sign-Off.</span>
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Provide admin sign-off or review remarks.
+                    </p>
+                  )}
+                </div>
+
+                {/* Status */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                      <span>STATUS</span>
+                      <span className="text-rose-500">*</span>
+                      {selectedRequest && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                          Admin
+                        </span>
+                      )}
+                      {isSelectedClosed && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200">
+                          Closed
+                        </span>
+                      )}
+                    </label>
+                  </div>
+                  <select
+                    value={isReassignOpen ? 'OPEN' : closerStatus}
+                    onChange={(e) => {
+                      if (adminEditCloser || isReassignOpen || isCloserDataToBeUpdated) return;
+                      setCloserStatus(e.target.value);
+                      if (e.target.value) setStatusError(false);
+                    }}
+                    disabled={adminEditCloser || !selectedRequest || isReassignOpen || isCloserDataToBeUpdated}
+                    className={`w-full px-3.5 py-2.5 border rounded-xl font-bold outline-none transition ${
+                      adminEditCloser || isCloserDataToBeUpdated
+                        ? 'cursor-not-allowed bg-slate-100 border-slate-200 text-slate-400 select-none'
+                        : isReassignOpen
+                        ? 'cursor-not-allowed bg-slate-50 border-slate-200 text-slate-700'
+                        : statusError
+                        ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 text-rose-700'
+                        : closerStatus === 'CLOSED'
+                        ? 'bg-white border-slate-200 text-emerald-700 cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'
+                        : 'bg-white border-slate-200 text-slate-600 cursor-pointer focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
+                  >
+                    {isReassignOpen ? (
+                      <option value="OPEN">PENDING (Awaiting Closer)</option>
+                    ) : (
+                      <>
+                        <option value="">Select Status...</option>
+                        <option value="CLOSED">CLOSED</option>
+                        <option value="OPEN">OPEN</option>
+                      </>
+                    )}
+                  </select>
+                  {statusError ? (
+                    <p className="text-[10px] text-rose-500 font-semibold mt-0.5">
+                      * Please select status to finalize admin sign-off.
+                    </p>
+                  ) : (
+                    <p className="text-[10px] mt-0.5">
+                      {adminEditCloser ? (
+                        <span className="text-slate-400">
+                          Disabled while editing closer fields.
+                        </span>
+                      ) : isCloserDataToBeUpdated ? (
+                        <span className="text-amber-700 font-medium">
+                          Status unlocks after closer submission.
+                        </span>
+                      ) : isReassignOpen ? (
+                        <span className="text-amber-700 font-medium">
+                          Status locked to PENDING for new assignee.
+                        </span>
+                      ) : closerStatus === 'CLOSED' ? (
+                        <span className="text-emerald-600 font-semibold">
+                          Status will be finalized to CLOSED.
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">
+                          Select CLOSED to finalize admin sign-off.
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+
+                {/* Dedicated Admin Actions Submit Button */}
+                <div className="pt-1">
+                  {!selectedRequest ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-2.5 px-4 rounded-xl border border-indigo-200/80 bg-indigo-50/50 text-indigo-400 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs"
+                    >
+                      Select a Request to Review
+                    </button>
+                  ) : adminEditCloser ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                      title="Admin Sign-Off disabled while editing closer fields"
+                    >
+                      <Lock className="w-4 h-4 text-slate-400" />
+                      <span>Sign-Off Locked (Closer Edit Active)</span>
+                    </button>
+                  ) : isCloserDataToBeUpdated && !isReassignOpen ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-2.5 px-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                      title="Action & Target Date required before Admin Sign-Off"
+                    >
+                      <Lock className="w-4 h-4 text-amber-600" />
+                      <span>Sign-Off Locked (Closer Pending)</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSaveAdmin}
+                      disabled={isSavingAdmin || isSavingCloser}
+                      className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition transform active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSavingAdmin ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Saving Admin Sign-Off...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Save Admin Review &amp; Status Sign-Off</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
           </form>
         </div>
@@ -1040,10 +2039,10 @@ const ProcessAuditApprovals = () => {
             <button
               onClick={() => setShowExportModal(true)}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow transition transform active:scale-95 cursor-pointer shrink-0"
-              id="approvals-export-pdf-btn"
+              id="approvals-export-view-btn"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Export PDF</span>
+              <span>Export View</span>
             </button>
           </div>
 
@@ -1052,6 +2051,18 @@ const ProcessAuditApprovals = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
+                  {/* Top Phase Header Row matching IHLR */}
+                  <tr className="text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-200">
+                    <th colSpan={4} className="py-2 px-3 bg-amber-100 text-amber-900 border-r border-amber-200">
+                      AUDIT REQUEST (Observation &amp; Parameters)
+                    </th>
+                    <th colSpan={1} className="py-2 px-3 bg-orange-100 text-orange-900 border-r border-orange-200">
+                      CLOSER (Root Cause &amp; Action)
+                    </th>
+                    <th colSpan={3} className="py-2 px-3 bg-slate-100 text-slate-700">
+                      REMARKS &amp; STATUS
+                    </th>
+                  </tr>
                   <tr className="bg-[#f8fafc] border-b border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500">
                     <th className="py-3 px-3 text-center w-12">SL NO</th>
                     <th className="py-3 px-3">AUDIT REQ NO</th>
