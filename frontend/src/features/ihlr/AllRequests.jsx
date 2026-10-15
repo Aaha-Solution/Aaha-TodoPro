@@ -268,11 +268,11 @@ const IhlrAllRequests = () => {
         </span>
       );
     }
-    const isCompleted = s === 'IN_PROGRESS' || s === 'IN-PROGRESS' || s === 'APPROVAL_PENDING' || s === 'APPROVAL PENDING' || (req && (
-      Boolean(req.action && String(req.action).trim()) ||
-      Boolean(req.target_date) ||
+    const isCompleted = s !== 'OPEN' && (s === 'IN_PROGRESS' || s === 'IN-PROGRESS' || s === 'APPROVAL_PENDING' || s === 'APPROVAL PENDING' || (req && (
+      Boolean(req.action && String(req.action).trim()) &&
+      Boolean(req.target_date) &&
       (Array.isArray(req.prod_why_why) && req.prod_why_why.some(w => Boolean(w && String(w).trim())))
-    ));
+    )));
 
     if (isCompleted) {
       return (

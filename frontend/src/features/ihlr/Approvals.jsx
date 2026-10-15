@@ -64,7 +64,7 @@ const IhlrApprovals = () => {
   const cleanStr = (val) => (val || '').trim().toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s+/i, '');
   const uName = cleanStr(user?.name);
   const uEmail = cleanStr(user?.email);
-  const uDept = cleanStr(user?.department);
+  const uDept = cleanStr(userDept || user?.department);
   const uId = String(user?.id || '');
 
   const rRespPerson = cleanStr(selectedRequest?.resp_person);
@@ -74,12 +74,13 @@ const IhlrApprovals = () => {
   const rRespDept = (selectedRequest?.resp || '').trim().toUpperCase();
 
   const isDeptMatch = Boolean(!rRespDept || (uDept && uDept.toUpperCase() === rRespDept));
+  const isNameOrEmailMatch = Boolean(
+    (rRespPerson && (uName === rRespPerson || rRespPersonList.includes(uName))) ||
+    (rRespEmail && (uEmail === rRespEmail || rRespEmailList.includes(uEmail)))
+  );
   const isCloser = Boolean(
-    isDeptMatch && (
-      (rRespPerson && (uName === rRespPerson || rRespPersonList.includes(uName))) ||
-      (rRespEmail && (uEmail === rRespEmail || rRespEmailList.includes(uEmail))) ||
-      (!rRespPerson)
-    )
+    (isDeptMatch && (isNameOrEmailMatch || !rRespPerson)) ||
+    isNameOrEmailMatch
   );
 
   const rCreatedBy = cleanStr(selectedRequest?.created_by);
@@ -92,25 +93,21 @@ const IhlrApprovals = () => {
   );
 
   const isSelectedClosed = String(selectedRequest?.status || '').toUpperCase() === 'CLOSED';
+  const isSelectedOpen = String(selectedRequest?.status || '').toUpperCase() === 'OPEN';
 
   // Check if closer details have already been submitted once
   // When status is 'OPEN' (new request or reassigned), closer can view/edit values and submit once.
-  // When status is 'IN_PROGRESS' or 'CLOSED', closer updates are locked for non-admins.
+  // When status is 'IN_PROGRESS' or 'CLOSED' or 'APPROVAL_PENDING', closer updates are locked for non-admins.
   const hasCloserSubmitted = Boolean(
-    selectedRequest && (
+    selectedRequest && !isSelectedOpen && (
       String(selectedRequest.status || '').toUpperCase() === 'IN_PROGRESS' ||
       String(selectedRequest.status || '').toUpperCase() === 'CLOSED' ||
-      String(selectedRequest.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
-      (
-        Boolean(selectedRequest.action && String(selectedRequest.action).trim()) &&
-        Boolean(selectedRequest.target_date) &&
-        Boolean(selectedRequest.prod_why_why?.[0] && String(selectedRequest.prod_why_why[0]).trim())
-      )
+      String(selectedRequest.status || '').toUpperCase() === 'APPROVAL_PENDING'
     )
   );
 
   // Closer fields data is still to be updated for the selected request
-  const isCloserDataToBeUpdated = Boolean(selectedRequest && !hasCloserSubmitted);
+  const isCloserDataToBeUpdated = Boolean(selectedRequest && (isSelectedOpen || !hasCloserSubmitted));
 
   // Admin Edit Mode for Closer Fields: Toggled via Pencil Icon
   const [adminEditCloser, setAdminEditCloser] = useState(false);
@@ -133,9 +130,9 @@ const IhlrApprovals = () => {
 
   const isLockedForCloserUser = !isAdmin && (isSelectedClosed || hasCloserSubmitted);
 
-  // Reassign Closer is disabled when no request is selected, or when review fields are disabled/pending closer submission, or closed
+  // Reassign Closer is disabled when no request is selected, or closed, or editing
   const isReassignDisabled = Boolean(
-    !selectedRequest || isCloserDataToBeUpdated || isSelectedClosed || adminEditCloser
+    !selectedRequest || isSelectedClosed || adminEditCloser
   );
 
   // Form State for Closer Fields
@@ -699,10 +696,14 @@ const IhlrApprovals = () => {
     // Never show CLOSED requests in approvals tab
     if (String(r.status || '').toUpperCase() === 'CLOSED') return false;
 
-    const isCompleted = r.status === 'IN_PROGRESS' || r.status === 'APPROVAL_PENDING' || (
-      Boolean(r.action && String(r.action).trim()) ||
-      Boolean(r.target_date) ||
-      (Array.isArray(r.prod_why_why) && r.prod_why_why.some(w => Boolean(w && String(w).trim())))
+    const isReqOpen = String(r.status || '').toUpperCase() === 'OPEN';
+    const isCompleted = !isReqOpen && (
+      String(r.status || '').toUpperCase() === 'IN_PROGRESS' ||
+      String(r.status || '').toUpperCase() === 'APPROVAL_PENDING' || (
+        Boolean(r.action && String(r.action).trim()) &&
+        Boolean(r.target_date) &&
+        (Array.isArray(r.prod_why_why) && r.prod_why_why.some(w => Boolean(w && String(w).trim())))
+      )
     );
 
     const matchesSearch =
@@ -1926,14 +1927,17 @@ const IhlrApprovals = () => {
                             />
                           </td>
                           <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                            {r.status === 'CLOSED' ? (
+                            {String(r.status || '').toUpperCase() === 'CLOSED' ? (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 CLOSED
                               </span>
-                            ) : (r.status === 'IN_PROGRESS' || r.status === 'APPROVAL_PENDING' || (
-                              Boolean(r.action && String(r.action).trim()) ||
-                              Boolean(r.target_date) ||
-                              (Array.isArray(r.prod_why_why) && r.prod_why_why.some(w => Boolean(w && String(w).trim())))
+                            ) : (String(r.status || '').toUpperCase() !== 'OPEN' && (
+                              String(r.status || '').toUpperCase() === 'IN_PROGRESS' ||
+                              String(r.status || '').toUpperCase() === 'APPROVAL_PENDING' || (
+                                Boolean(r.action && String(r.action).trim()) &&
+                                Boolean(r.target_date) &&
+                                (Array.isArray(r.prod_why_why) && r.prod_why_why.some(w => Boolean(w && String(w).trim())))
+                              )
                             )) ? (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                                 APPROVAL PENDING

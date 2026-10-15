@@ -654,11 +654,9 @@ export const updateIhlrRequest = async (req, res) => {
       )
     );
 
-    // If Admin reassigns to new assignee/department, ensure status is not CLOSED, and respect what was given in the status select
+    // If Admin reassigns to new assignee/department, always set status to OPEN (Pending for new assignee)
     if (isReassigned) {
-      if (!safeUpdates.status || safeUpdates.status === 'CLOSED') {
-        safeUpdates.status = 'OPEN';
-      }
+      safeUpdates.status = 'OPEN';
       // Keep existing closer values (5-Why, Action, Evidence, Target Date) intact so the reassigned person can view/edit them
 
       let currentHistory = [];

@@ -352,14 +352,17 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     return formatIhlrShiftDisplay(shift, true);
   };
 
+  const isReqOpen = (request?.status || '').toUpperCase() === 'OPEN';
   const isCompleted = Boolean(
-    (request?.status || '').toUpperCase() === 'IN_PROGRESS' ||
-    (request?.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
-    (request && (
-      Boolean(request.action && String(request.action).trim()) &&
-      Boolean(request.target_date) &&
-      Boolean(request.prod_why_why?.[0] && String(request.prod_why_why[0]).trim())
-    ))
+    !isReqOpen && (
+      (request?.status || '').toUpperCase() === 'IN_PROGRESS' ||
+      (request?.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
+      (request && (
+        Boolean(request.action && String(request.action).trim()) &&
+        Boolean(request.target_date) &&
+        Boolean(request.prod_why_why?.[0] && String(request.prod_why_why[0]).trim())
+      ))
+    )
   );
 
   const getStatusBadge = (status) => {
