@@ -53,6 +53,8 @@ const DateInput = ({
   const handlePickerChange = (e) => {
     const selectedIso = e.target.value; // 'YYYY-MM-DD'
     if (selectedIso) {
+      if (min && selectedIso < min) return;
+      if (max && selectedIso > max) return;
       setDisplayText(formatDateDDMMYYYY(selectedIso));
       triggerChange(selectedIso);
     } else {
@@ -104,6 +106,18 @@ const DateInput = ({
 
       if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
         const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        if (min && iso < min) {
+          const fallback = (value && value >= min) ? value : min;
+          setDisplayText(formatDateDDMMYYYY(fallback));
+          triggerChange(fallback);
+          return;
+        }
+        if (max && iso > max) {
+          const fallback = (value && value <= max) ? value : max;
+          setDisplayText(formatDateDDMMYYYY(fallback));
+          triggerChange(fallback);
+          return;
+        }
         triggerChange(iso);
         setDisplayText(formatDateDDMMYYYY(iso));
         return;

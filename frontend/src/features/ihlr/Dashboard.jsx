@@ -629,25 +629,17 @@ const IhlrDashboard = () => {
                 : 'Live manufacturing rejection cases with Why-Why analysis & closure actions.'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleOpenExportModal}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 hover:border-slate-300 shadow-2xs hover:shadow-xs transition cursor-pointer"
-              title="Export filtered reports"
-            >
-              <Download className="w-3.5 h-3.5 text-blue-600" />
-              <span>Export View</span>
-            </button>
-            {hasActiveFilters && (
+          {hasActiveFilters && (
+            <div className="flex items-center gap-2 self-start sm:self-auto">
               <button
                 onClick={handleResetFilters}
-                className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>Clear Filters</span>
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         <div className="overflow-x-auto">

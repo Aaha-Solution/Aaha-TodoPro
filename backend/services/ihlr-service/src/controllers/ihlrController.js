@@ -618,6 +618,11 @@ export const updateIhlrRequest = async (req, res) => {
       if (!trimmed) {
         return errorResponse(res, 'Target Date is mandatory and cannot be empty.', 400);
       }
+      const dateOnly = trimmed.split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      if (dateOnly < today && !isAdmin) {
+        return errorResponse(res, 'Target Date cannot be in the past. Please select today or a future date.', 400);
+      }
     }
 
     if (!safeUpdates.status && String(existing.status || '').toUpperCase() === 'OPEN') {

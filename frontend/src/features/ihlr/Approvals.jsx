@@ -142,6 +142,13 @@ const IhlrApprovals = () => {
   const [closerActionError, setCloserActionError] = useState(false);
   const [closerTargetDate, setCloserTargetDate] = useState('');
   const [closerTargetDateError, setCloserTargetDateError] = useState(false);
+  const todayStr = (() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  })();
   const [closerRemarks, setCloserRemarks] = useState('');
   const [remarksError, setRemarksError] = useState(false);
   const [closerStatus, setCloserStatus] = useState('');
@@ -494,8 +501,19 @@ const IhlrApprovals = () => {
       setCloserEvidenceError(false);
     }
 
+    const todayStr = (() => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    })();
+
     if (!closerTargetDate || !closerTargetDate.trim()) {
-      setCloserTargetDateError(true);
+      setCloserTargetDateError('Target Date is mandatory. Please select a completion target date.');
+      hasCloserErrors = true;
+    } else if (closerTargetDate < todayStr) {
+      setCloserTargetDateError('Target Date cannot be in the past. Please select today or a future date.');
       hasCloserErrors = true;
     } else {
       setCloserTargetDateError(false);
@@ -1158,10 +1176,16 @@ const IhlrApprovals = () => {
               </div>
               <DateInput
                 disabled={!canUpdateCloserFields}
+                min={todayStr}
                 value={closerTargetDate}
                 onChange={(e) => {
-                  setCloserTargetDate(e.target.value);
-                  if (closerTargetDateError && e.target.value) {
+                  const val = e.target.value;
+                  setCloserTargetDate(val);
+                  if (!val) {
+                    setCloserTargetDateError('Target Date is mandatory. Please select a completion target date.');
+                  } else if (val < todayStr) {
+                    setCloserTargetDateError('Target Date cannot be a previous date. Please select today or a future date.');
+                  } else {
                     setCloserTargetDateError(false);
                   }
                 }}
@@ -1173,7 +1197,7 @@ const IhlrApprovals = () => {
               />
               {closerTargetDateError && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* Target Date is mandatory. Please select a completion target date.</span>
+                  <span>* {typeof closerTargetDateError === 'string' ? closerTargetDateError : 'Target Date is mandatory. Please select a completion target date.'}</span>
                 </p>
               )}
             </div>
