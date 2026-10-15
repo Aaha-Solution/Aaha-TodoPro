@@ -899,6 +899,7 @@ const AllRequests = () => {
                   const creatorStr = req.created_by || req.creator || '-';
                   const executorStr = req.executor || 'Assigned Lead';
                   const statusStr = getProcessAuditDisplayStatus(req);
+                  const isSignedOff = (statusStr === 'Approval Pending' || statusStr === 'Signed off' || statusStr === 'In Progress') && !statusStr.toLowerCase().includes('close');
                   const meta = getStatusMeta(statusStr);
 
                   return (
