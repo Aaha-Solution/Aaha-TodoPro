@@ -898,7 +898,7 @@ const IhlrApprovals = () => {
                   type="text"
                   readOnly
                   disabled
-                  value={selectedRequest?.batch_date ? selectedRequest.batch_date.split('T')[0] : ''}
+                  value={selectedRequest?.batch_date ? formatDateDDMMYYYY(selectedRequest.batch_date) : ''}
                   placeholder="Click a row on the right to select"
                   className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed select-none outline-none"
                 />

@@ -48,6 +48,7 @@ import AttachmentPreviewModal from '../../components/common/AttachmentPreviewMod
 import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
 import DateInput from '../../components/common/DateInput';
 import { resolveAttachmentUrl, triggerDirectDownload } from '../../components/common/attachmentUtils';
+import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { storage } from '../../utils/storage';
 
 const ProcessAuditApprovals = () => {
@@ -848,7 +849,7 @@ const ProcessAuditApprovals = () => {
         return {
           'SL NO': index + 1,
           'AUDIT REQ NO': r.issue_no || (r.id ? `PA-${r.id}` : `#${r.id}`),
-          'DATE': r.escalation_date ? r.escalation_date.split('T')[0] : (r.created_at ? r.created_at.split('T')[0] : '—'),
+          'DATE': r.escalation_date || r.created_at ? formatDateDDMMYYYY(r.escalation_date || r.created_at) : '—',
           'SHIFT': r.shift || '—',
           'PRODUCT': r.product || '—',
           'STAGE / MODEL': r.model || r.stage || '—',
@@ -858,7 +859,7 @@ const ProcessAuditApprovals = () => {
           'ROOT CAUSE': r.root_cause || '—',
           'ACTION': r.corrective_action || r.action || '—',
           'STANDARDIZATION': r.standardization_details || '—',
-          'TARGET DATE': r.target_date ? r.target_date.split('T')[0] : '—',
+          'TARGET DATE': r.target_date ? formatDateDDMMYYYY(r.target_date) : '—',
           'REMARKS': r.creator_remark || r.comments || r.remarks || '—',
           'STATUS': (() => {
             const s = (r.status || '').toLowerCase();
@@ -923,12 +924,12 @@ const ProcessAuditApprovals = () => {
       const tableRows = filtered.map((r, idx) => [
         idx + 1,
         r.issue_no || (r.id ? `PA-${r.id}` : `#${r.id}`),
-        r.escalation_date ? r.escalation_date.split('T')[0] : (r.created_at ? r.created_at.split('T')[0] : '—'),
+        r.escalation_date || r.created_at ? formatDateDDMMYYYY(r.escalation_date || r.created_at) : '—',
         `${r.issue_observation || r.problem || '—'}\n(${r.model || r.stage || '—'} - ${r.process_operation || r.line || '—'})`,
         r.executor || '—',
         r.root_cause || '—',
         r.corrective_action || r.action || '—',
-        r.target_date ? r.target_date.split('T')[0] : '—',
+        r.target_date ? formatDateDDMMYYYY(r.target_date) : '—',
         r.status || 'Pending'
       ]);
 
@@ -1102,7 +1103,7 @@ const ProcessAuditApprovals = () => {
                   type="text"
                   readOnly
                   disabled
-                  value={selectedRequest ? (selectedRequest.escalation_date ? selectedRequest.escalation_date.split('T')[0] : (selectedRequest.created_at ? selectedRequest.created_at.split('T')[0] : '')) : ''}
+                  value={selectedRequest ? (selectedRequest.escalation_date || selectedRequest.created_at ? formatDateDDMMYYYY(selectedRequest.escalation_date || selectedRequest.created_at) : '') : ''}
                   placeholder="Click a row on the right to select"
                   className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed select-none outline-none"
                 />
@@ -2124,10 +2125,8 @@ const ProcessAuditApprovals = () => {
                             {displayId}
                           </td>
                           <td className="py-3.5 px-3 whitespace-nowrap text-slate-600 font-mono text-[11px]">
-                            {r.escalation_date
-                              ? r.escalation_date.split('T')[0]
-                              : r.created_at
-                              ? r.created_at.split('T')[0]
+                            {r.escalation_date || r.created_at
+                              ? formatDateDDMMYYYY(r.escalation_date || r.created_at)
                               : '—'}
                           </td>
                           <td className="py-3.5 px-4">
