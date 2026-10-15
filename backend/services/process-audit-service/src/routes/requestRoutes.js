@@ -1,5 +1,13 @@
 import { Router } from 'express';
-import { getAllRequests, createRequest, getNextId, uploadAttachments, updateRequestStatus, reassignRequest } from '../controllers/requestController.js';
+import { 
+  getAllRequests, 
+  createRequest, 
+  getNextId, 
+  uploadAttachments, 
+  updateRequestStatus, 
+  reassignRequest,
+  updateRequest
+} from '../controllers/requestController.js';
 import { upload } from '../middleware/upload.js';
 
 const router = Router();
@@ -11,6 +19,8 @@ router.put('/:id/status', upload.array('files', 15), updateRequestStatus);
 router.patch('/:id/status', upload.array('files', 15), updateRequestStatus);
 router.put('/:id/reassign', reassignRequest);
 router.post('/:id/reassign', reassignRequest);
+router.put('/:id', upload.array('files', 15), updateRequest);
+router.patch('/:id', upload.array('files', 15), updateRequest);
 
 export default router;
 

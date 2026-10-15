@@ -45,6 +45,11 @@ export const processAuditService = {
     return res.data;
   },
 
+  updateRequest: async (id, data) => {
+    const res = await api.put(`/process-audit/requests/${id}`, data);
+    return res.data?.data || res.data;
+  },
+
   getUsers: async (department) => {
     try {
       const params = department ? { department } : {};

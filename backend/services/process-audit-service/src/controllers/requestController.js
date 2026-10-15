@@ -445,3 +445,62 @@ export const reassignRequest = async (req, res) => {
   }
 };
 
+export const updateRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body || {};
+
+    let parsedAttachments = undefined;
+    if (body.attachments !== undefined) {
+      if (typeof body.attachments === 'string') {
+        try {
+          parsedAttachments = JSON.parse(body.attachments);
+        } catch {
+          parsedAttachments = [];
+        }
+      } else if (Array.isArray(body.attachments)) {
+        parsedAttachments = body.attachments;
+      }
+    }
+
+    if (req.files && req.files.length > 0) {
+      const uploadedFiles = [];
+      for (const file of req.files) {
+        const saved = await Attachment.saveAttachment(file);
+        uploadedFiles.push(saved);
+      }
+      parsedAttachments = [...(parsedAttachments || []), ...uploadedFiles];
+    }
+
+    let parsedActionAttachments = undefined;
+    if (body.action_attachments !== undefined) {
+      if (typeof body.action_attachments === 'string') {
+        try {
+          parsedActionAttachments = JSON.parse(body.action_attachments);
+        } catch {
+          parsedActionAttachments = [];
+        }
+      } else if (Array.isArray(body.action_attachments)) {
+        parsedActionAttachments = body.action_attachments;
+      }
+    }
+
+    const updates = { ...body };
+    if (parsedAttachments !== undefined) updates.attachments = parsedAttachments;
+    if (parsedActionAttachments !== undefined) updates.action_attachments = parsedActionAttachments;
+
+    const updated = await ProcessAuditRequest.update(id, updates);
+    if (!updated) {
+      return errorResponse(res, 'Process Audit Request not found', 404);
+    }
+
+    broadcastEvent('process_audit:updated', updated);
+    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'updated', id: updated.id });
+
+    return successResponse(res, updated, 'Process Audit Request updated successfully');
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
+

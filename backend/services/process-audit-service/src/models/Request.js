@@ -267,6 +267,90 @@ export const ProcessAuditRequest = {
     return rows[0] || { id: insertedId, issue_no: issue_no || `PA-${insertedId}`, ...data };
   },
 
+  update: async (id, data = {}) => {
+    if (!pool) throw new Error('Database connection pool is not available');
+    const numericId = parseInt(String(id).replace(/\D/g, ''), 10) || id;
+
+    // Check / ensure columns exist
+    const [cols] = await pool.query(`SHOW COLUMNS FROM process_audit_requests`).catch(() => [[]]);
+    const colNames = (cols || []).map((c) => c.Field);
+    const neededCols = [
+      { name: 'rejection_reason', type: 'TEXT NULL' },
+      { name: 'root_cause', type: 'TEXT NULL' },
+      { name: 'corrective_action', type: 'TEXT NULL' },
+      { name: 'action_attachments', type: 'JSON NULL' },
+      { name: 'standardization_details', type: 'TEXT NULL' },
+      { name: 'target_date', type: 'VARCHAR(50) NULL' },
+      { name: 'action_taken_by', type: 'VARCHAR(100) NULL' },
+      { name: 'action_taken_at', type: 'TIMESTAMP NULL' },
+      { name: 'approved_by', type: 'VARCHAR(100) NULL' },
+      { name: 'approved_by_id', type: 'INT NULL' },
+      { name: 'approved_by_email', type: 'VARCHAR(100) NULL' },
+      { name: 'approved_at', type: 'TIMESTAMP NULL' },
+      { name: 'creator_remark', type: 'TEXT NULL' },
+      { name: 'closed_by', type: 'VARCHAR(100) NULL' },
+      { name: 'closed_by_id', type: 'INT NULL' },
+      { name: 'closed_at', type: 'TIMESTAMP NULL' },
+      { name: 'reassignment_history', type: 'JSON NULL' }
+    ];
+    for (const c of neededCols) {
+      if (!colNames.includes(c.name)) {
+        await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN ${c.name} ${c.type}`).catch(() => {});
+      }
+    }
+
+    const updates = [];
+    const params = [];
+
+    const allowedFields = [
+      'issue_no', 'escalation_date', 'product', 'model', 'process_operation',
+      'shift', 'issue_type', 'priority', 'issue_observation', 'attachments',
+      'department', 'executor', 'comments', 'status', 'root_cause',
+      'corrective_action', 'action_attachments', 'standardization_details',
+      'target_date', 'action_taken_by', 'approved_by', 'approved_by_id',
+      'approved_by_email', 'creator_remark', 'closed_by', 'closed_by_id',
+      'rejection_reason', 'reassignment_history'
+    ];
+
+    for (const field of allowedFields) {
+      if (data[field] !== undefined) {
+        let val = data[field];
+        if (field === 'attachments' || field === 'action_attachments' || field === 'reassignment_history') {
+          if (typeof val === 'object' && val !== null) {
+            val = JSON.stringify(val);
+          }
+        }
+        updates.push(`${field} = ?`);
+        params.push(val);
+      }
+    }
+
+    if (data.status) {
+      const s = String(data.status).toLowerCase();
+      if (s.includes('close') && !data.closed_at) {
+        updates.push('closed_at = NOW()');
+      }
+      if ((s.includes('approved') || s.includes('signed')) && !data.approved_at) {
+        updates.push('approved_at = NOW()');
+      }
+    }
+
+    if (data.action_taken_by && !data.action_taken_at) {
+      updates.push('action_taken_at = NOW()');
+    }
+
+    if (updates.length === 0) {
+      const [rows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?', [numericId, String(id)]);
+      return rows[0];
+    }
+
+    params.push(numericId, String(id));
+    await pool.query(`UPDATE process_audit_requests SET ${updates.join(', ')} WHERE id = ? OR issue_no = ?`, params);
+
+    const [rows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?', [numericId, String(id)]);
+    return rows[0];
+  },
+
   updateStatus: async (id, status, details = {}) => {
     if (!pool) throw new Error('Database connection pool is not available');
     const numericId = parseInt(String(id).replace(/\D/g, ''), 10) || id;
