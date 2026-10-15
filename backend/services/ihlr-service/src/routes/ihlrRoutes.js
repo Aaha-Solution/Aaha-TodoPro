@@ -13,7 +13,9 @@ import {
   getNextReqNo,
   uploadAttachments,
   getBinaryAttachment,
-  getBinaryAttachmentByFilename
+  getBinaryAttachmentByFilename,
+  getIhlrEmailLogs,
+  testIhlrEmail
 } from '../controllers/ihlrController.js';
 import { uploadMemory } from '../../../shared/binaryStorage.js';
 import { authenticateUser } from '../middleware/authMiddleware.js';
@@ -48,6 +50,10 @@ router.get('/notifications', getIhlrNotifications);
 router.patch('/notifications/:id/read', markIhlrNotificationRead);
 router.patch('/notifications/:id/unread', markIhlrNotificationUnread);
 router.patch('/notifications/mark-all-read', markAllIhlrNotificationsRead);
+
+// Email Audit Logs & Testing
+router.get('/email-logs', getIhlrEmailLogs);
+router.post('/test-email', testIhlrEmail);
 
 // Backward compatibility alias
 router.get('/line-rejections', getIhlrRequests);

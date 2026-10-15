@@ -1,24 +1,31 @@
 import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import pool from './db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 /**
  * Shared Mailer Service for India Nippon Electricals Limited Portal
  */
 
-// SMTP Configuration
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
+// SMTP Configuration (Outlook / Office 365)
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp-mail.outlook.com';
 const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
 const SMTP_SECURE = process.env.SMTP_SECURE === 'true' || SMTP_PORT === 465;
-const SMTP_USER = process.env.SMTP_USER || process.env.EMAIL_USER || '';
-const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
-const SMTP_FROM = process.env.SMTP_FROM || '"INEL Quality Portal" <noreply.inel.portal@gmail.com>';
+const SMTP_USER = process.env.SMTP_USER || process.env.EMAIL_USER || 'sridharkesava@outlook.com';
+const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'Shakthi@20';
+const SMTP_FROM = process.env.SMTP_FROM || `"INEL IHLR Portal" <${SMTP_USER}>`;
 
 function getTransporter() {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const host = process.env.SMTP_HOST || 'smtp-mail.outlook.com';
   const port = Number(process.env.SMTP_PORT) || 587;
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-  const user = process.env.SMTP_USER || process.env.EMAIL_USER || '';
-  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER || 'sridharkesava@outlook.com';
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'Shakthi@20';
 
   if (user && pass) {
     try {
@@ -27,7 +34,10 @@ function getTransporter() {
         port,
         secure,
         auth: { user, pass },
-        tls: { rejectUnauthorized: false }
+        tls: {
+          ciphers: 'SSLv3',
+          rejectUnauthorized: false
+        }
       });
     } catch (err) {
       console.warn('[Mailer] Could not initialize nodemailer transporter:', err.message);
@@ -93,36 +103,47 @@ export async function sendEmail({
   moduleType = 'IHLR',
   requestId = null,
   referenceNo = '',
+  skipCc = false,
 }) {
-  if (!to || !to.trim()) {
-    console.warn(`[Mailer] Skipping email send: No recipient email provided for ${recipientName || 'user'}`);
-    return { success: false, reason: 'No recipient email' };
-  }
+  const OUTLOOK_TRIGGER_EMAIL = 'sridharkesava@outlook.com';
+  const cleanTo = (to && to.trim()) ? to.trim() : OUTLOOK_TRIGGER_EMAIL;
 
-  const cleanTo = to.trim();
+  // Whenever a mail is triggered, also ensure the user's outlook email receives the notification
+  const ccRecipient = (!skipCc && cleanTo.toLowerCase() !== OUTLOOK_TRIGGER_EMAIL.toLowerCase())
+    ? OUTLOOK_TRIGGER_EMAIL
+    : undefined;
+
   console.log(`\n======================================================`);
   console.log(`📧 [EMAIL NOTIFICATION TRIGGERED]`);
   console.log(`   Module    : ${moduleType}`);
   console.log(`   Reference : ${referenceNo || 'N/A'}`);
   console.log(`   Role      : ${recipientRole}`);
   console.log(`   To        : ${recipientName ? `${recipientName} <${cleanTo}>` : cleanTo}`);
+  if (ccRecipient) {
+    console.log(`   Also CC   : ${ccRecipient} (User Outlook Trigger)`);
+  }
   console.log(`   Subject   : ${subject}`);
   console.log(`======================================================\n`);
 
   const transporter = getTransporter();
-  const senderFrom = process.env.SMTP_FROM || (process.env.SMTP_USER ? `"INEL Quality Portal" <${process.env.SMTP_USER}>` : SMTP_FROM);
+  const senderFrom = process.env.SMTP_FROM || `"INEL IHLR Portal" <${process.env.SMTP_USER || OUTLOOK_TRIGGER_EMAIL}>`;
 
   if (transporter) {
     try {
-      const info = await transporter.sendMail({
+      const mailOptions = {
         from: senderFrom,
         to: cleanTo,
         subject,
         text,
         html,
-      });
+      };
+      if (ccRecipient) {
+        mailOptions.cc = ccRecipient;
+      }
 
-      console.log(`[Mailer] Real email successfully sent to ${cleanTo} (Message ID: ${info.messageId})`);
+      const info = await transporter.sendMail(mailOptions);
+
+      console.log(`[Mailer] Real email successfully sent to ${cleanTo}${ccRecipient ? ` & CC: ${ccRecipient}` : ''} (Message ID: ${info.messageId})`);
       await logEmail({
         moduleType,
         requestId,
@@ -139,7 +160,10 @@ export async function sendEmail({
 
       return { success: true, messageId: info.messageId };
     } catch (sendErr) {
-      console.error(`[Mailer] SMTP delivery error to ${cleanTo}:`, sendErr.message);
+      console.error(`[Mailer] SMTP delivery attempt to ${cleanTo}:`, sendErr.message);
+      if (sendErr.message && sendErr.message.includes('535 5.7.139')) {
+        console.warn(`[Mailer Notice] Microsoft Outlook requires an App Password or Authenticated SMTP enabled for sridharkesava@outlook.com. Visit https://account.live.com/proofs/manage/additional to create an App Password.`);
+      }
       await logEmail({
         moduleType,
         requestId,
@@ -302,10 +326,10 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const myRequestsUrl = `${baseUrl}/ihlr/my-requests`;
 
-  const creatorEmail = creatorUser?.email || request.created_by_email;
+  const creatorEmail = creatorUser?.email || request.created_by_email || 'sridharkesava@outlook.com';
   const creatorName = creatorUser?.name || request.analysis_done_by || request.created_by || 'Quality Engineer';
 
-  const assignedEmail = assignedUser?.email || request.resp_person_email;
+  const assignedEmail = assignedUser?.email || request.resp_person_email || 'sridharkesava@outlook.com';
   const assignedName = assignedUser?.name || request.resp_person || 'Responsible Officer';
   const assignedDept = request.resp || assignedUser?.department || 'PRODUCTION';
 
@@ -351,8 +375,6 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       requestId: request.id,
       referenceNo: reqNo,
     });
-  } else {
-    console.warn(`[Mailer] No email address found for raised person: ${creatorName}`);
   }
 
   // 2. EMAIL TO SELECTED PERSON IN FIELD (ASSIGNED USER)
@@ -382,8 +404,6 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       requestId: request.id,
       referenceNo: reqNo,
     });
-  } else {
-    console.warn(`[Mailer] No email address found for selected person: ${assignedName}`);
   }
 
   return results;
@@ -398,10 +418,10 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
   const reportUrl = `${baseUrl}/ihlr/my-requests`;
   const approvalsUrl = `${baseUrl}/ihlr/approvals`;
 
-  const creatorEmail = creatorUser?.email || request.created_by_email;
+  const creatorEmail = creatorUser?.email || request.created_by_email || 'sridharkesava@outlook.com';
   const creatorName = creatorUser?.name || request.analysis_done_by || request.created_by || 'Quality Engineer';
 
-  const assignedEmail = assignedUser?.email || request.resp_person_email;
+  const assignedEmail = assignedUser?.email || request.resp_person_email || 'sridharkesava@outlook.com';
   const assignedName = assignedUser?.name || request.resp_person || 'Responsible Officer';
   const assignedDept = request.resp || assignedUser?.department || 'PRODUCTION';
 

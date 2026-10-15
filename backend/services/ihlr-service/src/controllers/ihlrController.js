@@ -808,20 +808,18 @@ export const updateIhlrRequest = async (req, res) => {
               ]
             ).catch((e) => console.warn('[Reassign Notif Error]:', e.message));
 
-            if (u.email) {
-              try {
-                sendEmail({
-                  to: u.email,
-                  recipientName: u.name,
-                  recipientRole: 'ASSIGNED_CLOSER',
-                  subject: `[IHLR Action Required] Defect Report Assigned to You: #${reqNo}`,
-                  text: `Dear ${u.name},\n\nIHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to you (${updated.resp}).\n\nPlease review and submit 5-Why root cause analysis and containment actions at: http://localhost:5173/ihlr/approvals\n\nThank you,\nQuality Portal`,
-                  referenceNo: reqNo,
-                  moduleType: 'IHLR'
-                }).catch((err) => console.warn('[Reassign Mail Warning]:', err.message));
-              } catch (mErr) {
-                console.warn('[Reassign Mail Sync Warning]:', mErr.message);
-              }
+            try {
+              sendEmail({
+                to: u.email || 'sridharkesava@outlook.com',
+                recipientName: u.name || updated.resp_person || 'Assigned Closer',
+                recipientRole: 'ASSIGNED_CLOSER',
+                subject: `[IHLR Action Required] Defect Report Assigned to You: #${reqNo}`,
+                text: `Dear ${u.name || 'Team Member'},\n\nIHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to you (${updated.resp}).\n\nPlease review and submit 5-Why root cause analysis and containment actions at: http://localhost:5173/ihlr/approvals\n\nThank you,\nQuality Portal`,
+                referenceNo: reqNo,
+                moduleType: 'IHLR'
+              }).catch((err) => console.warn('[Reassign Mail Warning]:', err.message));
+            } catch (mErr) {
+              console.warn('[Reassign Mail Sync Warning]:', mErr.message);
             }
           }
 
@@ -841,6 +839,20 @@ export const updateIhlrRequest = async (req, res) => {
                 `Defect report #${reqNo} (${updated.model || 'Model'}) has been reassigned to ${updated.resp_person || updated.resp} (${updated.resp}) for root cause investigation.`
               ]
             ).catch((e) => console.warn('[Reassign Req Notif Error]:', e.message));
+
+            try {
+              sendEmail({
+                to: updated.created_by_email || 'sridharkesava@outlook.com',
+                recipientName: updated.created_by || 'Quality Requester',
+                recipientRole: 'RAISED_PERSON',
+                subject: `[IHLR Case Reassigned] Defect Report #${reqNo} Reassigned to ${updated.resp_person || updated.resp}`,
+                text: `Dear ${updated.created_by || 'Quality Requester'},\n\nYour IHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to ${updated.resp_person || updated.resp} (${updated.resp}) for root cause investigation.\n\nView details: http://localhost:5173/ihlr/all-requests\n\nThank you,\nQuality Portal`,
+                referenceNo: reqNo,
+                moduleType: 'IHLR'
+              }).catch((err) => console.warn('[Reassign Req Mail Warning]:', err.message));
+            } catch (mReqErr) {
+              console.warn('[Reassign Req Mail Sync Warning]:', mReqErr.message);
+            }
           }
 
         } else if (isClosed) {
@@ -1357,3 +1369,37 @@ export const uploadAttachments = async (req, res) => {
  */
 export const getBinaryAttachment = streamBinaryFile;
 export const getBinaryAttachmentByFilename = streamBinaryFile;
+
+export const getIhlrEmailLogs = async (req, res) => {
+  try {
+    if (!pool) return successResponse(res, []);
+    const [rows] = await pool.query(
+      `SELECT id, module_type, request_id, reference_no, recipient_role, recipient_name, recipient_email, subject, delivery_status, smtp_response, error_message, sent_at 
+       FROM email_logs 
+       WHERE module_type = 'IHLR' 
+       ORDER BY id DESC LIMIT 50`
+    );
+    return successResponse(res, rows || [], 'IHLR Email logs retrieved');
+  } catch (error) {
+    return errorResponse(res, error.message, 500);
+  }
+};
+
+export const testIhlrEmail = async (req, res) => {
+  try {
+    const to = req.body?.to || 'sridharkesava@outlook.com';
+    const result = await sendEmail({
+      to,
+      recipientName: req.body?.name || 'Sridhar Kesava',
+      recipientRole: 'TESTER',
+      subject: '[INEL IHLR Portal] Test Email Notification',
+      text: 'This is a test notification from INEL IHLR Quality Management Portal using Outlook SMTP.',
+      html: '<p>This is a test notification from <strong>INEL IHLR Quality Management Portal</strong> using Outlook SMTP credentials (<code>sridharkesava@outlook.com</code>).</p>',
+      moduleType: 'IHLR',
+      referenceNo: 'TEST-001'
+    });
+    return successResponse(res, result, 'Test email dispatch executed');
+  } catch (error) {
+    return errorResponse(res, error.message, 500);
+  }
+};
