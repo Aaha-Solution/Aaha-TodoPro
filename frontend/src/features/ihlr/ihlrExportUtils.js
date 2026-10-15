@@ -112,7 +112,8 @@ export const formatReassignmentHistory = (history) => {
     reassignedStatus,
     reassignmentDetails,
     hasReassignments,
-    count: hasReassignments ? reassignList.length : 0
+    count: hasReassignments ? reassignList.length : 0,
+    list: hasReassignments ? reassignList : []
   };
 };
 

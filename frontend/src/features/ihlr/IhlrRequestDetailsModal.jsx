@@ -24,7 +24,8 @@ import {
   Plus,
   Search,
   Users,
-  ChevronDown
+  ChevronDown,
+  ArrowRightLeft
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -97,6 +98,13 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   const userDropdownRef = useRef(null);
 
   const req = localRequest || request;
+  const {
+    hasReassignments,
+    reassignedStatus,
+    reassignmentDetails,
+    count: reassignCount,
+    list: reassignList
+  } = formatReassignmentHistory(req?.reassignment_history);
 
   const isRequester = Boolean(
     req && (
@@ -787,11 +795,19 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     )
                   )}
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Tracking details for:{' '}
-                  <strong className="text-slate-900 font-mono">
-                    {req?.req_no || `IHLR-${req?.id}`}
-                  </strong>
+                <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                  <span>
+                    Tracking details for:{' '}
+                    <strong className="text-slate-900 font-mono">
+                      {req?.req_no || `IHLR-${req?.id}`}
+                    </strong>
+                  </span>
+                  {hasReassignments && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                      <ArrowRightLeft className="w-2.5 h-2.5 text-purple-600" />
+                      <span>Reassigned ({reassignCount})</span>
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -892,6 +908,14 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         {request.resp || 'Production'}{request.resp_person ? ` (${request.resp_person})` : ''}
                       </span>
                     </div>
+                    {hasReassignments && (
+                      <div>
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-purple-500">Reassigned</span>
+                        <span className="font-bold text-purple-700 font-mono">
+                          Yes ({reassignCount})
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -999,7 +1023,52 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   </div>
                 </div>
 
-                {/* 6. Closer Status & Sign-off Details */}
+                {/* 6. Reassignment Tracking History (Only shown in case of reassign status) */}
+                {hasReassignments && (
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-slate-50 border border-purple-200/90 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-purple-800 text-xs font-bold uppercase tracking-wider">
+                        <ArrowRightLeft className="w-4 h-4 text-purple-600" />
+                        <span>REASSIGNMENT TRACKING HISTORY ({reassignCount})</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 bg-purple-100 text-purple-800 rounded-full border border-purple-200 font-mono">
+                        Reassigned: Yes
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {reassignList.map((entry, idx) => (
+                        <div key={idx} className="p-3 bg-white rounded-xl border border-purple-100 shadow-2xs space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-mono font-bold text-[10px]">
+                                #{idx + 1}
+                              </span>
+                              <span className="text-slate-600 font-medium">
+                                From: <strong className="text-slate-900">{entry.prev_resp_person || '—'}</strong> ({entry.prev_resp || '—'})
+                              </span>
+                              <ArrowRightLeft className="w-3 h-3 text-purple-400 inline" />
+                              <span className="text-purple-700 font-medium">
+                                To: <strong className="text-purple-900">{entry.new_resp_person || '—'}</strong> ({entry.new_resp || '—'})
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-slate-500 font-mono">
+                              {[entry.reassigned_by ? `by ${entry.reassigned_by}` : '', entry.reassigned_at ? formatDate(entry.reassigned_at) : ''].filter(Boolean).join(' • ')}
+                            </span>
+                          </div>
+                          {entry.remarks && (
+                            <div className="text-[11px] text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 italic">
+                              <span className="font-semibold text-slate-500 not-italic">Remarks: </span>
+                              {entry.remarks}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 7. Closer Status & Sign-off Details */}
                 <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
                   isClosed
                     ? 'bg-emerald-50/70 border-emerald-200/90'
@@ -1721,6 +1790,19 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       )}
                     </div>
 
+                    {/* Show Reassigned Status field strictly in case of reassign status */}
+                    {hasReassignments && (
+                      <div>
+                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          REASSIGNED STATUS
+                        </span>
+                        <span className="inline-flex items-center gap-1 font-bold text-purple-700 font-mono text-xs mt-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                          Yes ({reassignCount} {reassignCount === 1 ? 'time' : 'times'})
+                        </span>
+                      </div>
+                    )}
+
                     <div>
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         MODEL NAME / PART
@@ -1766,6 +1848,51 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </span>
                     </div>
                   </div>
+
+                  {/* Reassignment Tracking History Audit Trail (Only shown in case of reassign status) */}
+                  {hasReassignments && (
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-slate-50 border border-purple-200/90 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-purple-800 text-xs font-bold uppercase tracking-wider">
+                          <ArrowRightLeft className="w-4 h-4 text-purple-600" />
+                          <span>REASSIGNMENT TRACKING HISTORY ({reassignCount})</span>
+                        </div>
+                        <span className="text-[10px] font-bold px-2.5 py-0.5 bg-purple-100 text-purple-800 rounded-full border border-purple-200 font-mono">
+                          Reassigned: Yes
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {reassignList.map((entry, idx) => (
+                          <div key={idx} className="p-3 bg-white rounded-xl border border-purple-100 shadow-2xs space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-mono font-bold text-[10px]">
+                                  #{idx + 1}
+                                </span>
+                                <span className="text-slate-600 font-medium">
+                                  From: <strong className="text-slate-900">{entry.prev_resp_person || '—'}</strong> ({entry.prev_resp || '—'})
+                                </span>
+                                <ArrowRightLeft className="w-3 h-3 text-purple-400 inline" />
+                                <span className="text-purple-700 font-medium">
+                                  To: <strong className="text-purple-900">{entry.new_resp_person || '—'}</strong> ({entry.new_resp || '—'})
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-slate-500 font-mono">
+                                {[entry.reassigned_by ? `by ${entry.reassigned_by}` : '', entry.reassigned_at ? formatDate(entry.reassigned_at) : ''].filter(Boolean).join(' • ')}
+                              </span>
+                            </div>
+                            {entry.remarks && (
+                              <div className="text-[11px] text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 italic">
+                                <span className="font-semibold text-slate-500 not-italic">Remarks: </span>
+                                {entry.remarks}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 📄 2. DEFECT PROBLEM DESCRIPTION */}
