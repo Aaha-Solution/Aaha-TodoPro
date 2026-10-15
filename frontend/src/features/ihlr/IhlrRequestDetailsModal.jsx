@@ -31,7 +31,7 @@ import autoTable from 'jspdf-autotable';
 import { parseAttachments, getFileMeta } from './IhlrAttachmentView';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
-import { exportIhlrToExcel, loadLogoBase64, isImageAttachment, formatReassignmentHistory } from './ihlrExportUtils';
+import { exportIhlrToExcel, loadLogoBase64, isImageAttachment, formatReassignmentHistory, getIhlrDisplayStatus } from './ihlrExportUtils';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import { resolveAttachmentUrl } from '../../components/common/attachmentUtils';
 import { useModal } from '../../context/ModalContext';
@@ -367,9 +367,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     )
   );
 
-  const getStatusBadge = (status) => {
-    const s = (status || 'OPEN').toUpperCase();
-    if (s === 'CLOSED' || s === 'APPROVED') {
+  const getStatusBadge = (status, reqItem) => {
+    const target = reqItem || request;
+    const disp = getIhlrDisplayStatus(status || target?.status, target);
+    if (disp === 'CLOSED') {
       return (
         <span className="px-3 py-0.5 rounded-full text-xs font-semibold border border-emerald-500 text-emerald-700 bg-emerald-50/70 inline-flex items-center gap-1">
           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
@@ -377,7 +378,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         </span>
       );
     }
-    if (isCompleted || s === 'IN_PROGRESS' || s === 'UNDER_REVIEW') {
+    if (disp === 'APPROVAL PENDING') {
       return (
         <span className="px-3 py-0.5 rounded-full text-xs font-semibold border border-amber-400 text-amber-800 bg-amber-50/70 inline-flex items-center gap-1">
           <Clock className="w-3 h-3 text-amber-600" />
@@ -558,10 +559,14 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             { content: reqNo, styles: { fontStyle: 'bold', textColor: [37, 99, 235] } },
             { content: 'Status:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
             {
-              content: request.status || 'OPEN',
+              content: getIhlrDisplayStatus(request.status, request),
               styles: {
                 fontStyle: 'bold',
-                textColor: request.status === 'CLOSED' ? [22, 101, 52] : [180, 83, 9]
+                textColor: getIhlrDisplayStatus(request.status, request) === 'CLOSED'
+                  ? [22, 101, 52]
+                  : getIhlrDisplayStatus(request.status, request) === 'APPROVAL PENDING'
+                  ? [180, 83, 9]
+                  : [225, 29, 72]
               }
             }
           ],

@@ -117,6 +117,50 @@ export const formatReassignmentHistory = (history) => {
 };
 
 /**
+ * Returns user-facing status label strictly matching the UI:
+ * - CLOSED: closed or approved
+ * - APPROVAL PENDING: closer containment/action completed or status IN_PROGRESS / APPROVAL_PENDING / UNDER_REVIEW
+ * - PENDING: status OPEN or newly reassigned/awaiting closer containment action
+ */
+export const getIhlrDisplayStatus = (statusOrReq, maybeReq) => {
+  const req = (typeof statusOrReq === 'object' && statusOrReq !== null)
+    ? statusOrReq
+    : (typeof maybeReq === 'object' && maybeReq !== null ? maybeReq : null);
+
+  const rawStatus = (typeof statusOrReq === 'string'
+    ? statusOrReq
+    : req?.status) || '';
+
+  const s = String(rawStatus).trim().toUpperCase();
+
+  if (s === 'CLOSED' || s === 'APPROVED') {
+    return 'CLOSED';
+  }
+
+  const isReqOpen = s === 'OPEN';
+  const isCompleted = !isReqOpen && (
+    s === 'IN_PROGRESS' ||
+    s === 'IN-PROGRESS' ||
+    s === 'APPROVAL_PENDING' ||
+    s === 'APPROVAL PENDING' ||
+    s === 'UNDER_REVIEW' ||
+    (req && (
+      Boolean(req.action && String(req.action).trim()) &&
+      Boolean(req.target_date) &&
+      (Array.isArray(req.prod_why_why)
+        ? req.prod_why_why.some((w) => Boolean(w && String(w).trim()))
+        : Boolean(req.prod_why_why?.[0] && String(req.prod_why_why[0]).trim()))
+    ))
+  );
+
+  if (isCompleted) {
+    return 'APPROVAL PENDING';
+  }
+
+  return 'PENDING';
+};
+
+/**
  * Common Excel Export function for all IHLR modules (Dashboard, AllRequests, Approvals, Details Modal)
  * Generates official 33-column workbook with Super Headings, embedded images, and reassignment history.
  */
@@ -186,7 +230,7 @@ export const exportIhlrToExcel = async ({
     38, // 31: REASSIGNMENT DETAILS
     // 32-33: REMARKS & STATUS
     24, // 32: REMARKS
-    14  // 33: STATUS
+    20  // 33: STATUS
   ];
 
   colWidths.forEach((w, i) => {
@@ -341,9 +385,10 @@ export const exportIhlrToExcel = async ({
 
       // 32-33 Remarks & Status
       r.remarks || '—',
-      r.status || 'OPEN'
+      getIhlrDisplayStatus(r.status, r)
     ];
 
+    const displayStatus = getIhlrDisplayStatus(r.status, r);
     const row = worksheet.addRow(rowData);
     row.height = imgObj ? 56 : (hasReassignments && count > 1 ? Math.max(36, count * 18) : 24);
 
@@ -365,6 +410,19 @@ export const exportIhlrToExcel = async ({
     row.getCell(28).alignment = { vertical: 'middle', horizontal: 'center' }; // TARGET DATE
     row.getCell(30).alignment = { vertical: 'middle', horizontal: 'center' }; // REASSIGNED STATUS
     row.getCell(33).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
+
+    // Apply UI-matched status styling in Excel
+    const statusCell = row.getCell(33);
+    if (displayStatus === 'CLOSED') {
+      statusCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF15803D' } }; // emerald-700
+      statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }; // emerald-100
+    } else if (displayStatus === 'APPROVAL PENDING') {
+      statusCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFB45309' } }; // amber-700
+      statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // amber-100
+    } else {
+      statusCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFE11D48' } }; // rose-600
+      statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE4E6' } }; // rose-100
+    }
 
     // Embed image thumbnail into Column 14 (DEFECT EVIDENCE / ATTACHMENT - 0-indexed col 13.12)
     if (imgObj && imgObj.base64) {
@@ -540,7 +598,8 @@ export const exportIhlrToPdf = async ({
 
     const occCause = r.occurrence_cause || r.detailed_observation || r.prod_why_why?.[0] || '—';
 
-    let statusStr = (r.status || 'OPEN').replace(/_/g, ' ');
+    const displayStatus = getIhlrDisplayStatus(r.status, r);
+    let statusStr = displayStatus;
     if (r.remarks && r.remarks.trim()) {
       statusStr += `\n[${r.remarks.trim()}]`;
     }
@@ -596,10 +655,25 @@ export const exportIhlrToPdf = async ({
       10: { cellWidth: 68 },
       11: { cellWidth: 78 },
       12: { cellWidth: 56, halign: 'center' },
-      13: { cellWidth: 58, halign: 'center', fontStyle: 'bold' }
+      13: { cellWidth: 62, halign: 'center', fontStyle: 'bold' }
     },
     alternateRowStyles: {
       fillColor: [248, 250, 252] // slate-50
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 13) {
+        const text = String(data.cell.raw || '');
+        if (text.startsWith('CLOSED')) {
+          data.cell.styles.textColor = [22, 101, 52]; // emerald-700
+          data.cell.styles.fontStyle = 'bold';
+        } else if (text.startsWith('APPROVAL PENDING')) {
+          data.cell.styles.textColor = [180, 83, 9]; // amber-700
+          data.cell.styles.fontStyle = 'bold';
+        } else {
+          data.cell.styles.textColor = [225, 29, 72]; // rose-600
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
     },
     didDrawCell: (data) => {
       if (data.section === 'body' && data.column.index === 8) {

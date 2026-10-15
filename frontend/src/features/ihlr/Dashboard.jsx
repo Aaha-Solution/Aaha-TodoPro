@@ -22,7 +22,7 @@ import { IhlrAttachmentThumbnail } from './IhlrAttachmentView';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
-import { exportIhlrToExcel, exportIhlrToPdf } from './ihlrExportUtils';
+import { exportIhlrToExcel, exportIhlrToPdf, getIhlrDisplayStatus } from './ihlrExportUtils';
 import DateInput from '../../components/common/DateInput';
 import { useAuth } from '../../hooks/useAuth';
 import { useModal } from '../../context/ModalContext';
@@ -262,8 +262,8 @@ const IhlrDashboard = () => {
   ];
 
   const getStatusBadge = (status, req) => {
-    const s = (status || '').toUpperCase();
-    if (s === 'CLOSED') {
+    const disp = getIhlrDisplayStatus(status, req);
+    if (disp === 'CLOSED') {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -271,13 +271,7 @@ const IhlrDashboard = () => {
         </span>
       );
     }
-    const isCompleted = s !== 'OPEN' && (s === 'IN_PROGRESS' || s === 'IN-PROGRESS' || s === 'APPROVAL_PENDING' || s === 'APPROVAL PENDING' || (req && (
-      Boolean(req.action && String(req.action).trim()) &&
-      Boolean(req.target_date) &&
-      (Array.isArray(req.prod_why_why) && req.prod_why_why.some(w => Boolean(w && String(w).trim())))
-    )));
-
-    if (isCompleted) {
+    if (disp === 'APPROVAL PENDING') {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
           <Clock className="w-3 h-3 text-amber-600" />
