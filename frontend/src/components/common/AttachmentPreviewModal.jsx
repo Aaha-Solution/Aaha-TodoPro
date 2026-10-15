@@ -178,10 +178,6 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose, onAnnotate }) => 
                 url={activeUrl}
                 filename={attachment.name}
                 file={attachment.file}
-                onAnnotate={onAnnotate ? (snap) => {
-                  onClose();
-                  onAnnotate(snap);
-                } : undefined}
               />
             </div>
           ) : /* 2. Embedded PDF Document Viewer */

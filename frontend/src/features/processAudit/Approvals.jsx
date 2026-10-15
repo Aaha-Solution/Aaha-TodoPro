@@ -39,6 +39,7 @@ import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import AttachmentThumbnail from '../../components/common/AttachmentThumbnail';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
+import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
 import DateInput from '../../components/common/DateInput';
 import { resolveAttachmentUrl, triggerDirectDownload } from '../../components/common/attachmentUtils';
 import { storage } from '../../utils/storage';
@@ -91,6 +92,7 @@ const ProcessAuditApprovals = () => {
   const [closerStatus, setCloserStatus] = useState('Approved');
   const [existingEvidence, setExistingEvidence] = useState([]);
   const [newEvidenceFiles, setNewEvidenceFiles] = useState([]);
+  const [annotatingItem, setAnnotatingItem] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -347,6 +349,14 @@ const ProcessAuditApprovals = () => {
 
   const handleRemoveNewEvidence = (index) => {
     setNewEvidenceFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveAnnotation = (annotatedFile) => {
+    if (!annotatingItem) return;
+    setNewEvidenceFiles((prev) => [...prev, annotatedFile]);
+    setEvidenceError(false);
+    setAnnotatingItem(null);
+    setSuccessMessage(`Annotated drawing "${annotatedFile.name}" added to evidence files! Remember to click "Submit" to save.`);
   };
 
   // Submit Sign-off / Closer Updates
@@ -876,6 +886,7 @@ const ProcessAuditApprovals = () => {
                   <AttachmentChipList
                     attachments={existingEvidence}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
+                    onAnnotate={!isSelectedApproved ? (file) => setAnnotatingItem({ attachment: file }) : undefined}
                     onRemove={isSelectedApproved ? undefined : (idx) => {
                       handleRemoveExistingEvidence(idx);
                     }}
@@ -886,6 +897,7 @@ const ProcessAuditApprovals = () => {
                   <AttachmentChipList
                     attachments={previewableNewFiles}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
+                    onAnnotate={!isSelectedApproved ? (file) => setAnnotatingItem({ attachment: file }) : undefined}
                     onRemove={isSelectedApproved ? undefined : (idx) => {
                       handleRemoveNewEvidence(idx);
                     }}
@@ -1566,6 +1578,15 @@ const ProcessAuditApprovals = () => {
         isOpen={Boolean(selectedPreviewAttachment)}
         attachment={selectedPreviewAttachment}
         onClose={() => setSelectedPreviewAttachment(null)}
+        onAnnotate={!isSelectedApproved ? (att) => setAnnotatingItem({ attachment: att }) : undefined}
+      />
+
+      {/* Technical Drawing & Defect Image Annotation Modal (Circle, Arrow, Line, Sketches) */}
+      <ImageAnnotationModal
+        isOpen={Boolean(annotatingItem)}
+        imageAttachment={annotatingItem?.attachment}
+        onClose={() => setAnnotatingItem(null)}
+        onSave={handleSaveAnnotation}
       />
 
       {/* Universal Export Format Selection Modal */}
