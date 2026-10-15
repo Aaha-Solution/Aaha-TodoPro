@@ -25,7 +25,9 @@ import {
   Filter,
   SlidersHorizontal,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Folder,
+  Clock
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
@@ -80,6 +82,7 @@ const AllRequests = () => {
     selectedExecutor !== 'All Executors' ||
     selectedStatus !== 'All Statuses';
   const [activeModalRequest, setActiveModalRequest] = useState(null);
+  const [modalTab, setModalTab] = useState('requester'); // 'requester' | 'closer'
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [previewImageError, setPreviewImageError] = useState(false);
 
@@ -295,6 +298,7 @@ const AllRequests = () => {
       }
 
       setSelectedClosureStatus(isAlreadyOpen ? 'Open' : 'Closed');
+      setModalTab('requester');
     }
   }, [activeModalRequest?.id]);
 
@@ -1046,20 +1050,21 @@ const AllRequests = () => {
         )}
       </div>
 
-      {/* Details Modal */}
+      {/* Details Modal with Requester & Closer Tabs (Matching IHLR Pattern) */}
       {activeModalRequest && createPortal(
-        <div className="fixed inset-0 !m-0 !mt-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-4xl lg:max-w-5xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                  <FileText className="w-4 h-4" />
+        <div className="fixed inset-0 !m-0 !mt-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-4xl lg:max-w-5xl w-full shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0 border border-blue-100">
+                  <FileText className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">
-                    {activeModalRequest.issue_no || `PA-${activeModalRequest.id}`} — Full Audit & Production Profile
+                <div className="min-w-0">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
+                    {activeModalRequest.issue_no || `PA-${activeModalRequest.id}`} — Full Audit &amp; Production Profile
                   </h3>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-slate-500 mt-0.5">
                     {(() => {
                       const rawModalStatus = activeModalRequest.status || 'Pending';
                       const sLower = rawModalStatus.toLowerCase();
@@ -1082,539 +1087,703 @@ const AllRequests = () => {
               </div>
               <button
                 onClick={() => setActiveModalRequest(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer shrink-0"
+                title="Close Modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="my-5 overflow-y-auto pr-1 space-y-4 text-xs">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3 bg-slate-50 rounded-xl">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Escalation Date</span>
-                  <span className="font-bold text-slate-800">{formatDate(activeModalRequest.escalation_date || activeModalRequest.created_at)}</span>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Shift</span>
-                  <span className="font-bold text-slate-800">{activeModalRequest.shift}</span>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Product</span>
-                  <span className="font-bold text-slate-800">{activeModalRequest.product}</span>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Model / Stage</span>
-                  <span className="font-bold text-slate-800">{activeModalRequest.model || activeModalRequest.stage}</span>
-                </div>
-              </div>
+            {/* Tab Navigation: Cleanly separate Requester Details vs Closer Details (like IHLR) */}
+            {(() => {
+              const rawModalStatus = activeModalRequest.status || 'Pending';
+              const sLower = rawModalStatus.toLowerCase();
+              const isClosed = sLower.includes('close');
+              const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !isClosed;
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="p-3 bg-slate-50 rounded-xl">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Created By</span>
-                  <span className="font-bold text-blue-700">{activeModalRequest.created_by || '-'}</span>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Process / Operation</span>
-                  <span className="font-bold text-slate-800">{activeModalRequest.process_operation || activeModalRequest.line}</span>
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl">
-                  <div className="flex items-center justify-between pb-1">
-                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Department</span>
-                   
-                  </div>
-                  <span className="font-bold text-slate-800">{activeModalRequest.department}</span>
-                </div>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl flex items-center justify-between">
-                <div>
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Assigned Executor</span>
-                  <span className="font-bold text-slate-800">{activeModalRequest.executor}</span>
-                </div>
-                {canEdit && !activeModalRequest.status?.toLowerCase().includes('close') && (
+              return (
+                <div className="flex items-center gap-2 sm:gap-4 px-6 pt-2 border-b border-slate-200 bg-slate-50/80 shrink-0">
                   <button
                     type="button"
-                    onClick={() => handleOpenReassignModal(activeModalRequest)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
-                    title="Change department or executor assignment"
+                    onClick={() => setModalTab('requester')}
+                    className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+                      modalTab === 'requester'
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
                   >
-                    <ArrowRightLeft className="w-3.5 h-3.5" />
-                    <span>Reassign Request</span>
+                    <Folder className="w-4 h-4" />
+                    <span>Requester Details</span>
                   </button>
-                )}
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('closer')}
+                    className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+                      modalTab === 'closer'
+                        ? isClosed
+                          ? 'border-emerald-600 text-emerald-700'
+                          : isSignedOff
+                          ? 'border-indigo-600 text-indigo-700'
+                          : 'border-amber-600 text-amber-700'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <CheckCircle2 className={`w-4 h-4 ${isClosed ? 'text-emerald-600' : isSignedOff ? 'text-indigo-600' : 'text-amber-600'}`} />
+                    <span>Closer Details</span>
+                    {isClosed ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        Closed
+                      </span>
+                    ) : isSignedOff ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-100 text-indigo-800 border border-indigo-300">
+                        {isAdmin ? 'In Progress' : 'Signed off'}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                        Pending
+                      </span>
+                    )}
+                  </button>
+                </div>
+              );
+            })()}
 
-              {/* Reassignment History Audit Trail (when reassignments occurred) */}
-              {(() => {
-                const history = parseReassignmentHistory(activeModalRequest.reassignment_history);
-                if (history.length === 0) return null;
-                return (
-                  <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-amber-200/60">
-                      <div className="flex items-center gap-2">
-                        <History className="w-4 h-4 text-amber-700" />
-                        <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider">
-                          Reassignment History &amp; Audit Log
-                        </h4>
+            {/* Scrollable Tab Body */}
+            <div className="p-6 overflow-y-auto space-y-5 text-xs flex-1 bg-white">
+              {modalTab === 'requester' ? (
+                /* TAB 1: REQUESTER DETAILS */
+                <div className="space-y-4 animate-in fade-in duration-150">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Escalation Date</span>
+                      <span className="font-bold text-slate-800">{formatDate(activeModalRequest.escalation_date || activeModalRequest.created_at)}</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Shift</span>
+                      <span className="font-bold text-slate-800">{activeModalRequest.shift}</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Product</span>
+                      <span className="font-bold text-slate-800">{activeModalRequest.product}</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Model / Stage</span>
+                      <span className="font-bold text-slate-800">{activeModalRequest.model || activeModalRequest.stage}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Created By</span>
+                      <span className="font-bold text-blue-700">{activeModalRequest.created_by || '-'}</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Process / Operation</span>
+                      <span className="font-bold text-slate-800">{activeModalRequest.process_operation || activeModalRequest.line}</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <div className="flex items-center justify-between pb-1">
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Department</span>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/70 text-amber-900 border border-amber-300">
-                        {history.length} {history.length === 1 ? 'Reassignment' : 'Reassignments'}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      {history.map((item, idx) => (
-                        <div key={idx} className="p-3 bg-white rounded-xl border border-amber-100 shadow-2xs space-y-1.5">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] gap-1">
-                            <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                              <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[10px] font-mono flex items-center justify-center font-bold">
-                                {idx + 1}
-                              </span>
-                              <span>Reassigned by <strong className="text-blue-700">{item.reassigned_by || 'Quality Auditor'}</strong></span>
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-mono">
-                              {item.reassigned_at ? new Date(item.reassigned_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2 text-xs flex-wrap py-1">
-                            <div className="px-2.5 py-1 bg-slate-100 rounded-lg text-slate-600 line-through text-[11px]">
-                              {item.previous_department} ({item.previous_executor})
-                            </div>
-                            <span className="text-amber-600 font-bold">➔</span>
-                            <div className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg font-bold text-[11px]">
-                              {item.new_department} ({item.new_executor})
-                            </div>
-                          </div>
-
-                          {item.reason && (
-                            <p className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 italic">
-                              &ldquo;{item.reason}&rdquo;
-                            </p>
-                          )}
-                        </div>
-                      ))}
+                      <span className="font-bold text-slate-800">{activeModalRequest.department}</span>
                     </div>
                   </div>
-                );
-              })()}
 
-              {activeModalRequest.issue_observation && (
-                <div className="p-3 bg-slate-50 rounded-xl">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold mb-1">Issue Observation</span>
-                  <p className="text-slate-700 whitespace-pre-wrap">{activeModalRequest.issue_observation}</p>
-                </div>
-              )}
-
-              {activeModalRequest.comments && (
-                <div className="p-3 bg-slate-50 rounded-xl">
-                  <span className="text-slate-400 block text-[10px] uppercase font-bold mb-1">Comments</span>
-                  <p className="text-slate-700 whitespace-pre-wrap">{activeModalRequest.comments}</p>
-                </div>
-              )}
-
-              {/* Creator Attachments Section (Always Visible) */}
-              <div className="p-4 bg-gradient-to-r from-blue-50/60 via-slate-50 to-indigo-50/40 rounded-2xl border border-blue-200/80 shadow-2xs space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                  <div className="flex items-center gap-2">
-                    <Paperclip className="w-4 h-4 text-blue-600" />
-                    <span className="text-slate-900 font-extrabold uppercase text-[11px] tracking-wider">
-                      Creator Attachments &amp; Incident Evidence
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      modalAttachments.length > 0
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-200 text-slate-600'
-                    }`}>
-                      {modalAttachments.length > 0 ? `${modalAttachments.length} file${modalAttachments.length > 1 ? 's' : ''}` : '0 files attached'}
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-slate-500 font-medium">
-                    Audit Creator: <strong className="text-blue-700">{activeModalRequest.created_by || 'Quality Auditor'}</strong>
-                  </span>
-                </div>
-
-                {modalAttachments.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
-                    {modalAttachments.map((rawAtt, i) => {
-                      const fullUrl = getFullAttachmentUrl(rawAtt);
-                      const meta = getFileMeta(rawAtt);
-                      const IconComponent = meta.icon;
-                      const att = {
-                        ...rawAtt,
-                        url: fullUrl,
-                        isImage: meta.isImage,
-                        isPdf: meta.isPdf,
-                        isExcel: meta.isExcel,
-                        isPpt: meta.isPpt,
-                        type: rawAtt.type || rawAtt.name?.split('.').pop()?.toUpperCase() || 'FILE',
-                      };
-
-                      return (
-                        <div
-                          key={i}
-                          onClick={() => setPreviewAttachment(att)}
-                          className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs hover:border-blue-400 hover:shadow-xs transition cursor-pointer group"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${meta.badgeBg}`}>
-                              <IconComponent className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-slate-800 truncate group-hover:text-blue-600 transition text-xs" title={att.name}>
-                                {att.name}
-                              </p>
-                              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
-                                <span>{meta.typeName}</span>
-                                {att.size && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{att.size}</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => setPreviewAttachment(att)}
-                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
-                              title="Preview file"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-
-                            {att.url && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  triggerDirectDownload(att.url, att.name);
-                                }}
-                                className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
-                                title="Download file directly"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-3 bg-white/80 rounded-xl border border-dashed border-slate-200 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
-                      <Paperclip className="w-4 h-4" />
-                    </div>
+                  <div className="p-3 bg-slate-50 rounded-xl flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-semibold text-slate-600">
-                        No technical drawings or evidence files were attached by creator ({activeModalRequest.created_by || 'Quality Auditor'})
-                      </p>
-                      <p className="text-[10px] text-slate-400">
-                        Any incident photos or documents uploaded during observation creation will appear here for review.
-                      </p>
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Assigned Executor</span>
+                      <span className="font-bold text-slate-800">{activeModalRequest.executor}</span>
                     </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Executor Resolution & Action Report if present */}
-              {(activeModalRequest.root_cause ||
-                activeModalRequest.corrective_action ||
-                activeModalRequest.standardization_details ||
-                activeModalRequest.target_date ||
-                (activeModalRequest.action_attachments && activeModalRequest.action_attachments !== '[]')) && (
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/90 space-y-3.5">
-                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-200">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                        Executor Corrective Action &amp; Standardization Report
-                      </h4>
-                    </div>
-                    {(activeModalRequest.approved_by || activeModalRequest.action_taken_by) && (
-                      <span className="text-[10px] text-slate-500">
-                        Approved by: <strong className="text-emerald-700 font-bold">{activeModalRequest.approved_by || activeModalRequest.action_taken_by}</strong>
-                        {activeModalRequest.approved_at && (
-                          <span className="ml-1 text-slate-400 font-mono text-[9px]">
-                            ({formatDate(activeModalRequest.approved_at)})
-                          </span>
-                        )}
-                      </span>
+                    {canEdit && !activeModalRequest.status?.toLowerCase().includes('close') && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenReassignModal(activeModalRequest)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                        title="Change department or executor assignment"
+                      >
+                        <ArrowRightLeft className="w-3.5 h-3.5" />
+                        <span>Reassign Request</span>
+                      </button>
                     )}
                   </div>
 
-                  {activeModalRequest.root_cause && (
-                    <div>
-                      <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Root cause</span>
-                      <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
-                        {activeModalRequest.root_cause}
-                      </p>
-                    </div>
-                  )}
-
-                  {activeModalRequest.corrective_action && (
-                    <div>
-                      <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Corrective Action (by Resp. Team)</span>
-                      <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
-                        {activeModalRequest.corrective_action}
-                      </p>
-                    </div>
-                  )}
-
+                  {/* Reassignment History Audit Trail (when reassignments occurred) */}
                   {(() => {
-                    const actionAtts = getAttachmentsList(activeModalRequest.action_attachments);
-                    if (actionAtts.length === 0) return null;
+                    const history = parseReassignmentHistory(activeModalRequest.reassignment_history);
+                    if (history.length === 0) return null;
                     return (
-                      <div>
-                        <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1.5">Action Attachments ({actionAtts.length})</span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {actionAtts.map((att, i) => {
-                            const meta = getFileMeta(att);
-                            const IconComponent = meta.icon;
-                            const fullUrl = getFullAttachmentUrl(att);
-                            return (
-                              <div key={i} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                                <div className="flex items-center gap-2 min-w-0 pr-2">
-                                  <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 border ${meta.badgeBg}`}>
-                                    <IconComponent className="w-3.5 h-3.5" />
-                                  </div>
-                                  <span className="font-semibold text-slate-800 truncate text-[11px]" title={att.name}>{att.name}</span>
-                                </div>
-                                {fullUrl && (
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => setPreviewAttachment({ ...att, url: fullUrl, isImage: meta.isImage, isPdf: meta.isPdf, isExcel: meta.isExcel, isPpt: meta.isPpt, type: att.type || meta.typeName })}
-                                      className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100"
-                                      title="Preview"
-                                    >
-                                      <Eye className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        triggerDirectDownload(fullUrl, att.name);
-                                      }}
-                                      className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100 cursor-pointer"
-                                      title="Download file directly"
-                                    >
-                                      <Download className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                )}
+                      <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-amber-200/60">
+                          <div className="flex items-center gap-2">
+                            <History className="w-4 h-4 text-amber-700" />
+                            <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                              Reassignment History &amp; Audit Log
+                            </h4>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/70 text-amber-900 border border-amber-300">
+                            {history.length} {history.length === 1 ? 'Reassignment' : 'Reassignments'}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2.5">
+                          {history.map((item, idx) => (
+                            <div key={idx} className="p-3 bg-white rounded-xl border border-amber-100 shadow-2xs space-y-1.5">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] gap-1">
+                                <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                                  <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[10px] font-mono flex items-center justify-center font-bold">
+                                    {idx + 1}
+                                  </span>
+                                  <span>Reassigned by <strong className="text-blue-700">{item.reassigned_by || 'Quality Auditor'}</strong></span>
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {item.reassigned_at ? new Date(item.reassigned_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                                </span>
                               </div>
-                            );
-                          })}
+
+                              <div className="flex items-center gap-2 text-xs flex-wrap py-1">
+                                <div className="px-2.5 py-1 bg-slate-100 rounded-lg text-slate-600 line-through text-[11px]">
+                                  {item.previous_department} ({item.previous_executor})
+                                </div>
+                                <span className="text-amber-600 font-bold">➔</span>
+                                <div className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg font-bold text-[11px]">
+                                  {item.new_department} ({item.new_executor})
+                                </div>
+                              </div>
+
+                              {item.reason && (
+                                <p className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 italic">
+                                  &ldquo;{item.reason}&rdquo;
+                                </p>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     );
                   })()}
 
-                  {activeModalRequest.standardization_details && (
-                    <div>
-                      <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Standardization details</span>
-                      <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
-                        {activeModalRequest.standardization_details}
-                      </p>
+                  {activeModalRequest.issue_observation && (
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold mb-1">Issue Observation</span>
+                      <p className="text-slate-700 whitespace-pre-wrap">{activeModalRequest.issue_observation}</p>
                     </div>
                   )}
 
-                  {activeModalRequest.target_date && (
-                    <div className="flex items-center gap-2 text-xs pt-1">
-                      <span className="text-[#003366] font-bold">Target Date:</span>
-                      <span className="font-semibold text-slate-800 font-mono">{formatDate(activeModalRequest.target_date)}</span>
+                  {activeModalRequest.comments && (
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold mb-1">Comments</span>
+                      <p className="text-slate-700 whitespace-pre-wrap">{activeModalRequest.comments}</p>
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* Creator Sign-off & Closure Review Section */}
-              <div className="p-5 bg-gradient-to-br from-slate-50 to-blue-50/20 rounded-2xl border border-slate-200/90 space-y-3.5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-slate-200 gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-                      <MessageSquare className="w-4 h-4 text-blue-600" />
-                      <span>Auditor Verification &amp; Final Sign-off</span>
-                    </h4>
+                  {/* Creator Attachments Section (Always Visible) */}
+                  <div className="p-4 bg-gradient-to-r from-blue-50/60 via-slate-50 to-indigo-50/40 rounded-2xl border border-blue-200/80 shadow-2xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <Paperclip className="w-4 h-4 text-blue-600" />
+                        <span className="text-slate-900 font-extrabold uppercase text-[11px] tracking-wider">
+                          Creator Attachments &amp; Incident Evidence
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          modalAttachments.length > 0
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {modalAttachments.length > 0 ? `${modalAttachments.length} file${modalAttachments.length > 1 ? 's' : ''}` : '0 files attached'}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        Audit Creator: <strong className="text-blue-700">{activeModalRequest.created_by || 'Quality Auditor'}</strong>
+                      </span>
+                    </div>
+
+                    {modalAttachments.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
+                        {modalAttachments.map((rawAtt, i) => {
+                          const fullUrl = getFullAttachmentUrl(rawAtt);
+                          const meta = getFileMeta(rawAtt);
+                          const IconComponent = meta.icon;
+                          const att = {
+                            ...rawAtt,
+                            url: fullUrl,
+                            isImage: meta.isImage,
+                            isPdf: meta.isPdf,
+                            isExcel: meta.isExcel,
+                            isPpt: meta.isPpt,
+                            type: rawAtt.type || rawAtt.name?.split('.').pop()?.toUpperCase() || 'FILE',
+                          };
+
+                          return (
+                            <div
+                              key={i}
+                              onClick={() => setPreviewAttachment(att)}
+                              className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs hover:border-blue-400 hover:shadow-xs transition cursor-pointer group"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${meta.badgeBg}`}>
+                                  <IconComponent className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-slate-800 truncate group-hover:text-blue-600 transition text-xs" title={att.name}>
+                                    {att.name}
+                                  </p>
+                                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+                                    <span>{meta.typeName}</span>
+                                    {att.size && (
+                                      <>
+                                        <span>•</span>
+                                        <span>{att.size}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewAttachment(att)}
+                                  className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                  title="Preview file"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+
+                                {att.url && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      triggerDirectDownload(att.url, att.name);
+                                    }}
+                                    className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
+                                    title="Download file directly"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-white/80 rounded-xl border border-dashed border-slate-200 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
+                          <Paperclip className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-slate-600">
+                            No technical drawings or evidence files were attached by creator ({activeModalRequest.created_by || 'Quality Auditor'})
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            Any incident photos or documents uploaded during observation creation will appear here for review.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {activeModalRequest.status && (() => {
+                </div>
+              ) : (
+                /* TAB 2: CLOSER DETAILS */
+                <div className="space-y-5 animate-in fade-in duration-150">
+                  {/* 1. Quick Summary Bar */}
+                  {(() => {
                     const rawModalStatus = activeModalRequest.status || 'Pending';
                     const sLower = rawModalStatus.toLowerCase();
-                    const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !sLower.includes('close');
+                    const isClosed = sLower.includes('close');
+                    const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !isClosed;
                     let modalStatus = rawModalStatus;
                     if (isSignedOff) {
                       modalStatus = isAdmin ? 'In Progress' : 'Signed off';
                     } else if (sLower.includes('pending')) {
                       modalStatus = 'Pending';
                     }
+
                     return (
-                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border self-start sm:self-auto ${getStatusMeta(modalStatus).statusColor}`}>
-                        Current Status: {modalStatus}
-                      </span>
-                    );
-                  })()}
-                </div>
-
-                {/* If already closed */}
-                {activeModalRequest.status && activeModalRequest.status.toLowerCase().includes('close') ? (
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-2.5 text-xs text-red-800 bg-red-50 border border-red-200 p-3.5 rounded-xl">
-                      <CheckCheck className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-bold text-red-900 text-xs">
-                          This observation has been verified and marked as CLOSED
-                        </p>
-                        <p className="text-[11px] text-red-700 mt-0.5">
-                          {activeModalRequest.closed_by && `Closed by ${activeModalRequest.closed_by}`}
-                          {activeModalRequest.closed_at && ` on ${formatDate(activeModalRequest.closed_at)}`}.
-                        </p>
-                      </div>
-                    </div>
-
-                    {activeModalRequest.creator_remark && (
-                      <div className="p-3 bg-white rounded-xl border border-slate-200">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Auditor Closure Remark</span>
-                        <p className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
-                          {activeModalRequest.creator_remark}
-                        </p>
-                      </div>
-                    )}
-
-                    {canEdit && (
-                      <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3 border-t border-slate-200/80">
-                        <div className="w-full sm:w-60">
-                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                            Change Status
-                          </label>
-                          <div className="relative">
-                            <select
-                              value={selectedClosureStatus}
-                              onChange={(e) => setSelectedClosureStatus(e.target.value)}
-                              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer shadow-2xs appearance-none pr-8"
-                            >
-                              <option value="Closed">Close</option>
-                              <option value="Open">Open</option>
-                            </select>
-                            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                      <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-slate-50 border border-emerald-200/90 flex flex-wrap items-center justify-between gap-4 text-xs">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold shadow-2xs ${
+                            isClosed
+                              ? 'bg-red-100 text-red-700'
+                              : isSignedOff
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            <CheckCircle2 className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-slate-900 text-sm">
+                                {activeModalRequest.issue_no || `PA-${activeModalRequest.id}`}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getStatusMeta(modalStatus).statusColor}`}>
+                                {modalStatus}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              Responsible Dept: <strong className="text-slate-800">{activeModalRequest.department || '—'}</strong>
+                              {activeModalRequest.executor && (
+                                <span> • Executor: <strong className="text-slate-800">{activeModalRequest.executor}</strong></span>
+                              )}
+                            </p>
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateClosureStatus(selectedClosureStatus)}
-                          disabled={actionLoading}
-                          className={`px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 ${
-                            selectedClosureStatus === 'Open'
-                              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'
-                              : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
-                          }`}
-                          title="Update status"
-                        >
-                          {actionLoading ? (
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                          ) : selectedClosureStatus === 'Open' ? (
-                            <RotateCcw className="w-3.5 h-3.5" />
-                          ) : (
-                            <CheckCheck className="w-3.5 h-3.5" />
+                        <div className="flex items-center gap-4 text-slate-600 text-xs">
+                          {activeModalRequest.target_date && (
+                            <div className="text-right">
+                              <span className="text-[10px] text-slate-400 block font-bold uppercase">Target Date</span>
+                              <span className="font-bold text-slate-900 font-mono">{formatDate(activeModalRequest.target_date)}</span>
+                            </div>
                           )}
-                          <span>{selectedClosureStatus === 'Open' ? 'Reopen Request' : 'Save Status'}</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : canEdit ? (
-                  /* Form for adding remark and selecting Open / Close */
-                  <div className="space-y-3">
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
-                      Review the executor&apos;s corrective action report above. Enter your verification remarks and choose whether to <strong>Close</strong> the observation or keep it <strong>Open</strong> for monitoring.
-                    </p>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Auditor Verification Remark
-                      </label>
-                      <textarea
-                        value={creatorRemark}
-                        onChange={(e) => setCreatorRemark(e.target.value)}
-                        placeholder="Enter your verification observations, shopfloor checks, or reasons for closure / keeping open..."
-                        rows={3}
-                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none leading-relaxed"
-                      />
-                    </div>
-
-                    <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3">
-                      <div className="w-full sm:w-60">
-                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                          Status
-                        </label>
-                        <div className="relative">
-                          <select
-                            value={selectedClosureStatus}
-                            onChange={(e) => setSelectedClosureStatus(e.target.value)}
-                            className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer shadow-2xs appearance-none pr-8"
-                          >
-                            <option value="Closed">Close</option>
-                            <option value="Open">Open</option>
-                          </select>
-                          <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                          {(activeModalRequest.approved_by || activeModalRequest.action_taken_by) && (
+                            <div className="text-right">
+                              <span className="text-[10px] text-slate-400 block font-bold uppercase">Signed-off By</span>
+                              <span className="font-bold text-emerald-800">{activeModalRequest.approved_by || activeModalRequest.action_taken_by}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
+                    );
+                  })()}
 
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateClosureStatus(selectedClosureStatus)}
-                        disabled={actionLoading}
-                        className={`px-6 py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 ${
-                          selectedClosureStatus === 'Closed'
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'
-                        }`}
-                      >
-                        {actionLoading ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : selectedClosureStatus === 'Closed' ? (
-                          <CheckCheck className="w-4 h-4" />
-                        ) : (
-                          <RotateCcw className="w-4 h-4" />
+                  {/* 2. Executor Corrective Action & Standardization Report */}
+                  {(activeModalRequest.root_cause ||
+                    activeModalRequest.corrective_action ||
+                    activeModalRequest.standardization_details ||
+                    activeModalRequest.target_date ||
+                    (activeModalRequest.action_attachments && activeModalRequest.action_attachments !== '[]')) ? (
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/90 space-y-3.5">
+                      <div className="flex items-center justify-between pb-2.5 border-b border-slate-200">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                            Executor Corrective Action &amp; Standardization Report
+                          </h4>
+                        </div>
+                        {(activeModalRequest.approved_by || activeModalRequest.action_taken_by) && (
+                          <span className="text-[10px] text-slate-500">
+                            Approved by: <strong className="text-emerald-700 font-bold">{activeModalRequest.approved_by || activeModalRequest.action_taken_by}</strong>
+                            {activeModalRequest.approved_at && (
+                              <span className="ml-1 text-slate-400 font-mono text-[9px]">
+                                ({formatDate(activeModalRequest.approved_at)})
+                              </span>
+                            )}
+                          </span>
                         )}
-                        <span>{selectedClosureStatus === 'Closed' ? 'Save as Closed' : 'Save as Open'}</span>
-                      </button>
+                      </div>
+
+                      {activeModalRequest.root_cause && (
+                        <div>
+                          <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Root cause</span>
+                          <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                            {activeModalRequest.root_cause}
+                          </p>
+                        </div>
+                      )}
+
+                      {activeModalRequest.corrective_action && (
+                        <div>
+                          <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Corrective Action (by Resp. Team)</span>
+                          <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                            {activeModalRequest.corrective_action}
+                          </p>
+                        </div>
+                      )}
+
+                      {(() => {
+                        const actionAtts = getAttachmentsList(activeModalRequest.action_attachments);
+                        if (actionAtts.length === 0) return null;
+                        return (
+                          <div>
+                            <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1.5">Action Attachments ({actionAtts.length})</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {actionAtts.map((att, i) => {
+                                const meta = getFileMeta(att);
+                                const IconComponent = meta.icon;
+                                const fullUrl = getFullAttachmentUrl(att);
+                                return (
+                                  <div key={i} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                                      <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 border ${meta.badgeBg}`}>
+                                        <IconComponent className="w-3.5 h-3.5" />
+                                      </div>
+                                      <span className="font-semibold text-slate-800 truncate text-[11px]" title={att.name}>{att.name}</span>
+                                    </div>
+                                    {fullUrl && (
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => setPreviewAttachment({ ...att, url: fullUrl, isImage: meta.isImage, isPdf: meta.isPdf, isExcel: meta.isExcel, isPpt: meta.isPpt, type: att.type || meta.typeName })}
+                                          className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100"
+                                          title="Preview"
+                                        >
+                                          <Eye className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            triggerDirectDownload(fullUrl, att.name);
+                                          }}
+                                          className="p-1 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+                                          title="Download file directly"
+                                        >
+                                          <Download className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {activeModalRequest.standardization_details && (
+                        <div>
+                          <span className="text-[#003366] block font-bold text-[10px] uppercase mb-1">Standardization details</span>
+                          <p className="p-3 bg-white rounded-xl border border-slate-200 text-slate-800 leading-relaxed whitespace-pre-wrap text-xs">
+                            {activeModalRequest.standardization_details}
+                          </p>
+                        </div>
+                      )}
+
+                      {activeModalRequest.target_date && (
+                        <div className="flex items-center gap-2 text-xs pt-1">
+                          <span className="text-[#003366] font-bold">Target Date:</span>
+                          <span className="font-semibold text-slate-800 font-mono">{formatDate(activeModalRequest.target_date)}</span>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ) : (
-                  /* Read-only note for user roles */
-                  <div className="space-y-3">
-                    {activeModalRequest.creator_remark ? (
-                      <div className="p-3 bg-white rounded-xl border border-slate-200">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Auditor Remark</span>
-                        <p className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">{activeModalRequest.creator_remark}</p>
+                  ) : (
+                    <div className="p-6 bg-slate-50/80 rounded-2xl border border-dashed border-slate-200 text-center space-y-2">
+                      <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+                        <Clock className="w-5 h-5" />
+                      </div>
+                      <p className="text-xs font-bold text-slate-800">Corrective Action Pending Submission</p>
+                      <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                        The assigned executor ({activeModalRequest.executor || activeModalRequest.department}) has not yet recorded root cause analysis or corrective actions for this observation.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 3. Creator Sign-off & Closure Review Section */}
+                  <div className="p-5 bg-gradient-to-br from-slate-50 to-blue-50/20 rounded-2xl border border-slate-200/90 space-y-3.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-slate-200 gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+                          <MessageSquare className="w-4 h-4 text-blue-600" />
+                          <span>Auditor Verification &amp; Final Sign-off</span>
+                        </h4>
+                      </div>
+                      {activeModalRequest.status && (() => {
+                        const rawModalStatus = activeModalRequest.status || 'Pending';
+                        const sLower = rawModalStatus.toLowerCase();
+                        const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !isClosed;
+                        let modalStatus = rawModalStatus;
+                        if (isSignedOff) {
+                          modalStatus = isAdmin ? 'In Progress' : 'Signed off';
+                        } else if (sLower.includes('pending')) {
+                          modalStatus = 'Pending';
+                        }
+                        return (
+                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border self-start sm:self-auto ${getStatusMeta(modalStatus).statusColor}`}>
+                            Current Status: {modalStatus}
+                          </span>
+                        );
+                      })()}
+                    </div>
+
+                    {/* If already closed */}
+                    {activeModalRequest.status && activeModalRequest.status.toLowerCase().includes('close') ? (
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-2.5 text-xs text-red-800 bg-red-50 border border-red-200 p-3.5 rounded-xl">
+                          <CheckCheck className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold text-red-900 text-xs">
+                              This observation has been verified and marked as CLOSED
+                            </p>
+                            <p className="text-[11px] text-red-700 mt-0.5">
+                              {activeModalRequest.closed_by && `Closed by ${activeModalRequest.closed_by}`}
+                              {activeModalRequest.closed_at && ` on ${formatDate(activeModalRequest.closed_at)}`}.
+                            </p>
+                          </div>
+                        </div>
+
+                        {activeModalRequest.creator_remark && (
+                          <div className="p-3 bg-white rounded-xl border border-slate-200">
+                            <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Auditor Closure Remark</span>
+                            <p className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
+                              {activeModalRequest.creator_remark}
+                            </p>
+                          </div>
+                        )}
+
+                        {canEdit && (
+                          <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3 border-t border-slate-200/80">
+                            <div className="w-full sm:w-60">
+                              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                Change Status
+                              </label>
+                              <div className="relative">
+                                <select
+                                  value={selectedClosureStatus}
+                                  onChange={(e) => setSelectedClosureStatus(e.target.value)}
+                                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer shadow-2xs appearance-none pr-8"
+                                >
+                                  <option value="Closed">Close</option>
+                                  <option value="Open">Open</option>
+                                </select>
+                                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateClosureStatus(selectedClosureStatus)}
+                              disabled={actionLoading}
+                              className={`px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 ${
+                                selectedClosureStatus === 'Open'
+                                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'
+                                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                              }`}
+                              title="Update status"
+                            >
+                              {actionLoading ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : selectedClosureStatus === 'Open' ? (
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              ) : (
+                                <CheckCheck className="w-3.5 h-3.5" />
+                              )}
+                              <span>{selectedClosureStatus === 'Open' ? 'Reopen Request' : 'Save Status'}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : canEdit ? (
+                      /* Form for adding remark and selecting Open / Close */
+                      <div className="space-y-3">
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          Review the executor&apos;s corrective action report above. Enter your verification remarks and choose whether to <strong>Close</strong> the observation or keep it <strong>Open</strong> for monitoring.
+                        </p>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Auditor Verification Remark
+                          </label>
+                          <textarea
+                            value={creatorRemark}
+                            onChange={(e) => setCreatorRemark(e.target.value)}
+                            placeholder="Enter your verification observations, shopfloor checks, or reasons for closure / keeping open..."
+                            rows={3}
+                            className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none leading-relaxed"
+                          />
+                        </div>
+
+                        <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3">
+                          <div className="w-full sm:w-60">
+                            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                              Status
+                            </label>
+                            <div className="relative">
+                              <select
+                                value={selectedClosureStatus}
+                                onChange={(e) => setSelectedClosureStatus(e.target.value)}
+                                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer shadow-2xs appearance-none pr-8"
+                              >
+                                <option value="Closed">Close</option>
+                                <option value="Open">Open</option>
+                              </select>
+                              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateClosureStatus(selectedClosureStatus)}
+                            disabled={actionLoading}
+                            className={`px-6 py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 ${
+                              selectedClosureStatus === 'Closed'
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'
+                            }`}
+                          >
+                            {actionLoading ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : selectedClosureStatus === 'Closed' ? (
+                              <CheckCheck className="w-4 h-4" />
+                            ) : (
+                              <RotateCcw className="w-4 h-4" />
+                            )}
+                            <span>{selectedClosureStatus === 'Closed' ? 'Save as Closed' : 'Save as Open'}</span>
+                          </button>
+                        </div>
                       </div>
                     ) : (
-                      <div className="p-3.5 bg-slate-100/80 rounded-xl border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
-                        <span>Awaiting auditor verification and final sign-off from Incoming Quality.</span>
+                      /* Read-only note for user roles */
+                      <div className="space-y-3">
+                        {activeModalRequest.creator_remark ? (
+                          <div className="p-3 bg-white rounded-xl border border-slate-200">
+                            <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">Auditor Remark</span>
+                            <p className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">{activeModalRequest.creator_remark}</p>
+                          </div>
+                        ) : (
+                          <div className="p-3.5 bg-slate-100/80 rounded-xl border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
+                            <span>Awaiting auditor verification and final sign-off from Incoming Quality.</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center justify-end pt-4 border-t border-slate-100">
-              <button
-                onClick={() => setActiveModalRequest(null)}
-                className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
-              >
-                Close
-              </button>
+            {/* Modal Footer */}
+            <div className="p-4 sm:p-5 border-t border-slate-100 flex items-center justify-between shrink-0 bg-white">
+              <div className="text-[11px] text-slate-400 hidden sm:block">
+                {modalTab === 'requester' ? (
+                  <span>Viewing audit observation &amp; incident details</span>
+                ) : (
+                  <span>Viewing corrective actions &amp; verification sign-off</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {modalTab === 'requester' ? (
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('closer')}
+                    className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>Next: Closer Details</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('requester')}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>Back to Requester</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setActiveModalRequest(null)}
+                  className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>,
