@@ -36,6 +36,7 @@ import DateInput from '../../components/common/DateInput';
 import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
 import { storage } from '../../utils/storage';
 import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
+import { getProcessAuditDisplayStatus } from './processAuditExportUtils';
 
 const ProcessAuditDashboard = () => {
   const navigate = useNavigate();
@@ -204,15 +205,15 @@ const ProcessAuditDashboard = () => {
         dotColor: 'bg-teal-500',
       };
     }
-    if (s.includes('approval')) {
+    if (s.includes('approval') || s.includes('progress')) {
       return {
-        statusColor: 'bg-purple-50 text-purple-700 border-purple-200/80',
-        dotColor: 'bg-purple-500',
+        statusColor: 'bg-amber-50 text-amber-700 border-amber-200/80',
+        dotColor: 'bg-amber-500',
       };
     }
     return {
-      statusColor: 'bg-amber-50 text-amber-700 border-amber-200/80',
-      dotColor: 'bg-amber-500',
+      statusColor: 'bg-rose-50 text-rose-700 border-rose-200/80',
+      dotColor: 'bg-rose-500',
     };
   };
 
@@ -927,15 +928,7 @@ const ProcessAuditDashboard = () => {
                   const stageStr = req.model || req.stage || 'Standard';
                   const lineStr = req.process_operation || req.line || '-';
                   const deptStr = req.department || '-';
-                  const rawStatus = req.status || 'Pending';
-                  const sLower = rawStatus.toLowerCase();
-                  const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !sLower.includes('close');
-                  let statusStr = rawStatus;
-                  if (isSignedOff) {
-                    statusStr = isAdmin ? 'In Progress' : 'Signed off';
-                  } else if (sLower.includes('pending')) {
-                    statusStr = 'Pending';
-                  }
+                  const statusStr = getProcessAuditDisplayStatus(req);
 
                   return (
                     <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">

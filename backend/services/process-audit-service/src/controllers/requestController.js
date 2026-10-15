@@ -246,7 +246,7 @@ export const updateRequestStatus = async (req, res) => {
     if (updated) {
       const issueNo = updated.issue_no || (updated.id ? `PA-${updated.id}` : 'PA-1');
       const lowerStatus = status.toLowerCase();
-      const isApproved = lowerStatus.includes('approved') || lowerStatus.includes('progress') || lowerStatus.includes('signed');
+      const isApproved = lowerStatus.includes('approved') || lowerStatus.includes('progress') || lowerStatus.includes('signed') || lowerStatus.includes('approval');
       const isRejected = lowerStatus.includes('reject');
       const isClosed = lowerStatus.includes('close');
       const isOpen = lowerStatus === 'open';

@@ -115,6 +115,30 @@ export const formatReassignmentHistory = (history) => {
   };
 };
 
+export const getProcessAuditDisplayStatus = (r) => {
+  if (!r) return 'Pending';
+  const sLower = String(r.status || 'Pending').toLowerCase();
+  if (sLower.includes('close')) return 'Closed';
+  if (sLower.includes('reject')) return 'Rejected';
+  if (sLower === 'open' || sLower.includes('open') || sLower.includes('reopen')) return 'Open';
+  if (sLower.includes('signed off') || sLower.includes('signed')) return 'Signed off';
+
+  const isCloserCompleted = Boolean(
+    sLower.includes('approval') ||
+    sLower.includes('progress') ||
+    (r.corrective_action && String(r.corrective_action).trim()) ||
+    (r.action && String(r.action).trim()) ||
+    (r.root_cause && String(r.root_cause).trim()) ||
+    (r.standardization_details && String(r.standardization_details).trim()) ||
+    Boolean(r.target_date) ||
+    Boolean(r.action_taken_by) ||
+    (r.action_attachments && parseAttachments(r.action_attachments).length > 0)
+  );
+
+  if (isCloserCompleted) return 'Approval Pending';
+  return 'Pending';
+};
+
 /**
  * Common Excel Export function for Process Audit (Approvals, AllRequests, Dashboard, Details Modal)
  */
@@ -276,12 +300,7 @@ export const exportProcessAuditToExcel = async ({
 
     const { reassignedStatus, reassignmentDetails } = formatReassignmentHistory(r.reassignment_history);
 
-    const sLower = (r.status || 'Pending').toLowerCase();
-    let displayStatus = 'Pending';
-    if (sLower.includes('close')) displayStatus = 'Closed';
-    else if (sLower.includes('reject')) displayStatus = 'Rejected';
-    else if (sLower.includes('approved') || sLower.includes('signed')) displayStatus = 'Signed off';
-    else if (sLower === 'open' || sLower.includes('reopen')) displayStatus = 'Open';
+    const displayStatus = getProcessAuditDisplayStatus(r);
 
     const obsText = [r.issue_observation || r.problem, r.comments].filter(Boolean).join(' | ') || '—';
 
@@ -396,12 +415,7 @@ export const exportProcessAuditToPdf = async ({
 
     const reqNo = r.issue_no || (r.id ? `PA-${r.id}` : '#1');
     const escDate = r.escalation_date ? formatDateDDMMYYYY(r.escalation_date) : (r.created_at ? formatDateDDMMYYYY(r.created_at) : '—');
-    const sLower = (r.status || 'Pending').toLowerCase();
-    let displayStatus = 'Pending';
-    if (sLower.includes('close')) displayStatus = 'Closed';
-    else if (sLower.includes('reject')) displayStatus = 'Rejected';
-    else if (sLower.includes('approved') || sLower.includes('signed')) displayStatus = 'Signed off';
-    else if (sLower === 'open' || sLower.includes('reopen')) displayStatus = 'Open';
+    const displayStatus = getProcessAuditDisplayStatus(r);
 
     // Header Banner
     doc.setFillColor(30, 41, 59); // slate-800
@@ -587,12 +601,7 @@ export const exportProcessAuditToPdf = async ({
   const tableData = reqList.map((r, idx) => {
     const reqNo = r.issue_no || (r.id ? `PA-${r.id}` : `#${idx + 1}`);
     const escDate = r.escalation_date ? formatDateDDMMYYYY(r.escalation_date) : (r.created_at ? formatDateDDMMYYYY(r.created_at) : '—');
-    const sLower = (r.status || 'Pending').toLowerCase();
-    let displayStatus = 'Pending';
-    if (sLower.includes('close')) displayStatus = 'Closed';
-    else if (sLower.includes('reject')) displayStatus = 'Rejected';
-    else if (sLower.includes('approved') || sLower.includes('signed')) displayStatus = 'Signed off';
-    else if (sLower === 'open' || sLower.includes('reopen')) displayStatus = 'Open';
+    const displayStatus = getProcessAuditDisplayStatus(r);
 
     return [
       idx + 1,

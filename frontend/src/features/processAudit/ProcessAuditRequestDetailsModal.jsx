@@ -423,24 +423,39 @@ const ProcessAuditRequestDetailsModal = ({
 
   const sLower = (req.status || 'Pending').toLowerCase();
   const isReqClosed = sLower.includes('close');
-  const isReqSignedOff = (sLower.includes('approved') || sLower.includes('signed')) && !isReqClosed;
   const isReqRejected = sLower.includes('reject');
   const isReqOpen = sLower === 'open' || sLower.includes('reopen');
+  const isReqSignedOff = (sLower.includes('signed off') || sLower.includes('signed')) && !isReqClosed;
+
+  const isCloserCompleted = Boolean(
+    sLower.includes('approval') ||
+    sLower.includes('progress') ||
+    (req.corrective_action && String(req.corrective_action).trim()) ||
+    (req.action && String(req.action).trim()) ||
+    (req.root_cause && String(req.root_cause).trim()) ||
+    (req.standardization_details && String(req.standardization_details).trim()) ||
+    Boolean(req.target_date) ||
+    Boolean(req.action_taken_by) ||
+    (req.action_attachments && parseAttachments(req.action_attachments).length > 0)
+  );
 
   let statusBadgeLabel = 'Pending';
-  let statusBadgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+  let statusBadgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
   if (isReqClosed) {
     statusBadgeLabel = 'Closed';
     statusBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  } else if (isReqSignedOff) {
-    statusBadgeLabel = 'Signed off';
-    statusBadgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200';
   } else if (isReqRejected) {
     statusBadgeLabel = 'Rejected';
     statusBadgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
   } else if (isReqOpen) {
     statusBadgeLabel = 'Open';
     statusBadgeClass = 'bg-sky-50 text-sky-700 border-sky-200';
+  } else if (isReqSignedOff) {
+    statusBadgeLabel = 'Signed off';
+    statusBadgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+  } else if (isCloserCompleted) {
+    statusBadgeLabel = 'Approval Pending';
+    statusBadgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
   }
 
   const { hasReassignments, reassignmentDetails } = formatReassignmentHistory(req.reassignment_history);
@@ -539,13 +554,13 @@ const ProcessAuditRequestDetailsModal = ({
               activeTab === 'closer'
                 ? isReqClosed
                   ? 'border-emerald-600 text-emerald-700'
-                  : isReqSignedOff
-                  ? 'border-indigo-600 text-indigo-700'
-                  : 'border-amber-600 text-amber-700'
+                  : isCloserCompleted
+                  ? 'border-amber-600 text-amber-700'
+                  : 'border-rose-600 text-rose-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <CheckCircle2 className={`w-4 h-4 ${isReqClosed ? 'text-emerald-600' : isReqSignedOff ? 'text-indigo-600' : 'text-amber-600'}`} />
+            <CheckCircle2 className={`w-4 h-4 ${isReqClosed ? 'text-emerald-600' : isCloserCompleted ? 'text-amber-600' : 'text-rose-600'}`} />
             <span>Closer Details</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${statusBadgeClass}`}>
               {statusBadgeLabel}
@@ -647,6 +662,7 @@ const ProcessAuditRequestDetailsModal = ({
                         className="w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition"
                       >
                         <option value="Pending">Pending</option>
+                        <option value="Approval Pending">Approval Pending</option>
                         <option value="Signed off">Signed off</option>
                         <option value="Closed">Closed</option>
                         <option value="Open">Open</option>
@@ -854,15 +870,22 @@ const ProcessAuditRequestDetailsModal = ({
                 <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
                   isReqClosed
                     ? 'bg-emerald-50/70 border-emerald-200/90'
+                    : isCloserCompleted
+                    ? 'bg-amber-50/70 border-amber-200/90'
                     : isReqSignedOff
                     ? 'bg-indigo-50/70 border-indigo-200/90'
-                    : 'bg-amber-50/70 border-amber-200/90'
+                    : 'bg-rose-50/70 border-rose-200/90'
                 }`}>
                   <div className="flex items-center gap-2">
                     {isReqClosed ? (
                       <>
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         <span className="font-bold text-emerald-900">Process Audit Finding Fully Validated &amp; Closed</span>
+                      </>
+                    ) : isCloserCompleted ? (
+                      <>
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        <span className="font-bold text-amber-900">Countermeasures Submitted — Awaiting Quality Auditor Sign-Off (Approval Pending)</span>
                       </>
                     ) : isReqSignedOff ? (
                       <>
@@ -871,8 +894,8 @@ const ProcessAuditRequestDetailsModal = ({
                       </>
                     ) : (
                       <>
-                        <Clock className="w-4 h-4 text-amber-600" />
-                        <span className="font-bold text-amber-900">Audit Finding Pending Corrective Action</span>
+                        <AlertCircle className="w-4 h-4 text-rose-600" />
+                        <span className="font-bold text-rose-900">Audit Finding Awaiting Closer Action &amp; Target Date (Pending)</span>
                       </>
                     )}
                   </div>

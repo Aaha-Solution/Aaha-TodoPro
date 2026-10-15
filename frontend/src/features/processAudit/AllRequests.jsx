@@ -36,6 +36,7 @@ import AttachmentPreviewModal from '../../components/common/AttachmentPreviewMod
 import { triggerDirectDownload, resolveAttachmentUrl } from '../../components/common/attachmentUtils';
 import { storage } from '../../utils/storage';
 import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
+import { getProcessAuditDisplayStatus } from './processAuditExportUtils';
 
 const AllRequests = () => {
   const navigate = useNavigate();
@@ -445,13 +446,13 @@ const AllRequests = () => {
     }
     if (s.includes('approval')) {
       return {
-        statusColor: 'bg-purple-50 text-purple-700 border-purple-200/80',
-        dotColor: 'bg-purple-500',
+        statusColor: 'bg-amber-50 text-amber-700 border-amber-200/80',
+        dotColor: 'bg-amber-500',
       };
     }
     return {
-      statusColor: 'bg-amber-50 text-amber-700 border-amber-200/80',
-      dotColor: 'bg-amber-500',
+      statusColor: 'bg-rose-50 text-rose-700 border-rose-200/80',
+      dotColor: 'bg-rose-500',
     };
   };
 
@@ -584,16 +585,12 @@ const AllRequests = () => {
       selectedExecutor === 'All Executors' ||
       String(req.executor || '').toLowerCase().includes(selectedExecutor.toLowerCase());
 
-    const s = String(req.status || '').toLowerCase();
-    const isSignedOff = (s.includes('approved') || s.includes('progress') || s.includes('signed')) && !s.includes('close');
+    const displayStatus = getProcessAuditDisplayStatus(req);
     const matchesStatus =
       selectedStatus === 'All Statuses' ||
-      (selectedStatus === 'Closed' && s.includes('close')) ||
-      (selectedStatus === 'Open' && (s === 'open' || s.includes('open') || s.includes('reopen'))) ||
-      ((selectedStatus === 'In Progress' || selectedStatus === 'Signed off' || selectedStatus === 'Approved') && isSignedOff) ||
-      ((selectedStatus === 'Pending' || selectedStatus === 'Pending Execution') && (s.includes('pending') || (!isSignedOff && !s.includes('close') && !s.includes('open') && !s.includes('reject')))) ||
-      (selectedStatus === 'Rejected' && s.includes('reject')) ||
-      s === selectedStatus.toLowerCase();
+      selectedStatus === displayStatus ||
+      (selectedStatus === 'Signed off' && (displayStatus === 'Signed off' || displayStatus === 'In Progress')) ||
+      (selectedStatus === 'In Progress' && (displayStatus === 'In Progress' || displayStatus === 'Approval Pending'));
 
     return matchesSearch && matchesShift && matchesStage && matchesExecutor && matchesStatus;
   });
@@ -616,15 +613,7 @@ const AllRequests = () => {
         const line = r.process_operation || r.line || '';
         const creator = r.created_by || r.creator || '-';
         const executor = r.executor || '';
-        const rawStatus = r.status || 'Pending';
-        const sLower = rawStatus.toLowerCase();
-        const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !sLower.includes('close');
-        let status = rawStatus;
-        if (isSignedOff) {
-          status = isAdmin ? 'In Progress' : 'Signed off';
-        } else if (sLower.includes('pending')) {
-          status = 'Pending';
-        }
+        const status = getProcessAuditDisplayStatus(r);
         return `${id},${date},${shift},"${prod}",${stage},"${line}","${creator}","${executor}",${status}`;
       })
       .join('\n');
@@ -857,6 +846,7 @@ const AllRequests = () => {
                 >
                   <option value="All Statuses">All Statuses</option>
                   <option value="Pending">Pending</option>
+                  <option value="Approval Pending">Approval Pending</option>
                   <option value={isAdmin ? "In Progress" : "Signed off"}>
                     {isAdmin ? "In Progress" : "Signed off"}
                   </option>
@@ -908,15 +898,7 @@ const AllRequests = () => {
                   const lineStr = req.process_operation || req.line || 'General';
                   const creatorStr = req.created_by || req.creator || '-';
                   const executorStr = req.executor || 'Assigned Lead';
-                  const rawStatus = req.status || 'Pending';
-                  const sLower = rawStatus.toLowerCase();
-                  const isSignedOff = (sLower.includes('progress') || sLower.includes('approved') || sLower.includes('signed')) && !sLower.includes('close');
-                  let statusStr = rawStatus;
-                  if (isSignedOff) {
-                    statusStr = isAdmin ? 'In Progress' : 'Signed off';
-                  } else if (sLower.includes('pending')) {
-                    statusStr = 'Pending';
-                  }
+                  const statusStr = getProcessAuditDisplayStatus(req);
                   const meta = getStatusMeta(statusStr);
 
                   return (

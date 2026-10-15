@@ -285,6 +285,21 @@ const ProcessAuditApprovals = () => {
     )
   );
 
+  const isCloserCompleted = (r) => {
+    if (!r) return false;
+    const s = String(r.status || '').toLowerCase();
+    if (s.includes('approval') || s.includes('progress') || s.includes('signed')) return true;
+    return Boolean(
+      (r.corrective_action && String(r.corrective_action).trim()) ||
+      (r.action && String(r.action).trim()) ||
+      (r.root_cause && String(r.root_cause).trim()) ||
+      (r.standardization_details && String(r.standardization_details).trim()) ||
+      Boolean(r.target_date) ||
+      Boolean(r.action_taken_by) ||
+      (r.action_attachments && parseAttachments(r.action_attachments).length > 0)
+    );
+  };
+
   const isCloser = Boolean(
     selectedRequest && matchesExecutorUser(selectedRequest.executor, currentUser?.name, currentUser?.email)
   );
@@ -618,7 +633,7 @@ const ProcessAuditApprovals = () => {
 
       const targetStatus = (selectedRequest.status || '').toLowerCase() === 'closed'
         ? 'Closed'
-        : 'Pending';
+        : 'Approval Pending';
 
       const payload = {
         status: targetStatus,
@@ -810,18 +825,28 @@ const ProcessAuditApprovals = () => {
       remarks.includes(q);
 
     const s = (r.status || 'Pending').toLowerCase();
-    const isSignedOff = (s.includes('approved') || s.includes('signed')) && !s.includes('close');
+    const isClosed = s.includes('close');
+    const isRejected = s.includes('reject');
+    const isOpen = s === 'open' || s.includes('open') || s.includes('reopen');
+    const closerDone = isCloserCompleted(r);
+
     let matchesStatus = true;
-    if (selectedStatus === 'Pending' || selectedStatus === 'Pending Approval' || selectedStatus === 'PENDING') {
-      matchesStatus = !isSignedOff && !s.includes('close') && !s.includes('open') && !s.includes('reject');
-    } else if (selectedStatus === 'Signed off' || selectedStatus === 'Approved' || selectedStatus === 'APPROVED' || selectedStatus === 'In Progress') {
-      matchesStatus = isSignedOff;
+    if (selectedStatus === 'Pending' || selectedStatus === 'PENDING') {
+      matchesStatus = !closerDone && !isClosed && !isRejected && !isOpen;
+    } else if (
+      selectedStatus === 'Approval Pending' ||
+      selectedStatus === 'APPROVAL PENDING' ||
+      selectedStatus === 'In Progress' ||
+      selectedStatus === 'Signed off' ||
+      selectedStatus === 'IN_PROGRESS'
+    ) {
+      matchesStatus = closerDone && !isClosed && !isRejected;
     } else if (selectedStatus === 'Closed' || selectedStatus === 'CLOSED') {
-      matchesStatus = s.includes('close');
+      matchesStatus = isClosed;
     } else if (selectedStatus === 'Open' || selectedStatus === 'OPEN') {
-      matchesStatus = s === 'open' || s.includes('open') || s.includes('reopen');
+      matchesStatus = isOpen;
     } else if (selectedStatus === 'Rejected' || selectedStatus === 'REJECTED') {
-      matchesStatus = s.includes('reject');
+      matchesStatus = isRejected;
     }
 
     return matchesSearch && matchesStatus;
@@ -2027,6 +2052,7 @@ const ProcessAuditApprovals = () => {
               >
                 <option value="All">All Decisions</option>
                 <option value="Pending">Pending</option>
+                <option value="Approval Pending">Approval Pending</option>
                 <option value="Signed off">Signed off</option>
                 <option value="Closed">Closed</option>
                 <option value="Open">Open</option>
@@ -2153,16 +2179,16 @@ const ProcessAuditApprovals = () => {
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
                                 REJECTED
                               </span>
-                            ) : isSignedOff ? (
-                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                SIGNED OFF
-                              </span>
                             ) : isOpen ? (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
                                 OPEN
                               </span>
-                            ) : (
+                            ) : isCloserCompleted(r) ? (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                APPROVAL PENDING
+                              </span>
+                            ) : (
+                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
                                 PENDING
                               </span>
                             )}
