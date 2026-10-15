@@ -270,6 +270,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     }
     if (!editFormData.analysis_done_by || !editFormData.analysis_done_by.trim()) {
       newErrors.analysis_done_by = 'Analysis Done By is required';
+    } else if (/\d/.test(editFormData.analysis_done_by)) {
+      newErrors.analysis_done_by = 'Analysis Done By must contain text only, numbers are not allowed';
     }
     if (!editFormData.problem || !editFormData.problem.trim()) {
       newErrors.problem = 'Problem / Defect Description is required';
@@ -1391,13 +1393,23 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <input
                         type="text"
                         value={editFormData.analysis_done_by}
+                        onKeyDown={(e) => {
+                          if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                            e.preventDefault();
+                            setEditErrors(prev => ({ ...prev, analysis_done_by: 'Only text / letters allowed, numbers are not allowed' }));
+                          }
+                        }}
                         onChange={(e) => {
-                          setEditFormData(prev => ({ ...prev, analysis_done_by: e.target.value }));
-                          if (editErrors.analysis_done_by && e.target.value.trim()) {
+                          const raw = e.target.value;
+                          const cleaned = raw.replace(/[0-9]/g, '');
+                          setEditFormData(prev => ({ ...prev, analysis_done_by: cleaned }));
+                          if (/\d/.test(raw)) {
+                            setEditErrors(prev => ({ ...prev, analysis_done_by: 'Only text / letters allowed, numbers are not allowed' }));
+                          } else if (editErrors.analysis_done_by) {
                             setEditErrors(prev => ({ ...prev, analysis_done_by: '' }));
                           }
                         }}
-                        placeholder="QA Officer / Analyst Name"
+                        placeholder="e.g. GURU"
                         className={`w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition ${
                           editErrors.analysis_done_by
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'

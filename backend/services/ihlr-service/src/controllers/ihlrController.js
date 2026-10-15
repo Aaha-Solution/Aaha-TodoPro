@@ -372,7 +372,7 @@ export const createIhlrRequest = async (req, res) => {
         model: data.model,
         problem_detected_at: data.problem_detected_at || '',
         received_from: data.received_from || '',
-        analysis_done_by: data.analysis_done_by || '',
+        analysis_done_by: String(data.analysis_done_by || '').replace(/[0-9]/g, '').trim(),
         defect_image: data.defect_image || '',
         qa_why_why: data.qa_why_why || [],
         actual_qty: data.actual_qty ? Number(data.actual_qty) : 1,
@@ -575,6 +575,9 @@ export const updateIhlrRequest = async (req, res) => {
         ];
         for (const k of requesterAllowed) {
           if (req.body[k] !== undefined) safeUpdates[k] = req.body[k];
+        }
+        if (safeUpdates.analysis_done_by !== undefined) {
+          safeUpdates.analysis_done_by = String(safeUpdates.analysis_done_by || '').replace(/[0-9]/g, '').trim();
         }
       }
       if (isCloser) {

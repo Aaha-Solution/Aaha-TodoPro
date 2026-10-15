@@ -470,6 +470,8 @@ const IhlrCreateRequest = () => {
     }
     if (!formData.analysis_done_by || !formData.analysis_done_by.trim()) {
       newErrors.analysis_done_by = 'Analysis Done By is required';
+    } else if (/\d/.test(formData.analysis_done_by)) {
+      newErrors.analysis_done_by = 'Analysis Done By must contain text only, numbers are not allowed';
     }
     if (formData.actual_qty === '' || formData.actual_qty === null || formData.actual_qty === undefined || Number(formData.actual_qty) <= 0) {
       newErrors.actual_qty = 'Actual Rejected Qty is required (min 1)';
@@ -882,9 +884,19 @@ const IhlrCreateRequest = () => {
                 type="text"
                 placeholder="e.g. GURU"
                 value={formData.analysis_done_by}
+                onKeyDown={(e) => {
+                  if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    setErrors((prev) => ({ ...prev, analysis_done_by: 'Only text / letters allowed, numbers are not allowed' }));
+                  }
+                }}
                 onChange={(e) => {
-                  setFormData({ ...formData, analysis_done_by: e.target.value });
-                  if (errors.analysis_done_by && e.target.value.trim()) {
+                  const raw = e.target.value;
+                  const cleaned = raw.replace(/[0-9]/g, '');
+                  setFormData({ ...formData, analysis_done_by: cleaned });
+                  if (/\d/.test(raw)) {
+                    setErrors((prev) => ({ ...prev, analysis_done_by: 'Only text / letters allowed, numbers are not allowed' }));
+                  } else if (errors.analysis_done_by) {
                     setErrors((prev) => ({ ...prev, analysis_done_by: false }));
                   }
                 }}
