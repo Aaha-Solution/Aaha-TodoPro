@@ -981,17 +981,6 @@ const AllRequests = () => {
                               <span>View</span>
                             </button>
                           )}
-
-                          {canEdit && !statusStr.toLowerCase().includes('close') && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenReassignModal(req)}
-                              className="p-1.5 bg-white hover:bg-blue-50 text-slate-500 hover:text-blue-600 rounded-lg border border-slate-200 transition shadow-2xs cursor-pointer"
-                              title="Reassign Department or Executor"
-                            >
-                              <ArrowRightLeft className="w-3.5 h-3.5" />
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
