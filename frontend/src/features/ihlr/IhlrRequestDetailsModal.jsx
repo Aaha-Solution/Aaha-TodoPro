@@ -339,7 +339,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       modalSuccess('Requester details updated successfully!');
     } catch (err) {
       console.error('Failed to update requester details:', err);
-      modalError(err.message || 'Failed to update requester details. Please try again.');
+      const errMsg = err.response?.data?.message || err.message || 'Failed to update requester details. Please try again.';
+      modalError(errMsg);
     } finally {
       setIsSavingRequester(false);
     }

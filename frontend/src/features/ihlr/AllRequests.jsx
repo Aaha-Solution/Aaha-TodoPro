@@ -241,7 +241,8 @@ const IhlrAllRequests = () => {
       }
       setEditingCloser(null);
     } catch (err) {
-      modalError('Failed to update status: ' + err.message);
+      const errMsg = err.response?.data?.message || err.message || 'Failed to update status';
+      modalError('Failed to update status: ' + errMsg);
     }
   };
 

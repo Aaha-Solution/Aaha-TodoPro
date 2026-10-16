@@ -502,17 +502,17 @@ export const updateIhlrRequest = async (req, res) => {
     // 1. Fetch existing request from DB or fallback
     let existing = null;
     if (pool) {
-      const [existingRows] = await pool.query('SELECT * FROM ihlr_requests WHERE id = ? LIMIT 1', [id]).catch(() => [[]]);
+      const [existingRows] = await pool.query('SELECT * FROM ihlr_requests WHERE id = ? OR req_no = ? LIMIT 1', [id, id]).catch(() => [[]]);
       if (existingRows && existingRows.length > 0) {
         existing = existingRows[0];
       }
     }
     if (!existing) {
-      existing = fallbackRequests.find(r => String(r.id) === String(id));
+      existing = fallbackRequests.find(r => String(r.id) === String(id) || String(r.req_no) === String(id));
     }
 
     if (!existing) {
-      return errorResponse(res, 'IHLR Request not found to update', 404);
+      return errorResponse(res, `IHLR Request #${id} was not found in the database. If the database was recently reset, please refresh your browser.`, 404);
     }
 
     const clean = (val) => (val || '').trim().toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s+/i, '');

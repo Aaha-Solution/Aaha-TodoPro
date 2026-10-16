@@ -30,7 +30,7 @@ export const IhlrRequest = {
   getById: async (id) => {
     try {
       if (pool) {
-        const [rows] = await pool.query('SELECT * FROM ihlr_requests WHERE id = ?', [id]);
+        const [rows] = await pool.query('SELECT * FROM ihlr_requests WHERE id = ? OR req_no = ? LIMIT 1', [id, id]);
         if (rows && rows.length > 0) {
           const r = rows[0];
           return {

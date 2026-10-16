@@ -594,7 +594,8 @@ const IhlrCreateRequest = () => {
       window.dispatchEvent(new Event('refreshNotifications'));
       navigate('/ihlr/all-requests');
     } catch (err) {
-      error('Failed to submit IHLR Report: ' + err.message);
+      const errMsg = err.response?.data?.message || err.message || 'Unknown error';
+      error('Failed to submit IHLR Report: ' + errMsg);
     } finally {
       setSubmitting(false);
     }

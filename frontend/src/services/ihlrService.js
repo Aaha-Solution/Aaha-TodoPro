@@ -145,8 +145,9 @@ export const ihlrService = {
     try {
       const res = await api.get(`/ihlr/requests/${id}`);
       return res.data?.data || res.data;
-    } catch {
-      return localIhlrStore.find(r => String(r.id) === String(id)) || null;
+    } catch (err) {
+      console.error(`[ihlrService] getRequestById(${id}) failed:`, err);
+      throw err;
     }
   },
 
@@ -188,46 +189,9 @@ export const ihlrService = {
     try {
       const res = await api.post('/ihlr/requests', formData);
       return res.data?.data || res.data;
-    } catch {
-      const newId = localIhlrStore.length > 0 ? Math.max(...localIhlrStore.map(r => r.id)) + 1 : 1;
-      let calculatedReqNo = formData.req_no;
-      if (!calculatedReqNo) {
-        let max = 0;
-        for (const r of localIhlrStore) {
-          const match = String(r.req_no || '').match(/(\d+)/);
-          if (match) {
-            const num = parseInt(match[1], 10);
-            if (num > max) max = num;
-          }
-        }
-        calculatedReqNo = `IHLR-${max + 1}`;
-      }
-      const newReq = {
-        id: newId,
-        req_no: calculatedReqNo,
-        batch_date: formData.batch_date || new Date().toISOString().split('T')[0],
-        shift: formData.shift || 'I',
-        problem: formData.problem,
-        model: formData.model,
-        problem_detected_at: formData.problem_detected_at || '',
-        received_from: formData.received_from || '',
-        analysis_done_by: formData.analysis_done_by || '',
-        defect_image: formData.defect_image || '',
-        qa_why_why: formData.qa_why_why || ['', '', '', '', ''],
-        actual_qty: formData.actual_qty ? Number(formData.actual_qty) : 1,
-        four_m: formData.four_m || 'MAN',
-        resp: formData.resp || 'PRODUCTION',
-        resp_person: formData.resp_person || '',
-        prod_why_why: formData.prod_why_why || ['', '', '', '', ''],
-        action: formData.action || '',
-        evidence_attachment: formData.evidence_attachment || '',
-        target_date: formData.target_date || null,
-        remarks: formData.remarks || '',
-        status: formData.status || 'OPEN',
-        created_at: new Date().toISOString()
-      };
-      localIhlrStore.unshift(newReq);
-      return newReq;
+    } catch (err) {
+      console.error('[ihlrService] createRequest failed:', err);
+      throw err;
     }
   },
 
@@ -235,16 +199,9 @@ export const ihlrService = {
     try {
       const res = await api.put(`/ihlr/requests/${id}`, updates);
       return res.data?.data || res.data;
-    } catch {
-      const idx = localIhlrStore.findIndex(r => String(r.id) === String(id));
-      if (idx !== -1) {
-        const hasCloserUpdates = updates.prod_why_why || updates.action || updates.evidence_attachment || updates.target_date;
-        const currentStatus = String(localIhlrStore[idx].status || '').toUpperCase();
-        const nextStatus = updates.status || (hasCloserUpdates && currentStatus !== 'CLOSED' ? 'IN_PROGRESS' : localIhlrStore[idx].status);
-        localIhlrStore[idx] = { ...localIhlrStore[idx], ...updates, status: nextStatus, updated_at: new Date().toISOString() };
-        return localIhlrStore[idx];
-      }
-      return null;
+    } catch (err) {
+      console.error(`[ihlrService] updateRequest(${id}) failed:`, err);
+      throw err;
     }
   },
 
@@ -252,9 +209,9 @@ export const ihlrService = {
     try {
       const res = await api.delete(`/ihlr/requests/${id}`);
       return res.data?.data || res.data;
-    } catch {
-      localIhlrStore = localIhlrStore.filter(r => String(r.id) !== String(id));
-      return { id };
+    } catch (err) {
+      console.error(`[ihlrService] deleteRequest(${id}) failed:`, err);
+      throw err;
     }
   },
 

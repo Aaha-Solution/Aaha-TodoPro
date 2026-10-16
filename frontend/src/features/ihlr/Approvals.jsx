@@ -560,6 +560,10 @@ const IhlrApprovals = () => {
 
       const updated = await ihlrService.updateRequest(selectedRequest.id, payload);
 
+      if (!updated) {
+        throw new Error(`Failed to update closer fields: No response from server for #${selectedRequest.req_no || selectedRequest.id}`);
+      }
+
       const msg = isAdmin
         ? `Closer 5-Why analysis & corrective action updated successfully for ${selectedRequest.req_no}!`
         : `Closer details submitted successfully for ${selectedRequest.req_no}! Quality Admin will review and sign off status.`;
@@ -579,8 +583,9 @@ const IhlrApprovals = () => {
       }, 4000);
     } catch (err) {
       console.error('Failed to update closer fields:', err);
-      setErrorMessage(err.message || 'Failed to update closer log');
-      modalError(err.message || 'Failed to update closer log');
+      const errMsg = err.response?.data?.message || err.message || 'Failed to update closer log';
+      setErrorMessage(errMsg);
+      modalError(errMsg);
     } finally {
       setIsSavingCloser(false);
     }
@@ -675,6 +680,10 @@ const IhlrApprovals = () => {
 
       const updated = await ihlrService.updateRequest(selectedRequest.id, payload);
 
+      if (!updated) {
+        throw new Error(`Failed to update request: No response from server for #${selectedRequest.req_no || selectedRequest.id}`);
+      }
+
       const isReassigned = isReassignOpen && (
         (reassignedPerson && reassignedPerson !== selectedRequest.resp_person) ||
         (reassignedDept && reassignedDept !== selectedRequest.resp)
@@ -701,8 +710,9 @@ const IhlrApprovals = () => {
       }, 4000);
     } catch (err) {
       console.error('Failed to update admin fields:', err);
-      setErrorMessage(err.message || 'Failed to update admin review & status');
-      modalError(err.message || 'Failed to update admin review & status');
+      const errMsg = err.response?.data?.message || err.message || 'Failed to update admin review & status';
+      setErrorMessage(errMsg);
+      modalError(errMsg);
     } finally {
       setIsSavingAdmin(false);
     }
