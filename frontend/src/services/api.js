@@ -1,24 +1,31 @@
 import axios from 'axios';
 import { storage } from '../utils/storage';
 
+const DEFAULT_GATEWAY_URL = 'https://api.sadhish.info';
+
 /**
  * Dynamically resolves the API Gateway Base URL.
- * Automatically adapts to:
- * - localhost (local development)
- * - LAN IP, e.g. http://192.168.0.169:5000 (accessing from other devices on the same Wi-Fi/network)
- * - Domain names or production environments
+ * Priority:
+ * 1. import.meta.env.VITE_GATEWAY_URL
+ * 2. import.meta.env.VITE_API_BASE_URL (stripping trailing /api)
+ * 3. Default: https://api.sadhish.info
  */
 export const getGatewayBaseUrl = () => {
-  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-    const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:5000`;
+  if (import.meta.env.VITE_GATEWAY_URL) {
+    return import.meta.env.VITE_GATEWAY_URL.replace(/\/+$/, '');
   }
-  return (import.meta.env.VITE_GATEWAY_URL || 'http://localhost:5000').replace(/\/+$/, '');
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+  }
+  return DEFAULT_GATEWAY_URL;
 };
 
+/**
+ * Dynamically resolves the Base API URL (e.g. https://api.sadhish.info/api)
+ */
 export const getApiBaseUrl = () => {
-  if (typeof window !== 'undefined' && window.location && window.location.port === '5173') {
-    return '/api';
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '');
   }
   return `${getGatewayBaseUrl()}/api`;
 };

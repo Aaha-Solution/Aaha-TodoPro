@@ -3,20 +3,8 @@
  * Shared across all application tabs, modals, tables, and modules.
  */
 
-/**
- * Dynamically resolves the API Gateway base URL.
- * Automatically adapts to:
- * - Localhost (development on same machine)
- * - LAN IP, e.g. http://192.168.0.169:5000 (accessing across Wi-Fi/LAN)
- * - Custom domain or production gateway
- */
-export const getGatewayBaseUrl = () => {
-  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-    const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:5000`;
-  }
-  return (import.meta.env.VITE_GATEWAY_URL || 'http://localhost:5000').replace(/\/+$/, '');
-};
+import { getGatewayBaseUrl } from '../../services/api';
+export { getGatewayBaseUrl };
 
 /**
  * Universal Attachment URL Resolver
@@ -96,12 +84,15 @@ export const resolveAttachmentUrl = (rawAtt, moduleOverride = '') => {
     return trimmed;
   }
 
-  // 5. Full HTTP/HTTPS URLs - ensure gateway port 5000 dynamically matches current LAN IP
+  // 5. Full HTTP/HTTPS URLs - ensure gateway port 5000 or localhost dynamically matches configured gatewayBase
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     try {
       const u = new URL(trimmed);
-      if (u.port === '5000' && typeof window !== 'undefined' && window.location && window.location.hostname) {
-        u.hostname = window.location.hostname;
+      if (u.port === '5000' || u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+        const gw = new URL(gatewayBase);
+        u.protocol = gw.protocol;
+        u.host = gw.host;
+        u.port = gw.port;
         return u.toString();
       }
     } catch {}
