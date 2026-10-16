@@ -1,4 +1,5 @@
 import pool from '../../../shared/db.js';
+import { verifyToken } from '../../../shared/jwt.js';
 import { successResponse, errorResponse } from '../../../shared/response.js';
 
 export const getDashboardMetrics = async (req, res) => {
@@ -8,13 +9,31 @@ export const getDashboardMetrics = async (req, res) => {
     const startDate = (req.query.startDate || req.query.start_date || req.query.from_date || '').trim();
     const endDate = (req.query.endDate || req.query.end_date || req.query.to_date || '').trim();
 
+    const authHeader = req.headers.authorization;
+    let tokenUser = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        tokenUser = verifyToken(authHeader.split(' ')[1]);
+      } catch {}
+    }
+    const userRole = (req.query.role || tokenUser?.role || req.user?.role || '').trim().toUpperCase();
+    const userDept = (req.query.user_department || req.query.department_user || tokenUser?.department || req.user?.department || '').trim().toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+
+    let effectiveDept = null;
+    if (!isAdmin && userDept && userDept !== 'INCOMING QUALITY') {
+      effectiveDept = userDept;
+    } else if (department && department !== 'All') {
+      effectiveDept = department.trim();
+    }
+
     let query = 'SELECT status, COUNT(*) as count FROM process_audit_requests';
     const conditions = [];
     const params = [];
 
-    if (department && department !== 'All') {
+    if (effectiveDept) {
       conditions.push('UPPER(TRIM(department)) = UPPER(TRIM(?))');
-      params.push(department);
+      params.push(effectiveDept);
     }
 
     if (month && month !== 'All') {
@@ -65,6 +84,10 @@ export const getDashboardMetrics = async (req, res) => {
     let deptQuery = 'SELECT UPPER(TRIM(department)) as dept, COUNT(*) as count FROM process_audit_requests';
     const deptConditions = [];
     const deptParams = [];
+    if (effectiveDept) {
+      deptConditions.push('UPPER(TRIM(department)) = UPPER(TRIM(?))');
+      deptParams.push(effectiveDept);
+    }
     if (month && month !== 'All') {
       deptConditions.push("(DATE_FORMAT(escalation_date, '%Y-%m') = ? OR DATE_FORMAT(created_at, '%Y-%m') = ?)");
       deptParams.push(month, month);

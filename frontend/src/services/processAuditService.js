@@ -1,9 +1,19 @@
 import api from './api';
+import { storage } from '../utils/storage';
 
 export const processAuditService = {
-  getDashboardStats: async (params) => {
+  getDashboardStats: async (params = {}) => {
     try {
-      const res = await api.get('/process-audit/dashboard', { params });
+      const currentUser = storage.getUser();
+      const userParams = currentUser ? {
+        user_name: currentUser.name,
+        user_email: currentUser.email,
+        user_id: currentUser.id,
+        role: currentUser.role,
+        user_department: currentUser.department,
+        department: currentUser.department
+      } : {};
+      const res = await api.get('/process-audit/dashboard', { params: { ...userParams, ...params } });
       return res.data?.data || res.data || {};
     } catch (err) {
       console.error('Failed to fetch dashboard metrics:', err);
@@ -11,9 +21,18 @@ export const processAuditService = {
     }
   },
 
-  getRequests: async (params) => {
+  getRequests: async (params = {}) => {
     try {
-      const res = await api.get('/process-audit/requests', { params });
+      const currentUser = storage.getUser();
+      const userParams = currentUser ? {
+        user_name: currentUser.name,
+        user_email: currentUser.email,
+        user_id: currentUser.id,
+        role: currentUser.role,
+        user_department: currentUser.department,
+        department: currentUser.department
+      } : {};
+      const res = await api.get('/process-audit/requests', { params: { ...userParams, ...params } });
       return res.data?.data || res.data || [];
     } catch (err) {
       console.error('Failed to fetch requests from DB:', err);

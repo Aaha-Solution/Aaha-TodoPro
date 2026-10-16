@@ -39,7 +39,8 @@ export const login = async (req, res) => {
       id: safeUser.id,
       email: safeUser.email,
       role: safeUser.role,
-      name: safeUser.name
+      name: safeUser.name,
+      department: safeUser.department
     });
 
     return successResponse(res, { token, user: safeUser }, 'Login successful');

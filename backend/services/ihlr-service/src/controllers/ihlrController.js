@@ -74,11 +74,22 @@ export const getDashboardStats = async (req, res) => {
     const userDept = (req.query.user_department || req.user?.department || (req.query.filter_dept || req.query.resp ? '' : req.query.department) || '').trim().toUpperCase();
     const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
 
-    // 1. Department-wise filter (by responsible department: resp / filter_dept)
-    const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
-    if (targetDept && targetDept !== 'ALL') {
-      requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === targetDept);
+    // 1. Department-wise filter:
+    // If user is not admin/quality, strictly lock scope to their own department (e.g. PRODUCTION)
+    let effectiveDept = null;
+    if (!isAdmin && userDept && userDept !== 'INCOMING QUALITY') {
+      effectiveDept = userDept;
+    } else {
+      const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
+      if (targetDept && targetDept !== 'ALL') {
+        effectiveDept = targetDept;
+      }
     }
+
+    if (effectiveDept) {
+      requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === effectiveDept);
+    }
+
 
     // 2. Date filter (by incident batch_date or created_at - defaults to current year)
     const currentYear = new Date().getFullYear();
@@ -159,8 +170,10 @@ export const getDashboardStats = async (req, res) => {
       };
     });
 
-    // 2. Department Breakdown
-    const standardDepts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY'];
+    // 2. Department Breakdown (for non-admins, show only their department; for admins show standard set)
+    const standardDepts = (!isAdmin && userDept && userDept !== 'INCOMING QUALITY')
+      ? [userDept]
+      : ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY'];
     const existingDepts = requests.map(r => (r.resp || '').trim().toUpperCase()).filter(Boolean);
     const uniqueDepts = Array.from(new Set([...standardDepts, ...existingDepts]));
     const departmentBreakdown = uniqueDepts.map(dept => {
@@ -278,6 +291,7 @@ export const getDashboardStats = async (req, res) => {
         startDate,
         endDate,
         status: targetStatus || 'All',
+        department: effectiveDept || 'All',
         year: req.query.year || currentYear,
         isDefaultYear: !isAllTime && startDate === `${currentYear}-01-01` && endDate === `${currentYear}-12-31`
       }
@@ -359,9 +373,22 @@ export const getIhlrRequests = async (req, res) => {
     }
 
     // Department filter (resp / filter_dept)
-    const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
-    if (targetDept && targetDept !== 'ALL') {
-      requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === targetDept);
+    const reqRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
+    const reqDept = (req.query.user_department || req.user?.department || (req.query.filter_dept || req.query.resp ? '' : req.query.department) || '').trim().toUpperCase();
+    const isReqAdmin = reqRole === 'ADMIN' || reqDept === 'INCOMING QUALITY';
+
+    let effectiveDept = null;
+    if (!isReqAdmin && reqDept && reqDept !== 'INCOMING QUALITY') {
+      effectiveDept = reqDept;
+    } else {
+      const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
+      if (targetDept && targetDept !== 'ALL') {
+        effectiveDept = targetDept;
+      }
+    }
+
+    if (effectiveDept) {
+      requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === effectiveDept);
     }
 
     // Date filter

@@ -187,6 +187,12 @@ export const ProcessAuditRequest = {
       params.push(uId, uName, uName, uName, uName);
     }
 
+    // Filter by department
+    if (filters.department && filters.department !== 'All') {
+      conditions.push(`UPPER(TRIM(r.department)) = UPPER(TRIM(?))`);
+      params.push(filters.department);
+    }
+
     if (conditions.length > 0) {
       query += ` WHERE ` + conditions.join(' AND ');
     }

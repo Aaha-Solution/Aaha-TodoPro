@@ -41,8 +41,14 @@ export const ihlrService = {
     } catch {
       let scopedStore = [...localIhlrStore];
       const currentUser = storage.getUser();
-      // Apply department filter
-      const deptFilter = (filters.resp || filters.filter_dept || '').trim().toUpperCase();
+      const isUserAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.department?.toUpperCase() === 'INCOMING QUALITY';
+      const userDept = (currentUser?.department || '').trim().toUpperCase();
+
+      // Apply department filter (lock to user department if not admin)
+      const deptFilter = (!isUserAdmin && userDept && userDept !== 'INCOMING QUALITY')
+        ? userDept
+        : (filters.resp || filters.filter_dept || '').trim().toUpperCase();
+
       if (deptFilter && deptFilter !== 'ALL') {
         scopedStore = scopedStore.filter(r => (r.resp || '').trim().toUpperCase() === deptFilter);
       }
@@ -130,7 +136,6 @@ export const ihlrService = {
         };
       });
 
-      const isUserAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.department?.toUpperCase() === 'INCOMING QUALITY';
       return {
         total,
         open,
@@ -160,13 +165,25 @@ export const ihlrService = {
         user_email: currentUser.email,
         user_id: currentUser.id,
         role: currentUser.role,
-        department: currentUser.department
+        department: currentUser.department,
+        user_department: currentUser.department
       } : {};
       const res = await api.get('/ihlr/requests', { params: { ...userParams, ...filters } });
       const data = res.data?.data || res.data || [];
       return data;
     } catch {
       let data = [...localIhlrStore];
+      const currentUser = storage.getUser();
+      const isUserAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.department?.toUpperCase() === 'INCOMING QUALITY';
+      const userDept = (currentUser?.department || '').trim().toUpperCase();
+
+      const deptFilter = (!isUserAdmin && userDept && userDept !== 'INCOMING QUALITY')
+        ? userDept
+        : (filters.resp || filters.filter_dept || '').trim().toUpperCase();
+
+      if (deptFilter && deptFilter !== 'ALL') {
+        data = data.filter(r => (r.resp || '').trim().toUpperCase() === deptFilter);
+      }
       if (filters.search) {
         const q = filters.search.toLowerCase();
         data = data.filter(r => 

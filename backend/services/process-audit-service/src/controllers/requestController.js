@@ -1,5 +1,6 @@
 import path from 'path';
 import pool from '../../../shared/db.js';
+import { verifyToken } from '../../../shared/jwt.js';
 import { ProcessAuditRequest } from '../models/Request.js';
 import Attachment from '../models/Attachment.js';
 import { successResponse, errorResponse } from '../../../shared/response.js';
@@ -16,13 +17,34 @@ export const getNextId = async (req, res) => {
 
 export const getAllRequests = async (req, res) => {
   try {
-    const { created_by, created_by_id, executor, user, role, scope, is_dashboard, all } = req.query;
+    const { created_by, created_by_id, executor, user, role, scope, is_dashboard, all, department } = req.query;
 
-    const userRole = (role || req.user?.role || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN';
+    const authHeader = req.headers.authorization;
+    let tokenUser = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        tokenUser = verifyToken(authHeader.split(' ')[1]);
+      } catch {}
+    }
+
+    const userRole = (role || tokenUser?.role || req.user?.role || '').trim().toUpperCase();
+    const userDept = (req.query.user_department || req.query.department_user || tokenUser?.department || req.user?.department || '').trim().toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
     const isDashboardScope = scope === 'dashboard' || is_dashboard === 'true' || all === 'true';
 
     const filters = {};
+
+    let effectiveDept = null;
+    if (!isAdmin && userDept && userDept !== 'INCOMING QUALITY') {
+      effectiveDept = userDept;
+    } else if (department && department !== 'All') {
+      effectiveDept = department.trim();
+    }
+
+    if (effectiveDept) {
+      filters.department = effectiveDept;
+    }
+
     if (!isAdmin && !isDashboardScope) {
       if (created_by) filters.created_by = created_by;
       if (created_by_id) filters.created_by_id = created_by_id;
