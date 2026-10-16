@@ -122,6 +122,105 @@ export const getDashboardStats = async (req, res) => {
       MATERIAL: requests.filter(r => (r.four_m || '').toUpperCase() === 'MATERIAL').length,
     };
 
+    // Status category helper for charts and metrics
+    const getStatusCategory = (r) => {
+      const s = (r.status || '').toUpperCase();
+      if (s === 'CLOSED') return 'closed';
+      if (
+        s === 'IN_PROGRESS' || 
+        s === 'IN-PROGRESS' || 
+        s === 'APPROVAL_PENDING' || 
+        s === 'APPROVAL PENDING' || 
+        s === 'AWAITING_REVIEW' || 
+        s === 'AWAITING REVIEW' || 
+        s === 'UNDER_REVIEW'
+      ) {
+        return 'inProgress';
+      }
+      return 'open';
+    };
+
+    // 1. Monthly Trend Bar Chart (12 Months)
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyTrend = monthNames.map((name, index) => {
+      const mReqs = requests.filter(r => {
+        const itemDateStr = parseToDateStr(r.batch_date || r.created_at);
+        if (!itemDateStr) return false;
+        const d = new Date(itemDateStr);
+        return !isNaN(d.getTime()) && d.getMonth() === index;
+      });
+      return {
+        month: name,
+        monthIndex: index,
+        total: mReqs.length,
+        open: mReqs.filter(r => getStatusCategory(r) === 'open').length,
+        inProgress: mReqs.filter(r => getStatusCategory(r) === 'inProgress').length,
+        closed: mReqs.filter(r => getStatusCategory(r) === 'closed').length
+      };
+    });
+
+    // 2. Department Breakdown
+    const standardDepts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY'];
+    const existingDepts = requests.map(r => (r.resp || '').trim().toUpperCase()).filter(Boolean);
+    const uniqueDepts = Array.from(new Set([...standardDepts, ...existingDepts]));
+    const departmentBreakdown = uniqueDepts.map(dept => {
+      const dReqs = requests.filter(r => (r.resp || '').trim().toUpperCase() === dept);
+      return {
+        department: dept,
+        total: dReqs.length,
+        open: dReqs.filter(r => getStatusCategory(r) === 'open').length,
+        inProgress: dReqs.filter(r => getStatusCategory(r) === 'inProgress').length,
+        closed: dReqs.filter(r => getStatusCategory(r) === 'closed').length
+      };
+    }).sort((a, b) => b.total - a.total);
+
+    // 3. 4M Breakdown Details
+    const fourMCategories = ['MAN', 'MACHINE', 'METHOD', 'MATERIAL'];
+    const fourMDetails = fourMCategories.map(cat => {
+      const cReqs = requests.filter(r => (r.four_m || '').trim().toUpperCase() === cat);
+      return {
+        category: cat,
+        total: cReqs.length,
+        open: cReqs.filter(r => getStatusCategory(r) === 'open').length,
+        inProgress: cReqs.filter(r => getStatusCategory(r) === 'inProgress').length,
+        closed: cReqs.filter(r => getStatusCategory(r) === 'closed').length
+      };
+    });
+
+    // 4. Shift Breakdown
+    const shiftList = ['Shift 1', 'Shift 2', 'Shift 3', 'General'];
+    const normalizeShift = (val) => {
+      const s = String(val || '').toLowerCase().trim();
+      if (s.includes('gen')) return 'General';
+      if (s.includes('1') || s === 'i') return 'Shift 1';
+      if (s.includes('2') || s === 'ii') return 'Shift 2';
+      if (s.includes('3') || s === 'iii') return 'Shift 3';
+      return 'General';
+    };
+    const shiftBreakdown = shiftList.map(shiftName => {
+      const sReqs = requests.filter(r => normalizeShift(r.shift) === shiftName);
+      return {
+        shift: shiftName,
+        total: sReqs.length,
+        open: sReqs.filter(r => getStatusCategory(r) === 'open').length,
+        inProgress: sReqs.filter(r => getStatusCategory(r) === 'inProgress').length,
+        closed: sReqs.filter(r => getStatusCategory(r) === 'closed').length
+      };
+    });
+
+    // 5. Model Breakdown (Top Models)
+    const modelMap = {};
+    for (const r of requests) {
+      const m = (r.model || 'Unknown').trim();
+      if (!modelMap[m]) {
+        modelMap[m] = { model: m, total: 0, open: 0, inProgress: 0, closed: 0 };
+      }
+      modelMap[m].total += 1;
+      const cat = getStatusCategory(r);
+      modelMap[m][cat] += 1;
+    }
+    const modelBreakdown = Object.values(modelMap).sort((a, b) => b.total - a.total).slice(0, 8);
+
     // Filter recentRequests by status if specified
     const targetStatus = (req.query.status || '').trim().toUpperCase();
     let filteredForList = requests;
@@ -168,6 +267,11 @@ export const getDashboardStats = async (req, res) => {
       awaitingReview: inProgress,
       closed,
       fourMBreakdown,
+      fourMDetails,
+      monthlyTrend,
+      departmentBreakdown,
+      shiftBreakdown,
+      modelBreakdown,
       recentRequests: sortedRequests.slice(0, 10),
       currentYear,
       filter: {

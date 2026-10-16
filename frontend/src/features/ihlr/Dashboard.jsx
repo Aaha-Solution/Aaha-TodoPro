@@ -22,6 +22,7 @@ import { IhlrAttachmentThumbnail } from './IhlrAttachmentView';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
+import IhlrBarChart from './IhlrBarChart';
 import { exportIhlrToExcel, exportIhlrToPdf, getIhlrDisplayStatus } from './ihlrExportUtils';
 import DateInput from '../../components/common/DateInput';
 import { useAuth } from '../../hooks/useAuth';
@@ -580,36 +581,13 @@ const IhlrDashboard = () => {
         })}
       </div>
 
-      {/* 4M Distribution Breakdown Banner */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <span className="text-xs font-extrabold uppercase tracking-widest text-slate-400 font-mono">
-            4M CLASSIFICATION DISTRIBUTION
-          </span>
-          <p className="text-xs text-slate-600 mt-0.5">
-            Breakdown of root causes by Man, Machine, Method, and Material.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-xs font-bold text-blue-700">
-            <span>MAN:</span>
-            <span className="font-mono text-sm">{stats.fourMBreakdown?.MAN || 0}</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-50 border border-purple-200 text-xs font-bold text-purple-700">
-            <span>MACHINE:</span>
-            <span className="font-mono text-sm">{stats.fourMBreakdown?.MACHINE || 0}</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-700">
-            <span>METHOD:</span>
-            <span className="font-mono text-sm">{stats.fourMBreakdown?.METHOD || 0}</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
-            <span>MATERIAL:</span>
-            <span className="font-mono text-sm">{stats.fourMBreakdown?.MATERIAL || 0}</span>
-          </div>
-        </div>
-      </div>
+      {/* Interactive IHLR Bar Chart Section */}
+      <IhlrBarChart
+        stats={stats}
+        onSelectDepartment={(dept) => setSelectedDept(dept)}
+        onSelectStatus={(status) => setSelectedStatus(status)}
+        currentYear={currentYear}
+      />
 
       {/* Recent IHLR Analysis Reports Table */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">

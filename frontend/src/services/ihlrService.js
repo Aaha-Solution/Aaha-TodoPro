@@ -76,6 +76,60 @@ export const ihlrService = {
         const s = (r.status || '').toUpperCase();
         return s === 'IN_PROGRESS' || s === 'IN-PROGRESS';
       }).length;
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthlyTrend = monthNames.map((name, idx) => {
+        const mReqs = scopedStore.filter(r => {
+          const dStr = (r.batch_date || r.created_at || '').split('T')[0];
+          if (!dStr) return false;
+          const d = new Date(dStr);
+          return !isNaN(d.getTime()) && d.getMonth() === idx;
+        });
+        return {
+          month: name,
+          monthIndex: idx,
+          total: mReqs.length,
+          open: mReqs.filter(r => (r.status || '').toUpperCase() === 'OPEN' || (r.status || '').toUpperCase() === 'PENDING').length,
+          inProgress: mReqs.filter(r => (r.status || '').toUpperCase().includes('PROGRESS') || (r.status || '').toUpperCase().includes('REVIEW')).length,
+          closed: mReqs.filter(r => (r.status || '').toUpperCase() === 'CLOSED').length
+        };
+      });
+
+      const standardDepts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY'];
+      const departmentBreakdown = standardDepts.map(dept => {
+        const dReqs = scopedStore.filter(r => (r.resp || '').trim().toUpperCase() === dept);
+        return {
+          department: dept,
+          total: dReqs.length,
+          open: dReqs.filter(r => (r.status || '').toUpperCase() === 'OPEN' || (r.status || '').toUpperCase() === 'PENDING').length,
+          inProgress: dReqs.filter(r => (r.status || '').toUpperCase().includes('PROGRESS') || (r.status || '').toUpperCase().includes('REVIEW')).length,
+          closed: dReqs.filter(r => (r.status || '').toUpperCase() === 'CLOSED').length
+        };
+      });
+
+      const fourMCategories = ['MAN', 'MACHINE', 'METHOD', 'MATERIAL'];
+      const fourMDetails = fourMCategories.map(cat => {
+        const cReqs = scopedStore.filter(r => (r.four_m || '').trim().toUpperCase() === cat);
+        return {
+          category: cat,
+          total: cReqs.length,
+          open: cReqs.filter(r => (r.status || '').toUpperCase() === 'OPEN' || (r.status || '').toUpperCase() === 'PENDING').length,
+          inProgress: cReqs.filter(r => (r.status || '').toUpperCase().includes('PROGRESS') || (r.status || '').toUpperCase().includes('REVIEW')).length,
+          closed: cReqs.filter(r => (r.status || '').toUpperCase() === 'CLOSED').length
+        };
+      });
+
+      const shiftList = ['Shift 1', 'Shift 2', 'Shift 3', 'General'];
+      const shiftBreakdown = shiftList.map(shiftName => {
+        const sReqs = scopedStore.filter(r => String(r.shift || '').toLowerCase().includes(shiftName.toLowerCase().replace('shift ', '')));
+        return {
+          shift: shiftName,
+          total: sReqs.length,
+          open: sReqs.filter(r => (r.status || '').toUpperCase() === 'OPEN' || (r.status || '').toUpperCase() === 'PENDING').length,
+          inProgress: sReqs.filter(r => (r.status || '').toUpperCase().includes('PROGRESS') || (r.status || '').toUpperCase().includes('REVIEW')).length,
+          closed: sReqs.filter(r => (r.status || '').toUpperCase() === 'CLOSED').length
+        };
+      });
+
       const isUserAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.department?.toUpperCase() === 'INCOMING QUALITY';
       return {
         total,
@@ -89,6 +143,10 @@ export const ihlrService = {
           METHOD: scopedStore.filter(r => (r.four_m || '').toUpperCase() === 'METHOD').length,
           MATERIAL: scopedStore.filter(r => (r.four_m || '').toUpperCase() === 'MATERIAL').length,
         },
+        fourMDetails,
+        monthlyTrend,
+        departmentBreakdown,
+        shiftBreakdown,
         recentRequests: scopedStore.slice(0, 5)
       };
     }
