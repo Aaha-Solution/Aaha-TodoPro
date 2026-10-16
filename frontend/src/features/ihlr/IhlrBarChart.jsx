@@ -54,9 +54,8 @@ export const IhlrBarChart = ({
   const [activeTab, setActiveTab] = useState('monthly');
   // Bar presentation: 'stacked' | 'grouped'
   const [barMode, setBarMode] = useState('stacked');
-  // Hovered item for tooltip
-  const [hoveredItem, setHoveredItem] = useState(null);
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  // Hovered bar anchor: { item, idx, centerX, barTopY }
+  const [hoveredBar, setHoveredBar] = useState(null);
 
   // Extract or compute dataset based on activeTab
   const chartData = useMemo(() => {
@@ -149,18 +148,16 @@ export const IhlrBarChart = ({
   // Y-axis ticks
   const yTicks = [0, Math.round(maxVal * 0.33), Math.round(maxVal * 0.66), maxVal];
 
-  const handleMouseMove = (e, item) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setTooltipPos({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
-    setHoveredItem(item);
-  };
+  const percentX = hoveredBar ? (hoveredBar.centerX / svgWidth) * 100 : 50;
+  const percentY = hoveredBar ? (hoveredBar.barTopY / svgHeight) * 100 : 50;
 
-  const handleMouseLeave = () => {
-    setHoveredItem(null);
-  };
+  const tooltipAlignClass = percentX > 75
+    ? '-translate-x-[85%]'
+    : percentX < 25
+    ? '-translate-x-[15%]'
+    : '-translate-x-1/2';
+
+  const arrowLeftPercent = percentX > 75 ? '85%' : percentX < 25 ? '15%' : '50%';
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all duration-300">
@@ -398,7 +395,7 @@ export const IhlrBarChart = ({
               {/* Data Bars */}
               {chartData.map((item, idx) => {
                 const centerX = paddingLeft + idx * slotWidth + slotWidth / 2;
-                const isHovered = hoveredItem && hoveredItem.key === item.key;
+                const isHovered = hoveredBar && hoveredBar.item.key === item.key;
 
                 if (barMode === 'stacked') {
                   const totalH = (item.total / maxVal) * innerHeight;
@@ -410,12 +407,25 @@ export const IhlrBarChart = ({
                   const closedY = baseY - closedH;
                   const progY = closedY - progH;
                   const openY = progY - openH;
+                  const barTopY = item.total > 0 ? openY : baseY;
 
                   return (
                     <g
                       key={item.key || idx}
-                      onMouseMove={(e) => handleMouseMove(e, item)}
-                      onMouseLeave={handleMouseLeave}
+                      onMouseEnter={() =>
+                        setHoveredBar({
+                          item,
+                          idx,
+                          centerX,
+                          barTopY: Math.max(barTopY, paddingTop + 8),
+                        })
+                      }
+                      onMouseLeave={() => setHoveredBar(null)}
+                      onClick={() => {
+                        if (activeTab === 'department' && onSelectDepartment) {
+                          onSelectDepartment(item.key);
+                        }
+                      }}
                       className="cursor-pointer transition-all duration-200"
                     >
                       {/* Background hover column highlight */}
@@ -424,8 +434,8 @@ export const IhlrBarChart = ({
                         y={paddingTop}
                         width={slotWidth - 4}
                         height={innerHeight}
-                        fill={isHovered ? 'rgba(59, 130, 246, 0.05)' : 'transparent'}
-                        rx="6"
+                        fill={isHovered ? 'rgba(59, 130, 246, 0.08)' : 'transparent'}
+                        rx="8"
                       />
 
                       {/* Stacked Bars Segments */}
@@ -517,6 +527,9 @@ export const IhlrBarChart = ({
                   const progH = ((item.inProgress || 0) / maxVal) * innerHeight;
                   const closedH = ((item.closed || 0) / maxVal) * innerHeight;
 
+                  const maxSubH = Math.max(openH, progH, closedH);
+                  const barTopY = item.total > 0 ? (baseY - maxSubH) : baseY;
+
                   const openX = centerX - barWidth / 2;
                   const progX = openX + subBarWidth + 2;
                   const closedX = progX + subBarWidth + 2;
@@ -524,8 +537,20 @@ export const IhlrBarChart = ({
                   return (
                     <g
                       key={item.key || idx}
-                      onMouseMove={(e) => handleMouseMove(e, item)}
-                      onMouseLeave={handleMouseLeave}
+                      onMouseEnter={() =>
+                        setHoveredBar({
+                          item,
+                          idx,
+                          centerX,
+                          barTopY: Math.max(barTopY, paddingTop + 8),
+                        })
+                      }
+                      onMouseLeave={() => setHoveredBar(null)}
+                      onClick={() => {
+                        if (activeTab === 'department' && onSelectDepartment) {
+                          onSelectDepartment(item.key);
+                        }
+                      }}
                       className="cursor-pointer transition-all duration-200"
                     >
                       {/* Column hover background */}
@@ -534,8 +559,8 @@ export const IhlrBarChart = ({
                         y={paddingTop}
                         width={slotWidth - 4}
                         height={innerHeight}
-                        fill={isHovered ? 'rgba(59, 130, 246, 0.05)' : 'transparent'}
-                        rx="6"
+                        fill={isHovered ? 'rgba(59, 130, 246, 0.08)' : 'transparent'}
+                        rx="8"
                       />
 
                       {/* Sub-bar: Pending (Rose) */}
@@ -592,60 +617,72 @@ export const IhlrBarChart = ({
                 }
               })}
             </svg>
-          </div>
-        )}
 
-        {/* Floating Tooltip */}
-        {hoveredItem && (
-          <div
-            className="absolute z-30 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-3 bg-slate-900/95 backdrop-blur-md text-white px-3.5 py-2.5 rounded-xl shadow-2xl border border-slate-700/80 min-w-[190px] animate-in fade-in zoom-in-95 duration-150"
-            style={{
-              left: `${tooltipPos.x}px`,
-              top: `${tooltipPos.y}px`,
-            }}
-          >
-            <div className="flex items-center justify-between gap-3 pb-1.5 border-b border-slate-700">
-              <span className="font-extrabold text-xs text-white uppercase tracking-tight flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                <span>{hoveredItem.label || hoveredItem.key}</span>
-              </span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono">
-                {hoveredItem.total} total
-              </span>
-            </div>
+            {/* Floating Tooltip anchored directly near the active chart bar */}
+            {hoveredBar && (
+              <div
+                className={`absolute z-30 pointer-events-none -translate-y-full mb-3 bg-slate-900/95 backdrop-blur-md text-white px-3.5 py-2.5 rounded-xl shadow-2xl border border-slate-700/80 min-w-[200px] transition-all duration-150 animate-in fade-in zoom-in-95 select-none ${tooltipAlignClass}`}
+                style={{
+                  left: `${percentX}%`,
+                  top: `${percentY}%`,
+                  marginTop: '-12px',
+                }}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between gap-3 pb-1.5 border-b border-slate-700/80">
+                  <span className="font-extrabold text-xs text-white uppercase tracking-tight flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                    <span>{hoveredBar.item.label || hoveredBar.item.key}</span>
+                  </span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono">
+                    {hoveredBar.item.total} total
+                  </span>
+                </div>
 
-            <div className="space-y-1.5 pt-2 text-[11px]">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-300">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
-                  <span>Pending Action</span>
-                </span>
-                <span className="font-mono font-bold text-rose-300">{hoveredItem.open || 0}</span>
-              </div>
+                {/* Breakdown List */}
+                <div className="space-y-1.5 pt-2 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-slate-300">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 shadow-xs" />
+                      <span>Pending Action</span>
+                    </span>
+                    <span className="font-mono font-bold text-rose-300">{hoveredBar.item.open || 0}</span>
+                  </div>
 
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-300">
-                  <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  <span>Awaiting Review</span>
-                </span>
-                <span className="font-mono font-bold text-amber-300">{hoveredItem.inProgress || 0}</span>
-              </div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-slate-300">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 shadow-xs" />
+                      <span>Awaiting Review</span>
+                    </span>
+                    <span className="font-mono font-bold text-amber-300">{hoveredBar.item.inProgress || 0}</span>
+                  </div>
 
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>Closed &amp; Verified</span>
-                </span>
-                <span className="font-mono font-bold text-emerald-300">{hoveredItem.closed || 0}</span>
-              </div>
-            </div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-slate-300">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs" />
+                      <span>Closed &amp; Verified</span>
+                    </span>
+                    <span className="font-mono font-bold text-emerald-300">{hoveredBar.item.closed || 0}</span>
+                  </div>
+                </div>
 
-            {totalVolume > 0 && (
-              <div className="mt-2 pt-1.5 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>Share of Total:</span>
-                <span className="font-bold font-mono text-blue-300">
-                  {Math.round(((hoveredItem.total || 0) / totalVolume) * 100)}%
-                </span>
+                {totalVolume > 0 && (
+                  <div className="mt-2 pt-1.5 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
+                    <span>Share of Total:</span>
+                    <span className="font-bold font-mono text-blue-300">
+                      {Math.round(((hoveredBar.item.total || 0) / totalVolume) * 100)}%
+                    </span>
+                  </div>
+                )}
+
+                {/* Downward pointing arrow directly pointing to the hovered bar */}
+                <div
+                  className="absolute top-full -mt-1 w-2.5 h-2.5 bg-slate-900 border-r border-b border-slate-700/80 rotate-45"
+                  style={{
+                    left: arrowLeftPercent,
+                    transform: 'translateX(-50%)',
+                  }}
+                />
               </div>
             )}
           </div>
