@@ -52,8 +52,6 @@ export const IhlrBarChart = ({
 }) => {
   // Dimension view tab: 'monthly' | 'department' | 'fourM' | 'shift'
   const [activeTab, setActiveTab] = useState('monthly');
-  // Bar presentation: 'stacked' | 'grouped'
-  const [barMode, setBarMode] = useState('stacked');
   // Hovered bar anchor: { item, idx, centerX, barTopY }
   const [hoveredBar, setHoveredBar] = useState(null);
 
@@ -103,17 +101,12 @@ export const IhlrBarChart = ({
   }, [chartData]);
 
   const maxVal = useMemo(() => {
-    if (barMode === 'stacked') {
-      const maxTotal = Math.max(...chartData.map(d => d.total || 0), 1);
-      return Math.ceil(maxTotal * 1.15) || 5;
-    } else {
-      const maxSingle = Math.max(
-        ...chartData.map(d => Math.max(d.open || 0, d.inProgress || 0, d.closed || 0)),
-        1
-      );
-      return Math.ceil(maxSingle * 1.2) || 5;
-    }
-  }, [chartData, barMode]);
+    const maxSingle = Math.max(
+      ...chartData.map(d => Math.max(d.open || 0, d.inProgress || 0, d.closed || 0)),
+      1
+    );
+    return Math.ceil(maxSingle * 1.2) || 5;
+  }, [chartData]);
 
   // Peak category
   const peakItem = useMemo(() => {
@@ -234,34 +227,6 @@ export const IhlrBarChart = ({
               >
                 <Clock className="w-3.5 h-3.5" />
                 <span>Shift</span>
-              </button>
-            </div>
-
-            {/* Mode Switch (Stacked / Grouped) */}
-            <div className="flex items-center bg-slate-100/80 p-1 rounded-xl border border-slate-200/80 text-xs font-semibold text-slate-600">
-              <button
-                type="button"
-                onClick={() => setBarMode('stacked')}
-                className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  barMode === 'stacked'
-                    ? 'bg-white text-slate-900 font-extrabold shadow-2xs'
-                    : 'hover:text-slate-900'
-                }`}
-                title="Stacked: Total volume per bar"
-              >
-                Stacked
-              </button>
-              <button
-                type="button"
-                onClick={() => setBarMode('grouped')}
-                className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  barMode === 'grouped'
-                    ? 'bg-white text-slate-900 font-extrabold shadow-2xs'
-                    : 'hover:text-slate-900'
-                }`}
-                title="Grouped: Status bars side-by-side"
-              >
-                Grouped
               </button>
             </div>
           </div>
@@ -392,229 +357,130 @@ export const IhlrBarChart = ({
                 );
               })}
 
-              {/* Data Bars */}
+              {/* Data Bars (Grouped: Pending, Awaiting Review, Closed side-by-side) */}
               {chartData.map((item, idx) => {
                 const centerX = paddingLeft + idx * slotWidth + slotWidth / 2;
                 const isHovered = hoveredBar && hoveredBar.item.key === item.key;
 
-                if (barMode === 'stacked') {
-                  const totalH = (item.total / maxVal) * innerHeight;
-                  const openH = (item.open / maxVal) * innerHeight;
-                  const progH = (item.inProgress / maxVal) * innerHeight;
-                  const closedH = (item.closed / maxVal) * innerHeight;
+                const subBarWidth = Math.max((barWidth - 4) / 3, 6);
+                const baseY = paddingTop + innerHeight;
 
-                  const baseY = paddingTop + innerHeight;
-                  const closedY = baseY - closedH;
-                  const progY = closedY - progH;
-                  const openY = progY - openH;
-                  const barTopY = item.total > 0 ? openY : baseY;
+                const openH = ((item.open || 0) / maxVal) * innerHeight;
+                const progH = ((item.inProgress || 0) / maxVal) * innerHeight;
+                const closedH = ((item.closed || 0) / maxVal) * innerHeight;
 
-                  return (
-                    <g
-                      key={item.key || idx}
-                      onMouseEnter={() =>
-                        setHoveredBar({
-                          item,
-                          idx,
-                          centerX,
-                          barTopY: Math.max(barTopY, paddingTop + 8),
-                        })
+                const maxSubH = Math.max(openH, progH, closedH);
+                const barTopY = item.total > 0 ? (baseY - maxSubH) : baseY;
+
+                const openX = centerX - barWidth / 2;
+                const progX = openX + subBarWidth + 2;
+                const closedX = progX + subBarWidth + 2;
+
+                return (
+                  <g
+                    key={item.key || idx}
+                    onMouseEnter={() =>
+                      setHoveredBar({
+                        item,
+                        idx,
+                        centerX,
+                        barTopY: Math.max(barTopY, paddingTop + 8),
+                      })
+                    }
+                    onMouseLeave={() => setHoveredBar(null)}
+                    onClick={() => {
+                      if (activeTab === 'department' && onSelectDepartment) {
+                        onSelectDepartment(item.key);
                       }
-                      onMouseLeave={() => setHoveredBar(null)}
-                      onClick={() => {
-                        if (activeTab === 'department' && onSelectDepartment) {
-                          onSelectDepartment(item.key);
-                        }
-                      }}
-                      className="cursor-pointer transition-all duration-200"
-                    >
-                      {/* Background hover column highlight */}
+                    }}
+                    className="cursor-pointer transition-all duration-200"
+                  >
+                    {/* Column hover background */}
+                    <rect
+                      x={centerX - slotWidth / 2 + 2}
+                      y={paddingTop}
+                      width={slotWidth - 4}
+                      height={innerHeight}
+                      fill={isHovered ? 'rgba(59, 130, 246, 0.08)' : 'transparent'}
+                      rx="8"
+                    />
+
+                    {/* Sub-bar: Pending (Rose) */}
+                    {openH > 0 && (
                       <rect
-                        x={centerX - slotWidth / 2 + 2}
-                        y={paddingTop}
-                        width={slotWidth - 4}
-                        height={innerHeight}
-                        fill={isHovered ? 'rgba(59, 130, 246, 0.08)' : 'transparent'}
-                        rx="8"
+                        x={openX}
+                        y={baseY - openH}
+                        width={subBarWidth}
+                        height={openH}
+                        fill="url(#ihlr-grad-open)"
+                        rx="3"
                       />
+                    )}
 
-                      {/* Stacked Bars Segments */}
-                      {item.total > 0 && (
-                        <g filter={isHovered ? 'url(#bar-glow)' : 'none'}>
-                          {/* Closed Segment (Bottom) */}
-                          {closedH > 0 && (
-                            <rect
-                              x={centerX - barWidth / 2}
-                              y={closedY}
-                              width={barWidth}
-                              height={closedH}
-                              fill="url(#ihlr-grad-closed)"
-                              rx={openH === 0 && progH === 0 ? '5' : '0'}
-                            />
-                          )}
+                    {/* Sub-bar: Awaiting Review (Amber) */}
+                    {progH > 0 && (
+                      <rect
+                        x={progX}
+                        y={baseY - progH}
+                        width={subBarWidth}
+                        height={progH}
+                        fill="url(#ihlr-grad-progress)"
+                        rx="3"
+                      />
+                    )}
 
-                          {/* In-Progress / Awaiting Review Segment (Middle) */}
-                          {progH > 0 && (
-                            <rect
-                              x={centerX - barWidth / 2}
-                              y={progY}
-                              width={barWidth}
-                              height={progH}
-                              fill="url(#ihlr-grad-progress)"
-                              rx={openH === 0 ? '5' : '0'}
-                            />
-                          )}
+                    {/* Sub-bar: Closed (Emerald) */}
+                    {closedH > 0 && (
+                      <rect
+                        x={closedX}
+                        y={baseY - closedH}
+                        width={subBarWidth}
+                        height={closedH}
+                        fill="url(#ihlr-grad-closed)"
+                        rx="3"
+                      />
+                    )}
 
-                          {/* Open / Pending Segment (Top) */}
-                          {openH > 0 && (
-                            <rect
-                              x={centerX - barWidth / 2}
-                              y={openY}
-                              width={barWidth}
-                              height={openH}
-                              fill="url(#ihlr-grad-open)"
-                              rx="5"
-                            />
-                          )}
-
-                          {/* Top Value Counter */}
-                          <text
-                            x={centerX}
-                            y={baseY - totalH - 6}
-                            textAnchor="middle"
-                            fill={isHovered ? '#1e293b' : '#64748b'}
-                            fontSize="11"
-                            fontWeight="800"
-                            fontFamily="monospace"
-                          >
-                            {item.total}
-                          </text>
-                        </g>
-                      )}
-
-                      {/* Empty Placeholder indicator for zero values */}
-                      {item.total === 0 && (
-                        <circle
-                          cx={centerX}
-                          cy={baseY - 4}
-                          r="2.5"
-                          fill="#cbd5e1"
-                        />
-                      )}
-
-                      {/* X-Axis Category Label */}
+                    {/* Top Value Counter if total > 0 */}
+                    {item.total > 0 && (
                       <text
                         x={centerX}
-                        y={paddingTop + innerHeight + 18}
+                        y={barTopY - 6}
                         textAnchor="middle"
-                        fill={isHovered ? '#2563eb' : '#64748b'}
-                        fontSize={activeTab === 'department' ? '9.5' : '10'}
-                        fontWeight={isHovered ? '800' : '700'}
-                        className="transition-colors"
+                        fill={isHovered ? '#1e293b' : '#64748b'}
+                        fontSize="10"
+                        fontWeight="800"
+                        className="font-mono transition-colors"
                       >
-                        {item.label && item.label.length > 9
-                          ? `${item.label.substring(0, 8)}…`
-                          : item.label}
+                        {item.total}
                       </text>
-                    </g>
-                  );
-                } else {
-                  // Grouped Mode: 3 Sub-bars per slot (Pending, Awaiting Review, Closed)
-                  const subBarWidth = Math.max((barWidth - 4) / 3, 6);
-                  const baseY = paddingTop + innerHeight;
+                    )}
 
-                  const openH = ((item.open || 0) / maxVal) * innerHeight;
-                  const progH = ((item.inProgress || 0) / maxVal) * innerHeight;
-                  const closedH = ((item.closed || 0) / maxVal) * innerHeight;
-
-                  const maxSubH = Math.max(openH, progH, closedH);
-                  const barTopY = item.total > 0 ? (baseY - maxSubH) : baseY;
-
-                  const openX = centerX - barWidth / 2;
-                  const progX = openX + subBarWidth + 2;
-                  const closedX = progX + subBarWidth + 2;
-
-                  return (
-                    <g
-                      key={item.key || idx}
-                      onMouseEnter={() =>
-                        setHoveredBar({
-                          item,
-                          idx,
-                          centerX,
-                          barTopY: Math.max(barTopY, paddingTop + 8),
-                        })
-                      }
-                      onMouseLeave={() => setHoveredBar(null)}
-                      onClick={() => {
-                        if (activeTab === 'department' && onSelectDepartment) {
-                          onSelectDepartment(item.key);
-                        }
-                      }}
-                      className="cursor-pointer transition-all duration-200"
-                    >
-                      {/* Column hover background */}
-                      <rect
-                        x={centerX - slotWidth / 2 + 2}
-                        y={paddingTop}
-                        width={slotWidth - 4}
-                        height={innerHeight}
-                        fill={isHovered ? 'rgba(59, 130, 246, 0.08)' : 'transparent'}
-                        rx="8"
+                    {/* Empty Placeholder indicator for zero values */}
+                    {item.total === 0 && (
+                      <circle
+                        cx={centerX}
+                        cy={baseY - 4}
+                        r="2.5"
+                        fill="#cbd5e1"
                       />
+                    )}
 
-                      {/* Sub-bar: Pending (Rose) */}
-                      {openH > 0 && (
-                        <rect
-                          x={openX}
-                          y={baseY - openH}
-                          width={subBarWidth}
-                          height={openH}
-                          fill="url(#ihlr-grad-open)"
-                          rx="3"
-                        />
-                      )}
-
-                      {/* Sub-bar: Awaiting Review (Amber) */}
-                      {progH > 0 && (
-                        <rect
-                          x={progX}
-                          y={baseY - progH}
-                          width={subBarWidth}
-                          height={progH}
-                          fill="url(#ihlr-grad-progress)"
-                          rx="3"
-                        />
-                      )}
-
-                      {/* Sub-bar: Closed (Emerald) */}
-                      {closedH > 0 && (
-                        <rect
-                          x={closedX}
-                          y={baseY - closedH}
-                          width={subBarWidth}
-                          height={closedH}
-                          fill="url(#ihlr-grad-closed)"
-                          rx="3"
-                        />
-                      )}
-
-                      {/* X-Axis Label */}
-                      <text
-                        x={centerX}
-                        y={paddingTop + innerHeight + 18}
-                        textAnchor="middle"
-                        fill={isHovered ? '#2563eb' : '#64748b'}
-                        fontSize={activeTab === 'department' ? '9.5' : '10'}
-                        fontWeight={isHovered ? '800' : '700'}
-                      >
-                        {item.label && item.label.length > 9
-                          ? `${item.label.substring(0, 8)}…`
-                          : item.label}
-                      </text>
-                    </g>
-                  );
-                }
+                    {/* X-Axis Label */}
+                    <text
+                      x={centerX}
+                      y={paddingTop + innerHeight + 18}
+                      textAnchor="middle"
+                      fill={isHovered ? '#2563eb' : '#64748b'}
+                      fontSize={activeTab === 'department' ? '9.5' : '10'}
+                      fontWeight={isHovered ? '800' : '700'}
+                    >
+                      {item.label && item.label.length > 9
+                        ? `${item.label.substring(0, 8)}…`
+                        : item.label}
+                    </text>
+                  </g>
+                );
               })}
             </svg>
 
