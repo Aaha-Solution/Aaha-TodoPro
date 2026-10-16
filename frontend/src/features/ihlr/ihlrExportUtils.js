@@ -120,7 +120,7 @@ export const formatReassignmentHistory = (history) => {
 /**
  * Returns user-facing status label strictly matching the UI:
  * - CLOSED: closed or approved
- * - APPROVAL PENDING: closer containment/action completed or status IN_PROGRESS / APPROVAL_PENDING / UNDER_REVIEW
+ * - AWAITING REVIEW: closer containment/action completed or status IN_PROGRESS / APPROVAL_PENDING / AWAITING_REVIEW / UNDER_REVIEW
  * - PENDING: status OPEN or newly reassigned/awaiting closer containment action
  */
 export const getIhlrDisplayStatus = (statusOrReq, maybeReq) => {
@@ -144,6 +144,8 @@ export const getIhlrDisplayStatus = (statusOrReq, maybeReq) => {
     s === 'IN-PROGRESS' ||
     s === 'APPROVAL_PENDING' ||
     s === 'APPROVAL PENDING' ||
+    s === 'AWAITING_REVIEW' ||
+    s === 'AWAITING REVIEW' ||
     s === 'UNDER_REVIEW' ||
     (req && (
       Boolean(req.action && String(req.action).trim()) &&
@@ -155,7 +157,7 @@ export const getIhlrDisplayStatus = (statusOrReq, maybeReq) => {
   );
 
   if (isCompleted) {
-    return 'APPROVAL PENDING';
+    return 'AWAITING REVIEW';
   }
 
   return 'PENDING';
@@ -417,7 +419,7 @@ export const exportIhlrToExcel = async ({
     if (displayStatus === 'CLOSED') {
       statusCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF15803D' } }; // emerald-700
       statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }; // emerald-100
-    } else if (displayStatus === 'APPROVAL PENDING') {
+    } else if (displayStatus === 'AWAITING REVIEW' || displayStatus === 'APPROVAL PENDING') {
       statusCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFB45309' } }; // amber-700
       statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // amber-100
     } else {
@@ -667,7 +669,7 @@ export const exportIhlrToPdf = async ({
         if (text.startsWith('CLOSED')) {
           data.cell.styles.textColor = [22, 101, 52]; // emerald-700
           data.cell.styles.fontStyle = 'bold';
-        } else if (text.startsWith('APPROVAL PENDING')) {
+        } else if (text.startsWith('AWAITING REVIEW') || text.startsWith('APPROVAL PENDING')) {
           data.cell.styles.textColor = [180, 83, 9]; // amber-700
           data.cell.styles.fontStyle = 'bold';
         } else {

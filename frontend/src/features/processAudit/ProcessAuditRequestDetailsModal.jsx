@@ -430,6 +430,7 @@ const ProcessAuditRequestDetailsModal = ({
   const isCloserCompleted = Boolean(
     sLower.includes('approval') ||
     sLower.includes('progress') ||
+    sLower.includes('review') ||
     (req.corrective_action && String(req.corrective_action).trim()) ||
     (req.action && String(req.action).trim()) ||
     (req.root_cause && String(req.root_cause).trim()) ||
@@ -454,7 +455,7 @@ const ProcessAuditRequestDetailsModal = ({
     statusBadgeLabel = 'Signed off';
     statusBadgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200';
   } else if (isCloserCompleted) {
-    statusBadgeLabel = 'Approval Pending';
+    statusBadgeLabel = 'Awaiting Review';
     statusBadgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
   }
 
@@ -662,7 +663,7 @@ const ProcessAuditRequestDetailsModal = ({
                         className="w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition"
                       >
                         <option value="Pending">Pending</option>
-                        <option value="Approval Pending">Approval Pending</option>
+                        <option value="Awaiting Review">Awaiting Review</option>
                         <option value="Signed off">Signed off</option>
                         <option value="Closed">Closed</option>
                         <option value="Open">Open</option>
@@ -885,7 +886,7 @@ const ProcessAuditRequestDetailsModal = ({
                     ) : isCloserCompleted ? (
                       <>
                         <Clock className="w-4 h-4 text-amber-600" />
-                        <span className="font-bold text-amber-900">Countermeasures Submitted — Awaiting Quality Auditor Sign-Off (Approval Pending)</span>
+                        <span className="font-bold text-amber-900">Countermeasures Submitted — Awaiting Quality Auditor Sign-Off (Awaiting Review)</span>
                       </>
                     ) : isReqSignedOff ? (
                       <>

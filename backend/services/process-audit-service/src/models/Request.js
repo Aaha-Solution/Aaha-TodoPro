@@ -480,7 +480,7 @@ export const ProcessAuditRequest = {
       updates.push('closed_at = NOW()');
     }
 
-    const isApproved = status.toLowerCase().includes('approved') || status.toLowerCase().includes('progress') || status.toLowerCase().includes('signed') || status.toLowerCase().includes('approval');
+    const isApproved = status.toLowerCase().includes('approved') || status.toLowerCase().includes('progress') || status.toLowerCase().includes('signed') || status.toLowerCase().includes('approval') || status.toLowerCase().includes('review');
     if (isApproved) {
       const approvedBy = details.approved_by || details.approvedBy || actionTakenBy || 'Assigned Executor';
       const approvedById = details.approved_by_id || details.approvedById || null;

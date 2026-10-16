@@ -126,6 +126,7 @@ export const getProcessAuditDisplayStatus = (r) => {
   const isCloserCompleted = Boolean(
     sLower.includes('approval') ||
     sLower.includes('progress') ||
+    sLower.includes('review') ||
     (r.corrective_action && String(r.corrective_action).trim()) ||
     (r.action && String(r.action).trim()) ||
     (r.root_cause && String(r.root_cause).trim()) ||
@@ -135,7 +136,7 @@ export const getProcessAuditDisplayStatus = (r) => {
     (r.action_attachments && parseAttachments(r.action_attachments).length > 0)
   );
 
-  if (isCloserCompleted) return 'Approval Pending';
+  if (isCloserCompleted) return 'Awaiting Review';
   return 'Pending';
 };
 

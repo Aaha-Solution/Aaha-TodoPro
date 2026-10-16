@@ -244,9 +244,9 @@ const IhlrDashboard = () => {
       subtitleColor: 'text-rose-600',
     },
     {
-      title: 'Approval Pending',
+      title: 'Awaiting Review',
       value: stats.inProgress || 0,
-      subtitle: hasActiveFilters ? 'Filtered approval pending' : 'Awaiting Admin Sign-off & Closure',
+      subtitle: hasActiveFilters ? 'Filtered awaiting review' : 'Awaiting Admin Sign-off & Closure',
       icon: Clock,
       iconBg: 'bg-amber-50 text-amber-600',
       subtitleColor: 'text-amber-600',
@@ -271,11 +271,11 @@ const IhlrDashboard = () => {
         </span>
       );
     }
-    if (disp === 'APPROVAL PENDING') {
+    if (disp === 'AWAITING REVIEW' || disp === 'APPROVAL PENDING') {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
           <Clock className="w-3 h-3 text-amber-600" />
-          APPROVAL PENDING
+          AWAITING REVIEW
         </span>
       );
     }
@@ -426,7 +426,7 @@ const IhlrDashboard = () => {
                     >
                       <option value="All">All Statuses</option>
                       <option value="OPEN">Pending</option>
-                      <option value="IN_PROGRESS">Approval Pending</option>
+                      <option value="IN_PROGRESS">Awaiting Review</option>
                       <option value="CLOSED">Closed</option>
                     </select>
                     <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -508,7 +508,7 @@ const IhlrDashboard = () => {
                 {selectedStatus !== 'All' && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
                     <span>
-                      Status: <strong>{selectedStatus === 'OPEN' ? 'Pending' : selectedStatus === 'IN_PROGRESS' ? 'Approval Pending' : 'Closed'}</strong>
+                      Status: <strong>{selectedStatus === 'OPEN' ? 'Pending' : selectedStatus === 'IN_PROGRESS' ? 'Awaiting Review' : 'Closed'}</strong>
                     </span>
                     <button
                       type="button"

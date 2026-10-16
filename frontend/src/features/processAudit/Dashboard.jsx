@@ -205,7 +205,7 @@ const ProcessAuditDashboard = () => {
         dotColor: 'bg-teal-500',
       };
     }
-    if (s.includes('approval') || s.includes('progress')) {
+    if (s.includes('approval') || s.includes('progress') || s.includes('review')) {
       return {
         statusColor: 'bg-amber-50 text-amber-700 border-amber-200/80',
         dotColor: 'bg-amber-500',
@@ -341,7 +341,7 @@ const ProcessAuditDashboard = () => {
         return s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject') && !s.includes('progress') && !s.includes('signed'));
       }
       if (selectedStatus === 'IN_PROGRESS') {
-        return (s.includes('progress') || s.includes('approved') || s.includes('signed')) && !s.includes('close');
+        return (s.includes('progress') || s.includes('approved') || s.includes('signed') || s.includes('approval') || s.includes('review')) && !s.includes('close');
       }
       if (selectedStatus === 'CLOSED') {
         return s.includes('close');
@@ -396,9 +396,9 @@ const ProcessAuditDashboard = () => {
       subtitleColor: 'text-rose-600',
     },
     {
-      title: 'Approval Pending',
+      title: 'Awaiting Review',
       value: String(inProgress),
-      subtitle: hasActiveFilters ? 'Filtered approval pending' : (isDefaultYear ? `Current Year ${currentYear}` : 'Awaiting Admin Sign-off & Closure'),
+      subtitle: hasActiveFilters ? 'Filtered awaiting review' : (isDefaultYear ? `Current Year ${currentYear}` : 'Awaiting Admin Sign-off & Closure'),
       icon: Clock,
       iconBg: 'bg-amber-50 text-amber-600',
       subtitleColor: 'text-amber-600',
@@ -634,7 +634,7 @@ const ProcessAuditDashboard = () => {
                     >
                       <option value="All">All Statuses</option>
                       <option value="PENDING">Pending</option>
-                      <option value="IN_PROGRESS">Approval Pending</option>
+                      <option value="IN_PROGRESS">Awaiting Review</option>
                       <option value="CLOSED">Closed</option>
                     </select>
                     <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -716,7 +716,7 @@ const ProcessAuditDashboard = () => {
                 {selectedStatus !== 'All' && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
                     <span>
-                      Status: <strong>{selectedStatus === 'PENDING' ? 'Pending' : selectedStatus === 'IN_PROGRESS' ? 'Approval Pending' : 'Closed'}</strong>
+                      Status: <strong>{selectedStatus === 'PENDING' ? 'Pending' : selectedStatus === 'IN_PROGRESS' ? 'Awaiting Review' : 'Closed'}</strong>
                     </span>
                     <button
                       type="button"

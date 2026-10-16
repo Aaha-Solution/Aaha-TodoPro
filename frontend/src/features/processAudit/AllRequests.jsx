@@ -444,7 +444,7 @@ const AllRequests = () => {
         dotColor: 'bg-teal-500',
       };
     }
-    if (s.includes('approval')) {
+    if (s.includes('approval') || s.includes('review')) {
       return {
         statusColor: 'bg-amber-50 text-amber-700 border-amber-200/80',
         dotColor: 'bg-amber-500',
@@ -589,8 +589,9 @@ const AllRequests = () => {
     const matchesStatus =
       selectedStatus === 'All Statuses' ||
       selectedStatus === displayStatus ||
-      (selectedStatus === 'Signed off' && (displayStatus === 'Signed off' || displayStatus === 'In Progress')) ||
-      (selectedStatus === 'In Progress' && (displayStatus === 'In Progress' || displayStatus === 'Approval Pending'));
+      ((selectedStatus === 'Awaiting Review' || selectedStatus === 'Approval Pending' || selectedStatus === 'In Progress') &&
+        (displayStatus === 'Awaiting Review' || displayStatus === 'Approval Pending' || displayStatus === 'In Progress')) ||
+      (selectedStatus === 'Signed off' && (displayStatus === 'Signed off' || displayStatus === 'In Progress'));
 
     return matchesSearch && matchesShift && matchesStage && matchesExecutor && matchesStatus;
   });
@@ -846,7 +847,7 @@ const AllRequests = () => {
                 >
                   <option value="All Statuses">All Statuses</option>
                   <option value="Pending">Pending</option>
-                  <option value="Approval Pending">Approval Pending</option>
+                  <option value="Awaiting Review">Awaiting Review</option>
                   <option value={isAdmin ? "In Progress" : "Signed off"}>
                     {isAdmin ? "In Progress" : "Signed off"}
                   </option>
@@ -899,7 +900,7 @@ const AllRequests = () => {
                   const creatorStr = req.created_by || req.creator || '-';
                   const executorStr = req.executor || 'Assigned Lead';
                   const statusStr = getProcessAuditDisplayStatus(req);
-                  const isSignedOff = (statusStr === 'Approval Pending' || statusStr === 'Signed off' || statusStr === 'In Progress') && !statusStr.toLowerCase().includes('close');
+                  const isSignedOff = (statusStr === 'Awaiting Review' || statusStr === 'Approval Pending' || statusStr === 'Signed off' || statusStr === 'In Progress') && !statusStr.toLowerCase().includes('close');
                   const meta = getStatusMeta(statusStr);
 
                   return (

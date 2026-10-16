@@ -111,7 +111,7 @@ export const getDashboardStats = async (req, res) => {
     }).length;
     const inProgress = requests.filter(r => {
       const s = (r.status || '').toUpperCase();
-      return s === 'IN_PROGRESS' || s === 'IN-PROGRESS';
+      return s === 'IN_PROGRESS' || s === 'IN-PROGRESS' || s === 'APPROVAL_PENDING' || s === 'APPROVAL PENDING' || s === 'AWAITING_REVIEW' || s === 'AWAITING REVIEW' || s === 'UNDER_REVIEW';
     }).length;
     const closed = requests.filter(r => (r.status || '').toUpperCase() === 'CLOSED').length;
 
@@ -131,8 +131,24 @@ export const getDashboardStats = async (req, res) => {
         if (targetStatus === 'OPEN' || targetStatus === 'PENDING') {
           return s === 'OPEN' || s === 'PENDING';
         }
-        if (targetStatus === 'IN_PROGRESS' || targetStatus === 'IN-PROGRESS') {
-          return s === 'IN_PROGRESS' || s === 'IN-PROGRESS';
+        if (
+          targetStatus === 'IN_PROGRESS' || 
+          targetStatus === 'IN-PROGRESS' || 
+          targetStatus === 'APPROVAL_PENDING' || 
+          targetStatus === 'APPROVAL PENDING' || 
+          targetStatus === 'AWAITING_REVIEW' || 
+          targetStatus === 'AWAITING REVIEW' || 
+          targetStatus === 'UNDER_REVIEW'
+        ) {
+          return (
+            s === 'IN_PROGRESS' || 
+            s === 'IN-PROGRESS' || 
+            s === 'APPROVAL_PENDING' || 
+            s === 'APPROVAL PENDING' || 
+            s === 'AWAITING_REVIEW' || 
+            s === 'AWAITING REVIEW' || 
+            s === 'UNDER_REVIEW'
+          );
         }
         if (targetStatus === 'CLOSED') {
           return s === 'CLOSED';
@@ -149,6 +165,7 @@ export const getDashboardStats = async (req, res) => {
       pending: open,
       inProgress,
       approvalPending: inProgress,
+      awaitingReview: inProgress,
       closed,
       fourMBreakdown,
       recentRequests: sortedRequests.slice(0, 10),
@@ -211,10 +228,26 @@ export const getIhlrRequests = async (req, res) => {
           const s = (r.status || '').toUpperCase();
           return s === 'OPEN' || s === 'PENDING';
         });
-      } else if (targetStatus === 'IN_PROGRESS' || targetStatus === 'IN-PROGRESS' || targetStatus === 'APPROVAL_PENDING' || targetStatus === 'APPROVAL PENDING') {
+      } else if (
+        targetStatus === 'IN_PROGRESS' || 
+        targetStatus === 'IN-PROGRESS' || 
+        targetStatus === 'APPROVAL_PENDING' || 
+        targetStatus === 'APPROVAL PENDING' || 
+        targetStatus === 'AWAITING_REVIEW' || 
+        targetStatus === 'AWAITING REVIEW' || 
+        targetStatus === 'UNDER_REVIEW'
+      ) {
         requests = requests.filter(r => {
           const s = (r.status || '').toUpperCase();
-          return s === 'IN_PROGRESS' || s === 'IN-PROGRESS' || s === 'APPROVAL_PENDING' || s === 'APPROVAL PENDING';
+          return (
+            s === 'IN_PROGRESS' || 
+            s === 'IN-PROGRESS' || 
+            s === 'APPROVAL_PENDING' || 
+            s === 'APPROVAL PENDING' || 
+            s === 'AWAITING_REVIEW' || 
+            s === 'AWAITING REVIEW' || 
+            s === 'UNDER_REVIEW'
+          );
         });
       } else {
         requests = requests.filter(r => (r.status || '').toUpperCase() === targetStatus);

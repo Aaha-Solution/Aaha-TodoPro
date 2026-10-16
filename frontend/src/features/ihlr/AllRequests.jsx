@@ -268,11 +268,11 @@ const IhlrAllRequests = () => {
         </span>
       );
     }
-    if (disp === 'APPROVAL PENDING') {
+    if (disp === 'AWAITING REVIEW' || disp === 'APPROVAL PENDING') {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
           <Clock className="w-3 h-3 text-amber-600" />
-          APPROVAL PENDING
+          AWAITING REVIEW
         </span>
       );
     }
@@ -418,7 +418,7 @@ const IhlrAllRequests = () => {
               >
                 <option value="All">All Statuses</option>
                 <option value="OPEN">Pending</option>
-                <option value="IN_PROGRESS">Approval Pending</option>
+                <option value="IN_PROGRESS">Awaiting Review</option>
                 <option value="CLOSED">Closed</option>
               </select>
             </div>

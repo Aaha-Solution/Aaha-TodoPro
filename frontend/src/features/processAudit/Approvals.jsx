@@ -288,7 +288,7 @@ const ProcessAuditApprovals = () => {
   const isCloserCompleted = (r) => {
     if (!r) return false;
     const s = String(r.status || '').toLowerCase();
-    if (s.includes('approval') || s.includes('progress') || s.includes('signed')) return true;
+    if (s.includes('approval') || s.includes('progress') || s.includes('signed') || s.includes('review')) return true;
     return Boolean(
       (r.corrective_action && String(r.corrective_action).trim()) ||
       (r.action && String(r.action).trim()) ||
@@ -633,7 +633,7 @@ const ProcessAuditApprovals = () => {
 
       const targetStatus = (selectedRequest.status || '').toLowerCase() === 'closed'
         ? 'Closed'
-        : 'Approval Pending';
+        : 'Awaiting Review';
 
       const payload = {
         status: targetStatus,
@@ -834,6 +834,8 @@ const ProcessAuditApprovals = () => {
     if (selectedStatus === 'Pending' || selectedStatus === 'PENDING') {
       matchesStatus = !closerDone && !isClosed && !isRejected && !isOpen;
     } else if (
+      selectedStatus === 'Awaiting Review' ||
+      selectedStatus === 'AWAITING REVIEW' ||
       selectedStatus === 'Approval Pending' ||
       selectedStatus === 'APPROVAL PENDING' ||
       selectedStatus === 'In Progress' ||
@@ -2052,7 +2054,7 @@ const ProcessAuditApprovals = () => {
               >
                 <option value="All">All Decisions</option>
                 <option value="Pending">Pending</option>
-                <option value="Approval Pending">Approval Pending</option>
+                <option value="Awaiting Review">Awaiting Review</option>
                 <option value="Signed off">Signed off</option>
                 <option value="Closed">Closed</option>
                 <option value="Open">Open</option>
@@ -2185,7 +2187,7 @@ const ProcessAuditApprovals = () => {
                               </span>
                             ) : isCloserCompleted(r) ? (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                APPROVAL PENDING
+                                AWAITING REVIEW
                               </span>
                             ) : (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">

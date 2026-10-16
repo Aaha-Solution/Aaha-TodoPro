@@ -367,6 +367,9 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     !isReqOpen && (
       (request?.status || '').toUpperCase() === 'IN_PROGRESS' ||
       (request?.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
+      (request?.status || '').toUpperCase() === 'AWAITING_REVIEW' ||
+      (request?.status || '').toUpperCase() === 'AWAITING REVIEW' ||
+      (request?.status || '').toUpperCase() === 'UNDER_REVIEW' ||
       (request && (
         Boolean(request.action && String(request.action).trim()) &&
         Boolean(request.target_date) &&
@@ -386,11 +389,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         </span>
       );
     }
-    if (disp === 'APPROVAL PENDING') {
+    if (disp === 'AWAITING REVIEW' || disp === 'APPROVAL PENDING') {
       return (
         <span className="px-3 py-0.5 rounded-full text-xs font-semibold border border-amber-400 text-amber-800 bg-amber-50/70 inline-flex items-center gap-1">
           <Clock className="w-3 h-3 text-amber-600" />
-          <span>Approval Pending</span>
+          <span>Awaiting Review</span>
         </span>
       );
     }
@@ -572,7 +575,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 fontStyle: 'bold',
                 textColor: getIhlrDisplayStatus(request.status, request) === 'CLOSED'
                   ? [22, 101, 52]
-                  : getIhlrDisplayStatus(request.status, request) === 'APPROVAL PENDING'
+                  : (getIhlrDisplayStatus(request.status, request) === 'AWAITING REVIEW' || getIhlrDisplayStatus(request.status, request) === 'APPROVAL PENDING')
                   ? [180, 83, 9]
                   : [225, 29, 72]
               }
@@ -860,7 +863,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 </span>
               ) : isCompleted ? (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
-                  Approval Pending
+                  Awaiting Review
                 </span>
               ) : (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300">

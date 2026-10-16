@@ -102,7 +102,9 @@ const IhlrApprovals = () => {
     selectedRequest && !isSelectedOpen && (
       String(selectedRequest.status || '').toUpperCase() === 'IN_PROGRESS' ||
       String(selectedRequest.status || '').toUpperCase() === 'CLOSED' ||
-      String(selectedRequest.status || '').toUpperCase() === 'APPROVAL_PENDING'
+      String(selectedRequest.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
+      String(selectedRequest.status || '').toUpperCase() === 'AWAITING_REVIEW' ||
+      String(selectedRequest.status || '').toUpperCase() === 'AWAITING REVIEW'
     )
   );
 
@@ -717,7 +719,9 @@ const IhlrApprovals = () => {
     const isReqOpen = String(r.status || '').toUpperCase() === 'OPEN';
     const isCompleted = !isReqOpen && (
       String(r.status || '').toUpperCase() === 'IN_PROGRESS' ||
-      String(r.status || '').toUpperCase() === 'APPROVAL_PENDING' || (
+      String(r.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
+      String(r.status || '').toUpperCase() === 'AWAITING_REVIEW' ||
+      String(r.status || '').toUpperCase() === 'AWAITING REVIEW' || (
         Boolean(r.action && String(r.action).trim()) &&
         Boolean(r.target_date) &&
         (Array.isArray(r.prod_why_why) && r.prod_why_why.some(w => Boolean(w && String(w).trim())))
@@ -1853,7 +1857,7 @@ const IhlrApprovals = () => {
               >
                 <option value="All">All Decisions</option>
                 <option value="OPEN">Pending</option>
-                <option value="IN_PROGRESS">Approval Pending</option>
+                <option value="IN_PROGRESS">Awaiting Review</option>
               </select>
             </div>
 
@@ -1957,14 +1961,16 @@ const IhlrApprovals = () => {
                               </span>
                             ) : (String(r.status || '').toUpperCase() !== 'OPEN' && (
                               String(r.status || '').toUpperCase() === 'IN_PROGRESS' ||
-                              String(r.status || '').toUpperCase() === 'APPROVAL_PENDING' || (
+                              String(r.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
+                              String(r.status || '').toUpperCase() === 'AWAITING_REVIEW' ||
+                              String(r.status || '').toUpperCase() === 'AWAITING REVIEW' || (
                                 Boolean(r.action && String(r.action).trim()) &&
                                 Boolean(r.target_date) &&
                                 (Array.isArray(r.prod_why_why) && r.prod_why_why.some(w => Boolean(w && String(w).trim())))
                               )
                             )) ? (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                APPROVAL PENDING
+                                AWAITING REVIEW
                               </span>
                             ) : (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
