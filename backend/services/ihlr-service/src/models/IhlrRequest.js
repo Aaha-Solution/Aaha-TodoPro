@@ -8,6 +8,16 @@ const resolveIhlrStatus = (r) => {
   return currentStatus || 'OPEN';
 };
 
+const safeJsonParse = (val, fallback = []) => {
+  if (!val) return fallback;
+  if (typeof val === 'object') return val;
+  try {
+    return JSON.parse(val);
+  } catch {
+    return fallback;
+  }
+};
+
 export const IhlrRequest = {
   getAll: async () => {
     try {
@@ -16,9 +26,9 @@ export const IhlrRequest = {
         return rows.map(r => ({
           ...r,
           status: resolveIhlrStatus(r),
-          qa_why_why: typeof r.qa_why_why === 'string' ? JSON.parse(r.qa_why_why) : (r.qa_why_why || []),
-          prod_why_why: typeof r.prod_why_why === 'string' ? JSON.parse(r.prod_why_why) : (r.prod_why_why || []),
-          reassignment_history: typeof r.reassignment_history === 'string' ? JSON.parse(r.reassignment_history) : (r.reassignment_history || [])
+          qa_why_why: safeJsonParse(r.qa_why_why),
+          prod_why_why: safeJsonParse(r.prod_why_why),
+          reassignment_history: safeJsonParse(r.reassignment_history)
         }));
       }
     } catch (err) {
@@ -36,9 +46,9 @@ export const IhlrRequest = {
           return {
             ...r,
             status: resolveIhlrStatus(r),
-            qa_why_why: typeof r.qa_why_why === 'string' ? JSON.parse(r.qa_why_why) : (r.qa_why_why || []),
-            prod_why_why: typeof r.prod_why_why === 'string' ? JSON.parse(r.prod_why_why) : (r.prod_why_why || []),
-            reassignment_history: typeof r.reassignment_history === 'string' ? JSON.parse(r.reassignment_history) : (r.reassignment_history || [])
+            qa_why_why: safeJsonParse(r.qa_why_why),
+            prod_why_why: safeJsonParse(r.prod_why_why),
+            reassignment_history: safeJsonParse(r.reassignment_history)
           };
         }
       }
@@ -207,8 +217,17 @@ export const IhlrRequest = {
         }
 
         if (fields.length > 0) {
-          values.push(id);
-          await pool.query(`UPDATE ihlr_requests SET ${fields.join(', ')} WHERE id = ?`, values);
+          values.push(id, id);
+          try {
+            await pool.query(`UPDATE ihlr_requests SET ${fields.join(', ')} WHERE id = ? OR req_no = ?`, values);
+          } catch (queryErr) {
+            if (queryErr.message && queryErr.message.includes('reassignment_history')) {
+              await pool.query('ALTER TABLE ihlr_requests ADD COLUMN reassignment_history JSON NULL AFTER remarks').catch(() => {});
+              await pool.query(`UPDATE ihlr_requests SET ${fields.join(', ')} WHERE id = ? OR req_no = ?`, values);
+            } else {
+              throw queryErr;
+            }
+          }
         }
 
         return await IhlrRequest.getById(id);

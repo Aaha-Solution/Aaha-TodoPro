@@ -611,7 +611,7 @@ const IhlrApprovals = () => {
       return;
     }
 
-    if (!closerRemarks || !closerRemarks.trim()) {
+    if (!isReassignOpen && (!closerRemarks || !closerRemarks.trim())) {
       setRemarksError(true);
       return; // DO NOT TRIGGER BACKEND!
     }
@@ -645,8 +645,14 @@ const IhlrApprovals = () => {
     setErrorMessage('');
 
     try {
+      const effectiveRemarks = closerRemarks && closerRemarks.trim()
+        ? closerRemarks.trim()
+        : isReassignOpen
+        ? `Reassigned to ${reassignedPerson} (${reassignedDept}) for analysis.`
+        : '';
+
       const payload = {
-        remarks: closerRemarks.trim(),
+        remarks: effectiveRemarks,
         status: isReassignOpen ? 'OPEN' : (closerStatus || 'CLOSED')
       };
 
@@ -1824,12 +1830,12 @@ const IhlrApprovals = () => {
                       {isSavingAdmin ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Saving Admin Sign-Off...</span>
+                          <span>{isReassignOpen ? 'Reassigning Incident...' : 'Saving Admin Sign-Off...'}</span>
                         </>
                       ) : (
                         <>
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>Save Admin Review &amp; Status Sign-Off</span>
+                          <span>{isReassignOpen ? 'Confirm & Reassign Closer' : 'Save Admin Review & Status Sign-Off'}</span>
                         </>
                       )}
                     </button>

@@ -591,10 +591,10 @@ export const updateIhlrRequest = async (req, res) => {
         if (req.body[k] !== undefined) safeUpdates[k] = req.body[k];
       }
 
-      // Mandatory validation: If Admin updates remarks or admin review, remarks cannot be empty
+      // Mandatory validation: If Admin updates remarks or admin review, remarks cannot be empty (unless reassigning)
       if (req.body.remarks !== undefined) {
         const trimmedRemarks = typeof req.body.remarks === 'string' ? req.body.remarks.trim() : '';
-        if (!trimmedRemarks) {
+        if (!trimmedRemarks && !req.body.resp && !req.body.resp_person) {
           return errorResponse(res, 'Remarks is required for Admin Review and Status Sign-Off.', 400);
         }
         safeUpdates.remarks = trimmedRemarks;
@@ -716,18 +716,22 @@ export const updateIhlrRequest = async (req, res) => {
 
       const reassignEntry = {
         reassigned_at: new Date().toISOString(),
-        reassigned_by: req.user?.name || safeUpdates.user?.name || body.user?.name || 'Quality Admin',
-        reassigned_by_id: req.user?.id || safeUpdates.user?.id || body.user?.id || null,
-        reassigned_by_email: req.user?.email || safeUpdates.user?.email || body.user?.email || null,
-        prev_resp: prevRespDept,
-        prev_resp_person: prevRespPerson,
-        new_resp: newRespDept,
-        new_resp_person: newRespPerson,
-        remarks: safeUpdates.remarks || ''
+        reassigned_by: req.user?.name || req.body?.user?.name || req.body?.user_name || 'Quality Admin',
+        reassigned_by_id: req.user?.id || req.body?.user?.id || req.body?.user_id || null,
+        reassigned_by_email: req.user?.email || req.body?.user?.email || req.body?.user_email || null,
+        prev_resp: existing.resp || prevRespDept,
+        prev_resp_person: existing.resp_person || prevRespPerson,
+        new_resp: safeUpdates.resp || existing.resp || newRespDept,
+        new_resp_person: safeUpdates.resp_person || existing.resp_person || newRespPerson,
+        remarks: safeUpdates.remarks || `Reassigned from ${existing.resp || 'previous department'} to ${safeUpdates.resp || existing.resp}`
       };
 
       currentHistory.push(reassignEntry);
       safeUpdates.reassignment_history = currentHistory;
+
+      if (!safeUpdates.remarks || !safeUpdates.remarks.trim()) {
+        safeUpdates.remarks = `Reassigned from ${existing.resp || 'previous department'} to ${safeUpdates.resp || existing.resp}${safeUpdates.resp_person ? ' (' + safeUpdates.resp_person + ')' : ''}`;
+      }
     }
 
     // Clean dates and JSON structures safely
@@ -766,10 +770,11 @@ export const updateIhlrRequest = async (req, res) => {
       return errorResponse(res, 'IHLR Request not found to update', 404);
     }
 
+    const reqNo = updated.req_no || `IHLR-${updated.id || id}`;
+
     // Trigger In-App Notifications and Email Dispatch
     if (pool && updated) {
       try {
-        const reqNo = updated.req_no || `IHLR-${updated.id || id}`;
         const isClosed = String(updated.status || '').toUpperCase() === 'CLOSED';
         const closerName = req.user?.name || updated.resp_person || 'Assigned Officer';
         const closerDept = updated.resp || req.user?.department || 'PRODUCTION';

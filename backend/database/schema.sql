@@ -163,6 +163,7 @@ CREATE TABLE ihlr_requests (
   evidence_attachment TEXT NULL,
   target_date DATE NULL,
   remarks TEXT NULL,
+  reassignment_history JSON NULL,
   status ENUM('OPEN', 'IN_PROGRESS', 'CLOSED') DEFAULT 'OPEN',
   created_by VARCHAR(100) NULL,
   created_by_id INT NULL,
