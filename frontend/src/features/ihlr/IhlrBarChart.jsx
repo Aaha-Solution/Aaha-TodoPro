@@ -142,15 +142,11 @@ export const IhlrBarChart = ({
   const yTicks = [0, Math.round(maxVal * 0.33), Math.round(maxVal * 0.66), maxVal];
 
   const percentX = hoveredBar ? (hoveredBar.centerX / svgWidth) * 100 : 50;
-  const percentY = hoveredBar ? (hoveredBar.barTopY / svgHeight) * 100 : 50;
-
-  const tooltipAlignClass = percentX > 75
-    ? '-translate-x-[85%]'
-    : percentX < 25
-    ? '-translate-x-[15%]'
-    : '-translate-x-1/2';
-
-  const arrowLeftPercent = percentX > 75 ? '85%' : percentX < 25 ? '15%' : '50%';
+  const rawPercentY = hoveredBar ? (hoveredBar.barTopY / svgHeight) * 100 : 50;
+  // Vertically align with the top of the bar/value, clamped so it stays inside chart canvas
+  const clampedPercentY = Math.max(18, Math.min(78, rawPercentY));
+  // Show tooltip on right side by default; if near the extreme right canvas boundary (> 82%), flip to left
+  const showOnRight = percentX <= 82;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all duration-300">
@@ -395,14 +391,13 @@ export const IhlrBarChart = ({
                     }}
                     className="cursor-pointer transition-all duration-200"
                   >
-                    {/* Column hover background */}
+                    {/* Invisible column hover trigger area (no visible background on hover) */}
                     <rect
                       x={centerX - slotWidth / 2 + 2}
                       y={paddingTop}
                       width={slotWidth - 4}
                       height={innerHeight}
-                      fill={isHovered ? 'rgba(59, 130, 246, 0.08)' : 'transparent'}
-                      rx="8"
+                      fill="transparent"
                     />
 
                     {/* Sub-bar: Pending (Rose) */}
@@ -484,14 +479,17 @@ export const IhlrBarChart = ({
               })}
             </svg>
 
-            {/* Floating Tooltip anchored directly near the active chart bar */}
+            {/* Floating Tooltip positioned cleanly on the right side of the hovered bar/value */}
             {hoveredBar && (
               <div
-                className={`absolute z-30 pointer-events-none -translate-y-full mb-3 bg-slate-900/95 backdrop-blur-md text-white px-3.5 py-2.5 rounded-xl shadow-2xl border border-slate-700/80 min-w-[200px] transition-all duration-150 animate-in fade-in zoom-in-95 select-none ${tooltipAlignClass}`}
+                className={`absolute z-30 pointer-events-none bg-slate-900/95 backdrop-blur-md text-white px-3.5 py-2.5 rounded-xl shadow-2xl border border-slate-700/80 min-w-[210px] transition-all duration-150 animate-in fade-in zoom-in-95 select-none -translate-y-1/2 ${
+                  showOnRight ? '' : '-translate-x-full'
+                }`}
                 style={{
-                  left: `${percentX}%`,
-                  top: `${percentY}%`,
-                  marginTop: '-12px',
+                  left: showOnRight
+                    ? `calc(${percentX}% + ${barWidth / 2 + 12}px)`
+                    : `calc(${percentX}% - ${barWidth / 2 + 12}px)`,
+                  top: `${clampedPercentY}%`,
                 }}
               >
                 {/* Header */}
@@ -541,14 +539,16 @@ export const IhlrBarChart = ({
                   </div>
                 )}
 
-                {/* Downward pointing arrow directly pointing to the hovered bar */}
-                <div
-                  className="absolute top-full -mt-1 w-2.5 h-2.5 bg-slate-900 border-r border-b border-slate-700/80 rotate-45"
-                  style={{
-                    left: arrowLeftPercent,
-                    transform: 'translateX(-50%)',
-                  }}
-                />
+                {/* Pointer arrow pointing directly towards the bar/value */}
+                {showOnRight ? (
+                  <div
+                    className="absolute right-full top-1/2 -mr-1.5 -translate-y-1/2 w-2.5 h-2.5 bg-slate-900 border-l border-b border-slate-700/80 rotate-45 pointer-events-none"
+                  />
+                ) : (
+                  <div
+                    className="absolute left-full top-1/2 -ml-1.5 -translate-y-1/2 w-2.5 h-2.5 bg-slate-900 border-r border-t border-slate-700/80 rotate-45 pointer-events-none"
+                  />
+                )}
               </div>
             )}
           </div>
