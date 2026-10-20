@@ -1455,7 +1455,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                             : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
                         }`}
                       >
-                        <option value="">Select Line / Cell</option>
+                        <option value="">Select</option>
                         {IHLR_RECEIVED_FROM_OPTIONS.map((opt) => (
                           <option key={opt} value={opt}>
                             {opt}

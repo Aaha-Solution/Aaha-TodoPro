@@ -1,14 +1,14 @@
 import axios from 'axios';
 import { storage } from '../utils/storage';
 
-const DEFAULT_GATEWAY_URL = 'https://api.sadhish.info';
+const DEFAULT_GATEWAY_URL = 'http://192.168.0.168:5000';
 
 /**
  * Dynamically resolves the API Gateway Base URL.
  * Priority:
  * 1. import.meta.env.VITE_GATEWAY_URL
  * 2. import.meta.env.VITE_API_BASE_URL (stripping trailing /api)
- * 3. Default: https://api.sadhish.info
+ * 3. Default: http://192.168.0.168:5000
  */
 export const getGatewayBaseUrl = () => {
   if (import.meta.env.VITE_GATEWAY_URL) {
