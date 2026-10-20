@@ -29,7 +29,7 @@ import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
 import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
 import { getTodayDateInput, formatDateDDMMYYYY } from '../../utils/dateUtils';
-import { IHLR_SHIFTS } from '../../utils/constants';
+import { IHLR_SHIFTS, IHLR_RECEIVED_FROM_OPTIONS } from '../../utils/constants';
 import { parseAttachments } from './IhlrAttachmentView';
 
 const IhlrCreateRequest = () => {
@@ -852,22 +852,30 @@ const IhlrCreateRequest = () => {
                 <span>Received From (Line/Cell)</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
-              <input
-                type="text"
-                placeholder="e.g. D3/LINE"
+              <select
                 value={formData.received_from}
                 onChange={(e) => {
                   setFormData({ ...formData, received_from: e.target.value });
-                  if (errors.received_from && e.target.value.trim()) {
+                  if (errors.received_from && e.target.value) {
                     setErrors((prev) => ({ ...prev, received_from: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none transition ${
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition cursor-pointer ${
                   errors.received_from
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                 }`}
-              />
+              >
+                <option value="">Select Line / Cell</option>
+                {IHLR_RECEIVED_FROM_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+                {formData.received_from && !IHLR_RECEIVED_FROM_OPTIONS.includes(formData.received_from) && (
+                  <option value={formData.received_from}>{formData.received_from}</option>
+                )}
+              </select>
               {errors.received_from && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
                   <span>* {errors.received_from}</span>

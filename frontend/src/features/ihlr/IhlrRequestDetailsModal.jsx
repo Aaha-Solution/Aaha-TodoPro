@@ -37,7 +37,7 @@ import AttachmentChipList from '../../components/common/AttachmentChipList';
 import { resolveAttachmentUrl } from '../../components/common/attachmentUtils';
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
-import { formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
+import { formatIhlrShiftDisplay, getIhlrShiftDetails, IHLR_RECEIVED_FROM_OPTIONS } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
 import { ihlrService } from '../../services/ihlrService';
 
@@ -1439,24 +1439,32 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        RECEIVED FROM LINE <span className="text-rose-500">*</span>
+                        RECEIVED FROM (LINE/CELL) <span className="text-rose-500">*</span>
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={editFormData.received_from}
                         onChange={(e) => {
                           setEditFormData(prev => ({ ...prev, received_from: e.target.value }));
-                          if (editErrors.received_from && e.target.value.trim()) {
+                          if (editErrors.received_from && e.target.value) {
                             setEditErrors(prev => ({ ...prev, received_from: '' }));
                           }
                         }}
-                        placeholder="e.g. Line 1"
-                        className={`w-full px-3 py-2 rounded-xl text-xs text-slate-900 outline-none transition ${
+                        className={`w-full px-3 py-2 rounded-xl text-xs text-slate-900 outline-none transition cursor-pointer font-medium ${
                           editErrors.received_from
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                             : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
                         }`}
-                      />
+                      >
+                        <option value="">Select Line / Cell</option>
+                        {IHLR_RECEIVED_FROM_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                        {editFormData.received_from && !IHLR_RECEIVED_FROM_OPTIONS.includes(editFormData.received_from) && (
+                          <option value={editFormData.received_from}>{editFormData.received_from}</option>
+                        )}
+                      </select>
                       {editErrors.received_from && (
                         <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
                           <span>* {editErrors.received_from}</span>
@@ -1836,7 +1844,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                     <div>
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        RECEIVED FROM LINE
+                        RECEIVED FROM (LINE/CELL)
                       </span>
                       <span className="font-medium text-slate-800 font-mono">
                         {req.received_from || 'Assembly Line'}
