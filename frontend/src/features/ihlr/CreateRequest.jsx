@@ -866,7 +866,7 @@ const IhlrCreateRequest = () => {
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                 }`}
               >
-                <option value="">Select Line / Cell</option>
+                <option value="">Select</option>
                 {IHLR_RECEIVED_FROM_OPTIONS.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
