@@ -118,6 +118,9 @@ export const IhlrRequest = {
         else if (normalizedShift.includes('2') || normalizedShift.toLowerCase() === 'ii') normalizedShift = 'Shift 2';
         else if (normalizedShift.includes('3') || normalizedShift.toLowerCase() === 'iii') normalizedShift = 'Shift 3';
 
+        let normalizedReceivedFrom = String(received_from || '').trim().toUpperCase();
+        normalizedReceivedFrom = normalizedReceivedFrom === 'L3' ? 'L3' : 'LINE';
+
         const [result] = await pool.query(
           `INSERT INTO ihlr_requests (
             req_no, batch_date, shift, problem, model, problem_detected_at, 
@@ -133,7 +136,7 @@ export const IhlrRequest = {
             problem,
             model,
             problem_detected_at,
-            received_from,
+            normalizedReceivedFrom,
             analysis_done_by,
             defect_image || '',
             JSON.stringify(qa_why_why),
@@ -196,6 +199,10 @@ export const IhlrRequest = {
               else if (s.includes('1') || s === 'i') val = 'Shift 1';
               else if (s.includes('2') || s === 'ii') val = 'Shift 2';
               else if (s.includes('3') || s === 'iii') val = 'Shift 3';
+            }
+            if (key === 'received_from' && val) {
+              const rf = String(val).trim().toUpperCase();
+              val = rf === 'L3' ? 'L3' : 'LINE';
             }
             values.push(val);
           }

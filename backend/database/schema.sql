@@ -150,7 +150,7 @@ CREATE TABLE ihlr_requests (
   problem VARCHAR(255) NOT NULL,
   model VARCHAR(100) NOT NULL,
   problem_detected_at VARCHAR(100) NOT NULL,
-  received_from VARCHAR(100) NOT NULL,
+  received_from ENUM('L3', 'LINE') NOT NULL DEFAULT 'LINE',
   analysis_done_by VARCHAR(100) NOT NULL,
   defect_image TEXT NULL,
   qa_why_why JSON NULL,

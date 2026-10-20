@@ -535,7 +535,7 @@ export const createIhlrRequest = async (req, res) => {
         problem: data.problem,
         model: data.model,
         problem_detected_at: data.problem_detected_at || '',
-        received_from: data.received_from || '',
+        received_from: (String(data.received_from || '').trim().toUpperCase() === 'L3') ? 'L3' : 'LINE',
         analysis_done_by: String(data.analysis_done_by || '').replace(/[0-9]/g, '').trim(),
         defect_image: data.defect_image || '',
         qa_why_why: data.qa_why_why || [],
