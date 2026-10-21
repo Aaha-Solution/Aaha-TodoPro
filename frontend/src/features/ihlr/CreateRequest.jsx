@@ -95,7 +95,7 @@ const IhlrCreateRequest = () => {
 
   const defaultFormData = {
     req_no: 'IHLR-1',
-    created_by: getLoggedInUserName(),
+    created_by: '',
     batch_date: getTodayDateInput(),
     shift: '',
     problem: '',
@@ -129,12 +129,13 @@ const IhlrCreateRequest = () => {
 
   const [formData, setFormData] = useState(() => {
     const saved = getSavedDraft();
-    const currentAdmin = getLoggedInUserName();
     if (saved?.formData) {
+      const savedCreatedBy = saved.formData.created_by;
+      const isOldDefault = savedCreatedBy === 'Admin' || savedCreatedBy === getLoggedInUserName();
       return {
         ...defaultFormData,
         ...saved.formData,
-        created_by: saved.formData.created_by || currentAdmin,
+        created_by: isOldDefault ? '' : (savedCreatedBy || ''),
         shift: saved.formData.shift || '',
         status: 'OPEN'
       };
@@ -200,7 +201,7 @@ const IhlrCreateRequest = () => {
     setFormData((prev) => ({
       ...defaultFormData,
       req_no: prev.req_no || 'IHLR-1',
-      created_by: getLoggedInUserName(),
+      created_by: '',
     }));
     setQaWhyWhy(['', '', '', '', '']);
     setAttachments([]);
@@ -234,22 +235,12 @@ const IhlrCreateRequest = () => {
   }, []);
 
   useEffect(() => {
-    const currentAdmin = getLoggedInUserName();
-    if (currentAdmin && !formData.created_by) {
-      setFormData((prev) => ({
-        ...prev,
-        created_by: prev.created_by || currentAdmin,
-      }));
-    }
-  }, [user]);
-
-  useEffect(() => {
     if (editId) {
       ihlrService.getRequestById(editId).then((r) => {
         if (r) {
           setFormData({
             req_no: r.req_no || `IHLR-${r.id}`,
-            created_by: r.created_by || getLoggedInUserName(),
+            created_by: r.created_by || '',
             batch_date: r.batch_date ? String(r.batch_date).split('T')[0] : getTodayDateInput(),
             shift: r.shift || '',
             problem: r.problem || '',
@@ -748,7 +739,7 @@ const IhlrCreateRequest = () => {
               />
             </div>
 
-            {/* Created By (Logged Admin / Requester) */}
+            {/* Created By (Manual entry by user) */}
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
                 <span>Created By</span>
@@ -756,8 +747,8 @@ const IhlrCreateRequest = () => {
               </label>
               <input
                 type="text"
-                placeholder="e.g. Admin / Quality Team"
-                value={formData.created_by}
+                placeholder="e.g. Enter creator name"
+                value={formData.created_by || ''}
                 onChange={(e) => {
                   setFormData({ ...formData, created_by: e.target.value });
                   if (errors.created_by && e.target.value.trim()) {
