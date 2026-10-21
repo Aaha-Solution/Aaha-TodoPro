@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { 
-  FileText, 
-  UploadCloud, 
+import {
+  FileText,
+  UploadCloud,
   Paperclip,
   X,
-  Send, 
-  ShieldAlert, 
-  Trash2, 
+  Send,
+  ShieldAlert,
+  Trash2,
   FileSpreadsheet,
   File as FileIcon,
   Presentation,
@@ -72,7 +72,7 @@ const IhlrCreateRequest = () => {
           const parsed = JSON.parse(u);
           uid = parsed?.id || parsed?.email;
         }
-      } catch {}
+      } catch { }
     }
     return `ihlr_create_request_draft_${uid || 'default'}`;
   };
@@ -196,7 +196,7 @@ const IhlrCreateRequest = () => {
       sessionStorage.removeItem('ihlr_create_request_draft');
       localStorage.removeItem(key);
       localStorage.removeItem('ihlr_create_request_draft');
-    } catch {}
+    } catch { }
     setFormData((prev) => ({
       ...defaultFormData,
       req_no: prev.req_no || 'IHLR-1',
@@ -626,7 +626,7 @@ const IhlrCreateRequest = () => {
         sessionStorage.removeItem('ihlr_create_request_draft');
         localStorage.removeItem(draftKey);
         localStorage.removeItem('ihlr_create_request_draft');
-      } catch {}
+      } catch { }
       await success(`IHLR Analysis Report ${formData.req_no} submitted successfully!`);
       window.dispatchEvent(new Event('refreshNotifications'));
       navigate('/ihlr/all-requests');
@@ -677,25 +677,25 @@ const IhlrCreateRequest = () => {
             {isEditMode ? `Edit Requester Details (${formData.req_no})` : 'Create IHLR Analysis Report'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {isEditMode 
+            {isEditMode
               ? 'Update line rejection incident details, defect description, attachments, and QA 5-Why analysis.'
               : 'Log line rejection incident, 5-Why problem root cause, and occurrence containment.'}
           </p>
         </div>
 
-        {/* Creator Info Pill */}
+        {/* Logged Admin Info Pill */}
         <div className="flex items-center gap-2.5 px-3.5 py-2 bg-white rounded-xl border border-slate-200/80 shadow-2xs self-start sm:self-auto">
           <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs uppercase">
-            {(formData.created_by || getLoggedInUserName()).charAt(0).toUpperCase()}
+            {getLoggedInUserName().charAt(0).toUpperCase()}
           </div>
           <div className="text-left text-xs leading-tight">
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-slate-400 font-semibold uppercase">Created By</span>
+              <span className="text-[10px] text-slate-400 font-semibold uppercase">Logged Admin</span>
               <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
                 {userDept || 'INCOMING QUALITY'}
               </span>
             </div>
-            <span className="font-bold text-slate-800">{formData.created_by || getLoggedInUserName()}</span>
+            <span className="font-bold text-slate-800">{getLoggedInUserName()}</span>
           </div>
         </div>
       </div>
@@ -750,14 +750,9 @@ const IhlrCreateRequest = () => {
 
             {/* Created By (Logged Admin / Requester) */}
             <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center justify-between">
-                <span className="flex items-center">
-                  <span>Created By</span>
-                  <span className="text-red-500 font-bold ml-1">*</span>
-                </span>
-                <span className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                  Logged Admin
-                </span>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+                <span>Created By</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <input
                 type="text"
@@ -769,11 +764,10 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, created_by: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition ${
-                  errors.created_by
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition ${errors.created_by
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               />
               {errors.created_by && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -799,11 +793,10 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, batch_date: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition ${
-                  errors.batch_date
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition ${errors.batch_date
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               />
               {errors.batch_date && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -826,11 +819,10 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, shift: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition cursor-pointer ${
-                  errors.shift
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition cursor-pointer ${errors.shift
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               >
                 <option value="">Select Shift</option>
                 {IHLR_SHIFTS.map((s) => (
@@ -862,11 +854,10 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, model: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl font-semibold text-slate-900 outline-none transition ${
-                  errors.model
+                className={`w-full px-3 py-2 border rounded-xl font-semibold text-slate-900 outline-none transition ${errors.model
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               />
               {errors.model && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -891,11 +882,10 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, problem: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition ${
-                  errors.problem
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition ${errors.problem
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               />
               {errors.problem && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -920,11 +910,10 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, problem_detected_at: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none transition ${
-                  errors.problem_detected_at
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none transition ${errors.problem_detected_at
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               />
               {errors.problem_detected_at && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -947,11 +936,10 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, received_from: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition cursor-pointer ${
-                  errors.received_from
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition cursor-pointer ${errors.received_from
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               >
                 <option value="">Select</option>
                 {IHLR_RECEIVED_FROM_OPTIONS.map((opt) => (
@@ -996,11 +984,10 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, analysis_done_by: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition ${
-                  errors.analysis_done_by
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition ${errors.analysis_done_by
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               />
               {errors.analysis_done_by && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -1026,11 +1013,10 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, actual_qty: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-mono transition ${
-                  errors.actual_qty
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-mono transition ${errors.actual_qty
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               />
               {errors.actual_qty && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -1053,11 +1039,10 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, four_m: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-bold transition cursor-pointer ${
-                  errors.four_m
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-bold transition cursor-pointer ${errors.four_m
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               >
                 <option value="">Select 4M Category</option>
                 <option value="MAN">MAN</option>
@@ -1089,11 +1074,10 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, resp: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-bold cursor-pointer transition ${
-                  errors.resp
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-bold cursor-pointer transition ${errors.resp
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               >
                 <option value="">Select Responsibility</option>
                 <option value="MAINTENANCE">MAINTENANCE</option>
@@ -1137,17 +1121,16 @@ const IhlrCreateRequest = () => {
                     setIsUserDropdownOpen((prev) => !prev);
                   }
                 }}
-                className={`w-full min-h-[42px] px-3 py-2 border rounded-xl text-xs font-medium transition flex items-center justify-between gap-2 ${
-                  errors.resp_person
+                className={`w-full min-h-[42px] px-3 py-2 border rounded-xl text-xs font-medium transition flex items-center justify-between gap-2 ${errors.resp_person
                     ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 cursor-pointer'
                     : !formData.resp
-                    ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                    : getDepartmentUsers(formData.resp).length === 0
-                    ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                    : isUserDropdownOpen
-                    ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 cursor-pointer shadow-xs'
-                    : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-800 cursor-pointer'
-                }`}
+                      ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                      : getDepartmentUsers(formData.resp).length === 0
+                        ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                        : isUserDropdownOpen
+                          ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 cursor-pointer shadow-xs'
+                          : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-800 cursor-pointer'
+                  }`}
               >
                 <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
                   {!formData.resp ? (
@@ -1183,9 +1166,8 @@ const IhlrCreateRequest = () => {
                     </span>
                   )}
                   <ChevronDown
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      isUserDropdownOpen ? 'rotate-180 text-blue-600' : ''
-                    }`}
+                    className={`w-4 h-4 transition-transform duration-200 ${isUserDropdownOpen ? 'rotate-180 text-blue-600' : ''
+                      }`}
                   />
                 </div>
               </div>
@@ -1200,7 +1182,7 @@ const IhlrCreateRequest = () => {
                 type="text"
                 tabIndex={-1}
                 value={formData.resp_person}
-                onChange={() => {}}
+                onChange={() => { }}
                 className="sr-only"
                 aria-hidden="true"
               />
@@ -1237,19 +1219,17 @@ const IhlrCreateRequest = () => {
                           <div
                             key={u.id || u.name}
                             onClick={() => handleToggleUser(u.name)}
-                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition select-none ${
-                              isChecked
+                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition select-none ${isChecked
                                 ? 'bg-blue-50/80 text-blue-900 font-semibold'
                                 : 'hover:bg-slate-50 text-slate-700'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0 pr-2">
                               <div
-                                className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${
-                                  isChecked
+                                className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${isChecked
                                     ? 'bg-blue-600 border-blue-600 text-white'
                                     : 'border-slate-300 bg-white'
-                                }`}
+                                  }`}
                               >
                                 {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                               </div>
@@ -1310,11 +1290,10 @@ const IhlrCreateRequest = () => {
           <label
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer transition-colors ${
-              errors.attachments
+            className={`border-2 border-dashed rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer transition-colors ${errors.attachments
                 ? 'border-rose-400 bg-rose-50/30 hover:bg-rose-50/50'
                 : 'border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-slate-50'
-            }`}
+              }`}
           >
             <input
               type="file"
@@ -1323,9 +1302,8 @@ const IhlrCreateRequest = () => {
               onChange={handleFileUpload}
               className="hidden"
             />
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
-              errors.attachments ? 'bg-rose-100 text-rose-600' : 'bg-blue-50 text-blue-600'
-            }`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${errors.attachments ? 'bg-rose-100 text-rose-600' : 'bg-blue-50 text-blue-600'
+              }`}>
               <UploadCloud className="w-5 h-5" />
             </div>
             <p className="text-xs font-semibold text-slate-800">
@@ -1458,13 +1436,12 @@ const IhlrCreateRequest = () => {
                 <div key={idx} className="space-y-1">
                   <div className="flex items-center gap-3">
                     <span
-                      className={`w-8 h-8 rounded-xl font-mono font-bold text-xs flex items-center justify-center shrink-0 border transition ${
-                        isW1
+                      className={`w-8 h-8 rounded-xl font-mono font-bold text-xs flex items-center justify-center shrink-0 border transition ${isW1
                           ? hasW1Error
                             ? 'bg-rose-50 border-rose-300 text-rose-700'
                             : 'bg-amber-100/80 border-amber-300 text-amber-800'
                           : 'bg-amber-50 border-amber-200 text-amber-700'
-                      }`}
+                        }`}
                     >
                       W{idx + 1}{isW1 && <span className="text-red-500 ml-0.5 font-bold">*</span>}
                     </span>
@@ -1473,11 +1450,10 @@ const IhlrCreateRequest = () => {
                       placeholder={`Why #${idx + 1} cause...${isW1 ? ' (Mandatory)' : ''}`}
                       value={val}
                       onChange={(e) => handleQaWhyChange(idx, e.target.value)}
-                      className={`flex-1 px-3 py-2 border rounded-xl text-xs text-slate-900 outline-none transition ${
-                        hasW1Error
+                      className={`flex-1 px-3 py-2 border rounded-xl text-xs text-slate-900 outline-none transition ${hasW1Error
                           ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                           : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
-                      }`}
+                        }`}
                     />
                   </div>
                   {hasW1Error && (
