@@ -356,7 +356,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   if (!isOpen || !request) return null;
 
   const attachments = parseAttachments(req.defect_image);
-  const evidenceAttachments = parseAttachments(req.temporary_evidence_attachment);
+  const evidenceAttachments = parseAttachments(req.temporary_evidence_attachment || req.evidence_attachment);
   const permanentEvidenceAttachments = parseAttachments(req.permanent_evidence_attachment);
 
   const formatDate = (dateStr) => {
@@ -470,7 +470,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   };
 
   // Collect all image attachments from defect and evidence lists
-  const getExportImages = async () => {
+  const getExportImages = async (targetReq) => {
     const isImg = (a) => {
       if (!a) return false;
       if (a.isImage) return true;
@@ -479,10 +479,15 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       return ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP', 'SVG', 'JFIF'].includes(ext);
     };
 
+    const reqData = targetReq || localRequest || request || {};
+    const dFiles = parseAttachments(reqData.defect_image);
+    const tFiles = parseAttachments(reqData.temporary_evidence_attachment || reqData.evidence_attachment);
+    const pFiles = parseAttachments(reqData.permanent_evidence_attachment);
+
     const items = [
-      ...attachments.filter(isImg).map((a) => ({ ...a, label: 'Defect Image' })),
-      ...evidenceAttachments.filter(isImg).map((a) => ({ ...a, label: 'Temporary Evidence Image' })),
-      ...permanentEvidenceAttachments.filter(isImg).map((a) => ({ ...a, label: 'Permanent Evidence Image' }))
+      ...dFiles.filter(isImg).map((a) => ({ ...a, label: 'Defect Image' })),
+      ...tFiles.filter(isImg).map((a) => ({ ...a, label: 'Temporary Evidence Image' })),
+      ...pFiles.filter(isImg).map((a) => ({ ...a, label: 'Permanent Evidence Image' }))
     ];
 
     const results = await Promise.all(
@@ -532,13 +537,14 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         format: 'a4'
       });
 
-      const reqNo = String(request.req_no || '').startsWith('IHLR-') ? request.req_no : `#${request.req_no}`;
-      const batchDate = formatDate(request.batch_date);
-      const shiftStr = formatShift(request.shift);
-      const safeReqNo = String(request.req_no).replace(/[^a-zA-Z0-9_-]/g, '_');
+      const targetReq = localRequest || request;
+      const reqNo = String(targetReq.req_no || '').startsWith('IHLR-') ? targetReq.req_no : `#${targetReq.req_no}`;
+      const batchDate = formatDate(targetReq.batch_date);
+      const shiftStr = formatShift(targetReq.shift);
+      const safeReqNo = String(targetReq.req_no || targetReq.id || 'Report').replace(/[^a-zA-Z0-9_-]/g, '_');
 
       // Fetch images for embedding in PDF
-      const exportImages = await getExportImages();
+      const exportImages = await getExportImages(targetReq);
       const logoData = await loadLogoBase64();
 
       // Header Banner
@@ -565,128 +571,325 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       doc.setTextColor(191, 219, 254);
       doc.text(`IN-HOUSE LINE REJECTION (IHLR) ANALYSIS REPORT  |  ${reqNo}`, bannerTextX, 66);
 
-      // Section 1: Basic Information
+      const displayStatus = getIhlrDisplayStatus(targetReq.status, targetReq);
+      const isClosedStatus = displayStatus === 'CLOSED';
+
+      // Parse and format all attachments
+      const parsedDefectFiles = parseAttachments(targetReq.defect_image);
+      const parsedTempEvidence = parseAttachments(targetReq.temporary_evidence_attachment || targetReq.evidence_attachment);
+      const parsedPermEvidence = parseAttachments(targetReq.permanent_evidence_attachment);
+
+      const defectFilesStr = parsedDefectFiles.length > 0 ? parsedDefectFiles.map((a) => a.name).join(', ') : 'None';
+      const tempEvidenceStr = parsedTempEvidence.length > 0 ? parsedTempEvidence.map((a) => a.name).join(', ') : 'None';
+      const permEvidenceStr = parsedPermEvidence.length > 0 ? parsedPermEvidence.map((a) => a.name).join(', ') : 'None';
+
+      // Temporary Action & Target Date
+      const tempActionVal = targetReq.temporary_action || targetReq.action || '—';
+      const tempTargetDateVal = targetReq.temporary_target_date || targetReq.target_date
+        ? formatDate(targetReq.temporary_target_date || targetReq.target_date)
+        : '—';
+
+      // Permanent Fix & Target Date
+      const permFixVal = targetReq.permanent_fix || '—';
+      const permTargetDateVal = targetReq.permanent_target_date
+        ? formatDate(targetReq.permanent_target_date)
+        : '—';
+
+      // Closer & Dept
+      const respDept = targetReq.resp || '—';
+      const respPerson = targetReq.resp_person || '—';
+
+      // Closure details
+      const closedByVal = isClosedStatus
+        ? (targetReq.closed_by || targetReq.resp_person || user?.name || 'Quality Admin')
+        : 'Pending Closure Authorization';
+      const closedDateVal = isClosedStatus
+        ? (formatDate(targetReq.closed_at || targetReq.updated_at || targetReq.temporary_target_date || targetReq.permanent_target_date || targetReq.created_at) || '—')
+        : '—';
+
+      // Reassignment History
+      const { hasReassignments, reassignmentDetails } = formatReassignmentHistory(targetReq.reassignment_history);
+      const reassignVal = hasReassignments ? reassignmentDetails : 'None (Original Assignee)';
+
+      // Section 1: Basic Information (Structured 4-Column Key-Value Grid)
       autoTable(doc, {
-        startY: 88,
-        theme: 'plain',
-        styles: { fontSize: 8.5, cellPadding: 3 },
+        startY: 86,
+        theme: 'grid',
+        margin: { left: 40, right: 40 },
+        tableWidth: 515,
+        columnStyles: {
+          0: { cellWidth: 105 },
+          1: { cellWidth: 152.5 },
+          2: { cellWidth: 105 },
+          3: { cellWidth: 152.5 }
+        },
+        styles: { fontSize: 8, cellPadding: 3.5, valign: 'middle' },
+        head: [
+          [
+            {
+              content: '1. INCIDENT & IDENTIFICATION DETAILS',
+              colSpan: 4,
+              styles: {
+                fillColor: [30, 41, 59], // slate-800
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 8.5
+              }
+            }
+          ]
+        ],
         body: [
           [
-            { content: 'Report No:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+            { content: 'Report No:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: reqNo, styles: { fontStyle: 'bold', textColor: [37, 99, 235] } },
-            { content: 'Status:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+            { content: 'Current Status:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             {
-              content: getIhlrDisplayStatus(request.status, request),
+              content: displayStatus,
               styles: {
                 fontStyle: 'bold',
-                textColor: getIhlrDisplayStatus(request.status, request) === 'CLOSED'
+                textColor: isClosedStatus
                   ? [22, 101, 52]
-                  : (getIhlrDisplayStatus(request.status, request) === 'AWAITING REVIEW' || getIhlrDisplayStatus(request.status, request) === 'APPROVAL PENDING')
+                  : (displayStatus === 'AWAITING REVIEW' || displayStatus === 'APPROVAL PENDING')
                   ? [180, 83, 9]
                   : [225, 29, 72]
               }
             }
           ],
           [
-            { content: 'Date:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+            { content: 'Incident Date:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             batchDate,
-            { content: 'Shift:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+            { content: 'Work Shift:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             shiftStr
           ],
           [
-            { content: 'Model / Part:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            request.model || '—',
-            { content: 'Actual Qty:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            request.actual_qty ? `${request.actual_qty} Nos` : '1 Nos'
+            { content: 'Model / Part:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            targetReq.model || '—',
+            { content: 'Rejected Quantity:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            targetReq.actual_qty ? `${targetReq.actual_qty} Nos` : '1 Nos'
           ],
           [
-            { content: 'Detected At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            request.problem_detected_at || '—',
-            { content: 'Received From:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            request.received_from || '—'
+            { content: 'Problem Detected At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            targetReq.problem_detected_at || '—',
+            { content: 'Received From Line:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            targetReq.received_from || '—'
           ],
           [
-            { content: 'Analysis By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            request.analysis_done_by || '—',
-            { content: '4M Category:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            request.four_m || '—'
+            { content: 'Analysis Done By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            targetReq.analysis_done_by || '—',
+            { content: '4M Category:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            targetReq.four_m || '—'
           ],
           [
-            { content: 'Responsibility:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            `${request.resp || '—'} ${request.resp_person ? `(${request.resp_person})` : ''}`,
-            { content: 'Raised By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            request.created_by || '—'
+            { content: 'Responsibility Dept:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            respDept,
+            { content: 'Assigned Closer Person:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            respPerson
           ],
           [
-            { content: 'Created At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-            request.created_at ? formatDate(request.created_at) : '—',
-            { content: '', styles: {} },
-            ''
+            { content: 'Raised By (Requester):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            targetReq.created_by || '—',
+            { content: 'Requester Email:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            targetReq.created_by_email || '—'
+          ],
+          [
+            { content: 'Report Created At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            targetReq.created_at ? formatDate(targetReq.created_at) : '—',
+            { content: 'Last Updated At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            targetReq.updated_at ? formatDate(targetReq.updated_at) : (targetReq.created_at ? formatDate(targetReq.created_at) : '—')
           ]
         ]
       });
 
-      // Section 2: Defect Problem Description
+      // Section 2: Defect Problem & Observation Description (Structured 2-Column Key-Value Grid)
       const lastY = doc.lastAutoTable.finalY + 8;
       autoTable(doc, {
         startY: lastY,
-        head: [['DEFECT PROBLEM & OBSERVATION DESCRIPTION']],
-        body: [
-          [`Problem: ${request.problem || '—'}`],
-          [`Detailed Occurrence: ${request.problem_description || request.detailed_observation || '—'}`],
-          ...(request.occurrence_cause ? [[`Initial Occurrence Cause: ${request.occurrence_cause}`]] : [])
-        ],
         theme: 'grid',
-        headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
-        styles: { fontSize: 8.5, cellPadding: 4 }
+        margin: { left: 40, right: 40 },
+        tableWidth: 515,
+        columnStyles: {
+          0: { cellWidth: 150 },
+          1: { cellWidth: 365 }
+        },
+        head: [
+          [
+            {
+              content: '2. DEFECT PROBLEM & OBSERVATION DESCRIPTION',
+              colSpan: 2,
+              styles: {
+                fillColor: [59, 130, 246], // blue-500
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 8.5
+              }
+            }
+          ]
+        ],
+        body: [
+          [
+            { content: 'Problem / Defect Title:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: targetReq.problem || '—' }
+          ],
+          [
+            { content: 'Detailed Observation / Occurrence:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: targetReq.occurrence_cause || targetReq.problem_description || targetReq.detailed_observation || targetReq.problem || '—' }
+          ],
+          [
+            { content: 'Defect Attachment(s) (Requester):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: defectFilesStr }
+          ]
+        ],
+        styles: { fontSize: 8, cellPadding: 3.5, valign: 'middle' }
       });
 
-      // Section 3: 5-Why Analysis
+      // Section 3: 5-Why Analysis (Structured 3-Column Table for all W1 to W5)
       const whyY = doc.lastAutoTable.finalY + 8;
+      const parseWhyList = (val) => {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        if (typeof val === 'string') {
+          try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) return parsed;
+          } catch {
+            return [val];
+          }
+        }
+        return [];
+      };
+
+      const qaWhys = parseWhyList(targetReq.qa_why_why || targetReq.why_why);
+      const prodWhys = parseWhyList(targetReq.prod_why_why);
+
       const whyRows = [];
       for (let i = 0; i < 5; i++) {
-        const qa = request.why_why?.[i] || request.qa_why_why?.[i];
-        const prod = request.prod_why_why?.[i];
-        if (qa || prod || i === 0) {
-          whyRows.push([`Why ${i + 1}`, qa || '—', prod || '—']);
+        const qa = (qaWhys[i] && String(qaWhys[i]).trim()) || '—';
+        const prod = (prodWhys[i] && String(prodWhys[i]).trim()) || '—';
+        if (i === 0 || qa !== '—' || prod !== '—') {
+          whyRows.push([`Why ${i + 1} (W${i + 1})`, qa, prod]);
         }
       }
 
       autoTable(doc, {
         startY: whyY,
-        head: [['LEVEL', 'QA PROBLEM CAUSE (5-WHY)', 'PRODUCTION OCCURRENCE CAUSE (5-WHY)']],
-        body: whyRows,
         theme: 'grid',
-        headStyles: { fillColor: [245, 158, 11], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+        margin: { left: 40, right: 40 },
+        tableWidth: 515,
+        head: [
+          [
+            {
+              content: '3. ROOT CAUSE ANALYSIS (5-WHY)',
+              colSpan: 3,
+              styles: {
+                fillColor: [245, 158, 11], // amber-500
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 8.5
+              }
+            }
+          ],
+          [
+            { content: 'LEVEL', styles: { halign: 'center', fontStyle: 'bold' } },
+            { content: 'QA PROBLEM INVESTIGATION (5-WHY)', styles: { fontStyle: 'bold' } },
+            { content: 'PRODUCTION OCCURRENCE CAUSE (5-WHY)', styles: { fontStyle: 'bold' } }
+          ]
+        ],
+        body: whyRows,
+        headStyles: { fillColor: [245, 158, 11], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
         columnStyles: {
-          0: { cellWidth: 45, fontStyle: 'bold', halign: 'center' },
-          1: { cellWidth: 235 },
-          2: { cellWidth: 235 }
+          0: { cellWidth: 65, fontStyle: 'bold', halign: 'center' },
+          1: { cellWidth: 225 },
+          2: { cellWidth: 225 }
         },
-        styles: { fontSize: 8, cellPadding: 3.5 }
+        styles: { fontSize: 8, cellPadding: 3.5, valign: 'middle' }
       });
 
-      // Section 4: Containment Action & Closure
-      const { hasReassignments, reassignmentDetails } = formatReassignmentHistory(request.reassignment_history);
+      // Section 4: Containment Action & Closure (Structured 2-Column Key-Value Grid)
       const actionY = doc.lastAutoTable.finalY + 8;
       autoTable(doc, {
         startY: actionY,
-        head: [['CONTAINMENT COUNTERMEASURE & CLOSURE SIGN-OFF']],
-        body: [
-          [`Temporary Action: ${request.temporary_action || 'Containment action pending review.'}`],
-          [`Temporary Target Date: ${formatDate(request.temporary_target_date)}`],
-          [`Permanent Fix: ${request.permanent_fix || 'Permanent fix pending review.'}`],
-          [`Permanent Target Date: ${formatDate(request.permanent_target_date)}  |  Responsible Person: ${request.resp_person || request.resp || 'Quality Team'}`],
-          ...(hasReassignments ? [[`Reassignment History: ${reassignmentDetails}`]] : []),
-          ...(request.remarks ? [[`Remarks: ${request.remarks}`]] : []),
-          [`Closure Sign-off: ${request.status === 'CLOSED' ? `Closed by ${request.closed_by || request.resp_person || 'Quality Admin'} on ${formatDate(request.closed_at || request.temporary_target_date || request.permanent_target_date)}` : 'Pending Closer Sign-off'}`],
-          ...(attachments.length > 0 ? [[`Defect Attachments (${attachments.length}): ${attachments.map((a) => a.name).join(', ')}`]] : []),
-          ...(evidenceAttachments.length > 0 ? [[`Temporary Evidence Attachments (${evidenceAttachments.length}): ${evidenceAttachments.map((a) => a.name).join(', ')}`]] : []),
-          ...(permanentEvidenceAttachments.length > 0 ? [[`Permanent Evidence Attachments (${permanentEvidenceAttachments.length}): ${permanentEvidenceAttachments.map((a) => a.name).join(', ')}`]] : [])
-        ],
         theme: 'grid',
-        headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
-        styles: { fontSize: 8.5, cellPadding: 4 }
+        margin: { left: 40, right: 40 },
+        tableWidth: 515,
+        columnStyles: {
+          0: { cellWidth: 160 },
+          1: { cellWidth: 355 }
+        },
+        head: [
+          [
+            {
+              content: '4. CONTAINMENT COUNTERMEASURE & CLOSURE SIGN-OFF',
+              colSpan: 2,
+              styles: {
+                fillColor: [16, 185, 129], // emerald-600
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 8.5
+              }
+            }
+          ]
+        ],
+        body: [
+          [
+            { content: 'Temporary Action (Containment):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: tempActionVal }
+          ],
+          [
+            { content: 'Temporary Target Date:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: tempTargetDateVal }
+          ],
+          [
+            { content: 'Temporary Evidence Attachment(s):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: tempEvidenceStr }
+          ],
+          [
+            { content: 'Permanent Fix (Countermeasure):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: permFixVal }
+          ],
+          [
+            { content: 'Permanent Target Date:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: permTargetDateVal }
+          ],
+          [
+            { content: 'Permanent Evidence Attachment(s):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: permEvidenceStr }
+          ],
+          [
+            { content: 'Responsible Closer Person:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: respPerson }
+          ],
+          [
+            { content: 'Responsible Department:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: respDept }
+          ],
+          [
+            { content: 'Reassignment History:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: reassignVal }
+          ],
+          [
+            { content: 'Admin / Closer Remarks:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: targetReq.remarks || '—' }
+          ],
+          [
+            { content: 'Closure Sign-off Status:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            {
+              content: isClosedStatus ? 'CLOSED (Authorized & Verified)' : displayStatus,
+              styles: {
+                fontStyle: 'bold',
+                textColor: isClosedStatus ? [22, 101, 52] : [180, 83, 9]
+              }
+            }
+          ],
+          [
+            { content: 'Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: closedByVal }
+          ],
+          [
+            { content: 'Closure Date:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: closedDateVal }
+          ]
+        ],
+        styles: { fontSize: 8, cellPadding: 3.5, valign: 'middle' }
       });
 
       // Section 5: EMBEDDED IMAGES IN PDF

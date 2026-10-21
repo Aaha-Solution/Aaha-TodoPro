@@ -219,21 +219,24 @@ export const exportIhlrToExcel = async ({
     20, // 19: QA WHY 5
     18, // 20: RAISED BY
     14, // 21: CREATED AT
-    // 22-29: CLOSER (Production Containment)
+    // 22-32: CLOSER (Temporary & Permanent Actions)
     20, // 22: PROD WHY 1
     20, // 23: PROD WHY 2
     20, // 24: PROD WHY 3
     20, // 25: PROD WHY 4
     20, // 26: PROD WHY 5
-    32, // 27: CONTAINMENT ACTION
-    14, // 28: TARGET DATE
-    28, // 29: CLOSER EVIDENCE / ATTACHMENTS
-    // 30-31: REASSIGNMENT TRACKING
-    16, // 30: REASSIGNED STATUS
-    38, // 31: REASSIGNMENT DETAILS
-    // 32-33: REMARKS & STATUS
-    24, // 32: REMARKS
-    20  // 33: STATUS
+    30, // 27: TEMPORARY ACTION
+    16, // 28: TEMPORARY TARGET DATE
+    26, // 29: TEMPORARY EVIDENCE
+    30, // 30: PERMANENT FIX
+    16, // 31: PERMANENT TARGET DATE
+    26, // 32: PERMANENT EVIDENCE
+    // 33-34: REASSIGNMENT TRACKING
+    16, // 33: REASSIGNED STATUS
+    38, // 34: REASSIGNMENT DETAILS
+    // 35-36: REMARKS & STATUS
+    24, // 35: REMARKS
+    20  // 36: STATUS
   ];
 
   colWidths.forEach((w, i) => {
@@ -250,22 +253,22 @@ export const exportIhlrToExcel = async ({
   superReq.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // amber-100
   superReq.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('V1:AC1');
+  worksheet.mergeCells('V1:AF1');
   const superCloser = worksheet.getCell('V1');
-  superCloser.value = 'CLOSER (PRODUCTION CONTAINMENT)';
+  superCloser.value = 'CLOSER (TEMPORARY & PERMANENT ACTIONS)';
   superCloser.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF7C2D12' } }; // orange-900
   superCloser.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEDD5' } }; // orange-100
   superCloser.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('AD1:AE1');
-  const superReassign = worksheet.getCell('AD1');
+  worksheet.mergeCells('AG1:AH1');
+  const superReassign = worksheet.getCell('AG1');
   superReassign.value = 'REASSIGNMENT TRACKING';
   superReassign.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF4C1D95' } }; // violet-900
   superReassign.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } }; // violet-100
   superReassign.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('AF1:AG1');
-  const superStatus = worksheet.getCell('AF1');
+  worksheet.mergeCells('AI1:AJ1');
+  const superStatus = worksheet.getCell('AI1');
   superStatus.value = 'REMARKS & STATUS';
   superStatus.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E293B' } }; // slate-800
   superStatus.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; // slate-100
@@ -293,12 +296,13 @@ export const exportIhlrToExcel = async ({
     'RESPONSIBILITY (RESP)', 'USER NAME (BASED ON DEP)', 'DEFECT EVIDENCE / ATTACHMENT',
     'QA WHY 1', 'QA WHY 2', 'QA WHY 3', 'QA WHY 4', 'QA WHY 5',
     'RAISED BY', 'CREATED AT',
-    // 22-29 Closer
+    // 22-32 Closer
     'PROD WHY 1', 'PROD WHY 2', 'PROD WHY 3', 'PROD WHY 4', 'PROD WHY 5',
-    'CONTAINMENT ACTION', 'TARGET DATE', 'CLOSER EVIDENCE / ATTACHMENTS',
-    // 30-31 Reassignment Tracking
+    'TEMPORARY ACTION', 'TEMPORARY TARGET DATE', 'TEMPORARY EVIDENCE',
+    'PERMANENT FIX', 'PERMANENT TARGET DATE', 'PERMANENT EVIDENCE',
+    // 33-34 Reassignment Tracking
     'REASSIGNED STATUS', 'REASSIGNMENT DETAILS',
-    // 32-33 Remarks & Status
+    // 35-36 Remarks & Status
     'REMARKS', 'STATUS'
   ];
 
@@ -317,10 +321,10 @@ export const exportIhlrToExcel = async ({
     if (colNum <= 21) {
       cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF78350F' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE68A' } }; // amber-200
-    } else if (colNum <= 29) {
+    } else if (colNum <= 32) {
       cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF7C2D12' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFED7AA' } }; // orange-200
-    } else if (colNum <= 31) {
+    } else if (colNum <= 34) {
       cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF4C1D95' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDD6FE' } }; // violet-200
     } else {
@@ -342,7 +346,8 @@ export const exportIhlrToExcel = async ({
 
   reqList.forEach((r, idx) => {
     const defectFiles = parseAttachments(r.defect_image);
-    const evidenceFiles = parseAttachments(r.temporary_evidence_attachment);
+    const evidenceFiles = parseAttachments(r.temporary_evidence_attachment || r.evidence_attachment);
+    const permanentEvidenceFiles = parseAttachments(r.permanent_evidence_attachment);
     const imgObj = rowImages[idx];
     const rowNum = idx + 3;
 
@@ -372,21 +377,24 @@ export const exportIhlrToExcel = async ({
       r.created_by || '—',
       r.created_at ? formatDateDDMMYYYY(r.created_at) : '—',
 
-      // 22-29 Closer
+      // 22-32 Closer
       r.prod_why_why?.[0] || '—',
       r.prod_why_why?.[1] || '—',
       r.prod_why_why?.[2] || '—',
       r.prod_why_why?.[3] || '—',
       r.prod_why_why?.[4] || '—',
-      r.temporary_action || r.permanent_fix || '—',
-      formatDateDDMMYYYY(r.temporary_target_date || r.permanent_target_date),
+      r.temporary_action || r.action || '—',
+      (r.temporary_target_date || r.target_date) ? formatDateDDMMYYYY(r.temporary_target_date || r.target_date) : '—',
       evidenceFiles.map((a) => a.name).join(', ') || 'None',
+      r.permanent_fix || '—',
+      r.permanent_target_date ? formatDateDDMMYYYY(r.permanent_target_date) : '—',
+      permanentEvidenceFiles.map((a) => a.name).join(', ') || 'None',
 
-      // 30-31 Reassignment Tracking
+      // 33-34 Reassignment Tracking
       reassignedStatus,
       reassignmentDetails,
 
-      // 32-33 Remarks & Status
+      // 35-36 Remarks & Status
       r.remarks || '—',
       getIhlrDisplayStatus(r.status, r)
     ];
@@ -410,12 +418,13 @@ export const exportIhlrToExcel = async ({
     row.getCell(11).alignment = { vertical: 'middle', horizontal: 'center' }; // 4M CATEGORY
     row.getCell(14).alignment = { vertical: 'middle', horizontal: 'center' }; // DEFECT EVIDENCE
     row.getCell(21).alignment = { vertical: 'middle', horizontal: 'center' }; // CREATED AT
-    row.getCell(28).alignment = { vertical: 'middle', horizontal: 'center' }; // TARGET DATE
-    row.getCell(30).alignment = { vertical: 'middle', horizontal: 'center' }; // REASSIGNED STATUS
-    row.getCell(33).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
+    row.getCell(28).alignment = { vertical: 'middle', horizontal: 'center' }; // TEMPORARY TARGET DATE
+    row.getCell(31).alignment = { vertical: 'middle', horizontal: 'center' }; // PERMANENT TARGET DATE
+    row.getCell(33).alignment = { vertical: 'middle', horizontal: 'center' }; // REASSIGNED STATUS
+    row.getCell(36).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
 
     // Apply UI-matched status styling in Excel
-    const statusCell = row.getCell(33);
+    const statusCell = row.getCell(36);
     if (displayStatus === 'CLOSED') {
       statusCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF15803D' } }; // emerald-700
       statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }; // emerald-100
@@ -607,6 +616,26 @@ export const exportIhlrToPdf = async ({
       statusStr += `\n[${r.remarks.trim()}]`;
     }
 
+    let actionStr = '—';
+    if (r.temporary_action && r.permanent_fix) {
+      actionStr = `Temp: ${r.temporary_action}\nPerm: ${r.permanent_fix}`;
+    } else if (r.temporary_action || r.action) {
+      actionStr = `Temp: ${r.temporary_action || r.action}`;
+    } else if (r.permanent_fix) {
+      actionStr = `Perm: ${r.permanent_fix}`;
+    }
+
+    let targetDateStr = '—';
+    const tempTDate = r.temporary_target_date || r.target_date;
+    const permTDate = r.permanent_target_date;
+    if (tempTDate && permTDate) {
+      targetDateStr = `Temp: ${formatDateDDMMYYYY(tempTDate)}\nPerm: ${formatDateDDMMYYYY(permTDate)}`;
+    } else if (tempTDate) {
+      targetDateStr = `Temp: ${formatDateDDMMYYYY(tempTDate)}`;
+    } else if (permTDate) {
+      targetDateStr = `Perm: ${formatDateDDMMYYYY(permTDate)}`;
+    }
+
     return [
       idx + 1,
       String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`,
@@ -619,8 +648,8 @@ export const exportIhlrToPdf = async ({
       fileCellText,
       respStr,
       occCause,
-      r.temporary_action || r.permanent_fix || '—',
-      formatDateDDMMYYYY(r.temporary_target_date || r.permanent_target_date) || '—',
+      actionStr,
+      targetDateStr,
       statusStr
     ];
   });
