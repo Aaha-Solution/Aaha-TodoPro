@@ -144,6 +144,14 @@ const IhlrApprovals = () => {
   const [closerActionError, setCloserActionError] = useState(false);
   const [closerTargetDate, setCloserTargetDate] = useState('');
   const [closerTargetDateError, setCloserTargetDateError] = useState(false);
+  const [closerPermanentFix, setCloserPermanentFix] = useState('');
+  const [closerPermanentFixError, setCloserPermanentFixError] = useState(false);
+  const [existingPermanentEvidence, setExistingPermanentEvidence] = useState([]);
+  const [newPermanentEvidenceFiles, setNewPermanentEvidenceFiles] = useState([]);
+  const [closerPermanentEvidenceError, setCloserPermanentEvidenceError] = useState(false);
+  const [closerPermanentTargetDate, setCloserPermanentTargetDate] = useState('');
+  const [closerPermanentTargetDateError, setCloserPermanentTargetDateError] = useState(false);
+  const fileInputPermanentRef = useRef(null);
   const todayStr = (() => {
     const d = new Date();
     const y = d.getFullYear();
@@ -403,10 +411,14 @@ const IhlrApprovals = () => {
     setCloserWhyWhy(paddedWhys);
     setCloserW1Error(false);
 
-    setCloserAction(req.action || '');
+    setCloserAction(req.temporary_action || '');
     setCloserActionError(false);
-    setCloserTargetDate(req.target_date ? req.target_date.split('T')[0] : '');
+    setCloserTargetDate(req.temporary_target_date ? req.temporary_target_date.split('T')[0] : '');
     setCloserTargetDateError(false);
+    setCloserPermanentFix(req.permanent_fix || '');
+    setCloserPermanentFixError(false);
+    setCloserPermanentTargetDate(req.permanent_target_date ? req.permanent_target_date.split('T')[0] : '');
+    setCloserPermanentTargetDateError(false);
     setCloserRemarks(req.remarks || '');
     setRemarksError(false);
     setCloserStatus('');
@@ -418,10 +430,16 @@ const IhlrApprovals = () => {
     setReassignUserSearch('');
 
     // Evidence attachments
-    const existing = parseAttachments(req.evidence_attachment);
+    const existing = parseAttachments(req.temporary_evidence_attachment);
     setExistingEvidence(existing);
     setNewEvidenceFiles([]);
     setCloserEvidenceError(false);
+
+    // Permanent Fix Evidence attachments
+    const existingPerm = parseAttachments(req.permanent_evidence_attachment);
+    setExistingPermanentEvidence(existingPerm);
+    setNewPermanentEvidenceFiles([]);
+    setCloserPermanentEvidenceError(false);
   };
 
   const handleWhyChange = (index, val) => {
@@ -451,12 +469,33 @@ const IhlrApprovals = () => {
     setNewEvidenceFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handlePermanentFileSelect = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const added = Array.from(e.target.files);
+      setNewPermanentEvidenceFiles((prev) => [...prev, ...added]);
+      setCloserPermanentEvidenceError(false);
+    }
+  };
+
+  const handleRemoveExistingPermanentEvidence = (index) => {
+    setExistingPermanentEvidence((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveNewPermanentEvidence = (index) => {
+    setNewPermanentEvidenceFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSaveAnnotation = (annotatedFile) => {
     if (!annotatingItem) return;
-    setNewEvidenceFiles((prev) => [...prev, annotatedFile]);
-    setCloserEvidenceError(false);
+    if (annotatingItem.isPermanent) {
+      setNewPermanentEvidenceFiles((prev) => [...prev, annotatedFile]);
+      setCloserPermanentEvidenceError(false);
+    } else {
+      setNewEvidenceFiles((prev) => [...prev, annotatedFile]);
+      setCloserEvidenceError(false);
+    }
     setAnnotatingItem(null);
-    modalSuccess(`Annotated drawing "${annotatedFile.name}" added to evidence files! Remember to click "Update Closer Log" to save.`);
+    modalSuccess(`Annotated drawing "${annotatedFile.name}" added to evidence files! Remember to click "Submit Closer Log" to save.`);
   };
 
   // 1. Submit Closer Updates (5-Why causes, Action, Evidence, Target Date)
@@ -478,7 +517,7 @@ const IhlrApprovals = () => {
       return;
     }
 
-    // Mandatory Closer Field Validations (errors shown below the inputs)
+    // Closer Field Validations (Only Occurrence Cause W1 is mandatory for submitting closer root cause)
     let hasCloserErrors = false;
 
     if (!closerWhyWhy[0] || !closerWhyWhy[0].trim()) {
@@ -488,20 +527,11 @@ const IhlrApprovals = () => {
       setCloserW1Error(false);
     }
 
-    if (!closerAction || !closerAction.trim()) {
-      setCloserActionError(true);
-      hasCloserErrors = true;
-    } else {
-      setCloserActionError(false);
-    }
+    // Temporary Action is optional
+    setCloserActionError(false);
 
-    const totalEvidenceCount = (existingEvidence ? existingEvidence.length : 0) + (newEvidenceFiles ? newEvidenceFiles.length : 0);
-    if (totalEvidenceCount === 0) {
-      setCloserEvidenceError(true);
-      hasCloserErrors = true;
-    } else {
-      setCloserEvidenceError(false);
-    }
+    // Temporary Evidence Attachment is optional
+    setCloserEvidenceError(false);
 
     const todayStr = (() => {
       const d = new Date();
@@ -511,11 +541,9 @@ const IhlrApprovals = () => {
       return `${y}-${m}-${day}`;
     })();
 
-    if (!closerTargetDate || !closerTargetDate.trim()) {
-      setCloserTargetDateError('Target Date is mandatory. Please select a completion target date.');
-      hasCloserErrors = true;
-    } else if (closerTargetDate < todayStr) {
-      setCloserTargetDateError('Target Date cannot be in the past. Please select today or a future date.');
+    // Temporary Target Date is optional; only check if user selected a past date
+    if (closerTargetDate && closerTargetDate.trim() && closerTargetDate < todayStr && !isAdmin) {
+      setCloserTargetDateError('Temporary Target Date cannot be in the past. Please select today or a future date.');
       hasCloserErrors = true;
     } else {
       setCloserTargetDateError(false);
@@ -536,11 +564,20 @@ const IhlrApprovals = () => {
       }
       const combinedEvidence = [...existingEvidence, ...uploadedList];
 
+      let uploadedPermList = [];
+      if (newPermanentEvidenceFiles.length > 0) {
+        uploadedPermList = await ihlrService.uploadAttachments(newPermanentEvidenceFiles);
+      }
+      const combinedPermEvidence = [...existingPermanentEvidence, ...uploadedPermList];
+
       const payload = {
         prod_why_why: closerWhyWhy,
-        action: closerAction,
-        evidence_attachment: JSON.stringify(combinedEvidence),
-        target_date: closerTargetDate || null
+        temporary_action: closerAction || '',
+        temporary_evidence_attachment: JSON.stringify(combinedEvidence),
+        temporary_target_date: closerTargetDate || null,
+        permanent_fix: closerPermanentFix || '',
+        permanent_evidence_attachment: JSON.stringify(combinedPermEvidence),
+        permanent_target_date: closerPermanentTargetDate || null
       };
 
       // When closer (non-admin) updates their fields, automatically set status to IN_PROGRESS unless already CLOSED
@@ -738,8 +775,8 @@ const IhlrApprovals = () => {
       String(r.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
       String(r.status || '').toUpperCase() === 'AWAITING_REVIEW' ||
       String(r.status || '').toUpperCase() === 'AWAITING REVIEW' || (
-        Boolean(r.action && String(r.action).trim()) &&
-        Boolean(r.target_date) &&
+        Boolean((r.temporary_action || r.permanent_fix) && String(r.temporary_action || r.permanent_fix).trim()) &&
+        Boolean(r.temporary_target_date || r.permanent_target_date) &&
         (Array.isArray(r.prod_why_why) && r.prod_why_why.some(w => Boolean(w && String(w).trim())))
       )
     );
@@ -822,6 +859,25 @@ const IhlrApprovals = () => {
 
   // Convert new files to previewable objects
   const previewableNewFiles = newEvidenceFiles.map((f) => {
+    const ext = f.name.split('.').pop()?.toUpperCase() || 'FILE';
+    const isImage = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG', 'JFIF', 'BMP'].includes(ext);
+    const isPdf = ext === 'PDF';
+    const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
+    const isWord = ['DOC', 'DOCX'].includes(ext);
+    const isPpt = ['PPT', 'PPTX'].includes(ext);
+    return {
+      name: f.name,
+      url: URL.createObjectURL(f),
+      type: ext,
+      isImage,
+      isPdf,
+      isExcel,
+      isWord,
+      isPpt
+    };
+  });
+
+  const previewableNewPermanentFiles = newPermanentEvidenceFiles.map((f) => {
     const ext = f.name.split('.').pop()?.toUpperCase() || 'FILE';
     const isImage = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG', 'JFIF', 'BMP'].includes(ext);
     const isPdf = ext === 'PDF';
@@ -1053,7 +1109,6 @@ const IhlrApprovals = () => {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY ACTION</span>
-                  <span className="text-rose-500">*</span>
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
@@ -1073,7 +1128,7 @@ const IhlrApprovals = () => {
                 value={closerAction}
                 onChange={(e) => {
                   setCloserAction(e.target.value);
-                  if (closerActionError && e.target.value.trim()) {
+                  if (closerActionError) {
                     setCloserActionError(false);
                   }
                 }}
@@ -1086,25 +1141,15 @@ const IhlrApprovals = () => {
                     ? 'Click Edit Closer Fields below to edit...'
                     : 'Read-only (Closer only)'
                 }
-                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
-                  closerActionError
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
-              {closerActionError && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* Temporary Action is mandatory. Please enter temporary actions / countermeasures.</span>
-                </p>
-              )}
             </div>
 
-            {/* Evidence Attachment (Image 1: Format PPT, JPEG, EXCEL & PDF) */}
+            {/* Temporary Evidence Attachment (Image 1: Format PPT, JPEG, EXCEL & PDF) */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>EVIDENCE ATTACHMENT</span>
-                  <span className="text-rose-500">*</span>
+                  <span>TEMPORARY EVIDENCE ATTACHMENT</span>
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
@@ -1121,9 +1166,7 @@ const IhlrApprovals = () => {
               </div>
 
               {/* Styled File Input Button (matching Image 2) */}
-              <div className={`flex items-center gap-2 p-1 rounded-xl transition ${
-                closerEvidenceError ? 'border border-rose-300 bg-rose-50/20 ring-2 ring-rose-300/30' : ''
-              }`}>
+              <div className="flex items-center gap-2 p-1 rounded-xl transition">
                 <button
                   type="button"
                   disabled={!canUpdateCloserFields}
@@ -1148,11 +1191,6 @@ const IhlrApprovals = () => {
                   className="hidden"
                 />
               </div>
-              {closerEvidenceError && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* Evidence Attachment is mandatory. Please upload at least one evidence document.</span>
-                </p>
-              )}
 
               {/* Existing and newly attached chips */}
               <div className="mt-2 space-y-1">
@@ -1175,12 +1213,11 @@ const IhlrApprovals = () => {
               </div>
             </div>
 
-            {/* Target Date */}
+            {/* Temporary Target Date */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>TARGET DATE</span>
-                  <span className="text-rose-500">*</span>
+                  <span>TEMPORARY TARGET DATE</span>
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
@@ -1201,10 +1238,8 @@ const IhlrApprovals = () => {
                 onChange={(e) => {
                   const val = e.target.value;
                   setCloserTargetDate(val);
-                  if (!val) {
-                    setCloserTargetDateError('Target Date is mandatory. Please select a completion target date.');
-                  } else if (val < todayStr) {
-                    setCloserTargetDateError('Target Date cannot be a previous date. Please select today or a future date.');
+                  if (val && val < todayStr && !isAdmin) {
+                    setCloserTargetDateError('Temporary Target Date cannot be a previous date. Please select today or a future date.');
                   } else {
                     setCloserTargetDateError(false);
                   }
@@ -1217,9 +1252,145 @@ const IhlrApprovals = () => {
               />
               {closerTargetDateError && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* {typeof closerTargetDateError === 'string' ? closerTargetDateError : 'Target Date is mandatory. Please select a completion target date.'}</span>
+                  <span>* {typeof closerTargetDateError === 'string' ? closerTargetDateError : 'Temporary Target Date cannot be in the past.'}</span>
                 </p>
               )}
+            </div>
+
+            {/* Permanent Fix Section Header */}
+            <div className="pt-2 border-t border-slate-200/90">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Permanent Countermeasures
+              </span>
+            </div>
+
+            {/* 1. Permanent Fix */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>PERMANENT FIX</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        {isAdmin ? 'Admin Edit' : 'Closer'}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
+                      </span>
+                    )
+                  )}
+                </label>
+              </div>
+              <textarea
+                rows={2}
+                disabled={!canUpdateCloserFields}
+                value={closerPermanentFix}
+                onChange={(e) => setCloserPermanentFix(e.target.value)}
+                placeholder={
+                  !selectedRequest
+                    ? 'Click a row on the right to select'
+                    : canUpdateCloserFields
+                    ? 'Describe permanent corrective fix / long-term countermeasure...'
+                    : isAdmin
+                    ? 'Click Edit Closer Fields below to edit...'
+                    : 'Read-only (Closer only)'
+                }
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            {/* 2. Permanent Fix Evidence Attachment */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>PERMANENT EVIDENCE ATTACHMENT</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        {isAdmin ? 'Admin Edit' : 'Closer'}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        {isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                      </span>
+                    )
+                  )}
+                </label>
+                <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
+              </div>
+
+              <div className="flex items-center gap-2 p-1 rounded-xl">
+                <button
+                  type="button"
+                  disabled={!canUpdateCloserFields}
+                  onClick={() => fileInputPermanentRef.current && fileInputPermanentRef.current.click()}
+                  className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                >
+                  Choose files
+                </button>
+                <span className="text-[11px] text-slate-500 truncate">
+                  {newPermanentEvidenceFiles.length > 0
+                    ? `${newPermanentEvidenceFiles.length} file(s) selected`
+                    : existingPermanentEvidence.length > 0
+                    ? `${existingPermanentEvidence.length} existing attachment(s)`
+                    : 'No file chosen'}
+                </span>
+                <input
+                  ref={fileInputPermanentRef}
+                  type="file"
+                  multiple
+                  accept=".ppt,.pptx,.pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.jfif,.webp,.bmp,image/jpeg,image/png,image/jfif,image/pjpeg,image/*"
+                  onChange={handlePermanentFileSelect}
+                  className="hidden"
+                />
+              </div>
+
+              {/* Existing and newly attached chips for permanent evidence */}
+              <div className="mt-2 space-y-1">
+                {existingPermanentEvidence.length > 0 && (
+                  <AttachmentChipList
+                    attachments={existingPermanentEvidence}
+                    onPreview={(att) => setSelectedPreviewAttachment(att)}
+                    onAnnotate={canUpdateCloserFields ? (file) => setAnnotatingItem({ attachment: file, isPermanent: true }) : undefined}
+                    onRemove={canUpdateCloserFields ? (idx) => handleRemoveExistingPermanentEvidence(idx) : undefined}
+                  />
+                )}
+                {previewableNewPermanentFiles.length > 0 && (
+                  <AttachmentChipList
+                    attachments={previewableNewPermanentFiles}
+                    onPreview={(att) => setSelectedPreviewAttachment(att)}
+                    onAnnotate={canUpdateCloserFields ? (file) => setAnnotatingItem({ attachment: file, isPermanent: true }) : undefined}
+                    onRemove={canUpdateCloserFields ? (idx) => handleRemoveNewPermanentEvidence(idx) : undefined}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* 3. Permanent Fix Target Date */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>PERMANENT TARGET DATE</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        {isAdmin ? 'Admin Edit' : 'Closer'}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        {isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                      </span>
+                    )
+                  )}
+                </label>
+              </div>
+              <DateInput
+                disabled={!canUpdateCloserFields}
+                value={closerPermanentTargetDate}
+                onChange={(e) => setCloserPermanentTargetDate(e.target.value)}
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
             </div>
 
             {/* Dedicated Closer Submit Button */}
@@ -1967,7 +2138,7 @@ const IhlrApprovals = () => {
                           </td>
                           <td className="py-3.5 px-3">
                             <IhlrAttachmentThumbnail
-                              rawAttachment={r.evidence_attachment || r.defect_image}
+                              rawAttachment={r.temporary_evidence_attachment || r.permanent_evidence_attachment || r.defect_image}
                             />
                           </td>
                           <td className="py-3.5 px-3 text-center whitespace-nowrap">
@@ -1980,8 +2151,8 @@ const IhlrApprovals = () => {
                               String(r.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
                               String(r.status || '').toUpperCase() === 'AWAITING_REVIEW' ||
                               String(r.status || '').toUpperCase() === 'AWAITING REVIEW' || (
-                                Boolean(r.action && String(r.action).trim()) &&
-                                Boolean(r.target_date) &&
+                                Boolean((r.temporary_action || r.permanent_fix) && String(r.temporary_action || r.permanent_fix).trim()) &&
+                                Boolean(r.temporary_target_date || r.permanent_target_date) &&
                                 (Array.isArray(r.prod_why_why) && r.prod_why_why.some(w => Boolean(w && String(w).trim())))
                               )
                             )) ? (

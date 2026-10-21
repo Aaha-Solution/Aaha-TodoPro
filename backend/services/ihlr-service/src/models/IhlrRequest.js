@@ -97,9 +97,12 @@ export const IhlrRequest = {
           resp = 'PRODUCTION',
           resp_person = '',
           prod_why_why = [],
-          action = '',
-          evidence_attachment = '',
-          target_date = null,
+          temporary_action = '',
+          temporary_evidence_attachment = '',
+          temporary_target_date = null,
+          permanent_fix = '',
+          permanent_evidence_attachment = '',
+          permanent_target_date = null,
           remarks = '',
           status = 'OPEN',
           created_by = '',
@@ -125,10 +128,11 @@ export const IhlrRequest = {
           `INSERT INTO ihlr_requests (
             req_no, batch_date, shift, problem, model, problem_detected_at, 
             received_from, analysis_done_by, defect_image, qa_why_why, 
-            actual_qty, four_m, resp, resp_person, prod_why_why, action, 
-            evidence_attachment, target_date, remarks, status,
+            actual_qty, four_m, resp, resp_person, prod_why_why,
+            temporary_action, temporary_evidence_attachment, temporary_target_date,
+            permanent_fix, permanent_evidence_attachment, permanent_target_date, remarks, status,
             created_by, created_by_id, created_by_email, resp_person_email
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             req_no,
             batch_date || new Date().toISOString().split('T')[0],
@@ -145,9 +149,12 @@ export const IhlrRequest = {
             resp,
             resp_person,
             JSON.stringify(prod_why_why),
-            action,
-            evidence_attachment,
-            target_date || null,
+            temporary_action || '',
+            temporary_evidence_attachment || '',
+            temporary_target_date || null,
+            permanent_fix,
+            permanent_evidence_attachment,
+            permanent_target_date || null,
             remarks,
             status,
             created_by || null,
@@ -183,7 +190,9 @@ export const IhlrRequest = {
           'req_no', 'batch_date', 'shift', 'problem', 'model', 
           'problem_detected_at', 'received_from', 'analysis_done_by', 
           'defect_image', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
-          'action', 'evidence_attachment', 'target_date', 'remarks', 'status',
+          'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date',
+          'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date',
+          'remarks', 'status',
           'created_by', 'created_by_id', 'created_by_email'
         ];
 
@@ -191,7 +200,7 @@ export const IhlrRequest = {
           if (updates[key] !== undefined) {
             fields.push(`${key} = ?`);
             let val = updates[key];
-            if ((key === 'target_date' || key === 'batch_date') && (val === '' || !val)) {
+            if ((key === 'batch_date' || key === 'permanent_target_date' || key === 'temporary_target_date') && (val === '' || !val)) {
               val = null;
             }
             if (key === 'shift' && val) {

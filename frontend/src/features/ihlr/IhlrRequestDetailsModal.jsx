@@ -356,7 +356,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   if (!isOpen || !request) return null;
 
   const attachments = parseAttachments(req.defect_image);
-  const evidenceAttachments = parseAttachments(req.evidence_attachment);
+  const evidenceAttachments = parseAttachments(req.temporary_evidence_attachment);
+  const permanentEvidenceAttachments = parseAttachments(req.permanent_evidence_attachment);
 
   const formatDate = (dateStr) => {
     return formatDateDDMMYYYY(dateStr);
@@ -375,8 +376,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       (request?.status || '').toUpperCase() === 'AWAITING REVIEW' ||
       (request?.status || '').toUpperCase() === 'UNDER_REVIEW' ||
       (request && (
-        Boolean(request.action && String(request.action).trim()) &&
-        Boolean(request.target_date) &&
+        Boolean((request.temporary_action || request.permanent_fix) && String(request.temporary_action || request.permanent_fix).trim()) &&
+        Boolean(request.temporary_target_date || request.permanent_target_date) &&
         Boolean(request.prod_why_why?.[0] && String(request.prod_why_why[0]).trim())
       ))
     )
@@ -480,7 +481,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
     const items = [
       ...attachments.filter(isImg).map((a) => ({ ...a, label: 'Defect Image' })),
-      ...evidenceAttachments.filter(isImg).map((a) => ({ ...a, label: 'Closer Evidence Image' }))
+      ...evidenceAttachments.filter(isImg).map((a) => ({ ...a, label: 'Temporary Evidence Image' })),
+      ...permanentEvidenceAttachments.filter(isImg).map((a) => ({ ...a, label: 'Permanent Evidence Image' }))
     ];
 
     const results = await Promise.all(
@@ -671,13 +673,16 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         startY: actionY,
         head: [['CONTAINMENT COUNTERMEASURE & CLOSURE SIGN-OFF']],
         body: [
-          [`Corrective Action: ${request.action || 'Containment action pending review.'}`],
-          [`Target Date: ${formatDate(request.target_date)}  |  Responsible Person: ${request.resp_person || request.resp || 'Quality Team'}`],
+          [`Temporary Action: ${request.temporary_action || 'Containment action pending review.'}`],
+          [`Temporary Target Date: ${formatDate(request.temporary_target_date)}`],
+          [`Permanent Fix: ${request.permanent_fix || 'Permanent fix pending review.'}`],
+          [`Permanent Target Date: ${formatDate(request.permanent_target_date)}  |  Responsible Person: ${request.resp_person || request.resp || 'Quality Team'}`],
           ...(hasReassignments ? [[`Reassignment History: ${reassignmentDetails}`]] : []),
           ...(request.remarks ? [[`Remarks: ${request.remarks}`]] : []),
-          [`Closure Sign-off: ${request.status === 'CLOSED' ? `Closed by ${request.closed_by || request.resp_person || 'Quality Admin'} on ${formatDate(request.closed_at || request.target_date)}` : 'Pending Closer Sign-off'}`],
+          [`Closure Sign-off: ${request.status === 'CLOSED' ? `Closed by ${request.closed_by || request.resp_person || 'Quality Admin'} on ${formatDate(request.closed_at || request.temporary_target_date || request.permanent_target_date)}` : 'Pending Closer Sign-off'}`],
           ...(attachments.length > 0 ? [[`Defect Attachments (${attachments.length}): ${attachments.map((a) => a.name).join(', ')}`]] : []),
-          ...(evidenceAttachments.length > 0 ? [[`Closer Evidence Attachments (${evidenceAttachments.length}): ${evidenceAttachments.map((a) => a.name).join(', ')}`]] : [])
+          ...(evidenceAttachments.length > 0 ? [[`Temporary Evidence Attachments (${evidenceAttachments.length}): ${evidenceAttachments.map((a) => a.name).join(', ')}`]] : []),
+          ...(permanentEvidenceAttachments.length > 0 ? [[`Permanent Evidence Attachments (${permanentEvidenceAttachments.length}): ${permanentEvidenceAttachments.map((a) => a.name).join(', ')}`]] : [])
         ],
         theme: 'grid',
         headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
@@ -907,7 +912,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <div className="flex items-center gap-4 text-[11px] font-medium text-slate-600">
                     <div>
                       <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Date</span>
-                      <span className="font-mono font-bold text-slate-800">{formatDate(request.target_date) || '—'}</span>
+                      <span className="font-mono font-bold text-slate-800">{formatDate(request.temporary_target_date || request.permanent_target_date) || '—'}</span>
                     </div>
                     <div>
                       <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Responsibility</span>
@@ -977,10 +982,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
                     <Wrench className="w-4 h-4" />
-                    <span>Temporary Action / Containment Action</span>
+                    <span>Temporary Action</span>
                   </div>
                   <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
-                    {request.action || <span className="text-slate-400 italic">No temporary action recorded.</span>}
+                    {request.temporary_action || <span className="text-slate-400 italic">No temporary action recorded.</span>}
                   </div>
                 </div>
 
@@ -989,7 +994,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
                       <Paperclip className="w-4 h-4" />
-                      <span>Evidence Attachments</span>
+                      <span>Temporary Evidence Attachments</span>
                     </div>
                     <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
                   </div>
@@ -1004,7 +1009,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     </div>
                   ) : (
                     <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
-                      No closer evidence attachments uploaded.
+                      No temporary evidence attachments uploaded.
                     </div>
                   )}
                 </div>
@@ -1013,10 +1018,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                   <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      TARGET DATE
+                      TEMPORARY TARGET DATE
                     </span>
                     <span className="font-mono font-bold text-slate-900 text-sm">
-                      {formatDate(request.target_date) || '—'}
+                      {formatDate(request.temporary_target_date) || '—'}
                     </span>
                   </div>
 
@@ -1026,6 +1031,63 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     </span>
                     <div className="text-slate-800 leading-relaxed font-medium">
                       {request.remarks || <span className="text-slate-400 italic">No remarks provided.</span>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Permanent Countermeasures Section */}
+                <div className="pt-3 border-t border-slate-200/90 space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      Permanent Countermeasures
+                    </span>
+                  </div>
+
+                  {/* 1. Permanent Fix (Words) */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold uppercase tracking-wider">
+                      <Wrench className="w-4 h-4" />
+                      <span>Permanent Fix</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                      {request.permanent_fix || <span className="text-slate-400 italic">No permanent fix recorded.</span>}
+                    </div>
+                  </div>
+
+                  {/* 2. Permanent Fix Evidence Attachment */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
+                        <Paperclip className="w-4 h-4" />
+                        <span>Permanent Evidence Attachments</span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
+                    </div>
+
+                    {permanentEvidenceAttachments && permanentEvidenceAttachments.length > 0 ? (
+                      <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
+                        <AttachmentChipList
+                          attachments={permanentEvidenceAttachments}
+                          onPreview={(att) => setPreviewAttachment(att)}
+                          readonly={true}
+                        />
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
+                        No permanent fix evidence attachments uploaded.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3. Permanent Fix Target Date */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                    <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        PERMANENT TARGET DATE
+                      </span>
+                      <span className="font-mono font-bold text-slate-900 text-sm">
+                        {formatDate(request.permanent_target_date) || '—'}
+                      </span>
                     </div>
                   </div>
                 </div>

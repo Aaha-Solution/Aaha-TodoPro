@@ -226,7 +226,7 @@ const IhlrAllRequests = () => {
       }
       await ihlrService.updateRequest(id, {
         status: newStatus,
-        action: actionUpdate !== undefined ? actionUpdate : undefined,
+        temporary_action: actionUpdate !== undefined ? actionUpdate : undefined,
         user: user ? {
           id: user.id,
           name: user.name,
@@ -237,7 +237,7 @@ const IhlrAllRequests = () => {
       });
       fetchRequests();
       if (activeModalRequest && activeModalRequest.id === id) {
-        setActiveModalRequest(prev => ({ ...prev, status: newStatus, action: actionUpdate || prev.action }));
+        setActiveModalRequest(prev => ({ ...prev, status: newStatus, temporary_action: actionUpdate || prev.temporary_action }));
       }
       setEditingCloser(null);
     } catch (err) {
@@ -609,13 +609,13 @@ const IhlrAllRequests = () => {
                     </td>
 
                     {/* Action Taken */}
-                    <td className="py-3.5 px-4 text-slate-800 font-medium max-w-[180px] truncate" title={r.action}>
-                      {r.action || '—'}
+                    <td className="py-3.5 px-4 text-slate-800 font-medium max-w-[180px] truncate" title={r.temporary_action || r.permanent_fix}>
+                      {r.temporary_action || r.permanent_fix || '—'}
                     </td>
 
                     {/* Target Date */}
                     <td className="py-3.5 px-3 text-slate-600 font-mono text-[11px] whitespace-nowrap">
-                      {r.target_date || '—'}
+                      {r.temporary_target_date || r.permanent_target_date || '—'}
                     </td>
 
                     {/* Status */}
@@ -778,7 +778,7 @@ const IhlrAllRequests = () => {
                 <textarea
                   rows={3}
                   disabled={!isAdmin && editingCloser.status === 'CLOSED'}
-                  defaultValue={editingCloser.action}
+                  defaultValue={editingCloser.temporary_action || editingCloser.permanent_fix}
                   id="modal-action-text"
                   placeholder="Describe corrective actions performed..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none disabled:bg-slate-100 disabled:text-slate-400"

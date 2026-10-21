@@ -148,8 +148,8 @@ export const getIhlrDisplayStatus = (statusOrReq, maybeReq) => {
     s === 'AWAITING REVIEW' ||
     s === 'UNDER_REVIEW' ||
     (req && (
-      Boolean(req.action && String(req.action).trim()) &&
-      Boolean(req.target_date) &&
+      Boolean((req.temporary_action || req.permanent_fix) && String(req.temporary_action || req.permanent_fix).trim()) &&
+      Boolean(req.temporary_target_date || req.permanent_target_date) &&
       (Array.isArray(req.prod_why_why)
         ? req.prod_why_why.some((w) => Boolean(w && String(w).trim()))
         : Boolean(req.prod_why_why?.[0] && String(req.prod_why_why[0]).trim()))
@@ -342,7 +342,7 @@ export const exportIhlrToExcel = async ({
 
   reqList.forEach((r, idx) => {
     const defectFiles = parseAttachments(r.defect_image);
-    const evidenceFiles = parseAttachments(r.evidence_attachment);
+    const evidenceFiles = parseAttachments(r.temporary_evidence_attachment);
     const imgObj = rowImages[idx];
     const rowNum = idx + 3;
 
@@ -378,8 +378,8 @@ export const exportIhlrToExcel = async ({
       r.prod_why_why?.[2] || '—',
       r.prod_why_why?.[3] || '—',
       r.prod_why_why?.[4] || '—',
-      r.action || '—',
-      formatDateDDMMYYYY(r.target_date),
+      r.temporary_action || r.permanent_fix || '—',
+      formatDateDDMMYYYY(r.temporary_target_date || r.permanent_target_date),
       evidenceFiles.map((a) => a.name).join(', ') || 'None',
 
       // 30-31 Reassignment Tracking
@@ -619,8 +619,8 @@ export const exportIhlrToPdf = async ({
       fileCellText,
       respStr,
       occCause,
-      r.action || '—',
-      formatDateDDMMYYYY(r.target_date) || '—',
+      r.temporary_action || r.permanent_fix || '—',
+      formatDateDDMMYYYY(r.temporary_target_date || r.permanent_target_date) || '—',
       statusStr
     ];
   });

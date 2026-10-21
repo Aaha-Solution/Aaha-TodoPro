@@ -545,9 +545,12 @@ export const createIhlrRequest = async (req, res) => {
         resp: data.resp || 'PRODUCTION',
         resp_person: data.resp_person || '',
         prod_why_why: data.prod_why_why || [],
-        action: data.action || '',
-        evidence_attachment: data.evidence_attachment || '',
-        target_date: data.target_date || null,
+        temporary_action: data.temporary_action || '',
+        temporary_evidence_attachment: data.temporary_evidence_attachment || '',
+        temporary_target_date: data.temporary_target_date || null,
+        permanent_fix: data.permanent_fix || '',
+        permanent_evidence_attachment: data.permanent_evidence_attachment || '',
+        permanent_target_date: data.permanent_target_date || null,
         remarks: data.remarks || '',
         status: data.status || 'OPEN',
         created_by: creatorUser.name,
@@ -717,7 +720,10 @@ export const updateIhlrRequest = async (req, res) => {
         'req_no', 'batch_date', 'shift', 'problem', 'model', 
         'problem_detected_at', 'received_from', 'analysis_done_by', 
         'defect_image', 'qa_why_why', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
-        'prod_why_why', 'action', 'evidence_attachment', 'target_date', 'remarks', 'status',
+        'prod_why_why',
+        'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date',
+        'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date',
+        'remarks', 'status',
         'created_by', 'created_by_id', 'created_by_email'
       ];
       for (const k of allowed) {
@@ -749,9 +755,12 @@ export const updateIhlrRequest = async (req, res) => {
       }
       if (isCloser) {
         if (req.body.prod_why_why !== undefined) safeUpdates.prod_why_why = req.body.prod_why_why;
-        if (req.body.action !== undefined) safeUpdates.action = req.body.action;
-        if (req.body.evidence_attachment !== undefined) safeUpdates.evidence_attachment = req.body.evidence_attachment;
-        if (req.body.target_date !== undefined) safeUpdates.target_date = req.body.target_date;
+        if (req.body.temporary_action !== undefined) safeUpdates.temporary_action = req.body.temporary_action;
+        if (req.body.temporary_evidence_attachment !== undefined) safeUpdates.temporary_evidence_attachment = req.body.temporary_evidence_attachment;
+        if (req.body.temporary_target_date !== undefined) safeUpdates.temporary_target_date = req.body.temporary_target_date;
+        if (req.body.permanent_fix !== undefined) safeUpdates.permanent_fix = req.body.permanent_fix;
+        if (req.body.permanent_evidence_attachment !== undefined) safeUpdates.permanent_evidence_attachment = req.body.permanent_evidence_attachment;
+        if (req.body.permanent_target_date !== undefined) safeUpdates.permanent_target_date = req.body.permanent_target_date;
 
         // Automatically transition status to IN_PROGRESS when closer updates their fields
         const currentStatus = String(existing.status || '').toUpperCase();
@@ -761,39 +770,43 @@ export const updateIhlrRequest = async (req, res) => {
       }
     }
 
-    // Closer field validations if submitted
-    if (safeUpdates.action !== undefined) {
-      const trimmed = typeof safeUpdates.action === 'string' ? safeUpdates.action.trim() : '';
-      if (!trimmed) {
-        return errorResponse(res, 'Action is mandatory and cannot be empty.', 400);
-      }
-      safeUpdates.action = trimmed;
+    // Closer field handling (Non-mandatory for temporary action, evidence, target date)
+    if (safeUpdates.temporary_action !== undefined) {
+      safeUpdates.temporary_action = typeof safeUpdates.temporary_action === 'string' ? safeUpdates.temporary_action.trim() : (safeUpdates.temporary_action || '');
     }
-    if (safeUpdates.evidence_attachment !== undefined) {
+    if (safeUpdates.temporary_evidence_attachment !== undefined) {
       let parsed = [];
       try {
-        parsed = typeof safeUpdates.evidence_attachment === 'string' ? JSON.parse(safeUpdates.evidence_attachment) : safeUpdates.evidence_attachment;
+        parsed = typeof safeUpdates.temporary_evidence_attachment === 'string' ? JSON.parse(safeUpdates.temporary_evidence_attachment) : safeUpdates.temporary_evidence_attachment;
       } catch {
         parsed = [];
       }
-      if (!Array.isArray(parsed) || parsed.length === 0) {
-        return errorResponse(res, 'Evidence Attachment is mandatory. Please provide at least one attachment.', 400);
+      if (!Array.isArray(parsed)) {
+        safeUpdates.temporary_evidence_attachment = '[]';
       }
     }
-    if (safeUpdates.target_date !== undefined) {
-      const trimmed = typeof safeUpdates.target_date === 'string' ? safeUpdates.target_date.trim() : '';
-      if (!trimmed) {
-        return errorResponse(res, 'Target Date is mandatory and cannot be empty.', 400);
-      }
-      const dateOnly = trimmed.split('T')[0];
-      const today = new Date().toISOString().split('T')[0];
-      if (dateOnly < today && !isAdmin) {
-        return errorResponse(res, 'Target Date cannot be in the past. Please select today or a future date.', 400);
+    if (safeUpdates.temporary_target_date !== undefined) {
+      const trimmed = typeof safeUpdates.temporary_target_date === 'string' ? safeUpdates.temporary_target_date.trim() : '';
+      if (trimmed) {
+        const dateOnly = trimmed.split('T')[0];
+        const today = new Date().toISOString().split('T')[0];
+        if (dateOnly < today && !isAdmin) {
+          return errorResponse(res, 'Temporary Target Date cannot be in the past. Please select today or a future date.', 400);
+        }
+        safeUpdates.temporary_target_date = trimmed;
+      } else {
+        safeUpdates.temporary_target_date = null;
       }
     }
 
     if (!safeUpdates.status && String(existing.status || '').toUpperCase() === 'OPEN') {
-      const hasCloserUpdates = safeUpdates.prod_why_why !== undefined || safeUpdates.action !== undefined || safeUpdates.evidence_attachment !== undefined || safeUpdates.target_date !== undefined;
+      const hasCloserUpdates = safeUpdates.prod_why_why !== undefined ||
+        safeUpdates.temporary_action !== undefined ||
+        safeUpdates.temporary_evidence_attachment !== undefined ||
+        safeUpdates.temporary_target_date !== undefined ||
+        safeUpdates.permanent_fix !== undefined ||
+        safeUpdates.permanent_evidence_attachment !== undefined ||
+        safeUpdates.permanent_target_date !== undefined;
       if (hasCloserUpdates) {
         safeUpdates.status = 'IN_PROGRESS';
       }
@@ -871,6 +884,9 @@ export const updateIhlrRequest = async (req, res) => {
     // Clean dates and JSON structures safely
     if (safeUpdates.target_date !== undefined) {
       safeUpdates.target_date = safeUpdates.target_date ? String(safeUpdates.target_date).split('T')[0] : null;
+    }
+    if (safeUpdates.permanent_target_date !== undefined) {
+      safeUpdates.permanent_target_date = safeUpdates.permanent_target_date ? String(safeUpdates.permanent_target_date).split('T')[0] : null;
     }
     if (safeUpdates.prod_why_why !== undefined && typeof safeUpdates.prod_why_why === 'string') {
       try {
