@@ -478,8 +478,11 @@ const IhlrCreateRequest = () => {
     } else if (/\d/.test(formData.created_by)) {
       newErrors.created_by = 'Created By must contain text only, numbers are not allowed';
     }
+    const todayDateStr = getTodayDateInput();
     if (!formData.batch_date || !formData.batch_date.trim()) {
       newErrors.batch_date = 'Incident Date is required';
+    } else if (formData.batch_date > todayDateStr) {
+      newErrors.batch_date = 'Incident Date cannot be a future date. Please select today or a past date.';
     }
     if (!formData.shift || !formData.shift.trim()) {
       newErrors.shift = 'Shift is required';
@@ -788,9 +791,14 @@ const IhlrCreateRequest = () => {
               </label>
               <DateInput
                 value={formData.batch_date}
+                max={getTodayDateInput()}
                 onChange={(e) => {
-                  setFormData({ ...formData, batch_date: e.target.value });
-                  if (errors.batch_date && e.target.value) {
+                  const val = e.target.value;
+                  const today = getTodayDateInput();
+                  setFormData({ ...formData, batch_date: val });
+                  if (val && val > today) {
+                    setErrors((prev) => ({ ...prev, batch_date: 'Incident Date cannot be a future date. Please select today or a past date.' }));
+                  } else if (errors.batch_date && val) {
                     setErrors((prev) => ({ ...prev, batch_date: false }));
                   }
                 }}

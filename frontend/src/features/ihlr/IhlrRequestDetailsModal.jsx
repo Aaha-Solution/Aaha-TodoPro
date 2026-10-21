@@ -246,8 +246,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   const handleSaveRequesterDetails = async () => {
     const newErrors = {};
 
+    const todayStr = new Date().toISOString().split('T')[0];
     if (!editFormData.batch_date || !editFormData.batch_date.trim()) {
       newErrors.batch_date = 'Incident Date is required';
+    } else if (editFormData.batch_date > todayStr) {
+      newErrors.batch_date = 'Incident Date cannot be a future date. Please select today or a past date.';
     }
     if (!editFormData.shift || !editFormData.shift.trim()) {
       newErrors.shift = 'Shift is required';
@@ -1399,10 +1402,15 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </label>
                       <input
                         type="date"
+                        max={new Date().toISOString().split('T')[0]}
                         value={editFormData.batch_date}
                         onChange={(e) => {
-                          setEditFormData(prev => ({ ...prev, batch_date: e.target.value }));
-                          if (editErrors.batch_date && e.target.value) {
+                          const val = e.target.value;
+                          const today = new Date().toISOString().split('T')[0];
+                          setEditFormData(prev => ({ ...prev, batch_date: val }));
+                          if (val && val > today) {
+                            setEditErrors(prev => ({ ...prev, batch_date: 'Incident Date cannot be a future date. Please select today or a past date.' }));
+                          } else if (editErrors.batch_date && val) {
                             setEditErrors(prev => ({ ...prev, batch_date: '' }));
                           }
                         }}

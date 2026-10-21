@@ -544,10 +544,18 @@ const IhlrApprovals = () => {
 
     // Temporary Target Date is optional; only check if user selected a past date
     if (closerTargetDate && closerTargetDate.trim() && closerTargetDate < todayStr && !isAdmin) {
-      setCloserTargetDateError('Temporary Target Date cannot be in the past. Please select today or a future date.');
+      setCloserTargetDateError('Temporary Target Date cannot be a previous date. Please select today or a future date.');
       hasCloserErrors = true;
     } else {
       setCloserTargetDateError(false);
+    }
+
+    // Permanent Target Date is optional; only check if user selected a past date
+    if (closerPermanentTargetDate && closerPermanentTargetDate.trim() && closerPermanentTargetDate < todayStr && !isAdmin) {
+      setCloserPermanentTargetDateError('Permanent Target Date cannot be a previous date. Please select today or a future date.');
+      hasCloserErrors = true;
+    } else {
+      setCloserPermanentTargetDateError(false);
     }
 
     if (hasCloserErrors) {
@@ -1341,10 +1349,28 @@ const IhlrApprovals = () => {
               </div>
               <DateInput
                 disabled={!canUpdateCloserFields}
+                min={todayStr}
                 value={closerPermanentTargetDate}
-                onChange={(e) => setCloserPermanentTargetDate(e.target.value)}
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCloserPermanentTargetDate(val);
+                  if (val && val < todayStr && !isAdmin) {
+                    setCloserPermanentTargetDateError('Permanent Target Date cannot be a previous date. Please select today or a future date.');
+                  } else {
+                    setCloserPermanentTargetDateError(false);
+                  }
+                }}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${
+                  closerPermanentTargetDateError
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
+              {closerPermanentTargetDateError && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {typeof closerPermanentTargetDateError === 'string' ? closerPermanentTargetDateError : 'Permanent Target Date cannot be a previous date.'}</span>
+                </p>
+              )}
             </div>
 
             {/* Dedicated Closer Submit Button */}
