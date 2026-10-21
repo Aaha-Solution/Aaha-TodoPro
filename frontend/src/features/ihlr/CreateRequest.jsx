@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Search,
   Users,
+  User,
   PenTool,
   Save
 } from 'lucide-react';
@@ -677,16 +678,13 @@ const IhlrCreateRequest = () => {
         {/* Logged Admin Info Pill */}
         <div className="flex items-center gap-2.5 px-3.5 py-2 bg-white rounded-xl border border-slate-200/80 shadow-2xs self-start sm:self-auto">
           <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs uppercase">
-            {getLoggedInUserName().charAt(0).toUpperCase()}
+            {getLoggedInUserName()?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
           </div>
-          <div className="text-left text-xs leading-tight">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-slate-400 font-semibold uppercase">Logged Admin</span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-                {userDept || 'INCOMING QUALITY'}
-              </span>
-            </div>
-            <span className="font-bold text-slate-800">{getLoggedInUserName()}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-800 uppercase tracking-wide text-xs">Logged Admin</span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+              {userDept || 'INCOMING QUALITY'}
+            </span>
           </div>
         </div>
       </div>
