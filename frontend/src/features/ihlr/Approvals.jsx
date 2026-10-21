@@ -643,11 +643,6 @@ const IhlrApprovals = () => {
       return;
     }
 
-    if (!isReassignOpen && isCloserDataToBeUpdated) {
-      modalWarning('Temporary Action & Target Date must be completed before Admin Sign-Off.');
-      return;
-    }
-
     if (!isReassignOpen && (!closerRemarks || !closerRemarks.trim())) {
       setRemarksError(true);
       return; // DO NOT TRIGGER BACKEND!
@@ -982,48 +977,6 @@ const IhlrApprovals = () => {
                   value={selectedRequest ? (String(selectedRequest.req_no).startsWith('IHLR-') ? selectedRequest.req_no : `#${selectedRequest.req_no}`) : ''}
                   placeholder="Click a row on the right to select"
                   className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed select-none outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  REQUESTED DATE <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  readOnly
-                  disabled
-                  value={selectedRequest?.batch_date ? formatDateDDMMYYYY(selectedRequest.batch_date) : ''}
-                  placeholder="Click a row on the right to select"
-                  className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed select-none outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  PROBLEM / DETECTED AT <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  readOnly
-                  disabled
-                  value={selectedRequest ? `${selectedRequest.problem || ''} (${selectedRequest.problem_detected_at || ''})` : ''}
-                  placeholder="Click a row on the right to select"
-                  className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed select-none outline-none truncate"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  CURRENT ASSIGNED CLOSER <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  readOnly
-                  disabled
-                  value={selectedRequest ? `${selectedRequest.resp_person || 'Not Assigned'} (${selectedRequest.resp || 'N/A'})` : ''}
-                  placeholder="Click a row on the right to select"
-                  className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed select-none outline-none truncate"
                 />
               </div>
             </div>
@@ -1521,9 +1474,9 @@ const IhlrApprovals = () => {
                   <div className="p-2.5 px-3 rounded-xl border border-amber-200 bg-amber-50/80 text-amber-900 text-[11px] flex items-center gap-2 animate-in fade-in">
                     <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                     <div className="leading-tight">
-                      <span className="font-bold">Closer Pending: </span>
+                      <span className="font-bold">Closer Submission: </span>
                       <span className="text-amber-800">
-                        Temporary Action &amp; Target Date required before Admin Sign-Off.
+                        {isSelectedOpen ? 'Closer submission pending. Admin can review, edit, or sign off status.' : 'Closer details submitted.'}
                       </span>
                     </div>
                   </div>
