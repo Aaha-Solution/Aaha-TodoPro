@@ -283,6 +283,9 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     } else if (/\d/.test(editFormData.analysis_done_by)) {
       newErrors.analysis_done_by = 'Analysis Done By must contain text only, numbers are not allowed';
     }
+    if (editFormData.created_by && /\d/.test(editFormData.created_by)) {
+      newErrors.created_by = 'Created By must contain text only, numbers are not allowed';
+    }
     if (!editFormData.problem || !editFormData.problem.trim()) {
       newErrors.problem = 'Problem / Defect Description is required';
     }

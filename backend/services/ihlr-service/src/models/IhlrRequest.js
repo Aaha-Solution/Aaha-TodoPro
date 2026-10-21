@@ -122,7 +122,8 @@ export const IhlrRequest = {
         else if (normalizedShift.includes('3') || normalizedShift.toLowerCase() === 'iii') normalizedShift = 'Shift 3';
 
         let normalizedReceivedFrom = String(received_from || '').trim().toUpperCase();
-        normalizedReceivedFrom = normalizedReceivedFrom === 'L3' ? 'L3' : 'LINE';
+        normalizedReceivedFrom = normalizedReceivedFrom === 'D3' ? 'D3' : 'LINE';
+        created_by = String(created_by || '').replace(/[0-9]/g, '').trim();
 
         const [result] = await pool.query(
           `INSERT INTO ihlr_requests (
@@ -203,6 +204,9 @@ export const IhlrRequest = {
             if ((key === 'batch_date' || key === 'permanent_target_date' || key === 'temporary_target_date') && (val === '' || !val)) {
               val = null;
             }
+            if ((key === 'created_by' || key === 'analysis_done_by') && val) {
+              val = String(val).replace(/[0-9]/g, '').trim();
+            }
             if (key === 'shift' && val) {
               const s = String(val).trim().toLowerCase();
               if (s.includes('gen')) val = 'General';
@@ -212,7 +216,7 @@ export const IhlrRequest = {
             }
             if (key === 'received_from' && val) {
               const rf = String(val).trim().toUpperCase();
-              val = rf === 'L3' ? 'L3' : 'LINE';
+              val = rf === 'D3' ? 'D3' : 'LINE';
             }
             values.push(val);
           }

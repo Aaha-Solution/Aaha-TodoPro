@@ -502,7 +502,7 @@ export const createIhlrRequest = async (req, res) => {
     const combinedAssignedEmails = assignedUsersList.map((u) => u.email).filter(Boolean).join(', ');
 
     // Enrich payload with resolved creator & assigned emails
-    data.created_by = (data.created_by && String(data.created_by).trim()) || creatorUser.name;
+    data.created_by = (data.created_by && String(data.created_by).replace(/[0-9]/g, '').trim()) || creatorUser.name;
     data.created_by_id = creatorUser.id || data.created_by_id;
     data.created_by_email = creatorUser.email || data.created_by_email;
     data.resp_person_email = combinedAssignedEmails || assignedUser.email;
@@ -536,7 +536,7 @@ export const createIhlrRequest = async (req, res) => {
         problem: data.problem,
         model: data.model,
         problem_detected_at: data.problem_detected_at || '',
-        received_from: (String(data.received_from || '').trim().toUpperCase() === 'L3') ? 'L3' : 'LINE',
+        received_from: (String(data.received_from || '').trim().toUpperCase() === 'D3') ? 'D3' : 'LINE',
         analysis_done_by: String(data.analysis_done_by || '').replace(/[0-9]/g, '').trim(),
         defect_image: data.defect_image || '',
         qa_why_why: data.qa_why_why || [],

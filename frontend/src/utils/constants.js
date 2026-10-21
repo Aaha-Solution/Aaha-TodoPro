@@ -53,7 +53,7 @@ export const IHLR_SHIFTS = [
   }
 ];
 
-export const IHLR_RECEIVED_FROM_OPTIONS = ['L3', 'LINE'];
+export const IHLR_RECEIVED_FROM_OPTIONS = ['D3', 'LINE'];
 
 export const getIhlrShiftDetails = (shiftVal) => {
   if (!shiftVal) return null;

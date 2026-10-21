@@ -475,6 +475,8 @@ const IhlrCreateRequest = () => {
 
     if (!formData.created_by || !formData.created_by.trim()) {
       newErrors.created_by = 'Created By is required';
+    } else if (/\d/.test(formData.created_by)) {
+      newErrors.created_by = 'Created By must contain text only, numbers are not allowed';
     }
     if (!formData.batch_date || !formData.batch_date.trim()) {
       newErrors.batch_date = 'Incident Date is required';
@@ -737,7 +739,7 @@ const IhlrCreateRequest = () => {
               />
             </div>
 
-            {/* Created By (Manual entry by user) */}
+            {/* Created By (Manual entry by user - Text only) */}
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
                 <span>Created By</span>
@@ -747,9 +749,19 @@ const IhlrCreateRequest = () => {
                 type="text"
                 placeholder="e.g. Enter creator name"
                 value={formData.created_by || ''}
+                onKeyDown={(e) => {
+                  if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    setErrors((prev) => ({ ...prev, created_by: 'Only text / letters allowed, numbers are not allowed' }));
+                  }
+                }}
                 onChange={(e) => {
-                  setFormData({ ...formData, created_by: e.target.value });
-                  if (errors.created_by && e.target.value.trim()) {
+                  const raw = e.target.value;
+                  const cleaned = raw.replace(/[0-9]/g, '');
+                  setFormData({ ...formData, created_by: cleaned });
+                  if (/\d/.test(raw)) {
+                    setErrors((prev) => ({ ...prev, created_by: 'Only text / letters allowed, numbers are not allowed' }));
+                  } else if (errors.created_by) {
                     setErrors((prev) => ({ ...prev, created_by: false }));
                   }
                 }}
