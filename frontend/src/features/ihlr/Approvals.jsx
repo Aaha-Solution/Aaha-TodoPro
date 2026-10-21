@@ -607,7 +607,7 @@ const IhlrApprovals = () => {
     }
 
     if (!isReassignOpen && isCloserDataToBeUpdated) {
-      modalWarning('Action & Target Date must be completed before Admin Sign-Off.');
+      modalWarning('Temporary Action & Target Date must be completed before Admin Sign-Off.');
       return;
     }
 
@@ -1048,11 +1048,11 @@ const IhlrApprovals = () => {
               </div>
             </div>
 
-            {/* Action Field (Image 1: Action Words) */}
+            {/* Temporary Action Field (Image 1: Action Words) */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>ACTION</span>
+                  <span>TEMPORARY ACTION</span>
                   <span className="text-rose-500">*</span>
                   {selectedRequest && (
                     canUpdateCloserFields ? (
@@ -1081,7 +1081,7 @@ const IhlrApprovals = () => {
                   !selectedRequest
                     ? 'Click a row on the right to select'
                     : canUpdateCloserFields
-                    ? 'Describe corrective actions taken / countermeasures...'
+                    ? 'Describe temporary actions taken / countermeasures...'
                     : isAdmin
                     ? 'Click Edit Closer Fields below to edit...'
                     : 'Read-only (Closer only)'
@@ -1094,7 +1094,7 @@ const IhlrApprovals = () => {
               />
               {closerActionError && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* Action is mandatory. Please enter corrective actions / countermeasures.</span>
+                  <span>* Temporary Action is mandatory. Please enter temporary actions / countermeasures.</span>
                 </p>
               )}
             </div>
@@ -1308,7 +1308,7 @@ const IhlrApprovals = () => {
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      <span>Submit Closer Log (5-Why &amp; Action)</span>
+                      <span>Submit Closer Log (5-Why &amp; Temporary Action)</span>
                     </>
                   )}
                 </button>
@@ -1352,7 +1352,7 @@ const IhlrApprovals = () => {
                     <div className="leading-tight">
                       <span className="font-bold">Closer Pending: </span>
                       <span className="text-amber-800">
-                        Action &amp; Target Date required before Admin Sign-Off.
+                        Temporary Action &amp; Target Date required before Admin Sign-Off.
                       </span>
                     </div>
                   </div>
@@ -1682,7 +1682,7 @@ const IhlrApprovals = () => {
                         : adminEditCloser
                         ? 'Disabled while editing closer fields...'
                         : isCloserDataToBeUpdated && !isReassignOpen
-                        ? 'Awaiting closer Action & Target Date...'
+                        ? 'Awaiting closer Temporary Action & Target Date...'
                         : 'Enter remarks and validation summary...'
                     }
                     className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none ${
@@ -1699,7 +1699,7 @@ const IhlrApprovals = () => {
                     </p>
                   ) : isCloserDataToBeUpdated && !isReassignOpen ? (
                     <p className="text-[10px] text-amber-700 mt-0.5 font-medium">
-                      Closer Action &amp; Target Date required first.
+                      Closer Temporary Action &amp; Target Date required first.
                     </p>
                   ) : remarksError ? (
                     <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">

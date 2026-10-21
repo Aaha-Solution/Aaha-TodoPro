@@ -977,10 +977,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
                     <Wrench className="w-4 h-4" />
-                    <span>Action Taken / Containment Action</span>
+                    <span>Temporary Action / Containment Action</span>
                   </div>
                   <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
-                    {request.action || <span className="text-slate-400 italic">No corrective action recorded.</span>}
+                    {request.action || <span className="text-slate-400 italic">No temporary action recorded.</span>}
                   </div>
                 </div>
 
