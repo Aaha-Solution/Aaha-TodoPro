@@ -23,7 +23,8 @@ import {
   RotateCcw,
   SlidersHorizontal,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Pencil
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
 import { IhlrAttachmentThumbnail } from './IhlrAttachmentView';
@@ -636,6 +637,18 @@ const IhlrAllRequests = () => {
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => {
+                              setActiveModalRequest(r);
+                              setModalInitialEdit(true);
+                            }}
+                            className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                            title="Edit Request (Admin)"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

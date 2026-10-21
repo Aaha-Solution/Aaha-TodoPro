@@ -58,6 +58,7 @@ const IhlrApprovals = () => {
   const [search, setSearch] = useState(() => location.state?.search || '');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [activeModalRequest, setActiveModalRequest] = useState(null);
+  const [modalInitialEdit, setModalInitialEdit] = useState(false);
   const [selectedPreviewAttachment, setSelectedPreviewAttachment] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
 
@@ -2125,13 +2126,33 @@ const IhlrApprovals = () => {
                             <div className="flex items-center justify-center gap-1.5">
                               <button
                                 type="button"
-                                onClick={() => setActiveModalRequest(r)}
+                                onClick={() => {
+                                  setActiveModalRequest(r);
+                                  setModalInitialEdit(false);
+                                }}
                                 className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
                                 title="View Full Report"
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
-
+                              {isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    populateForm(r, true);
+                                    setAdminEditCloser(true);
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  }}
+                                  className={`p-1 rounded-md transition cursor-pointer ${
+                                    isSelected && adminEditCloser
+                                      ? 'text-amber-600 bg-amber-50 ring-1 ring-amber-300'
+                                      : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                                  }`}
+                                  title="Admin: Edit Closer Fields"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -2196,7 +2217,16 @@ const IhlrApprovals = () => {
       <IhlrRequestDetailsModal
         isOpen={Boolean(activeModalRequest)}
         request={activeModalRequest}
-        onClose={() => setActiveModalRequest(null)}
+        initialEditMode={modalInitialEdit}
+        onClose={() => {
+          setActiveModalRequest(null);
+          setModalInitialEdit(false);
+        }}
+        onUpdated={() => {
+          fetchRequests();
+          setActiveModalRequest(null);
+          setModalInitialEdit(false);
+        }}
       />
 
       {/* Standalone Attachment Preview Modal */}
