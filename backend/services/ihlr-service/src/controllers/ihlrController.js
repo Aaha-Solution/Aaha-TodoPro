@@ -317,6 +317,7 @@ export const getIhlrRequests = async (req, res) => {
         (r.model && r.model.toLowerCase().includes(q)) ||
         (r.received_from && r.received_from.toLowerCase().includes(q)) ||
         (r.analysis_done_by && r.analysis_done_by.toLowerCase().includes(q)) ||
+        (r.created_by && r.created_by.toLowerCase().includes(q)) ||
         (String(r.req_no) && String(r.req_no).toLowerCase().includes(q)) ||
         (r.resp_person && r.resp_person.toLowerCase().includes(q))
       );
@@ -501,9 +502,9 @@ export const createIhlrRequest = async (req, res) => {
     const combinedAssignedEmails = assignedUsersList.map((u) => u.email).filter(Boolean).join(', ');
 
     // Enrich payload with resolved creator & assigned emails
-    data.created_by = creatorUser.name;
-    data.created_by_id = creatorUser.id;
-    data.created_by_email = creatorUser.email;
+    data.created_by = (data.created_by && String(data.created_by).trim()) || creatorUser.name;
+    data.created_by_id = creatorUser.id || data.created_by_id;
+    data.created_by_email = creatorUser.email || data.created_by_email;
     data.resp_person_email = combinedAssignedEmails || assignedUser.email;
 
     let created = await IhlrRequest.create(data);
@@ -716,7 +717,8 @@ export const updateIhlrRequest = async (req, res) => {
         'req_no', 'batch_date', 'shift', 'problem', 'model', 
         'problem_detected_at', 'received_from', 'analysis_done_by', 
         'defect_image', 'qa_why_why', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
-        'prod_why_why', 'action', 'evidence_attachment', 'target_date', 'remarks', 'status'
+        'prod_why_why', 'action', 'evidence_attachment', 'target_date', 'remarks', 'status',
+        'created_by', 'created_by_id', 'created_by_email'
       ];
       for (const k of allowed) {
         if (req.body[k] !== undefined) safeUpdates[k] = req.body[k];
@@ -735,7 +737,8 @@ export const updateIhlrRequest = async (req, res) => {
         const requesterAllowed = [
           'batch_date', 'shift', 'problem', 'model', 
           'problem_detected_at', 'received_from', 'analysis_done_by', 
-          'defect_image', 'qa_why_why', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email'
+          'defect_image', 'qa_why_why', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
+          'created_by', 'created_by_id', 'created_by_email'
         ];
         for (const k of requesterAllowed) {
           if (req.body[k] !== undefined) safeUpdates[k] = req.body[k];

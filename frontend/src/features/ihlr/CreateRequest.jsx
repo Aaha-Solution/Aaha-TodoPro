@@ -77,8 +77,25 @@ const IhlrCreateRequest = () => {
     return `ihlr_create_request_draft_${uid || 'default'}`;
   };
 
+  const getLoggedInUserName = () => {
+    return (
+      user?.name ||
+      (() => {
+        try {
+          const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+          return u ? JSON.parse(u)?.name : '';
+        } catch {
+          return '';
+        }
+      })() ||
+      user?.email ||
+      'Admin'
+    );
+  };
+
   const defaultFormData = {
     req_no: 'IHLR-1',
+    created_by: getLoggedInUserName(),
     batch_date: getTodayDateInput(),
     shift: '',
     problem: '',
@@ -112,10 +129,12 @@ const IhlrCreateRequest = () => {
 
   const [formData, setFormData] = useState(() => {
     const saved = getSavedDraft();
+    const currentAdmin = getLoggedInUserName();
     if (saved?.formData) {
       return {
         ...defaultFormData,
         ...saved.formData,
+        created_by: saved.formData.created_by || currentAdmin,
         shift: saved.formData.shift || '',
         status: 'OPEN'
       };
@@ -181,6 +200,7 @@ const IhlrCreateRequest = () => {
     setFormData((prev) => ({
       ...defaultFormData,
       req_no: prev.req_no || 'IHLR-1',
+      created_by: getLoggedInUserName(),
     }));
     setQaWhyWhy(['', '', '', '', '']);
     setAttachments([]);
@@ -214,11 +234,22 @@ const IhlrCreateRequest = () => {
   }, []);
 
   useEffect(() => {
+    const currentAdmin = getLoggedInUserName();
+    if (currentAdmin && !formData.created_by) {
+      setFormData((prev) => ({
+        ...prev,
+        created_by: prev.created_by || currentAdmin,
+      }));
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (editId) {
       ihlrService.getRequestById(editId).then((r) => {
         if (r) {
           setFormData({
             req_no: r.req_no || `IHLR-${r.id}`,
+            created_by: r.created_by || getLoggedInUserName(),
             batch_date: r.batch_date ? String(r.batch_date).split('T')[0] : getTodayDateInput(),
             shift: r.shift || '',
             problem: r.problem || '',
@@ -450,6 +481,9 @@ const IhlrCreateRequest = () => {
 
     const newErrors = {};
 
+    if (!formData.created_by || !formData.created_by.trim()) {
+      newErrors.created_by = 'Created By is required';
+    }
     if (!formData.batch_date || !formData.batch_date.trim()) {
       newErrors.batch_date = 'Incident Date is required';
     }
@@ -535,7 +569,7 @@ const IhlrCreateRequest = () => {
         };
       });
 
-      const creatorName = user?.name || user?.email || 'Incoming Quality Admin';
+      const creatorName = (formData.created_by || user?.name || user?.email || 'Incoming Quality Admin').trim();
       const creatorEmail = user?.email || '';
       const creatorId = user?.id || null;
 
@@ -550,6 +584,9 @@ const IhlrCreateRequest = () => {
 
       if (isEditMode) {
         await ihlrService.updateRequest(editId, {
+          created_by: creatorName,
+          created_by_id: creatorId,
+          created_by_email: creatorEmail,
           batch_date: formData.batch_date || new Date().toISOString().split('T')[0],
           shift: formData.shift,
           problem: formData.problem,
@@ -634,7 +671,7 @@ const IhlrCreateRequest = () => {
   return (
     <div className="space-y-6 w-full pb-16">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             {isEditMode ? `Edit Requester Details (${formData.req_no})` : 'Create IHLR Analysis Report'}
@@ -644,6 +681,22 @@ const IhlrCreateRequest = () => {
               ? 'Update line rejection incident details, defect description, attachments, and QA 5-Why analysis.'
               : 'Log line rejection incident, 5-Why problem root cause, and occurrence containment.'}
           </p>
+        </div>
+
+        {/* Creator Info Pill */}
+        <div className="flex items-center gap-2.5 px-3.5 py-2 bg-white rounded-xl border border-slate-200/80 shadow-2xs self-start sm:self-auto">
+          <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs uppercase">
+            {(formData.created_by || getLoggedInUserName()).charAt(0).toUpperCase()}
+          </div>
+          <div className="text-left text-xs leading-tight">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-slate-400 font-semibold uppercase">Created By</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                {userDept || 'INCOMING QUALITY'}
+              </span>
+            </div>
+            <span className="font-bold text-slate-800">{formData.created_by || getLoggedInUserName()}</span>
+          </div>
         </div>
       </div>
 
@@ -693,6 +746,40 @@ const IhlrCreateRequest = () => {
                 value={formData.req_no}
                 className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl font-mono font-bold text-slate-700 focus:outline-none cursor-not-allowed select-none"
               />
+            </div>
+
+            {/* Created By (Logged Admin / Requester) */}
+            <div>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center justify-between">
+                <span className="flex items-center">
+                  <span>Created By</span>
+                  <span className="text-red-500 font-bold ml-1">*</span>
+                </span>
+                <span className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                  Logged Admin
+                </span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Admin / Quality Team"
+                value={formData.created_by}
+                onChange={(e) => {
+                  setFormData({ ...formData, created_by: e.target.value });
+                  if (errors.created_by && e.target.value.trim()) {
+                    setErrors((prev) => ({ ...prev, created_by: false }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition ${
+                  errors.created_by
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
+              />
+              {errors.created_by && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {errors.created_by}</span>
+                </p>
+              )}
             </div>
 
             {/* Incident Date */}
@@ -953,7 +1040,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* 4M Category */}
-            <div className="sm:col-span-2 lg:col-span-2">
+            <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
                 <span>4M Category</span>
                 <span className="text-red-500 font-bold ml-1">*</span>

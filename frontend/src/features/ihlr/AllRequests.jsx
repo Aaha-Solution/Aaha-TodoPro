@@ -569,9 +569,14 @@ const IhlrAllRequests = () => {
                       {r.received_from}
                     </td>
 
-                    {/* Analysis Done By */}
+                    {/* Analysis Done By & Created By */}
                     <td className="py-3.5 px-3 font-medium text-slate-800">
-                      {r.analysis_done_by}
+                      <div>{r.analysis_done_by}</div>
+                      {r.created_by && (
+                        <div className="text-[10px] text-slate-400 font-normal mt-0.5 truncate max-w-[120px]" title={`Created by ${r.created_by}`}>
+                          by {r.created_by}
+                        </div>
+                      )}
                     </td>
 
                     {/* Defect Attachment Thumbnail (Display only - No modal on click) */}

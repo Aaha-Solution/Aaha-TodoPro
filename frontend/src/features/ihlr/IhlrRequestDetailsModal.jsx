@@ -85,6 +85,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     problem_detected_at: '',
     received_from: '',
     analysis_done_by: '',
+    created_by: '',
     problem: '',
     occurrence_cause: ''
   });
@@ -142,6 +143,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       problem_detected_at: targetReq.problem_detected_at || '',
       received_from: targetReq.received_from || '',
       analysis_done_by: targetReq.analysis_done_by || '',
+      created_by: targetReq.created_by || user?.name || user?.email || 'Admin',
       problem: targetReq.problem || '',
       occurrence_cause: targetReq.occurrence_cause || targetReq.detailed_observation || targetReq.problem || ''
     });
@@ -319,6 +321,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         problem_detected_at: editFormData.problem_detected_at?.trim() || '',
         received_from: editFormData.received_from?.trim() || '',
         analysis_done_by: editFormData.analysis_done_by?.trim() || '',
+        created_by: editFormData.created_by?.trim() || req.created_by || user?.name || user?.email || 'Admin',
         problem: editFormData.problem.trim(),
         occurrence_cause: editFormData.occurrence_cause?.trim() || '',
         defect_image: finalAttachments.length > 0 ? JSON.stringify(finalAttachments) : '',
@@ -1472,7 +1475,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       )}
                     </div>
 
-                    <div className="sm:col-span-2">
+                    <div>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                         ANALYSIS DONE BY <span className="text-rose-500">*</span>
                       </label>
@@ -1507,6 +1510,21 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                           <span>* {editErrors.analysis_done_by}</span>
                         </p>
                       )}
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        CREATED BY
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.created_by}
+                        onChange={(e) => {
+                          setEditFormData(prev => ({ ...prev, created_by: e.target.value }));
+                        }}
+                        placeholder="e.g. Admin"
+                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                      />
                     </div>
                   </div>
                 </div>
@@ -1851,12 +1869,21 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </span>
                     </div>
 
-                    <div className="sm:col-span-2">
+                    <div>
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         ANALYSIS DONE BY
                       </span>
                       <span className="font-bold text-slate-900 block">
                         {req.analysis_done_by || 'Admin'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        CREATED BY
+                      </span>
+                      <span className="font-bold text-slate-900 block">
+                        {req.created_by || 'Admin'}
                       </span>
                     </div>
                   </div>

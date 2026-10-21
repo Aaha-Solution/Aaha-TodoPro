@@ -183,7 +183,8 @@ export const IhlrRequest = {
           'req_no', 'batch_date', 'shift', 'problem', 'model', 
           'problem_detected_at', 'received_from', 'analysis_done_by', 
           'defect_image', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
-          'action', 'evidence_attachment', 'target_date', 'remarks', 'status'
+          'action', 'evidence_attachment', 'target_date', 'remarks', 'status',
+          'created_by', 'created_by_id', 'created_by_email'
         ];
 
         for (const key of allowed) {
