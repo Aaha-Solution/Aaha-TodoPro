@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -10,8 +10,12 @@ import {
   AlertCircle,
   Sparkles,
   Info,
-  ChevronRight
+  ChevronRight,
+  RotateCcw,
+  X
 } from 'lucide-react';
+import DateInput from '../../components/common/DateInput';
+import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 
 const STATUS_COLORS = {
   open: {
@@ -49,11 +53,84 @@ export const IhlrBarChart = ({
   onSelectDepartment,
   onSelectStatus,
   currentYear = new Date().getFullYear(),
+  startDate,
+  endDate,
+  defaultStartDate,
+  defaultEndDate,
+  onDateRangeChange,
 }) => {
   // Dimension view tab: 'monthly' | 'department' | 'fourM' | 'shift'
   const [activeTab, setActiveTab] = useState('monthly');
   // Hovered bar anchor: { item, idx, centerX, barTopY }
   const [hoveredBar, setHoveredBar] = useState(null);
+
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const thisYear = now.getFullYear();
+
+  // Calculate default rolling 12 months range
+  const calcDefault12Months = () => {
+    const s = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const e = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      start: `${s.getFullYear()}-${pad(s.getMonth() + 1)}-01`,
+      end: `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}`
+    };
+  };
+
+  const defaultRange = calcDefault12Months();
+  const activeDefaultStart = defaultStartDate || defaultRange.start;
+  const activeDefaultEnd = defaultEndDate || defaultRange.end;
+
+  const [localStart, setLocalStart] = useState(startDate || activeDefaultStart);
+  const [localEnd, setLocalEnd] = useState(endDate || activeDefaultEnd);
+
+  // Synchronize local state with props
+  useEffect(() => {
+    if (startDate !== undefined) setLocalStart(startDate);
+  }, [startDate]);
+
+  useEffect(() => {
+    if (endDate !== undefined) setLocalEnd(endDate);
+  }, [endDate]);
+
+  const activeStart = startDate !== undefined ? startDate : localStart;
+  const activeEnd = endDate !== undefined ? endDate : localEnd;
+
+  const isDefault12Months = activeStart === activeDefaultStart && activeEnd === activeDefaultEnd;
+  const isCurrentYear = activeStart === `${thisYear}-01-01` && activeEnd === `${thisYear}-12-31`;
+  const isPrevYear = activeStart === `${thisYear - 1}-01-01` && activeEnd === `${thisYear - 1}-12-31`;
+
+  const handleDateChange = (newStart, newEnd) => {
+    setLocalStart(newStart);
+    setLocalEnd(newEnd);
+    if (onDateRangeChange) {
+      onDateRangeChange(newStart, newEnd);
+    }
+  };
+
+  const handlePreset = (presetKey) => {
+    if (presetKey === 'last12') {
+      handleDateChange(activeDefaultStart, activeDefaultEnd);
+    } else if (presetKey === 'currentYear') {
+      handleDateChange(`${thisYear}-01-01`, `${thisYear}-12-31`);
+    } else if (presetKey === 'prevYear') {
+      handleDateChange(`${thisYear - 1}-01-01`, `${thisYear - 1}-12-31`);
+    } else if (presetKey === 'last6') {
+      const s = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      const e = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      handleDateChange(
+        `${s.getFullYear()}-${pad(s.getMonth() + 1)}-01`,
+        `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}`
+      );
+    } else if (presetKey === 'last30') {
+      const past30 = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
+      handleDateChange(
+        `${past30.getFullYear()}-${pad(past30.getMonth() + 1)}-${pad(past30.getDate())}`,
+        `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+      );
+    }
+  };
 
   // Extract or compute dataset based on activeTab
   const chartData = useMemo(() => {
@@ -233,6 +310,104 @@ export const IhlrBarChart = ({
                 <span>Shift</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Embedded Date Range Filter Bar for Bar Diagram */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mt-3.5 pt-3.5 border-t border-slate-100/90">
+          {/* Quick Presets */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1">
+              <Calendar className="w-3 h-3 text-indigo-500" />
+              <span>Timeline:</span>
+            </span>
+
+            <button
+              type="button"
+              onClick={() => handlePreset('last12')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                isDefault12Months
+                  ? 'bg-blue-600 text-white shadow-xs font-extrabold'
+                  : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Last 12 Months
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePreset('currentYear')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                isCurrentYear
+                  ? 'bg-blue-600 text-white shadow-xs font-extrabold'
+                  : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Year {thisYear}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePreset('last6')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                !isDefault12Months && !isCurrentYear && !isPrevYear && (activeStart && activeEnd)
+                  ? 'bg-blue-600 text-white shadow-xs font-extrabold'
+                  : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Last 6 Months
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePreset('prevYear')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                isPrevYear
+                  ? 'bg-blue-600 text-white shadow-xs font-extrabold'
+                  : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Year {thisYear - 1}
+            </button>
+          </div>
+
+          {/* Custom Date Range Pickers Cluster */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/80 focus-within:bg-white border border-slate-200/90 focus-within:border-blue-500 rounded-xl p-1 shadow-2xs focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+              <div className="w-[110px]">
+                <DateInput
+                  value={activeStart}
+                  onChange={(e) => handleDateChange(e.target.value, activeEnd)}
+                  placeholder="From Date"
+                  className="w-full px-1.5 py-0.5 text-xs font-semibold text-slate-800 bg-transparent border-0 focus:ring-0 outline-none"
+                />
+              </div>
+              <span className="text-slate-400 text-xs font-bold px-0.5 select-none">→</span>
+              <div className="w-[110px]">
+                <DateInput
+                  value={activeEnd}
+                  onChange={(e) => handleDateChange(activeStart, e.target.value)}
+                  placeholder="To Date"
+                  className="w-full px-1.5 py-0.5 text-xs font-semibold text-slate-800 bg-transparent border-0 focus:ring-0 outline-none"
+                />
+              </div>
+            </div>
+
+            {!isDefault12Months && (
+              <button
+                type="button"
+                onClick={() => handleDateChange(activeDefaultStart, activeDefaultEnd)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer shadow-2xs"
+                title="Reset date filter to Last 12 Months"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset</span>
+              </button>
+            )}
+
+            <span className="text-[11px] font-semibold text-slate-500 font-mono hidden sm:inline">
+              ({formatDateDDMMYYYY(activeStart)} - {formatDateDDMMYYYY(activeEnd)})
+            </span>
           </div>
         </div>
 
