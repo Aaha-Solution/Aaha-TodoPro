@@ -969,7 +969,9 @@ export const updateIhlrRequest = async (req, res) => {
     // Trigger In-App Notifications and Email Dispatch
     if (pool && updated) {
       try {
-        const isClosed = String(updated.status || '').toUpperCase() === 'CLOSED';
+        const wasAlreadyClosed = String(existing?.status || '').toUpperCase() === 'CLOSED';
+        const isNowClosed = String(updated.status || '').toUpperCase() === 'CLOSED';
+        const isClosed = isNowClosed && !wasAlreadyClosed;
         const closerName = req.user?.name || updated.resp_person || 'Assigned Officer';
         const closerDept = updated.resp || req.user?.department || 'PRODUCTION';
 
@@ -1089,44 +1091,44 @@ export const updateIhlrRequest = async (req, res) => {
 
         } else if (isClosed) {
           // SCENARIO 2: CASE CLOSED by Admin
-          if (updated.created_by_id || updated.created_by || updated.created_by_email) {
-            await pool.query(
-              `INSERT INTO ihlr_notifications 
-               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-               VALUES (?, ?, ?, ?, ?, 'case_closed', ?, ?, '/ihlr/approvals', 0)`,
-              [
-                updated.created_by_id || null,
-                updated.created_by || 'Quality Requester',
-                updated.created_by_email || '',
-                updated.id || id,
-                reqNo,
-                `IHLR Case Closed: #${reqNo}`,
-                `Defect report #${reqNo} (${updated.model || 'Model'}) has been verified and marked as CLOSED.`
-              ]
-            ).catch((e) => console.warn('[Case Closed Req Notif Error]:', e.message));
-          }
+          // Build a deduplicated map of unique recipients so that no person receives duplicate notifications.
+          const recipientsMap = new Map();
 
-          for (const admin of adminUsers) {
-            if (updated.created_by_email && admin.email && updated.created_by_email.toLowerCase() === admin.email.toLowerCase()) {
-              continue;
+          const addRecipient = (userId, userName, userEmail, link) => {
+            const cleanEmail = userEmail ? String(userEmail).trim().toLowerCase() : '';
+            const cleanName = userName ? String(userName).trim().toLowerCase() : '';
+            const cleanId = userId ? String(userId).trim() : '';
+
+            // Generate unique lookup key
+            const key = cleanId ? `id_${cleanId}` : (cleanEmail ? `email_${cleanEmail}` : `name_${cleanName}`);
+            if (!key) return;
+
+            // Check if user already exists in the map
+            for (const [_, existing] of recipientsMap) {
+              if (cleanId && existing.user_id && String(existing.user_id) === cleanId) return;
+              if (cleanEmail && existing.user_email && String(existing.user_email).toLowerCase() === cleanEmail) return;
+              if (cleanName && existing.user_name && String(existing.user_name).toLowerCase() === cleanName) return;
             }
-            await pool.query(
-              `INSERT INTO ihlr_notifications 
-               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-               VALUES (?, ?, ?, ?, ?, 'case_closed', ?, ?, '/ihlr/approvals', 0)`,
-              [
-                admin.id || null,
-                admin.name || 'Admin',
-                admin.email || 'admin@gmail.com',
-                updated.id || id,
-                reqNo,
-                `IHLR Case Closed: #${reqNo}`,
-                `Defect report #${reqNo} (${updated.model || 'Model'}) has been signed off and closed.`
-              ]
-            ).catch((e) => console.warn('[Case Closed Admin Notif Error]:', e.message));
+
+            recipientsMap.set(key, {
+              user_id: userId || null,
+              user_name: userName || 'User',
+              user_email: userEmail || '',
+              link: link || '/ihlr/approvals'
+            });
+          };
+
+          // 1. Requester / Creator
+          if (updated.created_by_id || updated.created_by || updated.created_by_email) {
+            addRecipient(
+              updated.created_by_id,
+              updated.created_by,
+              updated.created_by_email,
+              '/ihlr/approvals'
+            );
           }
 
-          // Also notify each assigned closer that the case has been closed
+          // 2. Assigned Closer(s)
           const closedCloserNames = (updated.resp_person || '')
             .split(',')
             .map((s) => s.trim())
@@ -1139,21 +1141,48 @@ export const updateIhlrRequest = async (req, res) => {
             ).catch(() => [[]]);
             if (closerRows && closerRows.length > 0) {
               for (const cUser of closerRows) {
-                await pool.query(
-                  `INSERT INTO ihlr_notifications 
-                   (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-                   VALUES (?, ?, ?, ?, ?, 'case_closed', ?, ?, '/ihlr/my-requests', 0)`,
-                  [
-                    cUser.id,
-                    cUser.name,
-                    cUser.email,
-                    updated.id || id,
-                    reqNo,
-                    `IHLR Case Closed: #${reqNo}`,
-                    `Defect report #${reqNo} (${updated.model || 'Model'}) has been verified and marked as CLOSED.`
-                  ]
-                ).catch((e) => console.warn('[Case Closed Closer Notif Error]:', e.message));
+                addRecipient(cUser.id, cUser.name, cUser.email, '/ihlr/my-requests');
               }
+            }
+          }
+
+          // 3. Quality Admin users
+          for (const admin of adminUsers) {
+            addRecipient(admin.id, admin.name, admin.email, '/ihlr/approvals');
+          }
+
+          // Insert exactly one notification per unique recipient into DB
+          for (const [_, recipient] of recipientsMap) {
+            const [existingRows] = await pool.query(
+              `SELECT id FROM ihlr_notifications 
+               WHERE request_id = ? AND type = 'case_closed' 
+                 AND (
+                   (? IS NOT NULL AND user_id = ?) OR 
+                   (? != '' AND LOWER(TRIM(user_email)) = LOWER(TRIM(?)))
+                 ) LIMIT 1`,
+              [
+                updated.id || id,
+                recipient.user_id, recipient.user_id,
+                recipient.user_email, recipient.user_email
+              ]
+            ).catch(() => [[]]);
+
+            if (!existingRows || existingRows.length === 0) {
+              await pool.query(
+                `INSERT INTO ihlr_notifications 
+                 (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+                 VALUES (?, ?, ?, ?, ?, 'case_closed', ?, ?, ?, 0)`,
+                [
+                  recipient.user_id,
+                  recipient.user_name,
+                  recipient.user_email,
+                  updated.id || id,
+                  reqNo,
+                  `IHLR Case Closed: #${reqNo}`,
+                  `Defect report #${reqNo} (${updated.model || 'Model'}) has been verified and marked as CLOSED.`,
+                  recipient.link
+                ]
+              ).catch((e) => console.warn('[Case Closed Notif Error]:', e.message));
             }
           }
 
@@ -1376,7 +1405,15 @@ export const getIhlrNotifications = async (req, res) => {
       }
       query += ' ORDER BY id DESC LIMIT 50';
       const [rows] = await pool.query(query, params).catch(() => [[]]);
-      notifRows = rows || [];
+      const rawRows = rows || [];
+      // Deduplicate so that no user receives duplicate notifications for the same request and event type
+      const seen = new Set();
+      notifRows = rawRows.filter((r) => {
+        const key = `${r.request_id || r.req_no}_${r.type}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     }
 
     // Also include synthetic recent request stream if notifications table is empty
