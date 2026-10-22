@@ -1094,7 +1094,6 @@ const IhlrApprovals = () => {
                     )}
                   </span>
                 </div>
-                <span className="text-[10px] font-bold text-rose-600 font-mono bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">W1, W2, W3 Mandatory *</span>
               </div>
 
               {/* Admin Edit Mode Alert Banner */}
