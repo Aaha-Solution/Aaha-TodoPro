@@ -1317,11 +1317,11 @@ const IhlrApprovals = () => {
               </span>
             </div>
 
-            {/* 1. Permanent Fix */}
+            {/* 1. Permanent Action */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>PERMANENT FIX</span>
+                  <span>PERMANENT ACTION</span>
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
@@ -1344,7 +1344,7 @@ const IhlrApprovals = () => {
                   !selectedRequest
                     ? 'Click a row on the right to select'
                     : canUpdateCloserFields
-                    ? 'Describe permanent corrective fix / long-term countermeasure...'
+                    ? 'Describe permanent corrective action / long-term countermeasure...'
                     : isAdmin
                     ? 'Click Edit Closer Fields below to edit...'
                     : 'Read-only (Closer only)'

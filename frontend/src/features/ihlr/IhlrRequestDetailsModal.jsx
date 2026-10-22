@@ -849,7 +849,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             { content: tempEvidenceStr }
           ],
           [
-            { content: 'Permanent Fix (Countermeasure):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Permanent Action (Countermeasure):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: permFixVal }
           ],
           [
@@ -1252,18 +1252,18 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     </span>
                   </div>
 
-                  {/* 1. Permanent Fix (Words) */}
+                  {/* 1. Permanent Action (Words) */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold uppercase tracking-wider">
                       <Wrench className="w-4 h-4" />
-                      <span>Permanent Fix</span>
+                      <span>Permanent Action</span>
                     </div>
                     <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
-                      {request.permanent_fix || <span className="text-slate-400 italic">No permanent fix recorded.</span>}
+                      {request.permanent_fix || <span className="text-slate-400 italic">No permanent action recorded.</span>}
                     </div>
                   </div>
 
-                  {/* 2. Permanent Fix Evidence Attachment */}
+                  {/* 2. Permanent Action Evidence Attachment */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
@@ -1283,7 +1283,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </div>
                     ) : (
                       <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
-                        No permanent fix evidence attachments uploaded.
+                        No permanent action evidence attachments uploaded.
                       </div>
                     )}
                   </div>
