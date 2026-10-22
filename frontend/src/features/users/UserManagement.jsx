@@ -38,6 +38,7 @@ import {
 } from '../../redux/slices/userSlice';
 import { userService } from '../../services/userService';
 import { DEPARTMENTS } from '../../utils/constants';
+import { storage } from '../../utils/storage';
 
 const ROLES = [
   'ADMIN',
@@ -50,7 +51,7 @@ const UserManagement = () => {
   const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
   const isIhlr = location.pathname.startsWith('/ihlr');
-  const { user: currentAuthUser, login: updateAuthUser } = useAuth();
+  const { user: currentAuthUser, login: updateAuthUser, token: currentAuthToken } = useAuth();
   const { alert: modalAlert, confirm: modalConfirm, error: modalError } = useModal();
   const { users } = useSelector((state) => state.user);
 
@@ -349,7 +350,7 @@ const UserManagement = () => {
             role: (editingUser.role || 'USER').toUpperCase().replace(/\s+/g, '_'),
             department: editingUser.department
           },
-          storage.getToken() || 'active-session-token'
+          currentAuthToken || storage.getToken() || 'active-session-token'
         );
       }
 
