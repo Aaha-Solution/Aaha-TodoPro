@@ -28,7 +28,8 @@ import {
   History,
   Tag,
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  ArrowRightLeft
 } from 'lucide-react';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
@@ -526,7 +527,13 @@ const ProcessAuditRequestDetailsModal = ({
     statusBadgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
   }
 
-  const { hasReassignments, reassignmentDetails } = formatReassignmentHistory(req.reassignment_history);
+  const {
+    hasReassignments,
+    reassignedStatus,
+    reassignmentDetails,
+    count: reassignCount,
+    list: reassignList
+  } = formatReassignmentHistory(req?.reassignment_history);
 
   return createPortal(
     <div
@@ -582,11 +589,19 @@ const ProcessAuditRequestDetailsModal = ({
                   )
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Tracking details for:{' '}
-                <strong className="text-slate-900 font-mono">
-                  {reqNo}
-                </strong>
+              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                <span>
+                  Tracking details for:{' '}
+                  <strong className="text-slate-900 font-mono">
+                    {reqNo}
+                  </strong>
+                </span>
+                {hasReassignments && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                    <ArrowRightLeft className="w-2.5 h-2.5 text-purple-600" />
+                    <span>Reassigned ({reassignCount})</span>
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -1110,6 +1125,51 @@ const ProcessAuditRequestDetailsModal = ({
                       </div>
                     </div>
                   </>
+                )}
+
+                {/* Reassignment Tracking History Audit Trail (Only shown in case of reassign status) */}
+                {hasReassignments && (
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-slate-50 border border-purple-200/90 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-purple-800 text-xs font-bold uppercase tracking-wider">
+                        <ArrowRightLeft className="w-4 h-4 text-purple-600" />
+                        <span>REASSIGNMENT TRACKING HISTORY ({reassignCount})</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 bg-purple-100 text-purple-800 rounded-full border border-purple-200 font-mono">
+                        Reassigned: Yes
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {reassignList.map((entry, idx) => (
+                        <div key={idx} className="p-3 bg-white rounded-xl border border-purple-100 shadow-2xs space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-mono font-bold text-[10px]">
+                                #{idx + 1}
+                              </span>
+                              <span className="text-slate-600 font-medium">
+                                From: <strong className="text-slate-900">{entry.prev_resp_person || entry.previous_executor || '—'}</strong> ({entry.prev_resp || entry.previous_department || '—'})
+                              </span>
+                              <ArrowRightLeft className="w-3 h-3 text-purple-400 inline" />
+                              <span className="text-purple-700 font-medium">
+                                To: <strong className="text-purple-900">{entry.new_resp_person || entry.new_executor || '—'}</strong> ({entry.new_resp || entry.new_department || '—'})
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-slate-500 font-mono">
+                              {[entry.reassigned_by ? `by ${entry.reassigned_by}` : '', entry.reassigned_at ? formatDateDDMMYYYY(entry.reassigned_at) : ''].filter(Boolean).join(' • ')}
+                            </span>
+                          </div>
+                          {(entry.remarks || entry.reason) && (
+                            <div className="text-[11px] text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 italic">
+                              <span className="font-semibold text-slate-500 not-italic">Remarks: </span>
+                              {entry.remarks || entry.reason}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {/* 7. Sign-off Status Bar */}
@@ -1644,6 +1704,17 @@ const ProcessAuditRequestDetailsModal = ({
                     </strong>
                   </div>
 
+                  {hasReassignments && (
+                    <div>
+                      <span className="block text-[11px] font-bold text-purple-600 uppercase tracking-wider">
+                        REASSIGNED STATUS
+                      </span>
+                      <strong className="text-purple-700 font-mono text-sm block mt-0.5 font-bold">
+                        Yes ({reassignCount} {reassignCount === 1 ? 'time' : 'times'})
+                      </strong>
+                    </div>
+                  )}
+
                   <div>
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       PRIORITY
@@ -1717,16 +1788,48 @@ const ProcessAuditRequestDetailsModal = ({
                 )}
               </div>
 
-              {/* 4. REASSIGNMENT HISTORY (IF ANY) */}
+              {/* 4. REASSIGNMENT TRACKING HISTORY (Only shown in case of reassign status) */}
               {hasReassignments && (
-                <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-2">
-                  <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
-                    <History className="w-4 h-4 text-amber-700" />
-                    <span>Reassignment History Log</span>
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-slate-50 border border-purple-200/90 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-purple-800 text-xs font-bold uppercase tracking-wider">
+                      <ArrowRightLeft className="w-4 h-4 text-purple-600" />
+                      <span>REASSIGNMENT TRACKING HISTORY ({reassignCount})</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 bg-purple-100 text-purple-800 rounded-full border border-purple-200 font-mono">
+                      Reassigned: Yes
+                    </span>
                   </div>
-                  <p className="text-xs text-slate-700 whitespace-pre-line leading-relaxed">
-                    {reassignmentDetails}
-                  </p>
+
+                  <div className="space-y-2">
+                    {reassignList.map((entry, idx) => (
+                      <div key={idx} className="p-3 bg-white rounded-xl border border-purple-100 shadow-2xs space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-mono font-bold text-[10px]">
+                              #{idx + 1}
+                            </span>
+                            <span className="text-slate-600 font-medium">
+                              From: <strong className="text-slate-900">{entry.prev_resp_person || entry.previous_executor || '—'}</strong> ({entry.prev_resp || entry.previous_department || '—'})
+                            </span>
+                            <ArrowRightLeft className="w-3 h-3 text-purple-400 inline" />
+                            <span className="text-purple-700 font-medium">
+                              To: <strong className="text-purple-900">{entry.new_resp_person || entry.new_executor || '—'}</strong> ({entry.new_resp || entry.new_department || '—'})
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            {[entry.reassigned_by ? `by ${entry.reassigned_by}` : '', entry.reassigned_at ? formatDateDDMMYYYY(entry.reassigned_at) : ''].filter(Boolean).join(' • ')}
+                          </span>
+                        </div>
+                        {(entry.remarks || entry.reason) && (
+                          <div className="text-[11px] text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 italic">
+                            <span className="font-semibold text-slate-500 not-italic">Remarks: </span>
+                            {entry.remarks || entry.reason}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

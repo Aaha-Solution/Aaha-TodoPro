@@ -348,6 +348,55 @@ export const ProcessAuditRequest = {
       }
     }
 
+    // Check if department or executor changed to auto-append to reassignment_history
+    const [existingRows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?', [numericId, String(id)]);
+    const existingReq = existingRows[0];
+    if (existingReq) {
+      const prevDept = (existingReq.department || '').trim();
+      const prevExec = (existingReq.executor || '').trim();
+      const newDept = data.department !== undefined ? (data.department || '').trim() : prevDept;
+      const newExec = data.executor !== undefined ? (data.executor || '').trim() : prevExec;
+
+      const isDeptChanged = Boolean(data.department !== undefined && newDept !== prevDept);
+      const isExecChanged = Boolean(data.executor !== undefined && newExec !== prevExec);
+
+      if ((isDeptChanged || isExecChanged) && data.reassignment_history === undefined) {
+        let currentHistory = [];
+        if (existingReq.reassignment_history) {
+          if (Array.isArray(existingReq.reassignment_history)) {
+            currentHistory = existingReq.reassignment_history;
+          } else if (typeof existingReq.reassignment_history === 'string') {
+            try {
+              const parsed = JSON.parse(existingReq.reassignment_history);
+              currentHistory = Array.isArray(parsed) ? parsed : [parsed];
+            } catch {
+              currentHistory = [];
+            }
+          }
+        }
+
+        const logEntry = {
+          id: currentHistory.length + 1,
+          reassigned_at: new Date().toISOString(),
+          reassigned_by: data.updated_by || data.user_name || (data.user && data.user.name) || 'Quality Auditor',
+          reassigned_by_id: data.updated_by_id || data.user_id || (data.user && data.user.id) || null,
+          previous_department: prevDept || '—',
+          previous_executor: prevExec || '—',
+          new_department: newDept || '—',
+          new_executor: newExec || '—',
+          prev_resp: prevDept || '—',
+          prev_resp_person: prevExec || '—',
+          new_resp: newDept || '—',
+          new_resp_person: newExec || '—',
+          remarks: data.reassign_remarks || data.remarks || data.reason || `Department / Executor updated from ${prevDept || '—'} (${prevExec || '—'}) to ${newDept || '—'} (${newExec || '—'})`,
+          reason: data.reassign_remarks || data.remarks || data.reason || `Department / Executor updated from ${prevDept || '—'} (${prevExec || '—'}) to ${newDept || '—'} (${newExec || '—'})`
+        };
+
+        currentHistory.push(logEntry);
+        data.reassignment_history = currentHistory;
+      }
+    }
+
     const updates = [];
     const params = [];
 
@@ -719,6 +768,11 @@ export const ProcessAuditRequest = {
       previous_executor: prevExec,
       new_department: newDept,
       new_executor: newExec,
+      prev_resp: prevDept,
+      prev_resp_person: prevExec,
+      new_resp: newDept,
+      new_resp_person: newExec,
+      remarks: reason || 'Department / Executor reassigned by Quality Auditor',
       reason: reason || 'Department / Executor reassigned by Quality Auditor'
     };
 

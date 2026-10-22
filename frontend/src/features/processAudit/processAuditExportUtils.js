@@ -87,22 +87,32 @@ export const formatReassignmentHistory = (history) => {
   if (hasReassignments) {
     if (reassignList.length === 1) {
       const entry = reassignList[0];
-      const prev = [entry.previous_executor, entry.previous_department ? `(${entry.previous_department})` : ''].filter(Boolean).join(' ');
-      const next = [entry.new_executor, entry.new_department ? `(${entry.new_department})` : ''].filter(Boolean).join(' ');
+      const prevPerson = entry.prev_resp_person || entry.previous_executor || '';
+      const prevDept = entry.prev_resp || entry.previous_department || '';
+      const nextPerson = entry.new_resp_person || entry.new_executor || '';
+      const nextDept = entry.new_resp || entry.new_department || '';
+      const prev = [prevPerson, prevDept ? `(${prevDept})` : ''].filter(Boolean).join(' ');
+      const next = [nextPerson, nextDept ? `(${nextDept})` : ''].filter(Boolean).join(' ');
       const dateStr = entry.reassigned_at ? formatDateDDMMYYYY(entry.reassigned_at) : '';
       const by = entry.reassigned_by ? `by ${entry.reassigned_by}` : '';
       const on = dateStr ? `on ${dateStr}` : '';
       const meta = [by, on].filter(Boolean).join(' ');
-      reassignmentDetails = `From: ${prev || '—'} → To: ${next || '—'}${meta ? ` (${meta})` : ''}${entry.reason ? ` | Reason: ${entry.reason}` : ''}`;
+      const remarksText = entry.remarks || entry.reason || '';
+      reassignmentDetails = `From: ${prev || '—'} → To: ${next || '—'}${meta ? ` (${meta})` : ''}${remarksText ? ` | Remarks: ${remarksText}` : ''}`;
     } else {
       reassignmentDetails = reassignList.map((entry, i) => {
-        const prev = [entry.previous_executor, entry.previous_department ? `(${entry.previous_department})` : ''].filter(Boolean).join(' ');
-        const next = [entry.new_executor, entry.new_department ? `(${entry.new_department})` : ''].filter(Boolean).join(' ');
+        const prevPerson = entry.prev_resp_person || entry.previous_executor || '';
+        const prevDept = entry.prev_resp || entry.previous_department || '';
+        const nextPerson = entry.new_resp_person || entry.new_executor || '';
+        const nextDept = entry.new_resp || entry.new_department || '';
+        const prev = [prevPerson, prevDept ? `(${prevDept})` : ''].filter(Boolean).join(' ');
+        const next = [nextPerson, nextDept ? `(${nextDept})` : ''].filter(Boolean).join(' ');
         const dateStr = entry.reassigned_at ? formatDateDDMMYYYY(entry.reassigned_at) : '';
         const by = entry.reassigned_by ? `by ${entry.reassigned_by}` : '';
         const on = dateStr ? `on ${dateStr}` : '';
         const meta = [by, on].filter(Boolean).join(' ');
-        return `${i + 1}. From: ${prev || '—'} → To: ${next || '—'}${meta ? ` (${meta})` : ''}${entry.reason ? ` | Reason: ${entry.reason}` : ''}`;
+        const remarksText = entry.remarks || entry.reason || '';
+        return `${i + 1}. From: ${prev || '—'} → To: ${next || '—'}${meta ? ` (${meta})` : ''}${remarksText ? ` | Remarks: ${remarksText}` : ''}`;
       }).join('\n');
     }
   }
@@ -111,7 +121,8 @@ export const formatReassignmentHistory = (history) => {
     reassignedStatus,
     reassignmentDetails,
     hasReassignments,
-    count: hasReassignments ? reassignList.length : 0
+    count: hasReassignments ? reassignList.length : 0,
+    list: hasReassignments ? reassignList : []
   };
 };
 

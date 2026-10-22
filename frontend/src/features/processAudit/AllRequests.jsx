@@ -30,7 +30,8 @@ import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import {
   exportProcessAuditToExcel,
   exportProcessAuditToPdf,
-  getProcessAuditDisplayStatus
+  getProcessAuditDisplayStatus,
+  formatReassignmentHistory
 } from './processAuditExportUtils';
 import DateInput from '../../components/common/DateInput';
 import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
@@ -868,7 +869,19 @@ const AllRequests = () => {
 
                       {/* Req NO */}
                       <td className="py-3.5 px-3 font-mono font-bold text-blue-600 whitespace-nowrap">
-                        {reqId}
+                        <div>{reqId}</div>
+                        {(() => {
+                          const { hasReassignments, count } = formatReassignmentHistory(r.reassignment_history);
+                          if (!hasReassignments) return null;
+                          return (
+                            <div className="mt-0.5">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                <ArrowRightLeft className="w-2.5 h-2.5 text-purple-600" />
+                                <span>Reassigned ({count})</span>
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Date / Shift */}
@@ -932,6 +945,18 @@ const AllRequests = () => {
                         <div className="text-[10px] font-bold text-slate-700 truncate max-w-[120px]" title={executorStr}>
                           {executorStr}
                         </div>
+                        {(() => {
+                          const { hasReassignments, count } = formatReassignmentHistory(r.reassignment_history);
+                          if (!hasReassignments) return null;
+                          return (
+                            <div className="mt-0.5">
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[8px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                <ArrowRightLeft className="w-2 h-2 text-purple-600" />
+                                <span>Reassigned ({count})</span>
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Root Cause */}
