@@ -253,35 +253,41 @@ const ProcessAuditApprovals = () => {
     return <span className="text-slate-700 font-medium">{issueType}</span>;
   };
 
-  const matchesExecutorUser = (execStr, uName, uEmail) => {
+  const matchesExecutorUser = (execStr, uName, uEmail, uUsername, uId) => {
     if (!execStr) return false;
-    const e = execStr.trim().toLowerCase();
-    const name = (uName || '').trim().toLowerCase();
-    const email = (uEmail || '').trim().toLowerCase();
+    const e = String(execStr).trim().toLowerCase();
+    const name = String(uName || '').trim().toLowerCase();
+    const email = String(uEmail || '').trim().toLowerCase();
+    const username = String(uUsername || '').trim().toLowerCase();
 
-    if (name && (e === name || e.includes(name))) return true;
+    if (name && (e === name || e.includes(name) || name.includes(e))) return true;
     if (email && (e === email || e.includes(email))) return true;
+    if (username && (e === username || e.includes(username) || username.includes(e))) return true;
 
-    const tokens = e.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(Boolean);
-    if (name && tokens.includes(name)) return true;
+    // Check individual tokens if comma-separated or space-separated
+    const execTokens = e.split(/[,;\/\s]+/).filter(Boolean);
+    if (name && execTokens.includes(name)) return true;
+    if (username && execTokens.includes(username)) return true;
+
+    const nameTokens = name.split(/\s+/).filter(Boolean);
+    if (nameTokens.length > 0 && nameTokens.some((t) => t.length > 2 && execTokens.includes(t))) return true;
+
     return false;
   };
 
   // Operational permissions:
   // 1. Closer Fields (Root Cause, Action, Standardization, Evidence, Target Date):
-  //    - Assigned Executor can edit and submit closer log.
+  //    - Assigned Executor can edit and submit closer log whenever status is Pending / Open (including upon reassignment).
   //    - Quality Admin can click "Edit Closer Fields" to unlock, edit, and update closer fields anytime.
   const isSelectedClosed = Boolean(
     selectedRequest && String(selectedRequest.status || '').toUpperCase().includes('CLOSE')
   );
 
-  const hasCloserSubmitted = Boolean(
+  const isSelectedPending = Boolean(
     selectedRequest && (
-      Boolean(selectedRequest.action && String(selectedRequest.action).trim()) ||
-      Boolean(selectedRequest.corrective_action && String(selectedRequest.corrective_action).trim()) ||
-      Boolean(selectedRequest.root_cause && String(selectedRequest.root_cause).trim()) ||
-      Boolean(selectedRequest.target_date) ||
-      (selectedRequest.action_attachments && parseAttachments(selectedRequest.action_attachments).length > 0)
+      !selectedRequest.status ||
+      String(selectedRequest.status).toUpperCase().includes('PENDING') ||
+      String(selectedRequest.status).toUpperCase().includes('OPEN')
     )
   );
 
@@ -302,7 +308,27 @@ const ProcessAuditApprovals = () => {
   };
 
   const isCloser = Boolean(
-    selectedRequest && matchesExecutorUser(selectedRequest.executor, currentUser?.name, currentUser?.email)
+    selectedRequest && matchesExecutorUser(
+      selectedRequest.executor,
+      currentUser?.name,
+      currentUser?.email,
+      currentUser?.username,
+      currentUser?.id
+    )
+  );
+
+  // When a request is Pending/Reassigned, the closer has NOT completed this pending cycle yet,
+  // so closer inputs are open to be updated and submitted.
+  const hasCloserSubmitted = Boolean(
+    selectedRequest &&
+    !isSelectedPending &&
+    !isSelectedClosed &&
+    (
+      String(selectedRequest.status || '').toUpperCase().includes('REVIEW') ||
+      String(selectedRequest.status || '').toUpperCase().includes('APPROVAL') ||
+      String(selectedRequest.status || '').toUpperCase().includes('PROGRESS') ||
+      String(selectedRequest.status || '').toUpperCase().includes('SIGNED')
+    )
   );
 
   const isCloserDataToBeUpdated = Boolean(
@@ -310,9 +336,10 @@ const ProcessAuditApprovals = () => {
   );
 
   const canUpdateCloserFields = Boolean(
-    selectedRequest && (
+    selectedRequest && !isSelectedClosed && (
       (isAdmin && adminEditCloser) ||
-      (!isAdmin && isCloser && !hasCloserSubmitted && !isSelectedClosed)
+      (isCloser && (isSelectedPending || !hasCloserSubmitted)) ||
+      (!isAdmin && isCloser && !hasCloserSubmitted)
     )
   );
 
@@ -811,7 +838,13 @@ const ProcessAuditApprovals = () => {
   // Filter requests
   const filtered = requests.filter((r) => {
     if (!isAdmin) {
-      const isAssignedToMe = matchesExecutorUser(r.executor, user?.name, user?.email);
+      const isAssignedToMe = matchesExecutorUser(
+        r.executor,
+        currentUser?.name,
+        currentUser?.email,
+        currentUser?.username,
+        currentUser?.id
+      );
       if (!isAssignedToMe) return false;
     }
 
@@ -1159,11 +1192,11 @@ const ProcessAuditApprovals = () => {
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
+                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
+                        {isAdmin && !isCloser ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1200,11 +1233,11 @@ const ProcessAuditApprovals = () => {
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
+                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
+                        {isAdmin && !isCloser ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1258,11 +1291,11 @@ const ProcessAuditApprovals = () => {
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
+                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
+                        {isAdmin && !isCloser ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1336,11 +1369,11 @@ const ProcessAuditApprovals = () => {
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
+                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
+                        {isAdmin && !isCloser ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1376,7 +1409,7 @@ const ProcessAuditApprovals = () => {
                 >
                   Select a Request to Update
                 </button>
-              ) : isAdmin ? (
+              ) : (isAdmin && !isCloser) ? (
                 adminEditCloser ? (
                   <div className="flex items-center gap-2">
                     <button

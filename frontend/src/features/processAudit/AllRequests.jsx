@@ -6,37 +6,36 @@ import {
   Search,
   Eye,
   X,
-  FileText,
-  Paperclip,
-  RefreshCw,
+  Plus,
+  Pencil,
   AlertCircle,
-  FileSpreadsheet,
-  Presentation,
-  File as FileIcon,
-  Image as ImageIcon,
-  ShieldAlert,
-  CheckCircle2,
-  CheckCheck,
   RotateCcw,
-  MessageSquare,
   ChevronDown,
   ArrowRightLeft,
-  History,
   Filter,
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
-  Folder,
-  Clock
+  Clock,
+  Calendar,
+  Building2,
+  RefreshCw,
+  ShieldAlert
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
 import AttachmentThumbnail from '../../components/common/AttachmentThumbnail';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
-import { triggerDirectDownload, resolveAttachmentUrl } from '../../components/common/attachmentUtils';
+import ExportSelectionModal from '../../components/common/ExportSelectionModal';
+import {
+  exportProcessAuditToExcel,
+  exportProcessAuditToPdf,
+  getProcessAuditDisplayStatus
+} from './processAuditExportUtils';
+import DateInput from '../../components/common/DateInput';
+import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
 import { storage } from '../../utils/storage';
 import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
-import { getProcessAuditDisplayStatus } from './processAuditExportUtils';
 
 const AllRequests = () => {
   const navigate = useNavigate();
@@ -71,35 +70,56 @@ const AllRequests = () => {
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Filters State (defaulting to Current Year)
+  const currentYear = new Date().getFullYear();
+  const defaultStartDate = `${currentYear}-01-01`;
+  const defaultEndDate = `${currentYear}-12-31`;
+
   const [search, setSearch] = useState('');
   const [selectedShift, setSelectedShift] = useState('All Shifts');
   const [selectedStage, setSelectedStage] = useState('All Stages');
+  const [selectedDepartment, setSelectedDepartment] = useState('All Departments');
   const [selectedExecutor, setSelectedExecutor] = useState('All Executors');
   const [selectedStatus, setSelectedStatus] = useState('All Statuses');
+  const [startDate, setStartDate] = useState(defaultStartDate);
+  const [endDate, setEndDate] = useState(defaultEndDate);
   const [showFilters, setShowFilters] = useState(Boolean(queryRequestId));
+
+  const isDefaultRange = startDate === defaultStartDate && endDate === defaultEndDate;
   const hasActiveFilters =
     Boolean((search || '').trim()) ||
     selectedShift !== 'All Shifts' ||
     selectedStage !== 'All Stages' ||
+    selectedDepartment !== 'All Departments' ||
     selectedExecutor !== 'All Executors' ||
-    selectedStatus !== 'All Statuses';
-  const [activeModalRequest, setActiveModalRequest] = useState(null);
-  const [modalTab, setModalTab] = useState('requester'); // 'requester' | 'closer'
-  const [previewAttachment, setPreviewAttachment] = useState(null);
-  const [previewImageError, setPreviewImageError] = useState(false);
+    selectedStatus !== 'All Statuses' ||
+    !isDefaultRange;
 
-  // Pagination State (matching Approvals tab with max 10)
+  const handleResetFilters = () => {
+    setSearch('');
+    setSelectedShift('All Shifts');
+    setSelectedStage('All Stages');
+    setSelectedDepartment('All Departments');
+    setSelectedExecutor('All Executors');
+    setSelectedStatus('All Statuses');
+    setStartDate(defaultStartDate);
+    setEndDate(defaultEndDate);
+  };
+
+  // Modals State
+  const [activeModalRequest, setActiveModalRequest] = useState(null);
+  const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+
+  // Pagination State (matching IHLR / Approvals tab with max 10)
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Reset to page 1 on filter changes
+  // Reset page on filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedShift, selectedStage, selectedExecutor, selectedStatus]);
-
-  const [creatorRemark, setCreatorRemark] = useState('');
-  const [selectedClosureStatus, setSelectedClosureStatus] = useState('Closed');
-  const [actionLoading, setActionLoading] = useState(false);
+  }, [search, selectedShift, selectedStage, selectedDepartment, selectedExecutor, selectedStatus, startDate, endDate]);
 
   // Reassignment State
   const [dbUsers, setDbUsers] = useState([]);
@@ -121,8 +141,18 @@ const AllRequests = () => {
       'MARKETING',
       'INCOMING QUALITY',
       ...dbUsers.map((u) => (u.department || u.dept || '').trim()).filter(Boolean),
+      ...requests.map((r) => (r.department || '').trim()).filter(Boolean),
     ])
-  );
+  ).sort();
+
+  const distinctStages = React.useMemo(() => {
+    const set = new Set();
+    requests.forEach((r) => {
+      const s = r.model || r.stage;
+      if (s && s !== '—') set.add(s.trim());
+    });
+    return Array.from(set).sort();
+  }, [requests]);
 
   const distinctExecutors = React.useMemo(() => {
     const set = new Set();
@@ -220,7 +250,7 @@ const AllRequests = () => {
   const handleConfirmReassign = async () => {
     if (!reassigningRequest) return;
     if (!reassignDept || !reassignExecutor) {
-      alert('Please choose a department and a person to reassign to.');
+      alert('Please choose a department and an executor to reassign to.');
       return;
     }
     if (!reassignReason.trim()) {
@@ -234,9 +264,9 @@ const AllRequests = () => {
         new_department: reassignDept.trim(),
         new_executor: reassignExecutor.trim(),
         reason: reassignReason.trim(),
-        reassigned_by: user?.name || user?.email || 'Quality Auditor',
-        reassigned_by_id: user?.id || null,
-        role: user?.role,
+        reassigned_by: currentUser?.name || currentUser?.email || 'Quality Admin',
+        reassigned_by_id: currentUser?.id || null,
+        role: currentUser?.role,
         user_department: currentDept
       };
 
@@ -247,13 +277,14 @@ const AllRequests = () => {
         ...updated,
         department: reassignDept.trim(),
         executor: reassignExecutor.trim(),
+        status: 'Pending',
         reassignment_history: updated.reassignment_history || [
           ...parseReassignmentHistory(reassigningRequest.reassignment_history),
           {
             id: parseReassignmentHistory(reassigningRequest.reassignment_history).length + 1,
             reassigned_at: new Date().toISOString(),
-            reassigned_by: user?.name || user?.email || 'Quality Auditor',
-            reassigned_by_id: user?.id || null,
+            reassigned_by: currentUser?.name || currentUser?.email || 'Quality Admin',
+            reassigned_by_id: currentUser?.id || null,
             previous_department: reassigningRequest.department,
             previous_executor: reassigningRequest.executor,
             new_department: reassignDept.trim(),
@@ -281,28 +312,6 @@ const AllRequests = () => {
       setReassignLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (activeModalRequest) {
-      const s = (activeModalRequest.status || '').toLowerCase();
-      const isAlreadyClosed = s.includes('close');
-      const isAlreadyOpen = s === 'open' || s.includes('open') || s.includes('reopen');
-
-      // Only populate existing remark if the auditor has previously closed or opened it,
-      // and ensure it does not mistakenly carry over the initial creation comments
-      const existingRemark = (activeModalRequest.creator_remark || '').trim();
-      const initialComments = (activeModalRequest.comments || '').trim();
-
-      if ((isAlreadyClosed || isAlreadyOpen) && existingRemark && existingRemark !== initialComments) {
-        setCreatorRemark(existingRemark);
-      } else {
-        setCreatorRemark('');
-      }
-
-      setSelectedClosureStatus(isAlreadyOpen ? 'Open' : 'Closed');
-      setModalTab('requester');
-    }
-  }, [activeModalRequest?.id]);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -355,196 +364,29 @@ const AllRequests = () => {
     }
   }, [queryRequestId, requests]);
 
-  const handleUpdateClosureStatus = async (targetStatus) => {
-    if (!activeModalRequest) return;
-    const reqId = activeModalRequest.id;
-    const newStatus = targetStatus || selectedClosureStatus || 'Closed';
+  const canUserAccessRequest = (req, user, isAdmin) => {
+    if (isAdmin) return true;
+    if (!user) return false;
 
-    try {
-      setActionLoading(true);
-      const payload = {
-        creator_remark: creatorRemark.trim(),
-        closed_by: user?.name || user?.email || 'Request Creator',
-        closed_by_id: user?.id || null,
-      };
+    const uName = (user.name || '').trim().toLowerCase();
+    const uEmail = (user.email || '').trim().toLowerCase();
+    const uId = user.id ? String(user.id) : null;
 
-      const updated = await processAuditService.updateRequestStatus(reqId, newStatus, payload);
+    if (req.created_by && req.created_by.trim().toLowerCase() === uName) return true;
+    if (req.created_by_email && req.created_by_email.trim().toLowerCase() === uEmail) return true;
+    if (uId && req.created_by_id && String(req.created_by_id) === uId) return true;
 
-      const merged = {
-        ...activeModalRequest,
-        ...updated,
-        status: newStatus,
-        creator_remark: creatorRemark.trim(),
-        closed_by: newStatus.toLowerCase().includes('close') ? (user?.name || 'Request Creator') : activeModalRequest.closed_by,
-        closed_at: newStatus.toLowerCase().includes('close') ? new Date().toISOString() : activeModalRequest.closed_at,
-      };
-
-      setRequests((prev) =>
-        prev.map((r) => (r.id === reqId || r.issue_no === reqId ? merged : r))
-      );
-      setActiveModalRequest(merged);
-
-      alert(`Request ${merged.issue_no || reqId} has been updated to ${newStatus}.`);
-    } catch (err) {
-      console.error('Failed to update closure status:', err);
-      alert('Could not update the status. Please try again.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const formatDate = (dateVal) => {
-    if (!dateVal) return '-';
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return String(dateVal);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
-
-  const getStatusMeta = (status) => {
-    const s = (status || '').toLowerCase();
-    if (s.includes('close')) {
-      return {
-        statusColor: 'bg-red-50 text-red-700 border-red-200',
-        dotColor: 'bg-red-500',
-      };
-    }
-    if (s.includes('signed off') || s.includes('signed')) {
-      return {
-        statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
-        dotColor: 'bg-emerald-500',
-      };
-    }
-    if (s.includes('progress')) {
-      return {
-        statusColor: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
-        dotColor: 'bg-indigo-500',
-      };
-    }
-    if (s.includes('approved') && !s.includes('partially') && !s.includes('pending')) {
-      return {
-        statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
-        dotColor: 'bg-emerald-500',
-      };
-    }
-    if (s === 'open' || s.includes('reopen') || s.includes('further')) {
-      return {
-        statusColor: 'bg-sky-50 text-sky-700 border-sky-200/80',
-        dotColor: 'bg-sky-500',
-      };
-    }
-    if (s.includes('reject')) {
-      return {
-        statusColor: 'bg-rose-50 text-rose-700 border-rose-200/80',
-        dotColor: 'bg-rose-500',
-      };
-    }
-    if (s.includes('partially')) {
-      return {
-        statusColor: 'bg-teal-50 text-teal-700 border-teal-200/80',
-        dotColor: 'bg-teal-500',
-      };
-    }
-    if (s.includes('approval') || s.includes('review')) {
-      return {
-        statusColor: 'bg-amber-50 text-amber-700 border-amber-200/80',
-        dotColor: 'bg-amber-500',
-      };
-    }
-    return {
-      statusColor: 'bg-rose-50 text-rose-700 border-rose-200/80',
-      dotColor: 'bg-rose-500',
-    };
-  };
-
-  const getFullAttachmentUrl = (att) => resolveAttachmentUrl(att, 'process-audit');
-
-  const getFileMeta = (file) => {
-    const fileName = typeof file === 'string' ? file : (file?.name || file?.filename || file?.path || '');
-    const ext = (file?.type || fileName.split('.').pop() || '').toUpperCase();
-    const isImage = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG', 'JFIF', 'BMP'].includes(ext);
-    const isPdf = ext === 'PDF';
-    const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
-    const isPpt = ['PPT', 'PPTX', 'PPSX'].includes(ext);
-
-    if (isImage) {
-      return {
-        badgeBg: 'bg-blue-50 text-blue-600 border-blue-200',
-        icon: ImageIcon,
-        typeName: 'Image',
-        isImage: true,
-      };
-    }
-    if (isPdf) {
-      return {
-        badgeBg: 'bg-red-50 text-red-600 border-red-200',
-        icon: FileText,
-        typeName: 'PDF Document',
-        isPdf: true,
-      };
-    }
-    if (isExcel) {
-      return {
-        badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        icon: FileSpreadsheet,
-        typeName: 'Excel Spreadsheet',
-        isExcel: true,
-      };
-    }
-    if (isPpt) {
-      return {
-        badgeBg: 'bg-orange-50 text-orange-700 border-orange-200',
-        icon: Presentation,
-        typeName: 'PowerPoint Presentation',
-        isPpt: true,
-      };
-    }
-    return {
-      badgeBg: 'bg-slate-50 text-slate-700 border-slate-200',
-      icon: FileIcon,
-      typeName: 'Document',
-      isOther: true,
-    };
-  };
-
-  const handleReset = () => {
-    setSearch('');
-    setSelectedShift('All Shifts');
-    setSelectedStage('All Stages');
-    setSelectedExecutor('All Executors');
-    setSelectedStatus('All Statuses');
-    setCurrentPage(1);
-  };
-
-  const canUserAccessRequest = (req, u, adminFlag) => {
-    if (adminFlag) return true;
-    if (!u || !req) return false;
-
-    const uId = u.id ? Number(u.id) : null;
-    const uName = (u.name || '').trim().toLowerCase();
-    const uEmail = (u.email || '').trim().toLowerCase();
-
-    // 1. Creator check
-    const reqCreatorId = req.created_by_id ? Number(req.created_by_id) : null;
-    if (uId && reqCreatorId && uId === reqCreatorId) return true;
-
-    const creatorName = (req.created_by || req.creator || '').trim().toLowerCase();
-    if (uName && (creatorName === uName || creatorName.includes(uName))) return true;
-    if (uEmail && (creatorName === uEmail || creatorName.includes(uEmail))) return true;
-
-    // 2. Assigned Executor check
-    const execStr = (req.executor || '').trim().toLowerCase();
-    if (execStr) {
-      if (uName && (execStr === uName || execStr.includes(uName))) return true;
-      if (uEmail && (execStr === uEmail || execStr.includes(uEmail))) return true;
-      const tokens = execStr.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(Boolean);
+    if (req.executor) {
+      const tokens = req.executor.split(',').map((s) => s.trim().toLowerCase());
+      if (uEmail && tokens.includes(uEmail)) return true;
       if (uName && tokens.includes(uName)) return true;
     }
 
     return false;
   };
 
+  // Filter requests
   const filteredRequests = requests.filter((req) => {
-    // Only show requests to Admin, the Creator who raised it, or the Assigned Executor
     if (!isAdmin) {
       const canAccess = canUserAccessRequest(req, currentUser, isAdmin);
       if (!canAccess) return false;
@@ -559,7 +401,7 @@ const AllRequests = () => {
     const dept = String(req.department || '').toLowerCase();
     const comments = String(req.comments || '').toLowerCase();
     const observation = String(req.issue_observation || '').toLowerCase();
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
 
     const matchesSearch =
       !q ||
@@ -581,6 +423,10 @@ const AllRequests = () => {
       selectedStage === 'All Stages' ||
       String(req.model || req.stage || '').toLowerCase() === selectedStage.toLowerCase();
 
+    const matchesDepartment =
+      selectedDepartment === 'All Departments' ||
+      String(req.department || '').toLowerCase() === selectedDepartment.toLowerCase();
+
     const matchesExecutor =
       selectedExecutor === 'All Executors' ||
       String(req.executor || '').toLowerCase().includes(selectedExecutor.toLowerCase());
@@ -593,7 +439,17 @@ const AllRequests = () => {
         (displayStatus === 'Awaiting Review' || displayStatus === 'Approval Pending' || displayStatus === 'In Progress')) ||
       (selectedStatus === 'Signed off' && (displayStatus === 'Signed off' || displayStatus === 'In Progress'));
 
-    return matchesSearch && matchesShift && matchesStage && matchesExecutor && matchesStatus;
+    // Timeline Date Filter
+    if (startDate || endDate) {
+      const dateVal = req.escalation_date || req.created_at || req.createdAt;
+      if (!dateVal) return false;
+      const itemDateStr = parseDateToYYYYMMDD(dateVal);
+      if (!itemDateStr) return false;
+      if (startDate && itemDateStr < startDate) return false;
+      if (endDate && itemDateStr > endDate) return false;
+    }
+
+    return matchesSearch && matchesShift && matchesStage && matchesDepartment && matchesExecutor && matchesStatus;
   });
 
   const totalRecords = filteredRequests.length;
@@ -602,107 +458,89 @@ const AllRequests = () => {
   const endIndex = Math.min(startIndex + rowsPerPage, totalRecords);
   const paginatedRequests = filteredRequests.slice(startIndex, endIndex);
 
-  const handleExportCSV = () => {
-    const headers = 'REQUEST ID,DATE,SHIFT,PRODUCTION,STAGE,LINE,CREATOR,EXECUTOR,STATUS\n';
-    const rows = filteredRequests
-      .map((r) => {
-        const id = r.issue_no || `PA-${r.id}`;
-        const date = formatDate(r.escalation_date || r.created_at);
-        const shift = r.shift || '';
-        const prod = r.product || '';
-        const stage = r.model || r.stage || '';
-        const line = r.process_operation || r.line || '';
-        const creator = r.created_by || r.creator || '-';
-        const executor = r.executor || '';
-        const status = getProcessAuditDisplayStatus(r);
-        return `${id},${date},${shift},"${prod}",${stage},"${line}","${creator}","${executor}",${status}`;
-      })
-      .join('\n');
-    const blob = new Blob([headers + rows], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `INEL_Production_Requests_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
+  // Open Export Modal with empty check
+  const handleOpenExportModal = () => {
+    if (!filteredRequests || filteredRequests.length === 0) {
+      alert('No data available to export. Please adjust your filters or search criteria.');
+      return;
+    }
+    setShowExportModal(true);
   };
 
-  // Parse attachments safely for modal
-  const getAttachmentsList = (attData) => {
-    if (!attData) return [];
-    let list = [];
-    if (Array.isArray(attData)) {
-      list = attData;
-    } else if (typeof attData === 'string') {
-      const trimmed = attData.trim();
-      if (!trimmed || trimmed === '[]' || trimmed === 'null' || trimmed === '""') {
-        return [];
-      }
-      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          list = Array.isArray(parsed) ? parsed : [parsed];
-        } catch {
-          list = [];
-        }
-      } else if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          list = [parsed];
-        } catch {
-          list = [];
-        }
-      } else {
-        list = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
-      }
-    } else if (typeof attData === 'object') {
-      list = [attData];
+  // Export to Excel (.xlsx) using common process audit export utility
+  const handleExportExcel = async () => {
+    try {
+      if (!filteredRequests || filteredRequests.length === 0) return;
+      const today = new Date().toISOString().slice(0, 10);
+      await exportProcessAuditToExcel({
+        requests: filteredRequests,
+        fileName: `Process_Audit_Analysis_Report_${today}.xlsx`,
+        sheetName: 'Process Audit Log'
+      });
+      setShowExportModal(false);
+    } catch (err) {
+      console.error('Failed to export to Excel:', err);
+      alert('Failed to export to Excel: ' + err.message);
+    }
+  };
+
+  // Export to PDF (.pdf) using common process audit export utility
+  const handleExportPdf = async () => {
+    try {
+      if (!filteredRequests || filteredRequests.length === 0) return;
+      const today = new Date().toISOString().slice(0, 10);
+      await exportProcessAuditToPdf({
+        requests: filteredRequests,
+        fileName: `Process_Audit_Analysis_Report_${today}.pdf`,
+        title: 'Process Audit Observation & Verification Log',
+        filterText: `Shift: ${selectedShift} | Stage: ${selectedStage} | Dept: ${selectedDepartment} | Status: ${selectedStatus}`
+      });
+      setShowExportModal(false);
+    } catch (err) {
+      console.error('Failed to export to PDF:', err);
+      alert('Failed to export to PDF: ' + err.message);
+    }
+  };
+
+  // Status Badge matching IHLR / Approvals UI
+  const getStatusBadge = (r) => {
+    const disp = getProcessAuditDisplayStatus(r);
+    if (disp === 'Closed') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          CLOSED
+        </span>
+      );
+    }
+    if (disp === 'Awaiting Review' || disp === 'Approval Pending' || disp === 'Signed off' || disp === 'In Progress') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+          <Clock className="w-3 h-3 text-amber-600" />
+          AWAITING REVIEW
+        </span>
+      );
     }
 
-    return list.map((item) => {
-      if (typeof item === 'number' || (typeof item === 'string' && /^\d+$/.test(item.trim()))) {
-        const id = String(item).trim();
-        return {
-          id,
-          name: `Attachment #${id}`,
-          url: `/api/process-audit/attachments/${id}`,
-          path: `/api/process-audit/attachments/${id}`,
-        };
-      }
-      if (typeof item === 'string') {
-        const trimmed = item.trim();
-        const rawName = trimmed.split('/').pop().split('\\').pop();
-        if (trimmed.startsWith('/api/process-audit/attachments/') || trimmed.startsWith('attachments/')) {
-          const id = trimmed.split('/').pop();
-          return {
-            id,
-            name: rawName || `Attachment #${id}`,
-            url: `/api/process-audit/attachments/${id}`,
-            path: `/api/process-audit/attachments/${id}`,
-          };
-        }
-        return {
-          name: rawName || 'Attachment',
-          path: trimmed.startsWith('uploads/') ? trimmed : `uploads/attachments/${trimmed}`,
-          url: trimmed.startsWith('/api/') ? trimmed : `/api/process-audit/${trimmed.startsWith('uploads/') ? trimmed : `uploads/attachments/${trimmed}`}`,
-        };
-      }
-      const itemUrl = item.url || (item.id ? `/api/process-audit/attachments/${item.id}` : (item.path ? (item.path.startsWith('/api/') ? item.path : `/api/process-audit/${item.path}`) : ''));
-      return {
-        ...item,
-        name: item.name || item.filename || (item.path ? item.path.split('/').pop().split('\\').pop() : 'Attachment'),
-        url: itemUrl,
-      };
-    });
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+        PENDING
+      </span>
+    );
   };
 
-  const modalAttachments = activeModalRequest ? getAttachmentsList(activeModalRequest.attachments) : [];
-
   return (
-    <div className="space-y-6 pb-12">
-      {/* Header */}
+    <div className="space-y-6 w-full pb-16">
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+            <span className="text-blue-600 font-bold uppercase tracking-wider font-mono">PROCESS AUDIT REPOSITORY</span>
+            <span>/</span>
+            <span>Analysis Reports</span>
+          </div>
+          <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               All Requests
             </h1>
@@ -714,30 +552,34 @@ const AllRequests = () => {
             )}
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {canEdit
-              ? 'Track, monitor, reassign, and verify auditor sign-off for shopfloor audit observations.'
-              : 'View and track all shopfloor process audit requests in read-only mode.'}
+            Comprehensive spreadsheet view of shopfloor process audit observations, root causes, and containment actions.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={handleExportCSV}
-            className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 shadow-2xs flex items-center justify-center gap-2 transition cursor-pointer"
-          >
-            <Download className="w-4 h-4 text-slate-500" />
-            <span>Export CSV</span>
-          </button>
+        <div className="flex items-center gap-3">
+          {canEdit && (
+            <button
+              onClick={() => navigate('/process-audit/create-request')}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Process Issue</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Filter Box */}
+      {/* Filter and Search Bar (matching IHLR & Dashboard layout) */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-2 border-b border-slate-100">
           <div className="flex items-center gap-2.5 flex-wrap">
             <span className="text-xs font-black uppercase tracking-tight text-slate-800 flex items-center gap-1.5">
               <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
               <span>Filter Observations</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+              <Calendar className="w-3 h-3 text-blue-600" />
+              <span>{isDefaultRange ? `Data on Current Year (${currentYear})` : hasActiveFilters ? 'Active Custom Filter' : 'All Data'}</span>
             </span>
             <button
               type="button"
@@ -759,32 +601,37 @@ const AllRequests = () => {
           </div>
 
           {hasActiveFilters && (
-            <button
-              onClick={handleReset}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/90 border border-rose-200/90 rounded-xl transition-all active:scale-95 cursor-pointer shadow-2xs"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Filters</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/90 border border-rose-200/90 rounded-xl transition-all active:scale-95 cursor-pointer shadow-2xs"
+                title="Clear all active filters"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset Filters</span>
+              </button>
+            </div>
           )}
         </div>
 
         {showFilters && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
-            {/* Search Bar */}
+          <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+            {/* Search Input */}
             <div className="relative w-full">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5 pointer-events-none" />
               <input
                 type="text"
+                placeholder="Search observation, model, operation, executor, auditor, or Req#..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search Request ID (e.g. PA-1), Line, Model, Executor, Comments..."
-                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium"
               />
             </div>
 
-            {/* 4 Filter Dropdowns */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Filter Dropdowns Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs items-center">
+              {/* Shift Filter */}
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                   Shift
@@ -792,16 +639,17 @@ const AllRequests = () => {
                 <select
                   value={selectedShift}
                   onChange={(e) => setSelectedShift(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
                 >
-                  <option>All Shifts</option>
-                  <option>Morning</option>
-                  <option>Evening</option>
-                  <option>Night</option>
-                  <option>General</option>
+                  <option value="All Shifts">All Shifts</option>
+                  <option value="Morning">Morning</option>
+                  <option value="Evening">Evening</option>
+                  <option value="Night">Night</option>
+                  <option value="General">General</option>
                 </select>
               </div>
 
+              {/* Stage / Model Filter */}
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                   Stage / Model
@@ -809,33 +657,33 @@ const AllRequests = () => {
                 <select
                   value={selectedStage}
                   onChange={(e) => setSelectedStage(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
                 >
-                  <option>All Stages</option>
-                  <option value="Assembly">Assembly</option>
-                  <option value="Inspection">Inspection</option>
-                  <option value="Packaging">Packaging</option>
-                  <option value="Raw Material">Raw Material</option>
-                  <option value="Production">Production</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                  Executor
-                </label>
-                <select
-                  value={selectedExecutor}
-                  onChange={(e) => setSelectedExecutor(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-                >
-                  <option value="All Executors">All Executors</option>
-                  {distinctExecutors.map((exec) => (
-                    <option key={exec} value={exec}>{exec}</option>
+                  <option value="All Stages">All Stages</option>
+                  {distinctStages.map((stg) => (
+                    <option key={stg} value={stg}>{stg}</option>
                   ))}
                 </select>
               </div>
 
+              {/* Department Filter */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Department
+                </label>
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                >
+                  <option value="All Departments">All Departments</option>
+                  {departmentList.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter */}
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                   Status
@@ -843,140 +691,301 @@ const AllRequests = () => {
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
                 >
                   <option value="All Statuses">All Statuses</option>
                   <option value="Pending">Pending</option>
                   <option value="Awaiting Review">Awaiting Review</option>
-                  <option value={isAdmin ? "In Progress" : "Signed off"}>
-                    {isAdmin ? "In Progress" : "Signed off"}
-                  </option>
                   <option value="Closed">Closed</option>
                 </select>
+              </div>
+
+              {/* Date Range Cluster */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Timeline Range
+                </label>
+                <div className="flex items-center gap-1 bg-slate-50 hover:bg-slate-100/70 focus-within:bg-white border border-slate-200/90 focus-within:border-blue-500 rounded-xl p-1 shadow-2xs focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-600 ml-1 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <DateInput
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      placeholder="From"
+                      className="w-full px-1 py-0.5 text-xs font-semibold text-slate-800 bg-transparent border-0 focus:ring-0 outline-none placeholder:text-slate-400"
+                    />
+                  </div>
+                  <span className="text-slate-400 text-xs font-bold px-0.5 select-none shrink-0">→</span>
+                  <div className="min-w-0 flex-1">
+                    <DateInput
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      placeholder="To"
+                      className="w-full px-1 py-0.5 text-xs font-semibold text-slate-800 bg-transparent border-0 focus:ring-0 outline-none placeholder:text-slate-400"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Requests Table */}
+      {/* Process Audit Analysis Report Master Table (matching IHLR Analysis Report UI) */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-        {loading ? (
-          <div className="py-16 text-center text-slate-400 text-xs">
-            <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
-            Loading production requests from database...
+        {/* Card Header matching IHLR */}
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-extrabold uppercase tracking-widest text-slate-600 font-mono">
+              PROCESS AUDIT ANALYSIS REPORT
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 font-mono">
+              {filteredRequests.length} Records
+            </span>
           </div>
-        ) : filteredRequests.length === 0 ? (
-          <div className="py-16 text-center text-slate-400 text-xs">
-            <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-            No matching requests found in database.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3.5 px-4 text-center w-12 whitespace-nowrap align-middle">SL NO</th>
-                  <th className="py-3.5 px-6 whitespace-nowrap align-middle">REQUEST ID</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">Escalation Date </th>
-                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">SHIFT</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">PRODUCT</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">MODEL</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">PROCESS/OPERATION</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">CREATOR</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap align-middle">EXECUTOR</th>
-                  <th className="py-3.5 px-3 whitespace-nowrap align-middle text-center">EVIDENCE</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap align-middle text-center">STATUS</th>
-                  <th className="py-3.5 px-6 whitespace-nowrap align-middle text-center">ACTION</th>
+          <button
+            onClick={handleOpenExportModal}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow transition transform active:scale-95 cursor-pointer"
+            id="export-view-btn"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export View</span>
+          </button>
+        </div>
+
+        {/* Master Table with Grouped Phase Headers */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[1250px]">
+            <thead>
+              {/* Top Phase Header Row (Matching IHLR Analysis Report) */}
+              <tr className="text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-200">
+                <th colSpan={10} className="py-2.5 px-4 bg-amber-100 text-amber-900 border-r border-amber-200">
+                  REQUESTOR (Audit Observation &amp; Defect Details)
+                </th>
+                <th colSpan={4} className="py-2.5 px-4 bg-orange-100 text-orange-900 border-r border-orange-200">
+                  CLOSER (Containment &amp; Corrective Action)
+                </th>
+                <th colSpan={3} className="py-2.5 px-4 bg-slate-100 text-slate-700">
+                  REMARKS &amp; STATUS
+                </th>
+              </tr>
+
+              {/* Detailed Column Header Row */}
+              <tr className="bg-[#f8fafc] border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                {/* Requestor Columns (10) */}
+                <th className="py-3 px-3 text-center w-12">SL NO</th>
+                <th className="py-3 px-3 whitespace-nowrap">REQ NO</th>
+                <th className="py-3 px-3 whitespace-nowrap">DATE / SHIFT</th>
+                <th className="py-3 px-4 min-w-[150px]">OBSERVATION</th>
+                <th className="py-3 px-3 whitespace-nowrap">PRODUCT</th>
+                <th className="py-3 px-3 whitespace-nowrap">STAGE / MODEL</th>
+                <th className="py-3 px-3 whitespace-nowrap">LINE / OPERATION</th>
+                <th className="py-3 px-3 whitespace-nowrap">AUDITED BY</th>
+                <th className="py-3 px-2 text-center w-12">DEFECT</th>
+                <th className="py-3 px-3 whitespace-nowrap text-center">RESP / EXECUTOR</th>
+
+                {/* Closer Columns (4) */}
+                <th className="py-3 px-4 min-w-[140px]">ROOT CAUSE</th>
+                <th className="py-3 px-4 min-w-[150px]">ACTION TAKEN</th>
+                <th className="py-3 px-4 min-w-[140px]">STANDARDIZATION</th>
+                <th className="py-3 px-3 whitespace-nowrap">TARGET DATE</th>
+
+                {/* Remarks & Status Columns (3) */}
+                <th className="py-3 px-4 min-w-[130px]">REMARKS</th>
+                <th className="py-3 px-3 whitespace-nowrap text-center">STATUS</th>
+                <th className="py-3 px-3 text-right whitespace-nowrap">ACTIONS</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {loading ? (
+                <tr>
+                  <td colSpan={17} className="py-16 text-center text-slate-400">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
+                    Loading process audit analysis reports from database...
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {paginatedRequests.map((req, idx) => {
-                  const reqId = req.issue_no || (req.id ? `PA-${req.id}` : 'PA-1');
-                  const dateStr = formatDate(req.escalation_date || req.created_at);
-                  const prodStr = req.product || '-';
-                  const stageStr = req.model || req.stage || 'Standard';
-                  const lineStr = req.process_operation || req.line || 'General';
-                  const creatorStr = req.created_by || req.creator || '-';
-                  const executorStr = req.executor || 'Assigned Lead';
-                  const statusStr = getProcessAuditDisplayStatus(req);
-                  const isSignedOff = (statusStr === 'Awaiting Review' || statusStr === 'Approval Pending' || statusStr === 'Signed off' || statusStr === 'In Progress') && !statusStr.toLowerCase().includes('close');
-                  const meta = getStatusMeta(statusStr);
+              ) : paginatedRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={17} className="py-12 text-center text-slate-400">
+                    <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <p className="font-semibold text-slate-600">
+                      No Process Audit Reports match your filter
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Try resetting search parameters or check other filters.
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                paginatedRequests.map((r, index) => {
+                  const reqId = r.issue_no || (r.id ? `PA-${r.id}` : '#1');
+                  const dateStr = formatDateDDMMYYYY(r.escalation_date || r.created_at);
+                  const prodStr = r.product || '—';
+                  const stageStr = r.model || r.stage || '—';
+                  const lineStr = r.process_operation || r.line || '—';
+                  const auditorStr = r.created_by || r.creator || '—';
+                  const deptStr = r.department || '—';
+                  const executorStr = r.executor || 'Assigned Lead';
+                  const rootCauseStr = r.root_cause || '—';
+                  const actionStr = r.corrective_action || r.action || '—';
+                  const standardStr = r.standardization_details || '—';
+                  const targetDateStr = r.target_date ? formatDateDDMMYYYY(r.target_date) : '—';
+                  const remarksStr = r.creator_remark || r.remarks || '—';
 
                   return (
-                    <tr key={req.id} className="hover:bg-slate-50/70 transition">
-                      <td className="py-4 px-4 text-center font-mono font-semibold text-slate-400 align-middle whitespace-nowrap">
-                        {startIndex + idx + 1}
+                    <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                      {/* SL NO */}
+                      <td className="py-3.5 px-3 text-center font-mono font-semibold text-slate-400">
+                        {startIndex + index + 1}
                       </td>
-                      <td className="py-4 px-6 font-bold text-blue-600 align-middle whitespace-nowrap">{reqId}</td>
-                      <td className="py-4 px-4 text-slate-600 font-medium align-middle whitespace-nowrap">{dateStr}</td>
-                      <td className="py-4 px-4 text-slate-600 font-medium align-middle whitespace-nowrap">{req.shift}</td>
-                      <td className="py-4 px-4 text-slate-800 font-semibold align-middle whitespace-nowrap">{prodStr}</td>
-                      <td className="py-4 px-4 text-slate-600 align-middle whitespace-nowrap">{stageStr}</td>
-                      <td className="py-4 px-4 text-slate-700 font-medium align-middle whitespace-nowrap">{lineStr}</td>
-                      <td className="py-4 px-4 text-slate-700 font-medium align-middle whitespace-nowrap">{creatorStr}</td>
-                      <td className="py-4 px-4 text-slate-800 font-semibold align-middle whitespace-nowrap">{executorStr}</td>
-                      <td className="py-4 px-3 text-center align-middle whitespace-nowrap">
+
+                      {/* Req NO */}
+                      <td className="py-3.5 px-3 font-mono font-bold text-blue-600 whitespace-nowrap">
+                        {reqId}
+                      </td>
+
+                      {/* Date / Shift */}
+                      <td className="py-3.5 px-3 whitespace-nowrap">
+                        <div className="font-semibold text-slate-900">
+                          {dateStr}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] font-bold text-slate-600 font-mono">
+                            {r.shift || 'General'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Observation */}
+                      <td className="py-3.5 px-4 font-semibold text-slate-900 max-w-[200px]" title={r.issue_observation || r.problem}>
+                        <div className="truncate">
+                          {r.issue_observation || r.problem || '—'}
+                        </div>
+                      </td>
+
+                      {/* Product */}
+                      <td className="py-3.5 px-3 font-medium text-slate-800 whitespace-nowrap">
+                        {prodStr}
+                      </td>
+
+                      {/* Stage / Model */}
+                      <td className="py-3.5 px-3 font-bold text-blue-700 whitespace-nowrap">
+                        {stageStr}
+                      </td>
+
+                      {/* Line / Operation */}
+                      <td className="py-3.5 px-3 font-medium text-slate-700 whitespace-nowrap">
+                        {lineStr}
+                      </td>
+
+                      {/* Audited By (Creator) */}
+                      <td className="py-3.5 px-3 font-medium text-slate-800 whitespace-nowrap">
+                        <div>{auditorStr}</div>
+                      </td>
+
+                      {/* Defect Attachment Thumbnail */}
+                      <td className="py-3.5 px-2 text-center">
                         <div className="flex items-center justify-center">
                           <AttachmentThumbnail
-                            rawAttachment={req.action_attachments || req.attachments}
+                            rawAttachment={r.attachments}
                             onClick={(e) => {
                               e?.stopPropagation?.();
-                              setActiveModalRequest(req);
+                              setActiveModalRequest(r);
                             }}
                           />
                         </div>
                       </td>
-                      <td className="py-4 px-4 text-center align-middle whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${meta.statusColor}`}>
-                          {statusStr.toLowerCase().includes('close') ? (
-                            <CheckCheck className="w-3.5 h-3.5 text-red-600" />
-                          ) : (statusStr.toLowerCase().includes('signed') || statusStr.toLowerCase().includes('approved')) ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          ) : (
-                            <span className={`w-1.5 h-1.5 rounded-full ${meta.dotColor}`}></span>
-                          )}
-                          <span>{statusStr}</span>
-                        </span>
-                        {statusStr.toLowerCase().includes('close') && req.closed_by && (
-                          <div className="text-[10px] text-slate-500 mt-0.5">by <strong className="text-slate-700">{req.closed_by}</strong></div>
-                        )}
-                        {(statusStr.toLowerCase().includes('signed') || statusStr.toLowerCase().includes('progress') || statusStr.toLowerCase().includes('approved')) && !statusStr.toLowerCase().includes('close') && (req.approved_by || req.action_taken_by) && (
-                          <div className="text-[10px] text-slate-500 mt-0.5">by <strong className="text-slate-700">{req.approved_by || req.action_taken_by}</strong></div>
-                        )}
+
+                      {/* Resp / Executor */}
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-blue-50 text-blue-700 border border-blue-200 mb-0.5">
+                          <Building2 className="w-3 h-3 text-blue-600" />
+                          <span>{deptStr}</span>
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-700 truncate max-w-[120px]" title={executorStr}>
+                          {executorStr}
+                        </div>
                       </td>
-                      <td className="py-4 px-6 text-center align-middle whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {canEdit && isSignedOff && !statusStr.toLowerCase().includes('close') ? (
+
+                      {/* Root Cause */}
+                      <td className="py-3.5 px-4 text-slate-700 max-w-[160px] truncate" title={rootCauseStr}>
+                        {rootCauseStr}
+                      </td>
+
+                      {/* Action Taken */}
+                      <td className="py-3.5 px-4 text-slate-800 font-medium max-w-[180px] truncate" title={actionStr}>
+                        {actionStr}
+                      </td>
+
+                      {/* Standardization */}
+                      <td className="py-3.5 px-4 text-slate-700 max-w-[160px] truncate" title={standardStr}>
+                        {standardStr}
+                      </td>
+
+                      {/* Target Date */}
+                      <td className="py-3.5 px-3 text-slate-600 font-mono text-[11px] whitespace-nowrap">
+                        {targetDateStr}
+                      </td>
+
+                      {/* Remarks */}
+                      <td className="py-3.5 px-4 text-slate-700 max-w-[160px] truncate" title={remarksStr}>
+                        {remarksStr}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                        {getStatusBadge(r)}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
+                          {/* View details */}
+                          <button
+                            onClick={() => {
+                              setActiveModalRequest(r);
+                            }}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                            title="View Complete Report"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Review & Edit */}
+                          {canEdit && (
                             <button
-                              onClick={() => setActiveModalRequest(req)}
-                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5"
-                              title="Review resolution and complete auditor sign-off"
+                              onClick={() => {
+                                setActiveModalRequest(r);
+                              }}
+                              className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                              title="Review / Sign-off Observation"
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Review &amp; Close</span>
+                              <Pencil className="w-3.5 h-3.5" />
                             </button>
-                          ) : (
+                          )}
+
+                          {/* Reassign Closer */}
+                          {canEdit && (
                             <button
-                              onClick={() => setActiveModalRequest(req)}
-                              className="px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition shadow-2xs cursor-pointer flex items-center gap-1"
-                              title="View details"
+                              onClick={() => handleOpenReassignModal(r)}
+                              className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition cursor-pointer"
+                              title="Reassign Closer / Department"
                             >
-                              <Eye className="w-3.5 h-3.5 text-slate-500" />
-                              <span>View</span>
+                              <ArrowRightLeft className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
-        {/* Pagination Controls */}
+        {/* Pagination Controls matching IHLR */}
         {!loading && (
           <div className="p-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-4 text-xs text-slate-600">
             <div className="flex items-center gap-2">
@@ -1024,6 +1033,17 @@ const AllRequests = () => {
         )}
       </div>
 
+      {/* Export Selection Modal (Excel .xlsx vs PDF .pdf) */}
+      <ExportSelectionModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        title="Export Process Audit Analysis Report"
+        subtitle={`Select format to download ${filteredRequests.length} filtered audit observation records`}
+        recordCount={filteredRequests.length}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      />
+
       {/* Complete Inspection & Admin Edit Modal */}
       <ProcessAuditRequestDetailsModal
         isOpen={Boolean(activeModalRequest)}
@@ -1034,7 +1054,7 @@ const AllRequests = () => {
         }}
       />
 
-      {/* Universal Interactive Attachment Preview Modal (Interactive Excel Spreadsheet, PDF, Image) */}
+      {/* Universal Interactive Attachment Preview Modal */}
       <AttachmentPreviewModal
         isOpen={Boolean(previewAttachment)}
         attachment={previewAttachment}
