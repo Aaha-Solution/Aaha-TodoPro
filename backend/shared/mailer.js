@@ -12,20 +12,20 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
  * Shared Mailer Service for India Nippon Electricals Limited Portal
  */
 
-// SMTP Configuration (Outlook / Office 365)
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp-mail.outlook.com';
-const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
+// SMTP Configuration (Capitalgrow / Secureserver)
+const SMTP_HOST = process.env.SMTP_HOST || 'smtpout.secureserver.net';
+const SMTP_PORT = Number(process.env.SMTP_PORT) || 465;
 const SMTP_SECURE = process.env.SMTP_SECURE === 'true' || SMTP_PORT === 465;
-const SMTP_USER = process.env.SMTP_USER || process.env.EMAIL_USER || 'sridharkesava@outlook.com';
-const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'Shakthi@20';
-const SMTP_FROM = process.env.SMTP_FROM || `"INEL IHLR Portal" <${SMTP_USER}>`;
+const SMTP_USER = process.env.SMTP_USER || process.env.EMAIL_USER || 'info@capitalgrow.co.in';
+const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'Capitalgrow@2024';
+const SMTP_FROM = process.env.SMTP_FROM || `"INEL Quality Portal" <${SMTP_USER}>`;
 
 function getTransporter() {
-  const host = process.env.SMTP_HOST || 'smtp-mail.outlook.com';
-  const port = Number(process.env.SMTP_PORT) || 587;
+  const host = process.env.SMTP_HOST || 'smtpout.secureserver.net';
+  const port = Number(process.env.SMTP_PORT) || 465;
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-  const user = process.env.SMTP_USER || process.env.EMAIL_USER || 'sridharkesava@outlook.com';
-  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'Shakthi@20';
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER || 'info@capitalgrow.co.in';
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'Capitalgrow@2024';
 
   if (user && pass) {
     try {
@@ -105,12 +105,12 @@ export async function sendEmail({
   referenceNo = '',
   skipCc = false,
 }) {
-  const OUTLOOK_TRIGGER_EMAIL = 'sridharkesava@outlook.com';
-  const cleanTo = (to && to.trim()) ? to.trim() : OUTLOOK_TRIGGER_EMAIL;
+  const DEFAULT_TRIGGER_EMAIL = process.env.SMTP_USER || 'info@capitalgrow.co.in';
+  const cleanTo = (to && to.trim()) ? to.trim() : DEFAULT_TRIGGER_EMAIL;
 
-  // Whenever a mail is triggered, also ensure the user's outlook email receives the notification
-  const ccRecipient = (!skipCc && cleanTo.toLowerCase() !== OUTLOOK_TRIGGER_EMAIL.toLowerCase())
-    ? OUTLOOK_TRIGGER_EMAIL
+  // Whenever a mail is triggered, also ensure the configured trigger email receives the notification
+  const ccRecipient = (!skipCc && cleanTo.toLowerCase() !== DEFAULT_TRIGGER_EMAIL.toLowerCase())
+    ? DEFAULT_TRIGGER_EMAIL
     : undefined;
 
   console.log(`\n======================================================`);
@@ -120,13 +120,13 @@ export async function sendEmail({
   console.log(`   Role      : ${recipientRole}`);
   console.log(`   To        : ${recipientName ? `${recipientName} <${cleanTo}>` : cleanTo}`);
   if (ccRecipient) {
-    console.log(`   Also CC   : ${ccRecipient} (User Outlook Trigger)`);
+    console.log(`   Also CC   : ${ccRecipient} (User Email Trigger)`);
   }
   console.log(`   Subject   : ${subject}`);
   console.log(`======================================================\n`);
 
   const transporter = getTransporter();
-  const senderFrom = process.env.SMTP_FROM || `"INEL IHLR Portal" <${process.env.SMTP_USER || OUTLOOK_TRIGGER_EMAIL}>`;
+  const senderFrom = process.env.SMTP_FROM || `"INEL Quality Portal" <${process.env.SMTP_USER || DEFAULT_TRIGGER_EMAIL}>`;
 
   if (transporter) {
     try {
