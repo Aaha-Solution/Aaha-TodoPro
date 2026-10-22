@@ -99,7 +99,6 @@ export const IhlrBarChart = ({
 
   const isDefault12Months = activeStart === activeDefaultStart && activeEnd === activeDefaultEnd;
   const isCurrentYear = activeStart === `${thisYear}-01-01` && activeEnd === `${thisYear}-12-31`;
-  const isPrevYear = activeStart === `${thisYear - 1}-01-01` && activeEnd === `${thisYear - 1}-12-31`;
 
   const handleDateChange = (newStart, newEnd) => {
     setLocalStart(newStart);
@@ -114,21 +113,6 @@ export const IhlrBarChart = ({
       handleDateChange(activeDefaultStart, activeDefaultEnd);
     } else if (presetKey === 'currentYear') {
       handleDateChange(`${thisYear}-01-01`, `${thisYear}-12-31`);
-    } else if (presetKey === 'prevYear') {
-      handleDateChange(`${thisYear - 1}-01-01`, `${thisYear - 1}-12-31`);
-    } else if (presetKey === 'last6') {
-      const s = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-      const e = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      handleDateChange(
-        `${s.getFullYear()}-${pad(s.getMonth() + 1)}-01`,
-        `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}`
-      );
-    } else if (presetKey === 'last30') {
-      const past30 = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
-      handleDateChange(
-        `${past30.getFullYear()}-${pad(past30.getMonth() + 1)}-${pad(past30.getDate())}`,
-        `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-      );
     }
   };
 
@@ -344,30 +328,6 @@ export const IhlrBarChart = ({
               }`}
             >
               Year {thisYear}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handlePreset('last6')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                !isDefault12Months && !isCurrentYear && !isPrevYear && (activeStart && activeEnd)
-                  ? 'bg-blue-600 text-white shadow-xs font-extrabold'
-                  : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Last 6 Months
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handlePreset('prevYear')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                isPrevYear
-                  ? 'bg-blue-600 text-white shadow-xs font-extrabold'
-                  : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Year {thisYear - 1}
             </button>
           </div>
 
