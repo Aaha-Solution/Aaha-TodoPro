@@ -206,9 +206,16 @@ export const ProcessAuditRequest = {
   getNextId: async () => {
     if (!pool) return '1';
     try {
-      const [rows] = await pool.query('SELECT COALESCE(MAX(id), 0) + 1 AS nextId FROM process_audit_requests');
-      const nextId = rows?.[0]?.nextId;
-      return String(nextId || 1);
+      const [rows] = await pool.query('SELECT issue_no, id FROM process_audit_requests');
+      let max = 0;
+      for (const r of rows) {
+        const match = String(r.issue_no || '').match(/(\d+)/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > max) max = num;
+        }
+      }
+      return String(max + 1);
     } catch (err) {
       console.warn('Could not calculate next ID:', err.message);
       return '1';
