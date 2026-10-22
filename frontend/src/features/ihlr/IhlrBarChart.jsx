@@ -192,7 +192,9 @@ export const IhlrBarChart = ({
   }, [stats, totalVolume, chartData]);
 
   // SVG Chart Dimensions
-  const svgWidth = 860;
+  const numItems = chartData.length;
+  // Dynamic scale width for wider custom timelines (e.g. 18-24 months)
+  const svgWidth = Math.max(860, numItems * 64);
   const svgHeight = 270;
   const paddingLeft = 46;
   const paddingRight = 24;
@@ -202,7 +204,6 @@ export const IhlrBarChart = ({
   const innerWidth = svgWidth - paddingLeft - paddingRight;
   const innerHeight = svgHeight - paddingTop - paddingBottom;
 
-  const numItems = chartData.length;
   const slotWidth = numItems > 0 ? innerWidth / numItems : innerWidth;
   const maxBarWidth = activeTab === 'monthly' ? 38 : 52;
   const barWidth = Math.min(slotWidth * 0.65, maxBarWidth);
@@ -334,7 +335,7 @@ export const IhlrBarChart = ({
           {/* Custom Date Range Pickers Cluster */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/80 focus-within:bg-white border border-slate-200/90 focus-within:border-blue-500 rounded-xl p-1 shadow-2xs focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-              <div className="w-[110px]">
+              <div className="w-[135px]">
                 <DateInput
                   value={activeStart}
                   onChange={(e) => handleDateChange(e.target.value, activeEnd)}
@@ -343,7 +344,7 @@ export const IhlrBarChart = ({
                 />
               </div>
               <span className="text-slate-400 text-xs font-bold px-0.5 select-none">→</span>
-              <div className="w-[110px]">
+              <div className="w-[135px]">
                 <DateInput
                   value={activeEnd}
                   onChange={(e) => handleDateChange(activeStart, e.target.value)}

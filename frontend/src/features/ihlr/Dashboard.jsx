@@ -493,7 +493,7 @@ const IhlrDashboard = () => {
                     )}
                   </label>
                   <div className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/70 focus-within:bg-white border border-slate-200/90 focus-within:border-blue-500 rounded-xl p-1 shadow-2xs focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
-                    <div className="w-[125px]">
+                    <div className="w-[135px]">
                       <DateInput
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
@@ -502,7 +502,7 @@ const IhlrDashboard = () => {
                       />
                     </div>
                     <span className="text-slate-400 text-xs font-bold px-0.5 select-none">→</span>
-                    <div className="w-[125px]">
+                    <div className="w-[135px]">
                       <DateInput
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}

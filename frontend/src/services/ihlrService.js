@@ -95,29 +95,82 @@ export const ihlrService = {
         const s = (r.status || '').toUpperCase();
         return s === 'IN_PROGRESS' || s === 'IN-PROGRESS';
       }).length;
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const monthlyTrend = monthNames.map((name, idx) => {
+      let trendMonths = [];
+      const pad = (n) => String(n).padStart(2, '0');
+      const isSingleYear = Boolean(startDate && endDate && startDate.endsWith('-01-01') && endDate.endsWith('-12-31') && startDate.slice(0, 4) === endDate.slice(0, 4));
+
+      if (isSingleYear) {
+        const yr = startDate.slice(0, 4);
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        trendMonths = monthNames.map((name, index) => ({
+          label: name,
+          month: name,
+          yearMonth: `${yr}-${String(index + 1).padStart(2, '0')}`,
+          isFirst: index === 0
+        }));
+      } else if (startDate && endDate) {
+        const startParts = startDate.split('-').map(Number);
+        const endParts = endDate.split('-').map(Number);
+        const startYear = startParts[0];
+        const startMonth = startParts[1] - 1;
+        const endYear = endParts[0];
+        const endMonth = endParts[1] - 1;
+
+        if (!isNaN(startYear) && !isNaN(endYear) && (startYear * 12 + startMonth <= endYear * 12 + endMonth)) {
+          let curYear = startYear;
+          let curMonth = startMonth;
+          let isFirstMonth = true;
+          while (curYear < endYear || (curYear === endYear && curMonth <= endMonth)) {
+            const d = new Date(curYear, curMonth, 1);
+            const mName = d.toLocaleString('en-US', { month: 'short' });
+            const yrShort = String(curYear).slice(-2);
+            trendMonths.push({
+              label: `${mName} '${yrShort}`,
+              month: `${mName} '${yrShort}`,
+              yearMonth: `${curYear}-${pad(curMonth + 1)}`,
+              isFirst: isFirstMonth
+            });
+            isFirstMonth = false;
+            curMonth++;
+            if (curMonth > 11) {
+              curMonth = 0;
+              curYear++;
+            }
+            if (trendMonths.length >= 48) break;
+          }
+        }
+      }
+
+      if (trendMonths.length === 0) {
+        const endD = endDate ? new Date(endDate) : new Date();
+        const refEnd = isNaN(endD.getTime()) ? new Date() : endD;
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date(refEnd.getFullYear(), refEnd.getMonth() - i, 1);
+          const mName = d.toLocaleString('en-US', { month: 'short' });
+          const yr = d.getFullYear();
+          const yrShort = String(yr).slice(-2);
+          trendMonths.push({
+            label: `${mName} '${yrShort}`,
+            month: `${mName} '${yrShort}`,
+            yearMonth: `${yr}-${pad(d.getMonth() + 1)}`,
+            isFirst: i === 11
+          });
+        }
+      }
+
+      const monthlyTrend = trendMonths.map((mObj) => {
         const mReqs = scopedStore.filter(r => {
           const dStr = (r.batch_date || r.created_at || '').split('T')[0];
           if (!dStr) return false;
-          const d = new Date(dStr);
-          if (isNaN(d.getTime())) return false;
-
-          if (d.getMonth() === idx && (!startDate || dStr >= startDate)) {
-            return true;
-          }
-
-          if (startDate && dStr < startDate) {
+          if (dStr.startsWith(mObj.yearMonth)) return true;
+          if (mObj.isFirst && startDate && dStr < startDate) {
             const s = (r.status || '').toUpperCase();
-            if (s !== 'CLOSED' && idx === 0) {
-              return true;
-            }
-            return false;
+            if (s !== 'CLOSED') return true;
           }
+          return false;
         });
         return {
-          month: name,
-          monthIndex: idx,
+          month: mObj.label,
           total: mReqs.length,
           open: mReqs.filter(r => (r.status || '').toUpperCase() === 'OPEN' || (r.status || '').toUpperCase() === 'PENDING').length,
           inProgress: mReqs.filter(r => (r.status || '').toUpperCase().includes('PROGRESS') || (r.status || '').toUpperCase().includes('REVIEW')).length,

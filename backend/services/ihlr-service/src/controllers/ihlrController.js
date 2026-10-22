@@ -178,9 +178,18 @@ export const getDashboardStats = async (req, res) => {
       return 'open';
     };
 
-    // 1. Monthly Trend Bar Chart (Last 12 Rolling Months or Calendar Months)
+    // 1. Monthly Trend Bar Chart (Last 12 Rolling Months, Calendar Year, or Dynamic Custom Range)
     let trendMonths = [];
-    const isSingleCalendarYear = Boolean(startDate && endDate && startDate.endsWith('-01-01') && endDate.endsWith('-12-31') && startDate.slice(0, 4) === endDate.slice(0, 4));
+    const isSingleCalendarYear = Boolean(
+      startDate && endDate && 
+      startDate.endsWith('-01-01') && endDate.endsWith('-12-31') && 
+      startDate.slice(0, 4) === endDate.slice(0, 4)
+    );
+    const isDefault12Months = Boolean(
+      startDate && endDate &&
+      startDate === default12MonthsStart &&
+      endDate === default12MonthsEnd
+    );
 
     if (isSingleCalendarYear) {
       const yr = startDate.slice(0, 4);
@@ -195,8 +204,44 @@ export const getDashboardStats = async (req, res) => {
           isFirst: index === 0
         };
       });
-    } else {
-      // Rolling 12 months ending at endDate (or current month)
+    } else if (!isDefault12Months && startDate && endDate) {
+      // Dynamic custom date range: generate all calendar months from start month to end month
+      const startParts = startDate.split('-').map(Number);
+      const endParts = endDate.split('-').map(Number);
+      const startYear = startParts[0];
+      const startMonth = startParts[1] - 1; // 0-indexed
+      const endYear = endParts[0];
+      const endMonth = endParts[1] - 1;     // 0-indexed
+
+      if (!isNaN(startYear) && !isNaN(endYear) && (startYear * 12 + startMonth <= endYear * 12 + endMonth)) {
+        let curYear = startYear;
+        let curMonth = startMonth;
+        let isFirstMonth = true;
+
+        while (curYear < endYear || (curYear === endYear && curMonth <= endMonth)) {
+          const d = new Date(curYear, curMonth, 1);
+          const mName = d.toLocaleString('en-US', { month: 'short' });
+          const yrShort = String(curYear).slice(-2);
+          trendMonths.push({
+            label: `${mName} '${yrShort}`,
+            month: `${mName} '${yrShort}`,
+            yearMonth: `${curYear}-${pad(curMonth + 1)}`,
+            monthIndex: curMonth,
+            isFirst: isFirstMonth
+          });
+          isFirstMonth = false;
+          curMonth++;
+          if (curMonth > 11) {
+            curMonth = 0;
+            curYear++;
+          }
+          if (trendMonths.length >= 48) break; // Maximum 48 months limit
+        }
+      }
+    }
+
+    // Default / Fallback: Rolling 12 months ending at endDate (or current month)
+    if (trendMonths.length === 0) {
       const endD = endDate ? new Date(endDate) : new Date();
       const refEnd = isNaN(endD.getTime()) ? new Date() : endD;
 
