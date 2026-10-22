@@ -149,6 +149,8 @@ const ProcessAuditApprovals = () => {
   const [closerPermanentEvidenceError, setCloserPermanentEvidenceError] = useState(false);
   const [closerPermanentTargetDate, setCloserPermanentTargetDate] = useState('');
   const [closerPermanentTargetDateError, setCloserPermanentTargetDateError] = useState(false);
+  const [closerTemporaryClosedBy, setCloserTemporaryClosedBy] = useState('');
+  const [closerPermanentClosedBy, setCloserPermanentClosedBy] = useState('');
   const todayStr = (() => {
     const d = new Date();
     const y = d.getFullYear();
@@ -324,6 +326,7 @@ const ProcessAuditApprovals = () => {
       (r.prod_why_why && (Array.isArray(r.prod_why_why) ? r.prod_why_why.some((w) => w && w.trim()) : Boolean(r.prod_why_why))) ||
       (r.standardization_details && String(r.standardization_details).trim()) ||
       Boolean(r.temporary_target_date || r.permanent_target_date || r.target_date) ||
+      Boolean(r.temporary_closed_by || r.permanent_closed_by) ||
       Boolean(r.action_taken_by) ||
       (r.temporary_evidence_attachment && parseAttachments(r.temporary_evidence_attachment).length > 0) ||
       (r.permanent_evidence_attachment && parseAttachments(r.permanent_evidence_attachment).length > 0) ||
@@ -588,6 +591,8 @@ const ProcessAuditApprovals = () => {
       setCloserTargetDate('');
       setCloserPermanentFix('');
       setCloserPermanentTargetDate('');
+      setCloserTemporaryClosedBy('');
+      setCloserPermanentClosedBy('');
       setCloserRemarks('');
       setCloserStatus('');
       setReassignedDept('');
@@ -661,6 +666,8 @@ const ProcessAuditApprovals = () => {
         : ''
     );
     setCloserPermanentTargetDateError(false);
+    setCloserTemporaryClosedBy(req.temporary_closed_by || req.action_taken_by || '');
+    setCloserPermanentClosedBy(req.permanent_closed_by || req.closed_by || '');
 
     setCloserRemarks(req.creator_remark || '');
     setCloserStatus('');
@@ -816,14 +823,16 @@ const ProcessAuditApprovals = () => {
         temporary_action: closerAction.trim(),
         temporary_evidence_attachment: combinedEvidence,
         temporary_target_date: closerTargetDate || null,
+        temporary_closed_by: closerTemporaryClosedBy.trim() || currentUser?.name || currentUser?.email || 'Assigned Executor',
         permanent_fix: closerPermanentFix.trim(),
         permanent_evidence_attachment: combinedPermEvidence,
         permanent_target_date: closerPermanentTargetDate || null,
+        permanent_closed_by: closerPermanentClosedBy.trim() || currentUser?.name || currentUser?.email || 'Assigned Executor',
         corrective_action: closerPermanentFix.trim() || closerAction.trim(),
         standardization_details: standardizationDetails.trim(),
         action_attachments: combinedEvidence,
         target_date: closerPermanentTargetDate || closerTargetDate || null,
-        action_taken_by: currentUser?.name || currentUser?.email || 'Assigned Executor',
+        action_taken_by: closerTemporaryClosedBy.trim() || currentUser?.name || currentUser?.email || 'Assigned Executor',
         approved_by: currentUser?.name || currentUser?.email || 'Assigned Executor',
         approved_by_id: currentUser?.id || null,
         approved_by_email: currentUser?.email || null,
@@ -1558,6 +1567,40 @@ const ProcessAuditApprovals = () => {
               )}
             </div>
 
+            {/* Temporary Closed By */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>TEMPORARY CLOSED BY</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        {isAdmin && !isCloser ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                      </span>
+                    )
+                  )}
+                </label>
+              </div>
+              <input
+                type="text"
+                disabled={!canUpdateCloserFields}
+                value={closerTemporaryClosedBy}
+                onChange={(e) => setCloserTemporaryClosedBy(e.target.value)}
+                placeholder={
+                  !selectedRequest
+                    ? 'Click a row on the right to select'
+                    : canUpdateCloserFields
+                    ? (currentUser?.name || 'Enter name / closed by...')
+                    : 'Read-only (Closer only)'
+                }
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
             {/* Permanent Fix Section Header */}
             <div className="pt-2 border-t border-slate-200/90">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
@@ -1712,6 +1755,40 @@ const ProcessAuditApprovals = () => {
                   <span>* {typeof closerPermanentTargetDateError === 'string' ? closerPermanentTargetDateError : 'Permanent Target Date cannot be in the past.'}</span>
                 </p>
               )}
+            </div>
+
+            {/* Permanent Closed By */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>PERMANENT CLOSED BY</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        {isAdmin && !isCloser ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                      </span>
+                    )
+                  )}
+                </label>
+              </div>
+              <input
+                type="text"
+                disabled={!canUpdateCloserFields}
+                value={closerPermanentClosedBy}
+                onChange={(e) => setCloserPermanentClosedBy(e.target.value)}
+                placeholder={
+                  !selectedRequest
+                    ? 'Click a row on the right to select'
+                    : canUpdateCloserFields
+                    ? (currentUser?.name || 'Enter name / closed by...')
+                    : 'Read-only (Closer only)'
+                }
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
             </div>
 
             {/* Dedicated Closer Submit Button */}

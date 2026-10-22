@@ -363,13 +363,13 @@ export const exportProcessAuditToExcel = async ({
       actionVal,
       r.standardization_details || '—',
       effectiveTargetDate,
-      r.action_taken_by || r.approved_by || '—',
+      r.temporary_closed_by || r.action_taken_by || r.approved_by || '—',
       actionAttStr,
       reassignedStatus,
       reassignmentDetails,
       r.creator_remark || r.remarks || '—',
       displayStatus,
-      r.closed_by || '—',
+      r.permanent_closed_by || r.closed_by || '—',
       closedAt
     ];
 

@@ -930,7 +930,7 @@ const ProcessAuditRequestDetailsModal = ({
                       )}
                     </div>
 
-                    {/* Temporary Target Date & Auditor Remarks */}
+                    {/* Temporary Target Date, Temporary Closed By & Auditor Remarks */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                       <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                         <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
@@ -941,7 +941,16 @@ const ProcessAuditRequestDetailsModal = ({
                         </span>
                       </div>
 
-                      <div className="sm:col-span-2 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          TEMPORARY CLOSED BY
+                        </span>
+                        <span className="font-medium text-slate-900 text-sm">
+                          {req.temporary_closed_by || req.action_taken_by || '—'}
+                        </span>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                         <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                           AUDITOR SIGN-OFF REMARKS
                         </span>
@@ -995,14 +1004,25 @@ const ProcessAuditRequestDetailsModal = ({
                         )}
                       </div>
 
-                      {/* Permanent Target Date */}
-                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          PERMANENT TARGET DATE
-                        </span>
-                        <span className="font-mono font-bold text-slate-900 text-sm">
-                          {permanentTargetDate}
-                        </span>
+                      {/* Permanent Target Date & Permanent Closed By */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                          <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            PERMANENT TARGET DATE
+                          </span>
+                          <span className="font-mono font-bold text-slate-900 text-sm">
+                            {permanentTargetDate}
+                          </span>
+                        </div>
+
+                        <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                          <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            PERMANENT CLOSED BY
+                          </span>
+                          <span className="font-medium text-slate-900 text-sm">
+                            {req.permanent_closed_by || req.closed_by || '—'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </>

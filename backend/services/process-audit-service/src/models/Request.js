@@ -97,6 +97,12 @@ const ensureTable = async () => {
     if (!colNames.includes('permanent_target_date')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN permanent_target_date VARCHAR(50) NULL`).catch(() => {});
     }
+    if (!colNames.includes('temporary_closed_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN temporary_closed_by VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('permanent_closed_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN permanent_closed_by VARCHAR(100) NULL`).catch(() => {});
+    }
 
     // Drop any existing defaults on MySQL columns
     await pool.query(`ALTER TABLE process_audit_requests MODIFY issue_type VARCHAR(50) NULL`).catch(() => {});
@@ -332,7 +338,9 @@ export const ProcessAuditRequest = {
       { name: 'temporary_target_date', type: 'VARCHAR(50) NULL' },
       { name: 'permanent_fix', type: 'TEXT NULL' },
       { name: 'permanent_evidence_attachment', type: 'JSON NULL' },
-      { name: 'permanent_target_date', type: 'VARCHAR(50) NULL' }
+      { name: 'permanent_target_date', type: 'VARCHAR(50) NULL' },
+      { name: 'temporary_closed_by', type: 'VARCHAR(100) NULL' },
+      { name: 'permanent_closed_by', type: 'VARCHAR(100) NULL' }
     ];
     for (const c of neededCols) {
       if (!colNames.includes(c.name)) {
@@ -352,7 +360,8 @@ export const ProcessAuditRequest = {
       'approved_by_email', 'creator_remark', 'closed_by', 'closed_by_id',
       'rejection_reason', 'reassignment_history',
       'prod_why_why', 'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date',
-      'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date'
+      'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date',
+      'temporary_closed_by', 'permanent_closed_by'
     ];
 
     for (const field of allowedFields) {
@@ -477,6 +486,12 @@ export const ProcessAuditRequest = {
     if (!colNames.includes('permanent_target_date')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN permanent_target_date VARCHAR(50) NULL`).catch(() => {});
     }
+    if (!colNames.includes('temporary_closed_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN temporary_closed_by VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('permanent_closed_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN permanent_closed_by VARCHAR(100) NULL`).catch(() => {});
+    }
 
     let rejectionReason = null;
     let rootCause = null;
@@ -490,9 +505,11 @@ export const ProcessAuditRequest = {
     let temporaryAction = null;
     let temporaryEvidenceAttachment = null;
     let temporaryTargetDate = null;
+    let temporaryClosedBy = null;
     let permanentFix = null;
     let permanentEvidenceAttachment = null;
     let permanentTargetDate = null;
+    let permanentClosedBy = null;
 
     if (typeof details === 'string') {
       rejectionReason = details;
@@ -509,9 +526,11 @@ export const ProcessAuditRequest = {
       temporaryAction = details.temporary_action !== undefined ? details.temporary_action : null;
       temporaryEvidenceAttachment = details.temporary_evidence_attachment !== undefined ? details.temporary_evidence_attachment : null;
       temporaryTargetDate = details.temporary_target_date !== undefined ? details.temporary_target_date : null;
+      temporaryClosedBy = details.temporary_closed_by !== undefined ? details.temporary_closed_by : null;
       permanentFix = details.permanent_fix !== undefined ? details.permanent_fix : null;
       permanentEvidenceAttachment = details.permanent_evidence_attachment !== undefined ? details.permanent_evidence_attachment : null;
       permanentTargetDate = details.permanent_target_date !== undefined ? details.permanent_target_date : null;
+      permanentClosedBy = details.permanent_closed_by !== undefined ? details.permanent_closed_by : null;
     }
 
     const updates = ['status = ?'];
@@ -566,6 +585,10 @@ export const ProcessAuditRequest = {
       updates.push('temporary_target_date = ?');
       params.push(temporaryTargetDate);
     }
+    if (temporaryClosedBy !== null) {
+      updates.push('temporary_closed_by = ?');
+      params.push(temporaryClosedBy);
+    }
     if (permanentFix !== null) {
       updates.push('permanent_fix = ?');
       params.push(permanentFix);
@@ -577,6 +600,10 @@ export const ProcessAuditRequest = {
     if (permanentTargetDate !== null) {
       updates.push('permanent_target_date = ?');
       params.push(permanentTargetDate);
+    }
+    if (permanentClosedBy !== null) {
+      updates.push('permanent_closed_by = ?');
+      params.push(permanentClosedBy);
     }
 
     const isClosed = status.toLowerCase().includes('close');

@@ -270,6 +270,8 @@ export const updateRequestStatus = async (req, res) => {
       permanent_fix: body.permanent_fix || null,
       permanent_evidence_attachment: body.permanent_evidence_attachment || null,
       permanent_target_date: body.permanent_target_date || null,
+      temporary_closed_by: body.temporary_closed_by || null,
+      permanent_closed_by: body.permanent_closed_by || null,
     };
 
     const updated = await ProcessAuditRequest.updateStatus(id, status, details);
