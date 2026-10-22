@@ -51,6 +51,7 @@ export const ProcessAuditBarChart = ({
   const getStatusCategory = (r) => {
     const s = (r.status || '').toLowerCase();
     if (s.includes('close')) return 'closed';
+    if (s.includes('pending')) return 'open';
     if (
       s.includes('progress') ||
       s.includes('signed') ||

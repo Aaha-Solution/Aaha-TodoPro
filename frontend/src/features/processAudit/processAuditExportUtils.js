@@ -120,13 +120,12 @@ export const getProcessAuditDisplayStatus = (r) => {
   const sLower = String(r.status || 'Pending').toLowerCase();
   if (sLower.includes('close')) return 'Closed';
   if (sLower.includes('reject')) return 'Rejected';
+  if (sLower.includes('pending')) return 'Pending';
   if (sLower === 'open' || sLower.includes('open') || sLower.includes('reopen')) return 'Open';
   if (sLower.includes('signed off') || sLower.includes('signed')) return 'Signed off';
+  if (sLower.includes('review') || sLower.includes('approval') || sLower.includes('progress')) return 'Awaiting Review';
 
   const isCloserCompleted = Boolean(
-    sLower.includes('approval') ||
-    sLower.includes('progress') ||
-    sLower.includes('review') ||
     (r.corrective_action && String(r.corrective_action).trim()) ||
     (r.action && String(r.action).trim()) ||
     (r.root_cause && String(r.root_cause).trim()) ||

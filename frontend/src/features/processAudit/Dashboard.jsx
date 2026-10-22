@@ -338,66 +338,52 @@ const ProcessAuditDashboard = () => {
     });
   }, [requests, selectedDept, startDate, endDate]);
 
+  const isRequestClosed = (r) => {
+    const s = (r?.status || '').toLowerCase();
+    return s.includes('close');
+  };
+
+  const isRequestPending = (r) => {
+    if (isRequestClosed(r)) return false;
+    const s = (r?.status || '').toLowerCase();
+    if (s.includes('pending')) return true;
+    return !s.includes('review') && !s.includes('progress') && !s.includes('signed') && !s.includes('approval') && !s.includes('approved') && !s.includes('open') && !s.includes('reject');
+  };
+
+  const isRequestAwaitingReview = (r) => {
+    if (isRequestClosed(r) || isRequestPending(r)) return false;
+    const s = (r?.status || '').toLowerCase();
+    return (
+      s.includes('review') ||
+      s.includes('progress') ||
+      s.includes('signed') ||
+      s.includes('approval') ||
+      s.includes('approved')
+    );
+  };
+
   const total = baseFilteredRequests.length;
-
-  const pendingExec = baseFilteredRequests.filter((r) => {
-    const s = (r.status || '').toLowerCase();
-    return s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject') && !s.includes('progress') && !s.includes('signed'));
-  }).length;
-
-  const inProgress = baseFilteredRequests.filter((r) => {
-    const s = (r.status || '').toLowerCase();
-    return (s.includes('progress') || s.includes('approved') || s.includes('signed')) && !s.includes('close');
-  }).length;
-
-  const closed = baseFilteredRequests.filter((r) => (r.status || '').toLowerCase().includes('close')).length;
+  const pendingExec = baseFilteredRequests.filter(isRequestPending).length;
+  const inProgress = baseFilteredRequests.filter(isRequestAwaitingReview).length;
+  const closed = baseFilteredRequests.filter(isRequestClosed).length;
 
   // Filter requests based on selected status (for display table and recent logs)
   const filteredRequests = React.useMemo(() => {
     if (selectedStatus === 'All') return baseFilteredRequests;
 
     return baseFilteredRequests.filter((r) => {
-      const s = (r.status || '').toLowerCase();
       if (selectedStatus === 'PENDING') {
-        return s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject') && !s.includes('progress') && !s.includes('signed'));
+        return isRequestPending(r);
       }
-      if (selectedStatus === 'IN_PROGRESS') {
-        return (s.includes('progress') || s.includes('approved') || s.includes('signed') || s.includes('approval') || s.includes('review')) && !s.includes('close');
+      if (selectedStatus === 'IN_PROGRESS' || selectedStatus === 'AWAITING_REVIEW' || selectedStatus === 'Awaiting Review') {
+        return isRequestAwaitingReview(r);
       }
       if (selectedStatus === 'CLOSED') {
-        return s.includes('close');
+        return isRequestClosed(r);
       }
       return true;
     });
   }, [baseFilteredRequests, selectedStatus]);
-
-  // Department distribution breakdown based on active date range or all loaded requests
-  const departmentBreakdown = React.useMemo(() => {
-    if (metrics?.departmentBreakdown && typeof metrics.departmentBreakdown === 'object' && Object.keys(metrics.departmentBreakdown).length > 0) {
-      return metrics.departmentBreakdown;
-    }
-
-    const counts = {};
-    const dateFiltered = requests.filter((r) => {
-      if (startDate || endDate) {
-        const dateVal = r.escalation_date || r.created_at || r.createdAt;
-        if (!dateVal) return false;
-        const itemDateStr = parseDateToYYYYMMDD(dateVal);
-        if (!itemDateStr) return false;
-        if (startDate && itemDateStr < startDate) return false;
-        if (endDate && itemDateStr > endDate) return false;
-      }
-      return true;
-    });
-
-    dateFiltered.forEach((r) => {
-      const dept = (r.department || 'OTHER').trim().toUpperCase();
-      if (!dept) return;
-      counts[dept] = (counts[dept] || 0) + 1;
-    });
-
-    return counts;
-  }, [metrics?.departmentBreakdown, requests, startDate, endDate]);
 
   const kpis = [
     {
@@ -838,53 +824,6 @@ const ProcessAuditDashboard = () => {
         onSelectStatus={(status) => setSelectedStatus(status)}
         currentYear={currentYear}
       />
-
-      {/* Department Distribution Breakdown Banner */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <span className="text-xs font-extrabold uppercase tracking-widest text-slate-400 font-mono">
-            DEPARTMENT CLASSIFICATION DISTRIBUTION
-          </span>
-          <p className="text-xs text-slate-600 mt-0.5">
-            Breakdown of shopfloor audit observations across responsible departments.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          {Object.entries(departmentBreakdown).length === 0 ? (
-            <span className="text-xs text-slate-400 font-semibold">No department observations recorded</span>
-          ) : (
-            Object.entries(departmentBreakdown).map(([dept, count], idx) => {
-              const colorSchemes = [
-                'bg-blue-50 border-blue-200 text-blue-700',
-                'bg-purple-50 border-purple-200 text-purple-700',
-                'bg-amber-50 border-amber-200 text-amber-700',
-                'bg-emerald-50 border-emerald-200 text-emerald-700',
-                'bg-rose-50 border-rose-200 text-rose-700',
-                'bg-indigo-50 border-indigo-200 text-indigo-700'
-              ];
-              const colorClass = colorSchemes[idx % colorSchemes.length];
-              const isSelected = selectedDept.toUpperCase() === dept.toUpperCase();
-              return (
-                <div
-                  key={dept}
-                  onClick={() => {
-                    setSelectedDept((prev) => (prev.toUpperCase() === dept.toUpperCase() ? 'All' : dept));
-                    setShowFilters(true);
-                  }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none ${
-                    isSelected ? 'ring-2 ring-blue-500 shadow-sm ' + colorClass : colorClass + ' hover:opacity-85'
-                  }`}
-                  title={`Click to filter by ${dept}`}
-                >
-                  <span>{dept}:</span>
-                  <span className="font-mono text-sm">{count}</span>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
 
       {/* Recent Production Requests Card */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
