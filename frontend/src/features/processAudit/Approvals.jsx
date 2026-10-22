@@ -137,6 +137,25 @@ const ProcessAuditApprovals = () => {
   const [showExportModal, setShowExportModal] = useState(false);
 
   const fileInputRef = useRef(null);
+  const fileInputPermanentRef = useRef(null);
+
+  // 5-Why Occurrence Cause State & Permanent Action States (matching IHLR)
+  const [closerWhyWhy, setCloserWhyWhy] = useState(['', '', '', '', '']);
+  const [closerWhyErrors, setCloserWhyErrors] = useState({ w1: false, w2: false, w3: false });
+  const [closerPermanentFix, setCloserPermanentFix] = useState('');
+  const [closerPermanentFixError, setCloserPermanentFixError] = useState(false);
+  const [existingPermanentEvidence, setExistingPermanentEvidence] = useState([]);
+  const [newPermanentEvidenceFiles, setNewPermanentEvidenceFiles] = useState([]);
+  const [closerPermanentEvidenceError, setCloserPermanentEvidenceError] = useState(false);
+  const [closerPermanentTargetDate, setCloserPermanentTargetDate] = useState('');
+  const [closerPermanentTargetDateError, setCloserPermanentTargetDateError] = useState(false);
+  const todayStr = (() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  })();
 
   // Universal attachment URL resolver
   const getFullAttachmentUrl = (att) => resolveAttachmentUrl(att, 'process-audit');
@@ -297,12 +316,17 @@ const ProcessAuditApprovals = () => {
     if (s.includes('pending') || s.includes('open') || s.includes('reject')) return false;
     if (s.includes('approval') || s.includes('progress') || s.includes('signed') || s.includes('review')) return true;
     return Boolean(
+      (r.temporary_action && String(r.temporary_action).trim()) ||
+      (r.permanent_fix && String(r.permanent_fix).trim()) ||
       (r.corrective_action && String(r.corrective_action).trim()) ||
       (r.action && String(r.action).trim()) ||
       (r.root_cause && String(r.root_cause).trim()) ||
+      (r.prod_why_why && (Array.isArray(r.prod_why_why) ? r.prod_why_why.some((w) => w && w.trim()) : Boolean(r.prod_why_why))) ||
       (r.standardization_details && String(r.standardization_details).trim()) ||
-      Boolean(r.target_date) ||
+      Boolean(r.temporary_target_date || r.permanent_target_date || r.target_date) ||
       Boolean(r.action_taken_by) ||
+      (r.temporary_evidence_attachment && parseAttachments(r.temporary_evidence_attachment).length > 0) ||
+      (r.permanent_evidence_attachment && parseAttachments(r.permanent_evidence_attachment).length > 0) ||
       (r.action_attachments && parseAttachments(r.action_attachments).length > 0)
     );
   };
@@ -332,7 +356,7 @@ const ProcessAuditApprovals = () => {
   );
 
   const isCloserDataToBeUpdated = Boolean(
-    !closerAction || !closerAction.trim() || !closerTargetDate
+    selectedRequest && (isSelectedPending || !hasCloserSubmitted)
   );
 
   const canUpdateCloserFields = Boolean(
@@ -527,8 +551,58 @@ const ProcessAuditApprovals = () => {
     };
   }, [user?.name, user?.role]);
 
+  const handleWhyChange = (index, val) => {
+    setCloserWhyWhy((prev) => {
+      const updated = [...prev];
+      updated[index] = val;
+      return updated;
+    });
+    if (val && val.trim()) {
+      if (index === 0) setCloserWhyErrors((prev) => ({ ...prev, w1: false }));
+      if (index === 1) setCloserWhyErrors((prev) => ({ ...prev, w2: false }));
+      if (index === 2) setCloserWhyErrors((prev) => ({ ...prev, w3: false }));
+    }
+  };
+
   // Populate form fields when a row is clicked
   const populateForm = (req, keepEditMode = false) => {
+    if (!req) {
+      setSelectedRequest(null);
+      setAdminEditCloser(false);
+      setSuccessMessage('');
+      setErrorMessage('');
+      setRootCauseError(false);
+      setCloserActionError(false);
+      setEvidenceError(false);
+      setCloserTargetDateError(false);
+      setCloserPermanentFixError(false);
+      setCloserPermanentEvidenceError(false);
+      setCloserPermanentTargetDateError(false);
+      setRemarksError(false);
+      setStatusError(false);
+      setCloserWhyWhy(['', '', '', '', '']);
+      setCloserWhyErrors({ w1: false, w2: false, w3: false });
+      setRootCause('');
+      setCloserAction('');
+      setStandardizationDetails('');
+      setCloserTargetDate('');
+      setCloserPermanentFix('');
+      setCloserPermanentTargetDate('');
+      setCloserRemarks('');
+      setCloserStatus('');
+      setReassignedDept('');
+      setReassignedPerson('');
+      setIsReassignOpen(false);
+      setIsReassignUserDropdownOpen(false);
+      setReassignUserSearch('');
+      setExistingEvidence([]);
+      setNewEvidenceFiles([]);
+      setExistingPermanentEvidence([]);
+      setNewPermanentEvidenceFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (fileInputPermanentRef.current) fileInputPermanentRef.current.value = '';
+      return;
+    }
     setSelectedRequest(req);
     if (!keepEditMode) {
       setAdminEditCloser(false);
@@ -539,19 +613,55 @@ const ProcessAuditApprovals = () => {
     setCloserActionError(false);
     setEvidenceError(false);
     setCloserTargetDateError(false);
+    setCloserPermanentFixError(false);
+    setCloserPermanentEvidenceError(false);
+    setCloserPermanentTargetDateError(false);
     setRemarksError(false);
     setStatusError(false);
 
+    // 5-Why Occurrence Cause
+    let whyArray = [];
+    if (Array.isArray(req.prod_why_why)) {
+      whyArray = req.prod_why_why;
+    } else if (typeof req.prod_why_why === 'string') {
+      try {
+        whyArray = JSON.parse(req.prod_why_why);
+      } catch {
+        whyArray = req.prod_why_why ? [req.prod_why_why] : [];
+      }
+    } else if (req.root_cause) {
+      whyArray = [req.root_cause];
+    }
+    const paddedWhys = [
+      whyArray[0] || '',
+      whyArray[1] || '',
+      whyArray[2] || '',
+      whyArray[3] || '',
+      whyArray[4] || ''
+    ];
+    setCloserWhyWhy(paddedWhys);
+    setCloserWhyErrors({ w1: false, w2: false, w3: false });
+
     setRootCause(req.root_cause || '');
-    setCloserAction(req.corrective_action || req.action || '');
+    setCloserAction(req.temporary_action || req.corrective_action || req.action || '');
+    setCloserActionError(false);
     setStandardizationDetails(req.standardization_details || '');
     setCloserTargetDate(
-      req.target_date
-        ? req.target_date.includes('T')
-          ? req.target_date.split('T')[0]
-          : req.target_date
+      req.temporary_target_date
+        ? (req.temporary_target_date.includes('T') ? req.temporary_target_date.split('T')[0] : req.temporary_target_date)
+        : (req.target_date ? (req.target_date.includes('T') ? req.target_date.split('T')[0] : req.target_date) : '')
+    );
+    setCloserTargetDateError(false);
+
+    setCloserPermanentFix(req.permanent_fix || req.standardization_details || '');
+    setCloserPermanentFixError(false);
+    setCloserPermanentTargetDate(
+      req.permanent_target_date
+        ? (req.permanent_target_date.includes('T') ? req.permanent_target_date.split('T')[0] : req.permanent_target_date)
         : ''
     );
+    setCloserPermanentTargetDateError(false);
+
     setCloserRemarks(req.creator_remark || '');
     setCloserStatus('');
     setReassignedDept(req.department || '');
@@ -560,10 +670,21 @@ const ProcessAuditApprovals = () => {
     setIsReassignUserDropdownOpen(false);
     setReassignUserSearch('');
 
-    // Evidence attachments
-    const existing = req.action_attachments ? parseAttachments(req.action_attachments) : [];
+    // Temporary Evidence attachments
+    const existing = req.temporary_evidence_attachment
+      ? parseAttachments(req.temporary_evidence_attachment)
+      : (req.action_attachments ? parseAttachments(req.action_attachments) : []);
     setExistingEvidence(existing);
     setNewEvidenceFiles([]);
+    setEvidenceError(false);
+
+    // Permanent Evidence attachments
+    const existingPerm = req.permanent_evidence_attachment
+      ? parseAttachments(req.permanent_evidence_attachment)
+      : [];
+    setExistingPermanentEvidence(existingPerm);
+    setNewPermanentEvidenceFiles([]);
+    setCloserPermanentEvidenceError(false);
   };
 
   const handleFileSelect = (e) => {
@@ -582,15 +703,36 @@ const ProcessAuditApprovals = () => {
     setNewEvidenceFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handlePermanentFileSelect = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const added = Array.from(e.target.files);
+      setNewPermanentEvidenceFiles((prev) => [...prev, ...added]);
+      setCloserPermanentEvidenceError(false);
+    }
+  };
+
+  const handleRemoveExistingPermanentEvidence = (index) => {
+    setExistingPermanentEvidence((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveNewPermanentEvidence = (index) => {
+    setNewPermanentEvidenceFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSaveAnnotation = (annotatedFile) => {
     if (!annotatingItem) return;
-    setNewEvidenceFiles((prev) => [...prev, annotatedFile]);
-    setEvidenceError(false);
+    if (annotatingItem.isPermanent) {
+      setNewPermanentEvidenceFiles((prev) => [...prev, annotatedFile]);
+      setCloserPermanentEvidenceError(false);
+    } else {
+      setNewEvidenceFiles((prev) => [...prev, annotatedFile]);
+      setEvidenceError(false);
+    }
     setAnnotatingItem(null);
     setSuccessMessage(`Annotated drawing "${annotatedFile.name}" added to evidence files! Remember to click "Save Closer Changes" or "Submit Closer Log" to save.`);
   };
 
-  // 1. Submit Closer Updates (Root Cause, Action, Standardization, Evidence, Target Date)
+  // 1. Submit Closer Updates (5-Why causes, Temporary Action & Evidence, Permanent Action & Evidence)
   const handleSaveCloser = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!selectedRequest) return;
@@ -609,40 +751,37 @@ const ProcessAuditApprovals = () => {
       return;
     }
 
-    // Mandatory Closer Field Validations
+    // Mandatory Closer Field Validations (5-Why W1, W2, W3 are mandatory, matching IHLR)
     let hasCloserErrors = false;
+    const whyErrors = {
+      w1: !closerWhyWhy[0] || !closerWhyWhy[0].trim(),
+      w2: !closerWhyWhy[1] || !closerWhyWhy[1].trim(),
+      w3: !closerWhyWhy[2] || !closerWhyWhy[2].trim(),
+    };
+    setCloserWhyErrors(whyErrors);
 
-    if (!rootCause || !rootCause.trim()) {
-      setRootCauseError(true);
+    if (whyErrors.w1 || whyErrors.w2 || whyErrors.w3) {
       hasCloserErrors = true;
-    } else {
-      setRootCauseError(false);
     }
 
-    if (!closerAction || !closerAction.trim()) {
-      setCloserActionError(true);
-      hasCloserErrors = true;
-    } else {
-      setCloserActionError(false);
-    }
-
-    const totalEvidenceCount = (existingEvidence ? existingEvidence.length : 0) + (newEvidenceFiles ? newEvidenceFiles.length : 0);
-    if (totalEvidenceCount === 0) {
-      setEvidenceError(true);
-      hasCloserErrors = true;
-    } else {
-      setEvidenceError(false);
-    }
-
-    if (!closerTargetDate || !closerTargetDate.trim()) {
-      setCloserTargetDateError(true);
+    // Temporary Target Date is optional; check if user selected a past date
+    if (closerTargetDate && closerTargetDate.trim() && closerTargetDate < todayStr && !isAdmin) {
+      setCloserTargetDateError('Temporary Target Date cannot be a previous date. Please select today or a future date.');
       hasCloserErrors = true;
     } else {
       setCloserTargetDateError(false);
     }
 
+    // Permanent Target Date is optional; check if user selected a past date
+    if (closerPermanentTargetDate && closerPermanentTargetDate.trim() && closerPermanentTargetDate < todayStr && !isAdmin) {
+      setCloserPermanentTargetDateError('Permanent Target Date cannot be a previous date. Please select today or a future date.');
+      hasCloserErrors = true;
+    } else {
+      setCloserPermanentTargetDateError(false);
+    }
+
     if (hasCloserErrors) {
-      setErrorMessage('Please fill in all mandatory closer fields before submitting.');
+      setErrorMessage('Please fill in all mandatory closer fields (W1, W2, W3) before submitting.');
       return;
     }
 
@@ -656,6 +795,13 @@ const ProcessAuditApprovals = () => {
         uploadedList = await processAuditService.uploadAttachments(newEvidenceFiles);
       }
       const combinedEvidence = [...existingEvidence, ...uploadedList];
+
+      let uploadedPermList = [];
+      if (newPermanentEvidenceFiles.length > 0) {
+        uploadedPermList = await processAuditService.uploadAttachments(newPermanentEvidenceFiles);
+      }
+      const combinedPermEvidence = [...existingPermanentEvidence, ...uploadedPermList];
+
       const reqId = selectedRequest.id || selectedRequest.issue_no;
       const displayId = selectedRequest.issue_no || (selectedRequest.id ? `PA-${selectedRequest.id}` : `#${selectedRequest.id}`);
 
@@ -665,11 +811,18 @@ const ProcessAuditApprovals = () => {
 
       const payload = {
         status: targetStatus,
-        root_cause: rootCause.trim(),
-        corrective_action: closerAction.trim(),
+        prod_why_why: closerWhyWhy,
+        root_cause: closerWhyWhy[0] || rootCause || '',
+        temporary_action: closerAction.trim(),
+        temporary_evidence_attachment: combinedEvidence,
+        temporary_target_date: closerTargetDate || null,
+        permanent_fix: closerPermanentFix.trim(),
+        permanent_evidence_attachment: combinedPermEvidence,
+        permanent_target_date: closerPermanentTargetDate || null,
+        corrective_action: closerPermanentFix.trim() || closerAction.trim(),
         standardization_details: standardizationDetails.trim(),
         action_attachments: combinedEvidence,
-        target_date: closerTargetDate || null,
+        target_date: closerPermanentTargetDate || closerTargetDate || null,
         action_taken_by: currentUser?.name || currentUser?.email || 'Assigned Executor',
         approved_by: currentUser?.name || currentUser?.email || 'Assigned Executor',
         approved_by_id: currentUser?.id || null,
@@ -680,11 +833,14 @@ const ProcessAuditApprovals = () => {
       const updated = await processAuditService.updateRequestStatus(reqId, targetStatus, payload);
 
       const msg = isAdmin
-        ? `Closer root cause & corrective action updated successfully for ${displayId}!`
+        ? `Closer 5-Why root cause & countermeasures updated successfully for ${displayId}!`
         : `Closer details submitted successfully for ${displayId}! Quality Admin will review and sign off status.`;
 
       setSuccessMessage(msg);
       setNewEvidenceFiles([]);
+      setNewPermanentEvidenceFiles([]);
+      setExistingEvidence(combinedEvidence);
+      setExistingPermanentEvidence(combinedPermEvidence);
       setAdminEditCloser(false);
 
       const mergedUpdated = { ...selectedRequest, ...payload, ...updated, status: targetStatus };
@@ -1054,6 +1210,27 @@ const ProcessAuditApprovals = () => {
     };
   });
 
+  // Convert new permanent files to previewable objects
+  const previewableNewPermanentFiles = newPermanentEvidenceFiles.map((f) => {
+    const ext = f.name.split('.').pop()?.toUpperCase() || 'FILE';
+    const isImage = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'SVG', 'JFIF', 'BMP'].includes(ext);
+    const isPdf = ext === 'PDF';
+    const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
+    const isWord = ['DOC', 'DOCX'].includes(ext);
+    const isPpt = ['PPT', 'PPTX'].includes(ext);
+    return {
+      name: f.name,
+      url: URL.createObjectURL(f),
+      type: ext,
+      isImage,
+      isPdf,
+      isExcel,
+      isWord,
+      isPpt,
+      rawFile: f
+    };
+  });
+
   const isRequestApproved = (req) => {
     if (!req || !req.status) return false;
     const s = String(req.status).trim().toLowerCase();
@@ -1167,69 +1344,70 @@ const ProcessAuditApprovals = () => {
               </div>
             </div>
 
-            {/* Separator */}
+            {/* Occurrence Cause (Production Team - 5 Why) Header */}
             <div className="pt-2 border-t border-slate-100">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
-                    <span>Occurrence Cause &amp; Action (Executor Sign-Off)</span>
+                    <span>Occurrence Cause (Production Team - 5 Why)</span>
                     {selectedRequest && (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        Closer
+                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
                       </span>
                     )}
                   </span>
                 </div>
               </div>
-            </div>
 
-            {/* Root Cause Field */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>ROOT CAUSE</span>
-                  <span className="text-rose-500">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin && !isCloser ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
-                  )}
-                </label>
+              {/* 5-Whys Stacked Inputs (W1 to W5) */}
+              <div className="space-y-1.5">
+                {['W1', 'W2', 'W3', 'W4', 'W5'].map((label, idx) => {
+                  const isMandatory = idx < 3;
+                  const errorKey = `w${idx + 1}`;
+                  const hasError = isMandatory && Boolean(closerWhyErrors[errorKey]);
+                  return (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-8 shrink-0 text-[11px] font-black font-mono ${hasError ? 'text-rose-700' : 'text-rose-600'}`}>
+                          {label}:{isMandatory && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                        </span>
+                        <input
+                          type="text"
+                          disabled={!canUpdateCloserFields}
+                          value={closerWhyWhy[idx] || ''}
+                          onChange={(e) => handleWhyChange(idx, e.target.value)}
+                          placeholder={
+                            !selectedRequest
+                              ? 'Select request on right'
+                              : canUpdateCloserFields
+                              ? `Enter ${label} cause...${isMandatory ? ' (Mandatory)' : ''}`
+                              : isAdmin
+                              ? `Click Edit Closer Fields below to edit ${label}...`
+                              : 'Read-only (Closer only)'
+                          }
+                          className={`w-full px-3 py-1.5 rounded-lg text-slate-800 outline-none transition disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed ${
+                            hasError
+                              ? 'bg-rose-50/20 border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
+                              : 'bg-white border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                          }`}
+                        />
+                      </div>
+                      {hasError && (
+                        <p className="text-[11px] text-rose-500 font-semibold pl-10 flex items-center gap-1">
+                          <span>* Why {idx + 1} ({label}) is mandatory. Please enter occurrence cause.</span>
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <textarea
-                rows={2}
-                disabled={!canUpdateCloserFields}
-                value={rootCause}
-                onChange={(e) => {
-                  setRootCause(e.target.value);
-                  if (rootCauseError && e.target.value.trim()) setRootCauseError(false);
-                }}
-                placeholder={!selectedRequest ? 'Click a row on the right to select' : !canUpdateCloserFields ? 'Locked - Read only' : 'Identify underlying root cause of deviation/defect...'}
-                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
-                  rootCauseError
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
-              />
-              {rootCauseError && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* Root Cause is mandatory. Please enter root cause.</span>
-                </p>
-              )}
             </div>
 
-            {/* Corrective Action Field */}
+            {/* Temporary Action Field */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>CORRECTIVE ACTION</span>
-                  <span className="text-rose-500">*</span>
+                  <span>TEMPORARY ACTION</span>
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
@@ -1249,45 +1427,28 @@ const ProcessAuditApprovals = () => {
                 value={closerAction}
                 onChange={(e) => {
                   setCloserAction(e.target.value);
-                  if (closerActionError && e.target.value.trim()) setCloserActionError(false);
+                  if (closerActionError) {
+                    setCloserActionError(false);
+                  }
                 }}
-                placeholder={!selectedRequest ? 'Click a row on the right to select' : !canUpdateCloserFields ? 'Locked - Read only' : 'Describe corrective actions taken / countermeasures...'}
-                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
-                  closerActionError
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
-              />
-              {closerActionError && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* Corrective Action is mandatory. Please describe corrective actions taken.</span>
-                </p>
-              )}
-            </div>
-
-            {/* Standardization Details Field */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
-                  STANDARDIZATION DETAILS
-                </label>
-              </div>
-              <textarea
-                rows={2}
-                disabled={!canUpdateCloserFields}
-                value={standardizationDetails}
-                onChange={(e) => setStandardizationDetails(e.target.value)}
-                placeholder={!selectedRequest ? 'Click a row on the right to select' : !canUpdateCloserFields ? 'Locked - Read only' : 'Detail SOP revisions, Work Instructions, poka-yoke, or line standards...'}
-                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none"
+                placeholder={
+                  !selectedRequest
+                    ? 'Click a row on the right to select'
+                    : canUpdateCloserFields
+                    ? 'Describe temporary actions taken / countermeasures...'
+                    : isAdmin
+                    ? 'Click Edit Closer Fields below to edit...'
+                    : 'Read-only (Closer only)'
+                }
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
             </div>
 
-            {/* Evidence Attachment */}
+            {/* Temporary Evidence Attachment */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>EVIDENCE ATTACHMENT</span>
-                  <span className="text-rose-500">*</span>
+                  <span>TEMPORARY EVIDENCE ATTACHMENT</span>
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
@@ -1295,7 +1456,7 @@ const ProcessAuditApprovals = () => {
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin && !isCloser ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
+                        {isAdmin && !isCloser ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1304,9 +1465,7 @@ const ProcessAuditApprovals = () => {
               </div>
 
               {/* Styled File Input Button */}
-              <div className={`flex items-center gap-2 p-1 rounded-xl transition ${
-                evidenceError ? 'border border-rose-300 bg-rose-50/20 ring-2 ring-rose-300/30' : ''
-              }`}>
+              <div className="flex items-center gap-2 p-1 rounded-xl transition">
                 <button
                   type="button"
                   disabled={!canUpdateCloserFields}
@@ -1331,13 +1490,8 @@ const ProcessAuditApprovals = () => {
                   className="hidden"
                 />
               </div>
-              {evidenceError && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* Evidence Attachment is mandatory. Please choose and upload at least one evidence document.</span>
-                </p>
-              )}
 
-              {/* Existing (saved in DB) and newly selected chips */}
+              {/* Existing and newly attached chips */}
               <div className="mt-2 space-y-1">
                 {existingEvidence.length > 0 && (
                   <AttachmentChipList
@@ -1360,12 +1514,62 @@ const ProcessAuditApprovals = () => {
               </div>
             </div>
 
-            {/* Target Date */}
+            {/* Temporary Target Date */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>TARGET DATE</span>
-                  <span className="text-rose-500">*</span>
+                  <span>TEMPORARY TARGET DATE</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        {isAdmin && !isCloser ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                      </span>
+                    )
+                  )}
+                </label>
+              </div>
+              <DateInput
+                disabled={!canUpdateCloserFields}
+                min={todayStr}
+                value={closerTargetDate}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCloserTargetDate(val);
+                  if (val && val < todayStr && !isAdmin) {
+                    setCloserTargetDateError('Temporary Target Date cannot be a previous date. Please select today or a future date.');
+                  } else {
+                    setCloserTargetDateError(false);
+                  }
+                }}
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${
+                  closerTargetDateError
+                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                    : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
+              />
+              {closerTargetDateError && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                  <span>* {typeof closerTargetDateError === 'string' ? closerTargetDateError : 'Temporary Target Date cannot be in the past.'}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Permanent Fix Section Header */}
+            <div className="pt-2 border-t border-slate-200/90">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Permanent Countermeasures
+              </span>
+            </div>
+
+            {/* Permanent Action */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>PERMANENT ACTION</span>
                   {selectedRequest && (
                     canUpdateCloserFields ? (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
@@ -1379,22 +1583,133 @@ const ProcessAuditApprovals = () => {
                   )}
                 </label>
               </div>
+              <textarea
+                rows={2}
+                disabled={!canUpdateCloserFields}
+                value={closerPermanentFix}
+                onChange={(e) => setCloserPermanentFix(e.target.value)}
+                placeholder={
+                  !selectedRequest
+                    ? 'Click a row on the right to select'
+                    : canUpdateCloserFields
+                    ? 'Describe permanent corrective action / long-term countermeasure...'
+                    : isAdmin
+                    ? 'Click Edit Closer Fields below to edit...'
+                    : 'Read-only (Closer only)'
+                }
+                className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            {/* Permanent Evidence Attachment */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>PERMANENT EVIDENCE ATTACHMENT</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        {isAdmin && !isCloser ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                      </span>
+                    )
+                  )}
+                </label>
+                <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
+              </div>
+
+              <div className="flex items-center gap-2 p-1 rounded-xl">
+                <button
+                  type="button"
+                  disabled={!canUpdateCloserFields}
+                  onClick={() => fileInputPermanentRef.current && fileInputPermanentRef.current.click()}
+                  className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                >
+                  Choose files
+                </button>
+                <span className="text-[11px] text-slate-500 truncate">
+                  {newPermanentEvidenceFiles.length > 0
+                    ? `${newPermanentEvidenceFiles.length} file(s) selected`
+                    : existingPermanentEvidence.length > 0
+                    ? `${existingPermanentEvidence.length} existing attachment(s)`
+                    : 'No file chosen'}
+                </span>
+                <input
+                  ref={fileInputPermanentRef}
+                  type="file"
+                  multiple
+                  accept=".ppt,.pptx,.pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.jfif,.webp,.bmp,image/jpeg,image/png,image/jfif,image/pjpeg,image/*"
+                  onChange={handlePermanentFileSelect}
+                  className="hidden"
+                />
+              </div>
+
+              {/* Existing and newly attached chips for permanent evidence */}
+              <div className="mt-2 space-y-1">
+                {existingPermanentEvidence.length > 0 && (
+                  <AttachmentChipList
+                    attachments={existingPermanentEvidence}
+                    onPreview={(att) => setSelectedPreviewAttachment(att)}
+                    onAnnotate={canUpdateCloserFields ? (file) => setAnnotatingItem({ attachment: file, isPermanent: true }) : undefined}
+                    onRemove={canUpdateCloserFields ? (idx) => handleRemoveExistingPermanentEvidence(idx) : undefined}
+                    readonly={!canUpdateCloserFields}
+                  />
+                )}
+                {previewableNewPermanentFiles.length > 0 && (
+                  <AttachmentChipList
+                    attachments={previewableNewPermanentFiles}
+                    onPreview={(att) => setSelectedPreviewAttachment(att)}
+                    onAnnotate={canUpdateCloserFields ? (file) => setAnnotatingItem({ attachment: file, isPermanent: true }) : undefined}
+                    onRemove={canUpdateCloserFields ? (idx) => handleRemoveNewPermanentEvidence(idx) : undefined}
+                    readonly={!canUpdateCloserFields}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Permanent Target Date */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <span>PERMANENT TARGET DATE</span>
+                  {selectedRequest && (
+                    canUpdateCloserFields ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
+                        {isAdmin && !isCloser ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                      </span>
+                    )
+                  )}
+                </label>
+              </div>
               <DateInput
                 disabled={!canUpdateCloserFields}
-                value={closerTargetDate}
+                min={todayStr}
+                value={closerPermanentTargetDate}
                 onChange={(e) => {
-                  setCloserTargetDate(e.target.value);
-                  if (closerTargetDateError && e.target.value) setCloserTargetDateError(false);
+                  const val = e.target.value;
+                  setCloserPermanentTargetDate(val);
+                  if (val && val < todayStr && !isAdmin) {
+                    setCloserPermanentTargetDateError('Permanent Target Date cannot be a previous date. Please select today or a future date.');
+                  } else {
+                    setCloserPermanentTargetDateError(false);
+                  }
                 }}
-                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-xs text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${
-                  closerTargetDateError
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${
+                  closerPermanentTargetDateError
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                 }`}
               />
-              {closerTargetDateError && (
+              {closerPermanentTargetDateError && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* Target Date is mandatory. Please select a completion target date.</span>
+                  <span>* {typeof closerPermanentTargetDateError === 'string' ? closerPermanentTargetDateError : 'Permanent Target Date cannot be in the past.'}</span>
                 </p>
               )}
             </div>
@@ -1485,7 +1800,7 @@ const ProcessAuditApprovals = () => {
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      <span>Submit Closer Log (Root Cause &amp; Action)</span>
+                      <span>Submit Closer Log (5-Why &amp; Actions)</span>
                     </>
                   )}
                 </button>

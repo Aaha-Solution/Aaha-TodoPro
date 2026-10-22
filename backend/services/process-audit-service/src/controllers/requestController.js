@@ -263,6 +263,13 @@ export const updateRequestStatus = async (req, res) => {
       creator_remark: body.creator_remark || body.creatorRemark || body.remark || null,
       closed_by: body.closed_by || body.closedBy || req.user?.name || null,
       closed_by_id: body.closed_by_id || body.closedById || req.user?.id || null,
+      prod_why_why: body.prod_why_why || null,
+      temporary_action: body.temporary_action || null,
+      temporary_evidence_attachment: body.temporary_evidence_attachment || null,
+      temporary_target_date: body.temporary_target_date || null,
+      permanent_fix: body.permanent_fix || null,
+      permanent_evidence_attachment: body.permanent_evidence_attachment || null,
+      permanent_target_date: body.permanent_target_date || null,
     };
 
     const updated = await ProcessAuditRequest.updateStatus(id, status, details);

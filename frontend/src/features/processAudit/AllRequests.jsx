@@ -827,10 +827,35 @@ const AllRequests = () => {
                   const auditorStr = r.created_by || r.creator || '—';
                   const deptStr = r.department || '—';
                   const executorStr = r.executor || 'Assigned Lead';
-                  const rootCauseStr = r.root_cause || '—';
-                  const actionStr = r.corrective_action || r.action || '—';
+                  const rootCauseStr = (() => {
+                    if (r.prod_why_why) {
+                      if (Array.isArray(r.prod_why_why)) {
+                        const first = r.prod_why_why.find((w) => w && String(w).trim());
+                        if (first) return first;
+                      } else if (typeof r.prod_why_why === 'string') {
+                        try {
+                          const parsed = JSON.parse(r.prod_why_why);
+                          if (Array.isArray(parsed)) {
+                            const first = parsed.find((w) => w && String(w).trim());
+                            if (first) return first;
+                          }
+                        } catch {}
+                      }
+                    }
+                    return r.root_cause || '—';
+                  })();
+
+                  const actionStr = (() => {
+                    if (r.temporary_action && r.permanent_fix) {
+                      return `Temp: ${r.temporary_action} | Perm: ${r.permanent_fix}`;
+                    }
+                    return r.temporary_action || r.permanent_fix || r.corrective_action || r.action || '—';
+                  })();
+
                   const standardStr = r.standardization_details || '—';
-                  const targetDateStr = r.target_date ? formatDateDDMMYYYY(r.target_date) : '—';
+                  const targetDateStr = (r.temporary_target_date || r.permanent_target_date || r.target_date)
+                    ? formatDateDDMMYYYY(r.temporary_target_date || r.permanent_target_date || r.target_date)
+                    : '—';
                   const remarksStr = r.creator_remark || r.remarks || '—';
 
                   return (

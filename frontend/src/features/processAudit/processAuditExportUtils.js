@@ -126,12 +126,17 @@ export const getProcessAuditDisplayStatus = (r) => {
   if (sLower.includes('review') || sLower.includes('approval') || sLower.includes('progress')) return 'Awaiting Review';
 
   const isCloserCompleted = Boolean(
+    (r.temporary_action && String(r.temporary_action).trim()) ||
+    (r.permanent_fix && String(r.permanent_fix).trim()) ||
     (r.corrective_action && String(r.corrective_action).trim()) ||
     (r.action && String(r.action).trim()) ||
     (r.root_cause && String(r.root_cause).trim()) ||
+    (r.prod_why_why && (Array.isArray(r.prod_why_why) ? r.prod_why_why.some((w) => w && w.trim()) : Boolean(r.prod_why_why))) ||
     (r.standardization_details && String(r.standardization_details).trim()) ||
-    Boolean(r.target_date) ||
+    Boolean(r.temporary_target_date || r.permanent_target_date || r.target_date) ||
     Boolean(r.action_taken_by) ||
+    (r.temporary_evidence_attachment && parseAttachments(r.temporary_evidence_attachment).length > 0) ||
+    (r.permanent_evidence_attachment && parseAttachments(r.permanent_evidence_attachment).length > 0) ||
     (r.action_attachments && parseAttachments(r.action_attachments).length > 0)
   );
 
@@ -295,7 +300,42 @@ export const exportProcessAuditToExcel = async ({
     const creatorAttachments = parseAttachments(r.attachments);
     const creatorAttStr = creatorAttachments.map(a => a.name || a.filename).filter(Boolean).join(', ') || '—';
 
-    const actionAttachments = parseAttachments(r.action_attachments);
+    const rootCauseVal = (() => {
+      if (r.prod_why_why) {
+        if (Array.isArray(r.prod_why_why)) {
+          const whys = r.prod_why_why.map((w, i) => w && w.trim() ? `W${i + 1}: ${w.trim()}` : null).filter(Boolean);
+          if (whys.length > 0) return whys.join('\n');
+        } else if (typeof r.prod_why_why === 'string') {
+          try {
+            const parsed = JSON.parse(r.prod_why_why);
+            if (Array.isArray(parsed)) {
+              const whys = parsed.map((w, i) => w && w.trim() ? `W${i + 1}: ${w.trim()}` : null).filter(Boolean);
+              if (whys.length > 0) return whys.join('\n');
+            }
+          } catch {}
+        }
+      }
+      return r.root_cause || '—';
+    })();
+
+    let actionVal = '—';
+    if (r.temporary_action && r.permanent_fix) {
+      actionVal = `Temp: ${r.temporary_action}\nPerm: ${r.permanent_fix}`;
+    } else if (r.temporary_action || r.permanent_fix) {
+      actionVal = r.temporary_action || r.permanent_fix;
+    } else {
+      actionVal = r.corrective_action || r.action || '—';
+    }
+
+    const effectiveTargetDate = (r.temporary_target_date || r.permanent_target_date || r.target_date)
+      ? formatDateDDMMYYYY(r.temporary_target_date || r.permanent_target_date || r.target_date)
+      : '—';
+
+    const actionAttachments = [
+      ...parseAttachments(r.temporary_evidence_attachment),
+      ...parseAttachments(r.permanent_evidence_attachment),
+      ...parseAttachments(r.action_attachments)
+    ];
     const actionAttStr = actionAttachments.map(a => a.name || a.filename).filter(Boolean).join(', ') || '—';
 
     const { reassignedStatus, reassignmentDetails } = formatReassignmentHistory(r.reassignment_history);
@@ -319,10 +359,10 @@ export const exportProcessAuditToExcel = async ({
       r.created_by || '—',
       obsText,
       creatorAttStr,
-      r.root_cause || '—',
-      r.corrective_action || '—',
+      rootCauseVal,
+      actionVal,
       r.standardization_details || '—',
-      targetDate,
+      effectiveTargetDate,
       r.action_taken_by || r.approved_by || '—',
       actionAttStr,
       reassignedStatus,

@@ -76,6 +76,27 @@ const ensureTable = async () => {
     if (!colNames.includes('reassignment_history')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN reassignment_history JSON NULL`).catch(() => {});
     }
+    if (!colNames.includes('prod_why_why')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN prod_why_why JSON NULL`).catch(() => {});
+    }
+    if (!colNames.includes('temporary_action')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN temporary_action TEXT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('temporary_evidence_attachment')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN temporary_evidence_attachment JSON NULL`).catch(() => {});
+    }
+    if (!colNames.includes('temporary_target_date')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN temporary_target_date VARCHAR(50) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('permanent_fix')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN permanent_fix TEXT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('permanent_evidence_attachment')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN permanent_evidence_attachment JSON NULL`).catch(() => {});
+    }
+    if (!colNames.includes('permanent_target_date')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN permanent_target_date VARCHAR(50) NULL`).catch(() => {});
+    }
 
     // Drop any existing defaults on MySQL columns
     await pool.query(`ALTER TABLE process_audit_requests MODIFY issue_type VARCHAR(50) NULL`).catch(() => {});
@@ -304,7 +325,14 @@ export const ProcessAuditRequest = {
       { name: 'closed_by', type: 'VARCHAR(100) NULL' },
       { name: 'closed_by_id', type: 'INT NULL' },
       { name: 'closed_at', type: 'TIMESTAMP NULL' },
-      { name: 'reassignment_history', type: 'JSON NULL' }
+      { name: 'reassignment_history', type: 'JSON NULL' },
+      { name: 'prod_why_why', type: 'JSON NULL' },
+      { name: 'temporary_action', type: 'TEXT NULL' },
+      { name: 'temporary_evidence_attachment', type: 'JSON NULL' },
+      { name: 'temporary_target_date', type: 'VARCHAR(50) NULL' },
+      { name: 'permanent_fix', type: 'TEXT NULL' },
+      { name: 'permanent_evidence_attachment', type: 'JSON NULL' },
+      { name: 'permanent_target_date', type: 'VARCHAR(50) NULL' }
     ];
     for (const c of neededCols) {
       if (!colNames.includes(c.name)) {
@@ -322,13 +350,22 @@ export const ProcessAuditRequest = {
       'root_cause', 'corrective_action', 'action_attachments', 'standardization_details',
       'target_date', 'action_taken_by', 'approved_by', 'approved_by_id',
       'approved_by_email', 'creator_remark', 'closed_by', 'closed_by_id',
-      'rejection_reason', 'reassignment_history'
+      'rejection_reason', 'reassignment_history',
+      'prod_why_why', 'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date',
+      'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date'
     ];
 
     for (const field of allowedFields) {
       if (data[field] !== undefined) {
         let val = data[field];
-        if (field === 'attachments' || field === 'action_attachments' || field === 'reassignment_history') {
+        if (
+          field === 'attachments' ||
+          field === 'action_attachments' ||
+          field === 'reassignment_history' ||
+          field === 'prod_why_why' ||
+          field === 'temporary_evidence_attachment' ||
+          field === 'permanent_evidence_attachment'
+        ) {
           if (typeof val === 'object' && val !== null) {
             val = JSON.stringify(val);
           }
@@ -419,6 +456,27 @@ export const ProcessAuditRequest = {
     if (!colNames.includes('closed_at')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN closed_at TIMESTAMP NULL`).catch(() => {});
     }
+    if (!colNames.includes('prod_why_why')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN prod_why_why JSON NULL`).catch(() => {});
+    }
+    if (!colNames.includes('temporary_action')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN temporary_action TEXT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('temporary_evidence_attachment')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN temporary_evidence_attachment JSON NULL`).catch(() => {});
+    }
+    if (!colNames.includes('temporary_target_date')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN temporary_target_date VARCHAR(50) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('permanent_fix')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN permanent_fix TEXT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('permanent_evidence_attachment')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN permanent_evidence_attachment JSON NULL`).catch(() => {});
+    }
+    if (!colNames.includes('permanent_target_date')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN permanent_target_date VARCHAR(50) NULL`).catch(() => {});
+    }
 
     let rejectionReason = null;
     let rootCause = null;
@@ -428,6 +486,13 @@ export const ProcessAuditRequest = {
     let targetDate = null;
     let actionTakenBy = null;
     let creatorRemark = null;
+    let prodWhyWhy = null;
+    let temporaryAction = null;
+    let temporaryEvidenceAttachment = null;
+    let temporaryTargetDate = null;
+    let permanentFix = null;
+    let permanentEvidenceAttachment = null;
+    let permanentTargetDate = null;
 
     if (typeof details === 'string') {
       rejectionReason = details;
@@ -440,6 +505,13 @@ export const ProcessAuditRequest = {
       targetDate = details.target_date !== undefined ? details.target_date : (details.targetDate !== undefined ? details.targetDate : null);
       actionTakenBy = details.action_taken_by !== undefined ? details.action_taken_by : (details.actionTakenBy !== undefined ? details.actionTakenBy : null);
       creatorRemark = details.creator_remark !== undefined ? details.creator_remark : (details.creatorRemark !== undefined ? details.creatorRemark : (details.remark !== undefined ? details.remark : null));
+      prodWhyWhy = details.prod_why_why !== undefined ? details.prod_why_why : null;
+      temporaryAction = details.temporary_action !== undefined ? details.temporary_action : null;
+      temporaryEvidenceAttachment = details.temporary_evidence_attachment !== undefined ? details.temporary_evidence_attachment : null;
+      temporaryTargetDate = details.temporary_target_date !== undefined ? details.temporary_target_date : null;
+      permanentFix = details.permanent_fix !== undefined ? details.permanent_fix : null;
+      permanentEvidenceAttachment = details.permanent_evidence_attachment !== undefined ? details.permanent_evidence_attachment : null;
+      permanentTargetDate = details.permanent_target_date !== undefined ? details.permanent_target_date : null;
     }
 
     const updates = ['status = ?'];
@@ -477,6 +549,34 @@ export const ProcessAuditRequest = {
     if (creatorRemark !== null) {
       updates.push('creator_remark = ?');
       params.push(creatorRemark);
+    }
+    if (prodWhyWhy !== null) {
+      updates.push('prod_why_why = ?');
+      params.push(typeof prodWhyWhy === 'string' ? prodWhyWhy : JSON.stringify(prodWhyWhy));
+    }
+    if (temporaryAction !== null) {
+      updates.push('temporary_action = ?');
+      params.push(temporaryAction);
+    }
+    if (temporaryEvidenceAttachment !== null) {
+      updates.push('temporary_evidence_attachment = ?');
+      params.push(typeof temporaryEvidenceAttachment === 'string' ? temporaryEvidenceAttachment : JSON.stringify(temporaryEvidenceAttachment));
+    }
+    if (temporaryTargetDate !== null) {
+      updates.push('temporary_target_date = ?');
+      params.push(temporaryTargetDate);
+    }
+    if (permanentFix !== null) {
+      updates.push('permanent_fix = ?');
+      params.push(permanentFix);
+    }
+    if (permanentEvidenceAttachment !== null) {
+      updates.push('permanent_evidence_attachment = ?');
+      params.push(typeof permanentEvidenceAttachment === 'string' ? permanentEvidenceAttachment : JSON.stringify(permanentEvidenceAttachment));
+    }
+    if (permanentTargetDate !== null) {
+      updates.push('permanent_target_date = ?');
+      params.push(permanentTargetDate);
     }
 
     const isClosed = status.toLowerCase().includes('close');

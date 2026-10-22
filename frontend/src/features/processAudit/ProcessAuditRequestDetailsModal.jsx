@@ -453,10 +453,34 @@ const ProcessAuditRequestDetailsModal = ({
 
   const creatorAttachments = parseAttachments(req.attachments);
   const actionAttachments = parseAttachments(req.action_attachments);
+  const temporaryEvidenceAttachments = parseAttachments(req.temporary_evidence_attachment || req.action_attachments);
+  const permanentEvidenceAttachments = parseAttachments(req.permanent_evidence_attachment);
 
   const reqNo = req.issue_no || (req.id ? `PA-${req.id}` : 'PA-1');
   const escDate = req.escalation_date ? formatDateDDMMYYYY(req.escalation_date) : (req.created_at ? formatDateDDMMYYYY(req.created_at) : '—');
-  const targetDate = req.target_date ? formatDateDDMMYYYY(req.target_date) : '—';
+  const targetDate = (req.temporary_target_date ? formatDateDDMMYYYY(req.temporary_target_date) : '') || (req.target_date ? formatDateDDMMYYYY(req.target_date) : '—');
+  const permanentTargetDate = req.permanent_target_date ? formatDateDDMMYYYY(req.permanent_target_date) : '—';
+
+  let whyList = [];
+  if (Array.isArray(req.prod_why_why)) {
+    whyList = req.prod_why_why;
+  } else if (typeof req.prod_why_why === 'string') {
+    try {
+      whyList = JSON.parse(req.prod_why_why);
+    } catch {
+      whyList = req.prod_why_why ? [req.prod_why_why] : [];
+    }
+  } else if (req.root_cause) {
+    whyList = [req.root_cause];
+  }
+
+  const has5WhyOrCountermeasures = Boolean(
+    (Array.isArray(whyList) && whyList.some((w) => w && String(w).trim())) ||
+    (req.temporary_action && String(req.temporary_action).trim()) ||
+    (req.permanent_fix && String(req.permanent_fix).trim()) ||
+    (req.temporary_evidence_attachment && parseAttachments(req.temporary_evidence_attachment).length > 0) ||
+    (req.permanent_evidence_attachment && parseAttachments(req.permanent_evidence_attachment).length > 0)
+  );
 
   const sLower = (req.status || 'Pending').toLowerCase();
   const isReqClosed = sLower.includes('close');
@@ -468,13 +492,18 @@ const ProcessAuditRequestDetailsModal = ({
     sLower.includes('approval') ||
     sLower.includes('progress') ||
     sLower.includes('review') ||
+    (req.temporary_action && String(req.temporary_action).trim()) ||
+    (req.permanent_fix && String(req.permanent_fix).trim()) ||
     (req.corrective_action && String(req.corrective_action).trim()) ||
     (req.action && String(req.action).trim()) ||
     (req.root_cause && String(req.root_cause).trim()) ||
+    (Array.isArray(whyList) && whyList.some((w) => w && String(w).trim())) ||
     (req.standardization_details && String(req.standardization_details).trim()) ||
-    Boolean(req.target_date) ||
+    Boolean(req.temporary_target_date || req.permanent_target_date || req.target_date) ||
     Boolean(req.action_taken_by) ||
-    (req.action_attachments && parseAttachments(req.action_attachments).length > 0)
+    (temporaryEvidenceAttachments.length > 0) ||
+    (permanentEvidenceAttachments.length > 0) ||
+    (actionAttachments.length > 0)
   );
 
   let statusBadgeLabel = 'Pending';
@@ -816,86 +845,251 @@ const ProcessAuditRequestDetailsModal = ({
                   </div>
                 </div>
 
-                {/* 2. Root Cause Analysis */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
-                    <ShieldAlert className="w-4 h-4" />
-                    <span>Root Cause Analysis</span>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
-                    {req.root_cause || <span className="text-slate-400 italic">No root cause analysis recorded yet.</span>}
-                  </div>
-                </div>
+                {/* Closer Details Content */}
+                {has5WhyOrCountermeasures ? (
+                  <>
+                    {/* Occurrence Cause (Production Team - 5-Why Analysis) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
+                          <ShieldAlert className="w-4 h-4" />
+                          <span>Occurrence Cause (Production Team - 5-Why Analysis)</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 font-mono">W1 to W5 Breakdown</span>
+                      </div>
 
-                {/* 3. Corrective Actions & Countermeasures */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
-                    <Wrench className="w-4 h-4" />
-                    <span>Corrective Actions &amp; Countermeasures</span>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
-                    {req.corrective_action || <span className="text-slate-400 italic">No corrective action recorded yet.</span>}
-                  </div>
-                </div>
+                      <div className="grid grid-cols-1 gap-2.5 text-xs">
+                        {(() => {
+                          const validWhys = (Array.isArray(whyList) ? whyList : [])
+                            .map((w, idx) => ({
+                              label: `W${idx + 1}`,
+                              val: typeof w === 'string' ? w.trim() : (w ? String(w).trim() : '')
+                            }))
+                            .filter((item) => item.val.length > 0);
 
-                {/* 4. Standardization Details */}
-                {req.standardization_details && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-indigo-600 text-xs font-bold uppercase tracking-wider">
-                      <Layers className="w-4 h-4" />
-                      <span>Standardization Details</span>
+                          if (validWhys.length > 0) {
+                            return validWhys.map((item, idx) => (
+                              <div key={idx} className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                                <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                                  {item.label}:{['W1', 'W2', 'W3'].includes(item.label) && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                                </span>
+                                <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
+                                  {item.val}
+                                </span>
+                              </div>
+                            ));
+                          }
+
+                          return (
+                            <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                              <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                                W1:<span className="text-red-500 font-bold ml-0.5">*</span>
+                              </span>
+                              <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
+                                <span className="text-slate-400 italic">No entry recorded</span>
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </div>
-                    <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
-                      {req.standardization_details}
+
+                    {/* Temporary Action */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
+                        <Wrench className="w-4 h-4" />
+                        <span>Temporary Action</span>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                        {req.temporary_action || req.corrective_action || req.action || <span className="text-slate-400 italic">No temporary action recorded.</span>}
+                      </div>
                     </div>
-                  </div>
+
+                    {/* Temporary Evidence Attachments */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
+                          <Paperclip className="w-4 h-4" />
+                          <span>Temporary Evidence Attachments</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
+                      </div>
+
+                      {temporaryEvidenceAttachments.length > 0 ? (
+                        <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
+                          <AttachmentChipList
+                            attachments={temporaryEvidenceAttachments}
+                            onPreview={(att) => setPreviewAttachment(att)}
+                            readonly={true}
+                          />
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
+                          No temporary evidence attachments uploaded.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Temporary Target Date & Auditor Remarks */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          TEMPORARY TARGET DATE
+                        </span>
+                        <span className="font-mono font-bold text-slate-900 text-sm">
+                          {targetDate}
+                        </span>
+                      </div>
+
+                      <div className="sm:col-span-2 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          AUDITOR SIGN-OFF REMARKS
+                        </span>
+                        <div className="text-slate-800 leading-relaxed font-medium">
+                          {req.creator_remark || req.remarks || <span className="text-slate-400 italic">No auditor remarks provided.</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Permanent Countermeasures Section */}
+                    <div className="pt-3 border-t border-slate-200/90 space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                        <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                          Permanent Countermeasures
+                        </span>
+                      </div>
+
+                      {/* Permanent Action */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold uppercase tracking-wider">
+                          <Wrench className="w-4 h-4" />
+                          <span>Permanent Action</span>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                          {req.permanent_fix || <span className="text-slate-400 italic">No permanent action recorded.</span>}
+                        </div>
+                      </div>
+
+                      {/* Permanent Evidence Attachments */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
+                            <Paperclip className="w-4 h-4" />
+                            <span>Permanent Evidence Attachments</span>
+                          </div>
+                          <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
+                        </div>
+
+                        {permanentEvidenceAttachments.length > 0 ? (
+                          <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
+                            <AttachmentChipList
+                              attachments={permanentEvidenceAttachments}
+                              onPreview={(att) => setPreviewAttachment(att)}
+                              readonly={true}
+                            />
+                          </div>
+                        ) : (
+                          <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
+                            No permanent action evidence attachments uploaded.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Permanent Target Date */}
+                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          PERMANENT TARGET DATE
+                        </span>
+                        <span className="font-mono font-bold text-slate-900 text-sm">
+                          {permanentTargetDate}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* 2. Root Cause Analysis */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
+                        <ShieldAlert className="w-4 h-4" />
+                        <span>Root Cause Analysis</span>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                        {req.root_cause || <span className="text-slate-400 italic">No root cause analysis recorded yet.</span>}
+                      </div>
+                    </div>
+
+                    {/* 3. Corrective Actions & Countermeasures */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
+                        <Wrench className="w-4 h-4" />
+                        <span>Corrective Actions &amp; Countermeasures</span>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                        {req.corrective_action || <span className="text-slate-400 italic">No corrective action recorded yet.</span>}
+                      </div>
+                    </div>
+
+                    {/* 4. Standardization Details */}
+                    {req.standardization_details && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-indigo-600 text-xs font-bold uppercase tracking-wider">
+                          <Layers className="w-4 h-4" />
+                          <span>Standardization Details</span>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                          {req.standardization_details}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 5. Evidence Attachments */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
+                          <Paperclip className="w-4 h-4" />
+                          <span>Action Evidence Attachments</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
+                      </div>
+
+                      {actionAttachments && actionAttachments.length > 0 ? (
+                        <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
+                          <AttachmentChipList
+                            attachments={actionAttachments}
+                            onPreview={(att) => setPreviewAttachment(att)}
+                            readonly={true}
+                          />
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
+                          No closer evidence attachments uploaded.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 6. Target Date & Sign-off Remarks */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          TARGET DATE
+                        </span>
+                        <span className="font-mono font-bold text-slate-900 text-sm">
+                          {targetDate}
+                        </span>
+                      </div>
+
+                      <div className="sm:col-span-2 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          AUDITOR SIGN-OFF REMARKS
+                        </span>
+                        <div className="text-slate-800 leading-relaxed font-medium">
+                          {req.creator_remark || req.remarks || <span className="text-slate-400 italic">No auditor remarks provided.</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 )}
-
-                {/* 5. Evidence Attachments */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
-                      <Paperclip className="w-4 h-4" />
-                      <span>Action Evidence Attachments</span>
-                    </div>
-                    <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
-                  </div>
-
-                  {actionAttachments && actionAttachments.length > 0 ? (
-                    <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
-                      <AttachmentChipList
-                        attachments={actionAttachments}
-                        onPreview={(att) => setPreviewAttachment(att)}
-                        readonly={true}
-                      />
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
-                      No closer evidence attachments uploaded.
-                    </div>
-                  )}
-                </div>
-
-                {/* 6. Target Date & Sign-off Remarks */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      TARGET DATE
-                    </span>
-                    <span className="font-mono font-bold text-slate-900 text-sm">
-                      {targetDate}
-                    </span>
-                  </div>
-
-                  <div className="sm:col-span-2 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      AUDITOR SIGN-OFF REMARKS
-                    </span>
-                    <div className="text-slate-800 leading-relaxed font-medium">
-                      {req.creator_remark || req.remarks || <span className="text-slate-400 italic">No auditor remarks provided.</span>}
-                    </div>
-                  </div>
-                </div>
 
                 {/* 7. Sign-off Status Bar */}
                 <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
