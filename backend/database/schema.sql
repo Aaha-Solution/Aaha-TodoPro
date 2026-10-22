@@ -261,5 +261,5 @@ CREATE TABLE email_logs (
 
 -- 1. Default Administrator Account (Password: admin@123)
 INSERT INTO users (id, name, email, password, role, department, status) VALUES
-(1, 'Admin', 'admin@gmail.com', '$2a$10$FPtxFd2HfqHQv3xiXzuj9.HmyZTpuaFZ5pmQJFleBmySa.Vdn2nxm', 'ADMIN', 'INCOMING QUALITY', 'ACTIVE')
+(1, 'Person', 'admin@gmail.com', '$2a$10$FPtxFd2HfqHQv3xiXzuj9.HmyZTpuaFZ5pmQJFleBmySa.Vdn2nxm', 'ADMIN', 'INCOMING QUALITY', 'ACTIVE')
 ON DUPLICATE KEY UPDATE name = VALUES(name), password = VALUES(password);
