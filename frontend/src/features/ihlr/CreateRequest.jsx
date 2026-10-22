@@ -473,9 +473,7 @@ const IhlrCreateRequest = () => {
 
     const newErrors = {};
 
-    if (!formData.created_by || !formData.created_by.trim()) {
-      newErrors.created_by = 'Created By is required';
-    } else if (/\d/.test(formData.created_by)) {
+    if (formData.created_by && /\d/.test(formData.created_by)) {
       newErrors.created_by = 'Created By must contain text only, numbers are not allowed';
     }
     const todayDateStr = getTodayDateInput();
@@ -566,7 +564,10 @@ const IhlrCreateRequest = () => {
         };
       });
 
-      const creatorName = (formData.created_by || user?.name || user?.email || 'Incoming Quality Admin').trim();
+      const loggedInPersonName = getLoggedInUserName();
+      const creatorName = (formData.created_by && formData.created_by.trim())
+        ? formData.created_by.trim()
+        : loggedInPersonName;
       const creatorEmail = user?.email || '';
       const creatorId = user?.id || null;
 
@@ -744,13 +745,18 @@ const IhlrCreateRequest = () => {
 
             {/* Created By (Manual entry by user - Text only) */}
             <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
-                <span>Created By</span>
-                <span className="text-red-500 font-bold ml-1">*</span>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center justify-between">
+                <span className="flex items-center">
+                  <span>Created By</span>
+                  <span className="text-slate-400 font-normal lowercase ml-1.5 text-[10px]">(optional)</span>
+                </span>
+                <span className="text-[10px] text-slate-400 font-normal truncate max-w-[200px]" title={`Defaults to: ${getLoggedInUserName()}`}>
+                  Defaults to: <strong className="text-slate-600 font-semibold">{getLoggedInUserName()}</strong>
+                </span>
               </label>
               <input
                 type="text"
-                placeholder="e.g. Enter creator name"
+                placeholder={`e.g. Leave empty to attach ${getLoggedInUserName()}`}
                 value={formData.created_by || ''}
                 onKeyDown={(e) => {
                   if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
