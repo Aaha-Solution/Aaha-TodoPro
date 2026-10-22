@@ -1163,7 +1163,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         return validWhys.map((item, idx) => (
                           <div key={idx} className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
                             <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
-                              {item.label}:{item.label === 'W1' && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                              {item.label}:{['W1', 'W2', 'W3'].includes(item.label) && <span className="text-red-500 font-bold ml-0.5">*</span>}
                             </span>
                             <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
                               {item.val}
@@ -1962,7 +1962,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <span>4. QA PROBLEM CAUSE (5-WHY ROOT CAUSE ANALYSIS)</span>
                     </div>
                     <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
-                      <span>W1 Mandatory</span>
+                      <span>W1, W2 & W3 Mandatory</span>
                       <span className="text-red-500 font-bold">*</span>
                     </span>
                   </div>
@@ -1976,19 +1976,20 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     </div>
                     <div className="space-y-2.5">
                       {['W1', 'W2', 'W3', 'W4', 'W5'].map((wLabel, idx) => {
-                        const isW1 = idx === 0;
-                        const hasW1Error = isW1 && Boolean(editErrors.w1);
+                        const isMandatory = idx < 3;
+                        const errorKey = `w${idx + 1}`;
+                        const hasError = isMandatory && Boolean(editErrors[errorKey]);
                         return (
                           <div key={idx} className="space-y-1">
                             <div className="flex items-center gap-2.5">
                               <span className={`px-2.5 py-1.5 rounded-lg font-mono font-black text-[11px] border shrink-0 transition ${
-                                isW1
-                                  ? hasW1Error
+                                isMandatory
+                                  ? hasError
                                     ? 'bg-rose-50 border-rose-300 text-rose-700'
                                     : 'bg-amber-100 text-amber-800 border-amber-200'
                                   : 'bg-amber-100 text-amber-800 border-amber-200'
                               }`}>
-                                {wLabel}:{isW1 && <span className="text-rose-500 ml-0.5 font-bold">*</span>}
+                                {wLabel}:{isMandatory && <span className="text-rose-500 ml-0.5 font-bold">*</span>}
                               </span>
                               <input
                                 type="text"
@@ -1997,21 +1998,21 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                                   const copy = [...editQaWhyWhy];
                                   copy[idx] = e.target.value;
                                   setEditQaWhyWhy(copy);
-                                  if (isW1 && editErrors.w1 && e.target.value.trim()) {
-                                    setEditErrors(prev => ({ ...prev, w1: '' }));
+                                  if (isMandatory && editErrors[errorKey] && e.target.value.trim()) {
+                                    setEditErrors(prev => ({ ...prev, [errorKey]: '' }));
                                   }
                                 }}
-                                placeholder={`QA Root Cause Level ${idx + 1}...${isW1 ? ' (Mandatory)' : ''}`}
+                                placeholder={`QA Root Cause Level ${idx + 1}...${isMandatory ? ' (Mandatory)' : ''}`}
                                 className={`flex-1 px-3 py-1.5 rounded-xl text-xs text-slate-800 outline-none transition ${
-                                  hasW1Error
+                                  hasError
                                     ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                                     : 'bg-white border border-amber-200/80 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
                                 }`}
                               />
                             </div>
-                            {hasW1Error && (
+                            {hasError && (
                               <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1 pl-10">
-                                <span>* {editErrors.w1}</span>
+                                <span>* {editErrors[errorKey]}</span>
                               </p>
                             )}
                           </div>
@@ -2287,7 +2288,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                           return validWhys.map((item, idx) => (
                             <div key={idx} className="flex items-start gap-2">
                               <span className="font-mono font-bold text-amber-700 shrink-0">
-                                {item.label}:{item.label === 'W1' && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                                {item.label}:{['W1', 'W2', 'W3'].includes(item.label) && <span className="text-red-500 font-bold ml-0.5">*</span>}
                               </span>
                               <span className="text-slate-800 leading-relaxed font-medium">{item.val}</span>
                             </div>

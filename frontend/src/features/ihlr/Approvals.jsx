@@ -141,7 +141,8 @@ const IhlrApprovals = () => {
 
   // Form State for Closer Fields
   const [closerWhyWhy, setCloserWhyWhy] = useState(['', '', '', '', '']);
-  const [closerW1Error, setCloserW1Error] = useState(false);
+  const [closerWhyErrors, setCloserWhyErrors] = useState({ w1: false, w2: false, w3: false });
+  const closerW1Error = closerWhyErrors.w1;
   const [closerAction, setCloserAction] = useState('');
   const [closerActionError, setCloserActionError] = useState(false);
   const [closerTargetDate, setCloserTargetDate] = useState('');
@@ -325,7 +326,7 @@ const IhlrApprovals = () => {
     setSelectedRequest(null);
     setAdminEditCloser(false);
     setCloserWhyWhy(['', '', '', '', '']);
-    setCloserW1Error(false);
+    setCloserWhyErrors({ w1: false, w2: false, w3: false });
     setCloserAction('');
     setCloserActionError(false);
     setCloserTargetDate('');
@@ -378,7 +379,7 @@ const IhlrApprovals = () => {
       whyArray[4] || ''
     ];
     setCloserWhyWhy(paddedWhys);
-    setCloserW1Error(false);
+    setCloserWhyErrors({ w1: false, w2: false, w3: false });
 
     setCloserAction(req.temporary_action || '');
     setCloserActionError(false);
@@ -492,8 +493,10 @@ const IhlrApprovals = () => {
       updated[index] = val;
       return updated;
     });
-    if (index === 0 && val && val.trim()) {
-      setCloserW1Error(false);
+    if (val && val.trim()) {
+      if (index === 0) setCloserWhyErrors((prev) => ({ ...prev, w1: false }));
+      if (index === 1) setCloserWhyErrors((prev) => ({ ...prev, w2: false }));
+      if (index === 2) setCloserWhyErrors((prev) => ({ ...prev, w3: false }));
     }
   };
 
@@ -561,14 +564,17 @@ const IhlrApprovals = () => {
       return;
     }
 
-    // Closer Field Validations (Only Occurrence Cause W1 is mandatory for submitting closer root cause)
+    // Closer Field Validations (Occurrence Causes W1, W2, and W3 are mandatory for both Admin and User)
     let hasCloserErrors = false;
+    const whyErrors = {
+      w1: !closerWhyWhy[0] || !closerWhyWhy[0].trim(),
+      w2: !closerWhyWhy[1] || !closerWhyWhy[1].trim(),
+      w3: !closerWhyWhy[2] || !closerWhyWhy[2].trim()
+    };
+    setCloserWhyErrors(whyErrors);
 
-    if (!closerWhyWhy[0] || !closerWhyWhy[0].trim()) {
-      setCloserW1Error(true);
+    if (whyErrors.w1 || whyErrors.w2 || whyErrors.w3) {
       hasCloserErrors = true;
-    } else {
-      setCloserW1Error(false);
     }
 
     // Temporary Action is optional
@@ -1088,7 +1094,7 @@ const IhlrApprovals = () => {
                     )}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400 font-mono">W1 to W5</span>
+                <span className="text-[10px] font-bold text-rose-600 font-mono bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">W1, W2, W3 Mandatory *</span>
               </div>
 
               {/* Admin Edit Mode Alert Banner */}
@@ -1111,13 +1117,14 @@ const IhlrApprovals = () => {
               {/* 5-Whys Stacked Inputs (Image 1: W1 to W5) */}
               <div className="space-y-1.5">
                 {['W1', 'W2', 'W3', 'W4', 'W5'].map((label, idx) => {
-                  const isW1 = idx === 0;
-                  const hasW1Error = isW1 && closerW1Error;
+                  const isMandatory = idx < 3;
+                  const errorKey = `w${idx + 1}`;
+                  const hasError = isMandatory && Boolean(closerWhyErrors[errorKey]);
                   return (
                     <div key={idx} className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className={`w-8 shrink-0 text-[11px] font-black font-mono ${hasW1Error ? 'text-rose-700' : 'text-rose-600'}`}>
-                          {label}:{isW1 && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                        <span className={`w-8 shrink-0 text-[11px] font-black font-mono ${hasError ? 'text-rose-700' : 'text-rose-600'}`}>
+                          {label}:{isMandatory && <span className="text-red-500 font-bold ml-0.5">*</span>}
                         </span>
                         <input
                           type="text"
@@ -1128,21 +1135,21 @@ const IhlrApprovals = () => {
                             !selectedRequest
                               ? 'Select request on right'
                               : canUpdateCloserFields
-                              ? `Enter ${label} cause...${isW1 ? ' (Mandatory)' : ''}`
+                              ? `Enter ${label} cause...${isMandatory ? ' (Mandatory)' : ''}`
                               : isAdmin
                               ? `Click Edit Closer Fields below to edit ${label}...`
                               : 'Read-only (Closer only)'
                           }
                           className={`w-full px-3 py-1.5 rounded-lg text-slate-800 outline-none transition disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed ${
-                            hasW1Error
+                            hasError
                               ? 'bg-rose-50/20 border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
                               : 'bg-white border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                           }`}
                         />
                       </div>
-                      {hasW1Error && (
+                      {hasError && (
                         <p className="text-[11px] text-rose-500 font-semibold pl-10 flex items-center gap-1">
-                          <span>* Why 1 (W1) is mandatory. Please enter occurrence cause.</span>
+                          <span>* Why ${idx + 1} (${label}) is mandatory. Please enter occurrence cause.</span>
                         </p>
                       )}
                     </div>

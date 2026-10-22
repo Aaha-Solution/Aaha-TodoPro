@@ -339,8 +339,10 @@ const IhlrCreateRequest = () => {
     const updated = [...qaWhyWhy];
     updated[index] = value;
     setQaWhyWhy(updated);
-    if (index === 0 && value.trim()) {
-      setErrors((prev) => ({ ...prev, w1: false }));
+    if (value && value.trim()) {
+      if (index === 0) setErrors((prev) => ({ ...prev, w1: false }));
+      if (index === 1) setErrors((prev) => ({ ...prev, w2: false }));
+      if (index === 2) setErrors((prev) => ({ ...prev, w3: false }));
     }
   };
 
@@ -519,6 +521,12 @@ const IhlrCreateRequest = () => {
     }
     if (!qaWhyWhy[0] || !qaWhyWhy[0].trim()) {
       newErrors.w1 = 'Why 1 (W1) is mandatory. Please enter root cause.';
+    }
+    if (!qaWhyWhy[1] || !qaWhyWhy[1].trim()) {
+      newErrors.w2 = 'Why 2 (W2) is mandatory. Please enter root cause.';
+    }
+    if (!qaWhyWhy[2] || !qaWhyWhy[2].trim()) {
+      newErrors.w3 = 'Why 3 (W3) is mandatory. Please enter root cause.';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -1432,7 +1440,7 @@ const IhlrCreateRequest = () => {
                     3. Problem Cause Why-Why Analysis (QA Team)
                   </h2>
                   <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
-                    <span>W1 Mandatory</span>
+                    <span>W1, W2 & W3 Mandatory</span>
                     <span className="text-red-500 font-bold">*</span>
                   </span>
                 </div>
@@ -1445,35 +1453,36 @@ const IhlrCreateRequest = () => {
 
           <div className="space-y-3">
             {qaWhyWhy.map((val, idx) => {
-              const isW1 = idx === 0;
-              const hasW1Error = isW1 && Boolean(errors.w1);
+              const isMandatory = idx < 3;
+              const errorKey = `w${idx + 1}`;
+              const hasError = isMandatory && Boolean(errors[errorKey]);
               return (
                 <div key={idx} className="space-y-1">
                   <div className="flex items-center gap-3">
                     <span
-                      className={`w-8 h-8 rounded-xl font-mono font-bold text-xs flex items-center justify-center shrink-0 border transition ${isW1
-                          ? hasW1Error
+                      className={`w-8 h-8 rounded-xl font-mono font-bold text-xs flex items-center justify-center shrink-0 border transition ${isMandatory
+                          ? hasError
                             ? 'bg-rose-50 border-rose-300 text-rose-700'
                             : 'bg-amber-100/80 border-amber-300 text-amber-800'
                           : 'bg-amber-50 border-amber-200 text-amber-700'
                         }`}
                     >
-                      W{idx + 1}{isW1 && <span className="text-red-500 ml-0.5 font-bold">*</span>}
+                      W{idx + 1}{isMandatory && <span className="text-red-500 ml-0.5 font-bold">*</span>}
                     </span>
                     <input
                       type="text"
-                      placeholder={`Why #${idx + 1} cause...${isW1 ? ' (Mandatory)' : ''}`}
+                      placeholder={`Why #${idx + 1} cause...${isMandatory ? ' (Mandatory)' : ''}`}
                       value={val}
                       onChange={(e) => handleQaWhyChange(idx, e.target.value)}
-                      className={`flex-1 px-3 py-2 border rounded-xl text-xs text-slate-900 outline-none transition ${hasW1Error
+                      className={`flex-1 px-3 py-2 border rounded-xl text-xs text-slate-900 outline-none transition ${hasError
                           ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                           : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
                         }`}
                     />
                   </div>
-                  {hasW1Error && (
+                  {hasError && (
                     <p className="text-[11px] text-rose-500 font-semibold pl-11 flex items-center gap-1">
-                      <span>* {errors.w1}</span>
+                      <span>* {errors[errorKey]}</span>
                     </p>
                   )}
                 </div>
