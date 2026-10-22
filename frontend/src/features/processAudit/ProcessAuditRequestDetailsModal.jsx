@@ -51,6 +51,15 @@ import { processAuditService } from '../../services/processAuditService';
  *   Allows modifying both Requester parameters & Closer execution details directly!
  * - Universal Export to Excel (.xlsx) & PDF (.pdf) with company branding & attachments
  */
+const DEFAULT_DEPARTMENTS = [
+  'PRODUCTION',
+  'MAINTENANCE',
+  'PED',
+  'MATERIALS',
+  'MARKETING',
+  'INCOMING QUALITY',
+];
+
 const ProcessAuditRequestDetailsModal = ({
   isOpen,
   request,
@@ -117,6 +126,16 @@ const ProcessAuditRequestDetailsModal = ({
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const userDropdownRef = useRef(null);
+
+  const departmentList = Array.from(
+    new Set([
+      ...DEFAULT_DEPARTMENTS,
+      ...(editFormData.department ? [editFormData.department.trim().toUpperCase()] : []),
+      ...dbUsers.map((u) => (u.department || u.dept || '').trim().toUpperCase()).filter(Boolean),
+    ])
+  )
+    .filter(Boolean)
+    .sort();
 
   const req = localRequest || request;
 
@@ -202,6 +221,21 @@ const ProcessAuditRequestDetailsModal = ({
   }, [isOpen]);
 
   useEffect(() => {
+    if (isOpen && editFormData.department) {
+      processAuditService.getUsers(editFormData.department).then(deptUsers => {
+        if (Array.isArray(deptUsers) && deptUsers.length > 0) {
+          setDbUsers(prev => {
+            const map = new Map();
+            prev.forEach(u => map.set(u.id || u.name, u));
+            deptUsers.forEach(u => map.set(u.id || u.name, u));
+            return Array.from(map.values());
+          });
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen, editFormData.department]);
+
+  useEffect(() => {
     const handleClickOutside = (e) => {
       if (userDropdownRef.current && !userDropdownRef.current.contains(e.target)) {
         setIsUserDropdownOpen(false);
@@ -285,8 +319,11 @@ const ProcessAuditRequestDetailsModal = ({
   const handleSaveChanges = async () => {
     const newErrors = {};
 
+    const todayDateStr = new Date().toISOString().split('T')[0];
     if (!editFormData.escalation_date || !editFormData.escalation_date.trim()) {
       newErrors.escalation_date = 'Escalation Date is required';
+    } else if (editFormData.escalation_date > todayDateStr) {
+      newErrors.escalation_date = 'Escalation Date cannot be a future date. Please select today or a past date.';
     }
     if (!editFormData.shift || !editFormData.shift.trim()) {
       newErrors.shift = 'Shift is required';
@@ -686,51 +723,44 @@ const ProcessAuditRequestDetailsModal = ({
                   </div>
 
                   {/* Action Evidence Attachments Upload in Edit Mode */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Action Evidence Attachments
-                    </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                        Action Evidence Attachments
+                      </label>
+                      <span className="text-[10px] text-slate-400 font-medium">Click any attachment to preview or download</span>
+                    </div>
+
                     {editActionAttachments.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {editActionAttachments.map((att, idx) => (
-                          <div
-                            key={idx}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 text-xs font-medium"
-                          >
-                            <Paperclip className="w-3.5 h-3.5" />
-                            <span className="truncate max-w-[200px]">{att.name || att.filename || `File-${idx + 1}`}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveExistingActionAttachment(idx)}
-                              className="text-purple-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
-                              title="Remove file"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] font-bold text-purple-600 uppercase tracking-wider flex items-center gap-1.5">
+                          <Paperclip className="w-3.5 h-3.5 text-purple-600" />
+                          <span>Existing Closer Evidence ({editActionAttachments.length})</span>
+                        </div>
+                        <AttachmentChipList
+                          attachments={editActionAttachments}
+                          onPreview={(att) => setPreviewAttachment(att)}
+                          onRemove={(idx) => handleRemoveExistingActionAttachment(idx)}
+                        />
                       </div>
                     )}
 
                     {newActionFiles.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {newActionFiles.map((file, idx) => (
-                          <div
-                            key={idx}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span className="truncate max-w-[200px]">{file.name}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveNewActionFile(idx)}
-                              className="text-emerald-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
-                              title="Remove file"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
+                          <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>New Closer Files ({newActionFiles.length})</span>
+                        </div>
+                        <AttachmentChipList
+                          attachments={newActionFiles.map(f => ({
+                            name: f.name,
+                            file: f,
+                            type: f.name.split('.').pop() || '',
+                            size: f.size
+                          }))}
+                          onPreview={(att) => setPreviewAttachment(att)}
+                          onRemove={(idx) => handleRemoveNewActionFile(idx)}
+                        />
                       </div>
                     )}
 
@@ -937,10 +967,15 @@ const ProcessAuditRequestDetailsModal = ({
                     </label>
                     <input
                       type="date"
+                      max={new Date().toISOString().split('T')[0]}
                       value={editFormData.escalation_date}
                       onChange={(e) => {
-                        setEditFormData(prev => ({ ...prev, escalation_date: e.target.value }));
-                        if (editErrors.escalation_date && e.target.value) {
+                        const val = e.target.value;
+                        const today = new Date().toISOString().split('T')[0];
+                        setEditFormData(prev => ({ ...prev, escalation_date: val }));
+                        if (val && val > today) {
+                          setEditErrors(prev => ({ ...prev, escalation_date: 'Escalation Date cannot be a future date. Please select today or a past date.' }));
+                        } else if (editErrors.escalation_date && val) {
                           setEditErrors(prev => ({ ...prev, escalation_date: '' }));
                         }
                       }}
@@ -1068,22 +1103,35 @@ const ProcessAuditRequestDetailsModal = ({
                     <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                       ASSIGN DEPARTMENT <span className="text-rose-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      value={editFormData.department}
+                    <select
+                      value={editFormData.department || ''}
                       onChange={(e) => {
-                        setEditFormData(prev => ({ ...prev, department: e.target.value }));
-                        if (editErrors.department && e.target.value) {
+                        const newDept = e.target.value;
+                        setEditFormData(prev => ({
+                          ...prev,
+                          department: newDept,
+                          executor: prev.department === newDept ? prev.executor : ''
+                        }));
+                        if (editErrors.department && newDept) {
                           setEditErrors(prev => ({ ...prev, department: '' }));
                         }
                       }}
-                      placeholder="e.g. PRODUCTION"
-                      className={`w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 outline-none transition ${
+                      className={`w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 bg-white border outline-none transition cursor-pointer ${
                         editErrors.department
-                          ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 bg-rose-50/20'
-                          : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
+                          ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 bg-rose-50/20'
+                          : 'border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
                       }`}
-                    />
+                    >
+                      <option value="">-- Select Department --</option>
+                      {departmentList.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                    </select>
+                    {editErrors.department && (
+                      <p className="text-[11px] text-rose-500 font-semibold mt-1">* {editErrors.department}</p>
+                    )}
                   </div>
 
                   <div className="relative" ref={userDropdownRef}>
@@ -1091,7 +1139,12 @@ const ProcessAuditRequestDetailsModal = ({
                       ASSIGNED EXECUTOR <span className="text-rose-500">*</span>
                     </label>
                     <div
-                      onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                      onClick={() => {
+                        if (!editFormData.department) {
+                          setEditErrors(prev => ({ ...prev, department: 'Please select a department first' }));
+                        }
+                        setIsUserDropdownOpen(!isUserDropdownOpen);
+                      }}
                       className={`w-full min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-medium bg-white border flex items-center justify-between cursor-pointer transition ${
                         editErrors.executor
                           ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 bg-rose-50/20'
@@ -1099,50 +1152,81 @@ const ProcessAuditRequestDetailsModal = ({
                       }`}
                     >
                       <div className="flex flex-wrap gap-1 max-w-[220px]">
-                        {getSelectedUsers().length > 0 ? (
+                        {!editFormData.department ? (
+                          <span className="text-slate-400 italic">Select department first...</span>
+                        ) : getSelectedUsers().length > 0 ? (
                           getSelectedUsers().map((u, i) => (
-                            <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md text-[10px] font-bold border border-blue-200">
-                              {u}
+                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md text-[10px] font-bold border border-blue-200">
+                              <span>{u}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleUser(u);
+                                }}
+                                className="hover:text-rose-600 transition cursor-pointer"
+                                title="Remove user"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </button>
                             </span>
                           ))
                         ) : (
                           <span className="text-slate-400 italic">Select executor(s)...</span>
                         )}
                       </div>
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
+                      <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
                     </div>
 
                     {isUserDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 max-h-56 overflow-y-auto space-y-1">
-                        <div className="relative mb-2">
-                          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                          <input
-                            type="text"
-                            value={userSearchTerm}
-                            onChange={(e) => setUserSearchTerm(e.target.value)}
-                            placeholder="Search active users..."
-                            className="w-full pl-8 pr-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-blue-500"
-                          />
-                        </div>
+                        {!editFormData.department ? (
+                          <div className="text-center py-4 px-2 text-xs text-amber-600 font-medium bg-amber-50 rounded-lg">
+                            Please select a Department from the dropdown above to view available executors
+                          </div>
+                        ) : (
+                          <>
+                            <div className="relative mb-2">
+                              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                              <input
+                                type="text"
+                                value={userSearchTerm}
+                                onChange={(e) => setUserSearchTerm(e.target.value)}
+                                placeholder={`Search ${editFormData.department} users...`}
+                                className="w-full pl-8 pr-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-blue-500"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
 
-                        {getDepartmentUsers(editFormData.department)
-                          .filter(u => (u.name || '').toLowerCase().includes(userSearchTerm.toLowerCase()))
-                          .map((u) => {
-                            const isSelected = getSelectedUsers().includes(u.name);
-                            return (
-                              <div
-                                key={u.id}
-                                onClick={() => handleToggleUser(u.name)}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition ${
-                                  isSelected ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                                }`}
-                              >
-                                <span>{u.name} ({u.department || 'General'})</span>
-                                {isSelected && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                            {getDepartmentUsers(editFormData.department)
+                              .filter(u => (u.name || '').toLowerCase().includes(userSearchTerm.toLowerCase()))
+                              .map((u) => {
+                                const isSelected = getSelectedUsers().includes(u.name);
+                                return (
+                                  <div
+                                    key={u.id || u.name}
+                                    onClick={() => handleToggleUser(u.name)}
+                                    className={`px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition ${
+                                      isSelected ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                                    }`}
+                                  >
+                                    <span>{u.name} ({u.department || editFormData.department})</span>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                                  </div>
+                                );
+                              })}
+
+                            {getDepartmentUsers(editFormData.department).filter(u => (u.name || '').toLowerCase().includes(userSearchTerm.toLowerCase())).length === 0 && (
+                              <div className="text-center py-3 text-xs text-slate-400 italic">
+                                No active users found in {editFormData.department}
                               </div>
-                            );
-                          })}
+                            )}
+                          </>
+                        )}
                       </div>
+                    )}
+                    {editErrors.executor && (
+                      <p className="text-[11px] text-rose-500 font-semibold mt-1">* {editErrors.executor}</p>
                     )}
                   </div>
                 </div>
@@ -1186,51 +1270,50 @@ const ProcessAuditRequestDetailsModal = ({
               </div>
 
               {/* 3. ATTACHMENTS (EDITABLE) */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  AUDIT EVIDENCE ATTACHMENTS
-                </label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    AUDIT EVIDENCE ATTACHMENTS
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">Click any attachment to preview or download</span>
+                </div>
+
                 {editAttachments.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {editAttachments.map((att, idx) => (
-                      <div
-                        key={idx}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-xs font-medium"
-                      >
-                        <Paperclip className="w-3.5 h-3.5" />
-                        <span className="truncate max-w-[200px]">{att.name || att.filename || `File-${idx + 1}`}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExistingAttachment(idx)}
-                          className="text-blue-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
-                          title="Remove file"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Paperclip className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Existing Evidence Files ({editAttachments.length})</span>
+                    </div>
+                    <AttachmentChipList
+                      attachments={editAttachments}
+                      onPreview={(att) => setPreviewAttachment(att)}
+                      onRemove={(idx) => handleRemoveExistingAttachment(idx)}
+                    />
                   </div>
                 )}
 
                 {newFiles.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {newFiles.map((file, idx) => (
-                      <div
-                        key={idx}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span className="truncate max-w-[200px]">{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveNewFile(idx)}
-                          className="text-emerald-400 hover:text-rose-600 p-0.5 rounded cursor-pointer"
-                          title="Remove file"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>New Files To Upload ({newFiles.length})</span>
+                    </div>
+                    <AttachmentChipList
+                      attachments={newFiles.map(f => ({
+                        name: f.name,
+                        file: f,
+                        type: f.name.split('.').pop() || '',
+                        size: f.size
+                      }))}
+                      onPreview={(att) => setPreviewAttachment(att)}
+                      onRemove={(idx) => handleRemoveNewFile(idx)}
+                    />
+                  </div>
+                )}
+
+                {editAttachments.length === 0 && newFiles.length === 0 && (
+                  <div className="p-3 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
+                    No audit evidence attachments uploaded yet
                   </div>
                 )}
 
@@ -1241,6 +1324,7 @@ const ProcessAuditRequestDetailsModal = ({
                     type="file"
                     multiple
                     className="hidden"
+                    accept="image/*,.pdf,.xlsx,.xls,.csv,.doc,.docx"
                     onChange={handleNewFilesSelect}
                   />
                 </label>

@@ -89,6 +89,14 @@ export const createRequest = async (req, res) => {
   try {
     const requestData = { ...req.body };
 
+    if (requestData.escalation_date) {
+      const escStr = String(requestData.escalation_date).split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (escStr > todayStr) {
+        return errorResponse(res, 'Escalation Date cannot be a future date. Please select today or a past date.', 400);
+      }
+    }
+
     // If attachments were sent as a JSON string (e.g. from multipart form)
     let parsedAttachments = [];
     if (requestData.attachments) {
@@ -117,12 +125,14 @@ export const createRequest = async (req, res) => {
     requestData.created_by = requestData.created_by || req.user?.name || req.user?.email || null;
     requestData.created_by_id = requestData.created_by_id || req.user?.id || null;
 
-    // Verify department authorization: Only INCOMING QUALITY department (or Admin) can create requests
-    const creatorId = requestData.created_by_id || req.user?.id;
-    if (creatorId || requestData.created_by) {
+    // Verify department authorization: Authenticated user must be from INCOMING QUALITY or ADMIN
+    const authUserId = req.user?.id || requestData.created_by_id;
+    const authUserEmail = req.user?.email || null;
+    const authUserName = req.user?.name || null;
+    if (authUserId || authUserEmail || authUserName) {
       const [uRows] = await pool.query(
-        'SELECT department, role FROM users WHERE id = ? OR LOWER(name) = LOWER(?) OR LOWER(email) = LOWER(?) LIMIT 1',
-        [creatorId || 0, requestData.created_by || '', requestData.created_by || '']
+        'SELECT department, role FROM users WHERE id = ? OR (email IS NOT NULL AND LOWER(email) = LOWER(?)) OR (name IS NOT NULL AND LOWER(name) = LOWER(?)) LIMIT 1',
+        [authUserId || 0, authUserEmail || '', authUserName || '']
       );
       if (uRows.length > 0) {
         const uDept = (uRows[0].department || '').trim().toUpperCase();
@@ -494,6 +504,14 @@ export const updateRequest = async (req, res) => {
   try {
     const { id } = req.params;
     const body = req.body || {};
+
+    if (body.escalation_date) {
+      const escStr = String(body.escalation_date).split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (escStr > todayStr) {
+        return errorResponse(res, 'Escalation Date cannot be a future date. Please select today or a past date.', 400);
+      }
+    }
 
     let parsedAttachments = undefined;
     if (body.attachments !== undefined) {

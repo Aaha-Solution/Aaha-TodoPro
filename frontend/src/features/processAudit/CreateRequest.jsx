@@ -70,6 +70,7 @@ const CreateRequest = () => {
 
   const defaultFormData = {
     requestId: 'PA-1',
+    created_by: '',
     date: getTodayDate(),
     product: '',
     model: '',
@@ -102,11 +103,12 @@ const CreateRequest = () => {
 
   const [formData, setFormData] = useState(() => {
     const saved = getSavedDraft();
+    const todayStr = getTodayDate();
     if (saved?.formData) {
       return {
         ...defaultFormData,
         ...saved.formData,
-        date: saved.formData.date || getTodayDate(),
+        date: (saved.formData.date && saved.formData.date <= todayStr) ? saved.formData.date : todayStr,
       };
     }
     return defaultFormData;
@@ -125,6 +127,7 @@ const CreateRequest = () => {
     if (saved?.formData) {
       const d = saved.formData;
       return Boolean(
+        d.created_by ||
         d.product ||
         d.model ||
         d.processOperation ||
@@ -465,14 +468,25 @@ const CreateRequest = () => {
   const savedUser = storage.getUser();
   const currentUser = user || savedUser;
 
-  const currentCreator = currentUser?.name || currentUser?.email || (() => {
-    try {
-      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
-      return u ? JSON.parse(u)?.name || JSON.parse(u)?.email : '';
-    } catch {
-      return '';
-    }
-  })();
+  const getLoggedInUserName = () => {
+    return (
+      currentUser?.name ||
+      (() => {
+        try {
+          const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+          return u ? JSON.parse(u)?.name : '';
+        } catch {
+          return '';
+        }
+      })() ||
+      currentUser?.email ||
+      'Admin'
+    );
+  };
+
+  const currentCreator = (formData.created_by && formData.created_by.trim())
+    ? formData.created_by.trim()
+    : getLoggedInUserName();
 
   const currentDept = (currentUser?.department || (() => {
     try {
@@ -506,8 +520,15 @@ const CreateRequest = () => {
 
     const newErrors = {};
 
+    if (formData.created_by && /\d/.test(formData.created_by)) {
+      newErrors.created_by = 'Created By must contain text only, numbers are not allowed';
+    }
+
+    const todayDateStr = getTodayDate();
     if (!formData.date || !formData.date.trim()) {
       newErrors.date = 'Escalation Date is required';
+    } else if (formData.date > todayDateStr) {
+      newErrors.date = 'Escalation Date cannot be a future date. Please select today or a past date.';
     }
     if (!formData.product || !formData.product.trim()) {
       newErrors.product = 'Product is required';
@@ -584,7 +605,10 @@ const CreateRequest = () => {
       ? formData.requestId
       : `PA-${formData.requestId || '1'}`;
 
-    const creatorName = currentCreator;
+    const loggedInPersonName = getLoggedInUserName();
+    const creatorName = (formData.created_by && formData.created_by.trim())
+      ? formData.created_by.trim()
+      : loggedInPersonName;
 
     const payload = {
       issue_no: formattedIssueNo,
@@ -602,6 +626,7 @@ const CreateRequest = () => {
       attachments: finalAttachments,
       created_by: creatorName,
       created_by_id: user?.id || null,
+      created_by_email: user?.email || null,
     };
 
     try {
@@ -773,6 +798,50 @@ const CreateRequest = () => {
                 <span className="text-[10px] text-slate-400 mt-1 block">Unique sequential tracking ID</span>
               </div>
 
+              {/* Created By (Manual entry by user - Text only) */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center">
+                    <span>CREATED BY</span>
+                    <span className="text-slate-400 font-normal lowercase ml-1.5 text-[10px]">(optional)</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-normal uppercase truncate max-w-[200px]" title={`Defaults to: ${getLoggedInUserName()}`}>
+                    DEFAULTS TO: <strong className="text-slate-600 font-bold">{getLoggedInUserName().toUpperCase()}</strong>
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  placeholder={`e.g. Leave empty to attach ${getLoggedInUserName()}`}
+                  value={formData.created_by || ''}
+                  onKeyDown={(e) => {
+                    if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                      e.preventDefault();
+                      setErrors((prev) => ({ ...prev, created_by: 'Only text / letters allowed, numbers are not allowed' }));
+                    }
+                  }}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const cleaned = raw.replace(/[0-9]/g, '');
+                    setFormData({ ...formData, created_by: cleaned });
+                    if (/\d/.test(raw)) {
+                      setErrors((prev) => ({ ...prev, created_by: 'Only text / letters allowed, numbers are not allowed' }));
+                    } else if (errors.created_by) {
+                      setErrors((prev) => ({ ...prev, created_by: false }));
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-semibold text-slate-900 outline-none transition ${
+                    errors.created_by
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
+                      : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
+                />
+                {errors.created_by && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <span>* {errors.created_by}</span>
+                  </p>
+                )}
+              </div>
+
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                   <span className="flex items-center">
@@ -783,9 +852,17 @@ const CreateRequest = () => {
                 </label>
                 <DateInput
                   value={formData.date || ''}
+                  max={getTodayDate()}
                   onChange={(e) => {
-                    setFormData({ ...formData, date: e.target.value });
-                    if (errors.date && e.target.value) {
+                    const val = e.target.value;
+                    const today = getTodayDate();
+                    setFormData({ ...formData, date: val });
+                    if (val && val > today) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        date: 'Escalation Date cannot be a future date. Please select today or a past date.',
+                      }));
+                    } else if (errors.date && val) {
                       setErrors((prev) => ({ ...prev, date: false }));
                     }
                   }}
@@ -802,6 +879,41 @@ const CreateRequest = () => {
                 )}
               </div>
 
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                  <span>Shift</span>
+                  <span className="text-red-500 font-bold ml-1">*</span>
+                </label>
+                <select
+                  value={formData.shift}
+                  onChange={(e) => {
+                    setFormData({ ...formData, shift: e.target.value });
+                    if (errors.shift && e.target.value) {
+                      setErrors((prev) => ({ ...prev, shift: false }));
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium outline-none transition cursor-pointer ${
+                    errors.shift
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
+                      : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
+                >
+                  <option value="">Select Shift</option>
+                  <option value="Morning (06:00 - 14:30)">Morning (06:30 - 03:00)</option>
+                  <option value="Evening (14:30 - 22:30)">Evening (03:00 - 11:30)</option>
+                  <option value="Night (22:30 - 06:00)">Night (11:30 - 06:00)</option>
+                  <option value="General (08:30 - 17:00)">General (08:30 - 05:00)</option>
+                </select>
+                {errors.shift && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <span>* {errors.shift}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Row 2 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                   <span>Product</span>
@@ -866,10 +978,7 @@ const CreateRequest = () => {
                   </p>
                 )}
               </div>
-            </div>
 
-            {/* Row 2 */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                   <span>Process / Operation</span>
@@ -897,37 +1006,7 @@ const CreateRequest = () => {
                   </p>
                 )}
               </div>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
-                  <span>Shift</span>
-                  <span className="text-red-500 font-bold ml-1">*</span>
-                </label>
-                <select
-                  value={formData.shift}
-                  onChange={(e) => {
-                    setFormData({ ...formData, shift: e.target.value });
-                    if (errors.shift && e.target.value) {
-                      setErrors((prev) => ({ ...prev, shift: false }));
-                    }
-                  }}
-                  className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium outline-none transition cursor-pointer ${
-                    errors.shift
-                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
-                      : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                  }`}
-                >
-                  <option value="">Select Shift</option>
-                  <option value="Morning (06:00 - 14:30)">Morning (06:30 - 03:00)</option>
-                  <option value="Evening (14:30 - 22:30)">Evening (03:00 - 11:30)</option>
-                  <option value="Night (22:30 - 06:00)">Night (11:30 - 06:00)</option>
-                  <option value="General (08:30 - 17:00)">General (08:30 - 05:00)</option>
-                </select>
-                {errors.shift && (
-                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                    <span>* {errors.shift}</span>
-                  </p>
-                )}
-              </div>
+
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                   <span>Issue Type</span>
@@ -957,6 +1036,10 @@ const CreateRequest = () => {
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Row 3 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                   <span>Priority</span>
@@ -988,10 +1071,9 @@ const CreateRequest = () => {
                   </p>
                 )}
               </div>
-
             </div>
 
-            {/* Row 3 */}
+            {/* Row 4 - Issue / Observation */}
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                 <span>Issue / Observation</span>

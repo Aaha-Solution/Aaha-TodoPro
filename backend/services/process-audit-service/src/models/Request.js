@@ -318,8 +318,8 @@ export const ProcessAuditRequest = {
     const allowedFields = [
       'issue_no', 'escalation_date', 'product', 'model', 'process_operation',
       'shift', 'issue_type', 'priority', 'issue_observation', 'attachments',
-      'department', 'executor', 'comments', 'status', 'root_cause',
-      'corrective_action', 'action_attachments', 'standardization_details',
+      'department', 'executor', 'comments', 'status', 'created_by', 'created_by_id',
+      'root_cause', 'corrective_action', 'action_attachments', 'standardization_details',
       'target_date', 'action_taken_by', 'approved_by', 'approved_by_id',
       'approved_by_email', 'creator_remark', 'closed_by', 'closed_by_id',
       'rejection_reason', 'reassignment_history'
