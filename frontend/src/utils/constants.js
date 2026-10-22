@@ -7,6 +7,7 @@ export const ROLES = {
 };
 
 export const DEPARTMENTS = [
+  'QAD',
   'MAINTENANCE',
   'PRODUCTION',
   'PED',

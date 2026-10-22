@@ -152,11 +152,11 @@ const UserManagement = () => {
   };
 
   const handleDepartmentChange = (newDept) => {
-    const isIncomingQuality = (newDept || '').trim().toUpperCase() === 'INCOMING QUALITY';
+    const isQad = (newDept || '').trim().toUpperCase() === 'QAD';
     setFormData((prev) => ({
       ...prev,
       department: newDept,
-      role: isIncomingQuality ? 'ADMIN' : 'USER',
+      role: isQad ? 'ADMIN' : 'USER',
     }));
   };
 
@@ -165,16 +165,16 @@ const UserManagement = () => {
     setFormData((prev) => ({
       ...prev,
       role: newRole,
-      department: isAdmin ? 'INCOMING QUALITY' : (prev.department === 'INCOMING QUALITY' ? 'PRODUCTION' : prev.department),
+      department: isAdmin ? 'QAD' : (prev.department === 'QAD' ? 'PRODUCTION' : prev.department),
     }));
   };
 
   const handleEditDepartmentChange = (newDept) => {
-    const isIncomingQuality = (newDept || '').trim().toUpperCase() === 'INCOMING QUALITY';
+    const isQad = (newDept || '').trim().toUpperCase() === 'QAD';
     setEditingUser((prev) => ({
       ...prev,
       department: newDept,
-      role: isIncomingQuality ? 'ADMIN' : 'USER',
+      role: isQad ? 'ADMIN' : 'USER',
     }));
   };
 
@@ -183,7 +183,7 @@ const UserManagement = () => {
     setEditingUser((prev) => ({
       ...prev,
       role: newRole,
-      department: isAdmin ? 'INCOMING QUALITY' : (prev.department === 'INCOMING QUALITY' ? 'PRODUCTION' : prev.department),
+      department: isAdmin ? 'QAD' : (prev.department === 'QAD' ? 'PRODUCTION' : prev.department),
     }));
   };
 
@@ -445,8 +445,8 @@ const UserManagement = () => {
     }
   })() || '').trim().toUpperCase();
 
-  const isIncomingQuality = userDept === 'INCOMING QUALITY';
-  const isAdmin = currentAuthUser?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
+  const isQad = userDept === 'QAD';
+  const isAdmin = currentAuthUser?.role?.toUpperCase() === 'ADMIN' || isQad;
 
   // Helper to convert public image assets to Base64 for jsPDF embedding
   const getBase64ImageFromUrl = async (imageUrl) => {

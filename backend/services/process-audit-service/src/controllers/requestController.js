@@ -29,7 +29,7 @@ export const getAllRequests = async (req, res) => {
 
     const userRole = (role || tokenUser?.role || req.user?.role || '').trim().toUpperCase();
     const userDept = (req.query.user_department || req.query.department_user || tokenUser?.department || req.user?.department || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+    const isAdmin = userRole === 'ADMIN' || userDept === 'QAD';
     const isDashboardScope = scope === 'dashboard' || is_dashboard === 'true' || all === 'true';
 
     const filters = {};
@@ -37,10 +37,10 @@ export const getAllRequests = async (req, res) => {
     const targetDept = (req.query.filter_dept || req.query.filterDept || (department && department.trim().toUpperCase() !== 'ALL' ? department.trim() : '')).trim();
 
     let effectiveDept = null;
-    if (!isAdmin && userDept && userDept !== 'INCOMING QUALITY') {
+    if (!isAdmin && userDept && userDept !== 'QAD') {
       effectiveDept = userDept;
     } else if (targetDept && targetDept.toUpperCase() !== 'ALL') {
-      if (isAdmin && userDept === 'INCOMING QUALITY' && targetDept.toUpperCase() === 'INCOMING QUALITY' && !req.query.filter_dept) {
+      if (isAdmin && userDept === 'QAD' && targetDept.toUpperCase() === 'QAD' && !req.query.filter_dept) {
         effectiveDept = null;
       } else {
         effectiveDept = targetDept;
@@ -125,7 +125,7 @@ export const createRequest = async (req, res) => {
     requestData.created_by = requestData.created_by || req.user?.name || req.user?.email || null;
     requestData.created_by_id = requestData.created_by_id || req.user?.id || null;
 
-    // Verify department authorization: Authenticated user must be from INCOMING QUALITY or ADMIN
+    // Verify department authorization: Authenticated user must be from QAD or ADMIN
     const authUserId = req.user?.id || requestData.created_by_id;
     const authUserEmail = req.user?.email || null;
     const authUserName = req.user?.name || null;
@@ -137,10 +137,10 @@ export const createRequest = async (req, res) => {
       if (uRows.length > 0) {
         const uDept = (uRows[0].department || '').trim().toUpperCase();
         const uRole = (uRows[0].role || '').trim().toUpperCase();
-        if (uRole !== 'ADMIN' && uDept !== 'INCOMING QUALITY') {
+        if (uRole !== 'ADMIN' && uDept !== 'QAD') {
           return errorResponse(
             res,
-            'Access Denied: Only personnel from the INCOMING QUALITY department are authorized to create Process Audit requests.',
+            'Access Denied: Only personnel from the QAD department are authorized to create Process Audit requests.',
             403
           );
         }
@@ -402,13 +402,13 @@ export const reassignRequest = async (req, res) => {
       return errorResponse(res, 'New department and new executor are required for reassignment', 400);
     }
 
-    // Verify department authorization: Only INCOMING QUALITY or ADMIN can reassign
+    // Verify department authorization: Only QAD or ADMIN can reassign
     const userId = req.user?.id || body.reassigned_by_id;
     const userName = req.user?.name || body.reassigned_by;
     const userRole = (req.user?.role || body.role || '').toUpperCase();
     const userDept = (req.user?.department || body.user_department || '').toUpperCase();
 
-    let isAuthorized = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY' || userDept.includes('INCOMING');
+    let isAuthorized = userRole === 'ADMIN' || userDept === 'QAD';
     if (!isAuthorized && (userId || userName)) {
       const [uRows] = await pool.query(
         'SELECT department, role FROM users WHERE id = ? OR LOWER(name) = LOWER(?) LIMIT 1',
@@ -417,7 +417,7 @@ export const reassignRequest = async (req, res) => {
       if (uRows.length > 0) {
         const uD = (uRows[0].department || '').trim().toUpperCase();
         const uR = (uRows[0].role || '').trim().toUpperCase();
-        if (uR === 'ADMIN' || uD === 'INCOMING QUALITY' || uD.includes('INCOMING')) {
+        if (uR === 'ADMIN' || uD === 'QAD') {
           isAuthorized = true;
         }
       }
@@ -426,7 +426,7 @@ export const reassignRequest = async (req, res) => {
     if (!isAuthorized) {
       return errorResponse(
         res,
-        'Access Denied: Only personnel from INCOMING QUALITY or ADMIN are authorized to reassign requests.',
+        'Access Denied: Only personnel from QAD or ADMIN are authorized to reassign requests.',
         403
       );
     }

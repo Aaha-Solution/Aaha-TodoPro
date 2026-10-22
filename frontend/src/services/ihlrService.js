@@ -41,11 +41,11 @@ export const ihlrService = {
     } catch {
       let scopedStore = [...localIhlrStore];
       const currentUser = storage.getUser();
-      const isUserAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.department?.toUpperCase() === 'INCOMING QUALITY';
+      const isUserAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.department?.toUpperCase() === 'QAD';
       const userDept = (currentUser?.department || '').trim().toUpperCase();
 
       // Apply department filter (lock to user department if not admin)
-      const deptFilter = (!isUserAdmin && userDept && userDept !== 'INCOMING QUALITY')
+      const deptFilter = (!isUserAdmin && userDept && userDept !== 'QAD')
         ? userDept
         : (filters.resp || filters.filter_dept || '').trim().toUpperCase();
 
@@ -178,7 +178,7 @@ export const ihlrService = {
         };
       });
 
-      const standardDepts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY'];
+      const standardDepts = ['QAD', 'PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY'];
       const departmentBreakdown = standardDepts.map(dept => {
         const dReqs = scopedStore.filter(r => (r.resp || '').trim().toUpperCase() === dept);
         return {
@@ -252,10 +252,10 @@ export const ihlrService = {
     } catch {
       let data = [...localIhlrStore];
       const currentUser = storage.getUser();
-      const isUserAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.department?.toUpperCase() === 'INCOMING QUALITY';
+      const isUserAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.department?.toUpperCase() === 'QAD';
       const userDept = (currentUser?.department || '').trim().toUpperCase();
 
-      const deptFilter = (!isUserAdmin && userDept && userDept !== 'INCOMING QUALITY')
+      const deptFilter = (!isUserAdmin && userDept && userDept !== 'QAD')
         ? userDept
         : (filters.resp || filters.filter_dept || '').trim().toUpperCase();
 

@@ -104,7 +104,7 @@ export const ProcessAuditBarChart = ({
     }
 
     if (activeTab === 'department') {
-      const defaultDepts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY'];
+      const defaultDepts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY', 'QAD'];
       if (hasRequests) {
         const foundDepts = requests.map((r) => (r.department || '').trim().toUpperCase()).filter(Boolean);
         const unique = Array.from(new Set([...defaultDepts, ...foundDepts]));

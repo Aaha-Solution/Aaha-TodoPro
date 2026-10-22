@@ -33,6 +33,7 @@ import DateInput from '../../components/common/DateInput';
 import { storage } from '../../utils/storage';
 
 const DEFAULT_DEPARTMENTS = [
+  'QAD',
   'PRODUCTION',
   'MAINTENANCE',
   'PED',
@@ -506,15 +507,15 @@ const CreateRequest = () => {
     }
   })() || '').trim().toUpperCase();
 
-  const isIncomingQuality = currentDept.toUpperCase() === 'INCOMING QUALITY';
-  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
-  const canCreate = isIncomingQuality || isAdmin;
+  const isQad = currentDept.toUpperCase() === 'QAD';
+  const isAdmin = userRole === 'ADMIN' || isQad;
+  const canCreate = isQad || isAdmin;
 
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
     if (!canCreate) {
-      warning('Only members of the Incoming Quality department can create new requests.');
+      warning('Only members of the QAD department can create new requests.');
       return;
     }
 
@@ -658,7 +659,7 @@ const CreateRequest = () => {
     }
   };
 
-  // If user is not from INCOMING QUALITY, display restricted authorization notice
+  // If user is not from QAD, display restricted authorization notice
   if (!canCreate) {
     return (
       <div className="space-y-6 w-full pb-12">
@@ -683,7 +684,7 @@ const CreateRequest = () => {
           <p className="text-sm text-slate-600 mb-6 leading-relaxed">
             In <strong>Process Audit Observation</strong>, only personnel from the{' '}
             <span className="font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 inline-block my-1">
-              INCOMING QUALITY
+              QAD
             </span>{' '}
             department are authorized to create new production audit requests.
           </p>
@@ -739,7 +740,7 @@ const CreateRequest = () => {
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-400 font-semibold uppercase">Created By</span>
                 <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  {currentDept || 'INCOMING QUALITY'}
+                  {currentDept || 'QAD'}
                 </span>
               </div>
               <span className="font-bold text-slate-800">{currentCreator}</span>

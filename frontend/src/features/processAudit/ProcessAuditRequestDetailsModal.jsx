@@ -52,6 +52,7 @@ import { processAuditService } from '../../services/processAuditService';
  * - Universal Export to Excel (.xlsx) & PDF (.pdf) with company branding & attachments
  */
 const DEFAULT_DEPARTMENTS = [
+  'QAD',
   'PRODUCTION',
   'MAINTENANCE',
   'PED',
@@ -80,8 +81,8 @@ const ProcessAuditRequestDetailsModal = ({
   })() || '').trim().toUpperCase();
 
   const userRole = (user?.role || '').trim().toUpperCase();
-  const isIncomingQuality = userDept === 'INCOMING QUALITY';
-  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
+  const isQad = userDept === 'QAD';
+  const isAdmin = userRole === 'ADMIN' || isQad;
 
   const [localRequest, setLocalRequest] = useState(request);
   const [activeTab, setActiveTab] = useState('requester'); // 'requester' | 'closer'

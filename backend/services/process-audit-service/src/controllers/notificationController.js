@@ -45,7 +45,7 @@ export const getNotifications = async (req, res) => {
     const userEmail = (req.query.user_email || req.query.email || req.user?.email || '').trim().toLowerCase();
     const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
     const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'INCOMING QUALITY' || userName.toLowerCase().includes('admin');
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'QAD' || userName.toLowerCase().includes('admin');
 
     // Auto-sync any unnotified assigned pending requests from process_audit_requests
     await pool.query(`
@@ -305,7 +305,7 @@ export const markAllAsRead = async (req, res) => {
     const userEmail = (req.body?.user_email || req.query.user_email || req.user?.email || '').trim().toLowerCase();
     const userRole = (req.body?.role || req.query.role || req.user?.role || '').trim().toUpperCase();
     const userDept = (req.body?.department || req.query.department || req.user?.department || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'INCOMING QUALITY' || userName.toLowerCase().includes('admin');
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'QAD' || userName.toLowerCase().includes('admin');
 
     if (pool) {
       if (isAdmin) {

@@ -18,15 +18,15 @@ export const getDashboardMetrics = async (req, res) => {
     }
     const userRole = (req.query.role || tokenUser?.role || req.user?.role || '').trim().toUpperCase();
     const userDept = (req.query.user_department || req.query.department_user || tokenUser?.department || req.user?.department || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+    const isAdmin = userRole === 'ADMIN' || userDept === 'QAD';
 
     const targetDept = (req.query.filter_dept || req.query.filterDept || (department && department.trim().toUpperCase() !== 'ALL' ? department.trim() : '')).trim();
 
     let effectiveDept = null;
-    if (!isAdmin && userDept && userDept !== 'INCOMING QUALITY') {
+    if (!isAdmin && userDept && userDept !== 'QAD') {
       effectiveDept = userDept;
     } else if (targetDept && targetDept.toUpperCase() !== 'ALL') {
-      if (isAdmin && userDept === 'INCOMING QUALITY' && targetDept.toUpperCase() === 'INCOMING QUALITY' && !req.query.filter_dept) {
+      if (isAdmin && userDept === 'QAD' && targetDept.toUpperCase() === 'QAD' && !req.query.filter_dept) {
         effectiveDept = null;
       } else {
         effectiveDept = targetDept;
@@ -152,7 +152,7 @@ export const getDashboardMetrics = async (req, res) => {
     });
 
     // 2. Department Breakdown List
-    const standardDepts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY'];
+    const standardDepts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY', 'QAD'];
     const existingDepts = (chartRows || []).map(r => (r.department || '').trim().toUpperCase()).filter(Boolean);
     const uniqueDepts = Array.from(new Set([...standardDepts, ...existingDepts]));
     const departmentBreakdownList = uniqueDepts.map(dept => {

@@ -16,8 +16,8 @@ export const isIhlrRequestVisibleToUser = (request, user) => {
   const userRole = (user.role || '').trim().toUpperCase();
   const userDept = (user.department || '').trim().toUpperCase();
 
-  // Admin & Incoming Quality have universal plant-wide access
-  if (userRole === 'ADMIN' || userDept === 'INCOMING QUALITY') {
+  // Admin & QAD have universal plant-wide access
+  if (userRole === 'ADMIN' || userDept === 'QAD') {
     return true;
   }
 

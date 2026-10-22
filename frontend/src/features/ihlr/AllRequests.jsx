@@ -55,9 +55,9 @@ const IhlrAllRequests = () => {
   })() || '').trim().toUpperCase();
 
   const userRole = (user?.role || '').trim().toUpperCase();
-  const isIncomingQuality = userDept === 'INCOMING QUALITY';
-  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
-  const canCreate = isIncomingQuality || isAdmin;
+  const isQad = userDept === 'QAD';
+  const isAdmin = userRole === 'ADMIN' || isQad;
+  const canCreate = isQad || isAdmin;
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);

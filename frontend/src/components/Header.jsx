@@ -31,8 +31,8 @@ const Header = ({ toggleSidebar }) => {
     }
   })() || '').trim().toUpperCase();
 
-  const isIncomingQuality = userDept === 'INCOMING QUALITY';
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
+  const isQad = userDept === 'QAD';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isQad;
 
   const currentUserName = user?.name || (() => {
     try {

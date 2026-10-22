@@ -137,7 +137,7 @@ export const IhlrBarChart = ({
     if (activeTab === 'department') {
       const list = stats.departmentBreakdown || [];
       if (list.length > 0) return list.map(item => ({ key: item.department, label: item.department, ...item }));
-      const depts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY'];
+      const depts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY', 'QAD'];
       return depts.map(d => ({ key: d, label: d, total: 0, open: 0, inProgress: 0, closed: 0 }));
     }
 

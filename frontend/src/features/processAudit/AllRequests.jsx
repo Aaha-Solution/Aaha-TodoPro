@@ -61,9 +61,9 @@ const AllRequests = () => {
     }
   })() || '').trim().toUpperCase();
 
-  const isIncomingQuality = currentDept.toUpperCase() === 'INCOMING QUALITY';
-  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
-  const canEdit = isIncomingQuality || isAdmin;
+  const isQad = currentDept.toUpperCase() === 'QAD';
+  const isAdmin = userRole === 'ADMIN' || isQad;
+  const canEdit = isQad || isAdmin;
 
   const [searchParams] = useSearchParams();
   const queryRequestId = searchParams.get('requestId') || searchParams.get('id');
@@ -134,6 +134,7 @@ const AllRequests = () => {
 
   const departmentList = Array.from(
     new Set([
+      'QAD',
       'PRODUCTION',
       'MAINTENANCE',
       'PED',

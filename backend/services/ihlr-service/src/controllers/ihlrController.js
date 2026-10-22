@@ -72,12 +72,12 @@ export const getDashboardStats = async (req, res) => {
 
     const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
     const userDept = (req.query.user_department || req.user?.department || (req.query.filter_dept || req.query.resp ? '' : req.query.department) || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+    const isAdmin = userRole === 'ADMIN' || userDept === 'QAD';
 
     // 1. Department-wise filter:
     // If user is not admin/quality, strictly lock scope to their own department (e.g. PRODUCTION)
     let effectiveDept = null;
-    if (!isAdmin && userDept && userDept !== 'INCOMING QUALITY') {
+    if (!isAdmin && userDept && userDept !== 'QAD') {
       effectiveDept = userDept;
     } else {
       const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
@@ -291,9 +291,9 @@ export const getDashboardStats = async (req, res) => {
     });
 
     // 2. Department Breakdown (for non-admins, show only their department; for admins show standard set)
-    const standardDepts = (!isAdmin && userDept && userDept !== 'INCOMING QUALITY')
+    const standardDepts = (!isAdmin && userDept && userDept !== 'QAD')
       ? [userDept]
-      : ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY'];
+      : ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY', 'QAD'];
     const existingDepts = requests.map(r => (r.resp || '').trim().toUpperCase()).filter(Boolean);
     const uniqueDepts = Array.from(new Set([...standardDepts, ...existingDepts]));
     const departmentBreakdown = uniqueDepts.map(dept => {
@@ -499,10 +499,10 @@ export const getIhlrRequests = async (req, res) => {
     // Department filter (resp / filter_dept)
     const reqRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
     const reqDept = (req.query.user_department || req.user?.department || (req.query.filter_dept || req.query.resp ? '' : req.query.department) || '').trim().toUpperCase();
-    const isReqAdmin = reqRole === 'ADMIN' || reqDept === 'INCOMING QUALITY';
+    const isReqAdmin = reqRole === 'ADMIN' || reqDept === 'QAD';
 
     let effectiveDept = null;
-    if (!isReqAdmin && reqDept && reqDept !== 'INCOMING QUALITY') {
+    if (!isReqAdmin && reqDept && reqDept !== 'QAD') {
       effectiveDept = reqDept;
     } else {
       const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
@@ -586,9 +586,9 @@ export const createIhlrRequest = async (req, res) => {
     if (!creatorUser) {
       creatorUser = {
         id: data.created_by_id || req.user?.id || null,
-        name: data.created_by || data.analysis_done_by || req.user?.name || 'Incoming Quality Admin',
+        name: data.created_by || data.analysis_done_by || req.user?.name || 'QAD Admin',
         email: data.created_by_email || req.user?.email || 'quality@inel.co.in',
-        department: 'INCOMING QUALITY'
+        department: req.user?.department || 'QAD'
       };
     }
 
@@ -788,7 +788,7 @@ export const updateIhlrRequest = async (req, res) => {
     const clean = (val) => (val || '').trim().toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s+/i, '');
     const userRole = (req.user?.role || req.body?.user?.role || req.body?.role || '').toUpperCase();
     const userDept = (req.user?.department || req.body?.user?.department || req.body?.department || '').toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+    const isAdmin = userRole === 'ADMIN' || userDept === 'QAD';
     const userName = clean(req.user?.name || req.body?.user?.name || req.body?.user_name);
     const userEmail = clean(req.user?.email || req.body?.user?.email || req.body?.user_email);
     const userId = req.user?.id ? String(req.user.id) : (req.body?.user?.id ? String(req.body.user.id) : null);
@@ -1086,7 +1086,7 @@ export const updateIhlrRequest = async (req, res) => {
         // Fetch Quality Admin users from DB
         let adminUsers = [];
         const [aRows] = await pool.query(
-          "SELECT id, name, email FROM users WHERE UPPER(role) = 'ADMIN' OR UPPER(department) = 'INCOMING QUALITY'"
+          "SELECT id, name, email FROM users WHERE UPPER(role) = 'ADMIN' OR UPPER(department) = 'QAD'"
         ).catch(() => [[]]);
         if (aRows && aRows.length > 0) {
           adminUsers = aRows;
@@ -1471,7 +1471,7 @@ export const getIhlrNotifications = async (req, res) => {
     const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
 
     const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+    const isAdmin = userRole === 'ADMIN' || userDept === 'QAD';
 
     let notifRows = [];
     if (pool) {
@@ -1610,7 +1610,7 @@ export const getIhlrNotifications = async (req, res) => {
         badgeLabel = 'REPORT LOGGED';
         accentColor = 'blue';
         footerFlag = 'SYSTEM_LOGS';
-        dept = 'INCOMING QUALITY';
+        dept = 'QAD';
       } else if (isClosed) {
         badgeLabel = 'CASE CLOSED';
         accentColor = 'emerald';
@@ -1686,7 +1686,7 @@ export const markAllIhlrNotificationsRead = async (req, res) => {
     const userEmail = (req.body?.user_email || req.query.user_email || req.user?.email || '').trim().toLowerCase();
     const userRole = (req.body?.role || req.query.role || req.user?.role || '').trim().toUpperCase();
     const userDept = (req.body?.department || req.query.department || req.user?.department || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY' || userName.toLowerCase().includes('admin');
+    const isAdmin = userRole === 'ADMIN' || userDept === 'QAD' || userName.toLowerCase().includes('admin');
 
     if (pool) {
       if (isAdmin) {

@@ -95,7 +95,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
 
     const userRole = (resolvedUser?.role || '').trim().toUpperCase();
     const userDept = (resolvedUser?.department || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+    const isAdmin = userRole === 'ADMIN' || userDept === 'QAD';
 
     const [apiNotifs, requests] = await Promise.all([
       ihlrService
@@ -350,7 +350,7 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
       userRole === 'ADMIN' ||
       userRole === 'SUPER_ADMIN' ||
       userRole === 'SUPER ADMIN' ||
-      userDept === 'INCOMING QUALITY' ||
+      userDept === 'QAD' ||
       (resolvedUser?.name || '').toLowerCase().includes('admin');
 
     const [apiNotifs, requests] = await Promise.all([

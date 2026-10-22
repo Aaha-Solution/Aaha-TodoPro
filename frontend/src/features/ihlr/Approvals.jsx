@@ -52,7 +52,7 @@ const IhlrApprovals = () => {
   })() || '').trim().toUpperCase();
 
   const userRole = (user?.role || '').trim().toUpperCase();
-  const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
+  const isAdmin = userRole === 'ADMIN' || userDept === 'QAD';
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -216,6 +216,7 @@ const IhlrApprovals = () => {
   }, []);
 
   const STANDARD_DEPTS = [
+    'QAD',
     'PRODUCTION',
     'MAINTENANCE',
     'PED',

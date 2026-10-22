@@ -31,9 +31,9 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   })() || '').trim().toUpperCase();
 
   const isIhlr = location.pathname.startsWith('/ihlr');
-  const isIncomingQuality = userDept === 'INCOMING QUALITY';
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
-  const canCreate = isIncomingQuality || isAdmin;
+  const isQad = userDept === 'QAD';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isQad;
+  const canCreate = isQad || isAdmin;
 
   const handleLogout = async () => {
     const isConfirmed = await confirm({
@@ -176,7 +176,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
               <p className="text-xs font-bold text-white truncate">{user?.name || 'User'}</p>
               <p className="text-[10px] text-slate-400">
                 {isIhlr 
-                  ? (isIncomingQuality ? 'IHLR Quality Team' : (userDept ? userDept.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Production')) 
+                  ? (isQad ? 'QAD Team' : (userDept ? userDept.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Production')) 
                   : (userDept ? userDept.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Request Creator')}
               </p>
             </div>

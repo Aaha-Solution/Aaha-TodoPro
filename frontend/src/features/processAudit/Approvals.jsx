@@ -75,8 +75,8 @@ const ProcessAuditApprovals = () => {
     }
   })() || '').trim().toUpperCase();
 
-  const isIncomingQuality = userDept === 'INCOMING QUALITY';
-  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
+  const isQad = userDept === 'QAD';
+  const isAdmin = userRole === 'ADMIN' || isQad;
 
   const [searchParams] = useSearchParams();
   const queryRequestId = searchParams.get('requestId') || searchParams.get('id');
@@ -398,6 +398,7 @@ const ProcessAuditApprovals = () => {
   }, []);
 
   const STANDARD_DEPTS = [
+    'QAD',
     'PRODUCTION',
     'MAINTENANCE',
     'PED',
@@ -921,7 +922,7 @@ const ProcessAuditApprovals = () => {
           reassigned_by: currentUser?.name || 'Quality Admin',
           reassigned_by_id: currentUser?.id || null,
           role: currentUser?.role || 'ADMIN',
-          user_department: userDept || 'INCOMING QUALITY'
+          user_department: userDept || 'QAD'
         });
 
         await processAuditService.updateRequestStatus(reqId, 'Pending', {

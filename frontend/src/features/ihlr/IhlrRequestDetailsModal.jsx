@@ -62,8 +62,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   })() || '').trim().toUpperCase();
 
   const userRole = (user?.role || '').trim().toUpperCase();
-  const isIncomingQuality = userDept === 'INCOMING QUALITY';
-  const isAdmin = userRole === 'ADMIN' || isIncomingQuality;
+  const isQad = userDept === 'QAD';
+  const isAdmin = userRole === 'ADMIN' || isQad;
 
   const [localRequest, setLocalRequest] = useState(request);
   const [activeTab, setActiveTab] = useState('requester'); // 'requester' | 'closer'
