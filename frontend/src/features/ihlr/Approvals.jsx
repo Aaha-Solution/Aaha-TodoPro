@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ClipboardCheck,
   CheckCircle2,
@@ -38,6 +38,7 @@ import { formatIhlrShiftDisplay } from '../../utils/constants';
 
 const IhlrApprovals = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { success: modalSuccess, error: modalError, warning: modalWarning } = useModal();
 
@@ -319,80 +320,47 @@ const IhlrApprovals = () => {
     setReassignUserSearch('');
   };
 
-  const fetchRequests = async () => {
-    setLoading(true);
-    try {
-      const data = await ihlrService.getRequests();
-      // Filter out CLOSED requests: once closed they should not be shown in the approvals tab
-      const nonClosedData = (Array.isArray(data) ? data : []).filter(
-        (r) => String(r.status || '').toUpperCase() !== 'CLOSED'
-      );
-      // Enforce that closer non-admins only see requests where they are the selected person (resp_person) or creator
-      const visibleData = isAdmin ? nonClosedData : nonClosedData.filter((r) => isIhlrRequestVisibleToUser(r, user));
-      setRequests(visibleData);
-
-      // Check if a specific request was targeted via navigation (e.g. from Notifications Centre)
-      const targetReqNo = location.state?.highlightReq || location.state?.search;
-      let matchedTarget = null;
-      if (targetReqNo) {
-        const cleanTarget = String(targetReqNo).trim().toLowerCase().replace(/^#/, '');
-        matchedTarget = visibleData.find((r) => {
-          const cleanReq = String(r.req_no || '').trim().toLowerCase().replace(/^#/, '');
-          return cleanReq === cleanTarget || cleanReq === `ihlr-${cleanTarget}` || String(r.id) === cleanTarget;
-        });
-      }
-
-      // If a targeted request was found, populate it immediately
-      if (matchedTarget) {
-        populateForm(matchedTarget);
-      } else if (selectedRequest) {
-        const fresh = visibleData.find((r) => r.id === selectedRequest.id);
-        if (fresh) {
-          populateForm(fresh);
-        } else if (visibleData.length > 0) {
-          populateForm(visibleData[0]);
-        } else {
-          setSelectedRequest(null);
-        }
-      } else if (visibleData.length > 0) {
-        populateForm(visibleData[0]);
-      } else {
-        setSelectedRequest(null);
-      }
-    } catch (err) {
-      console.error('Failed to load IHLR requests for approval:', err);
-    } finally {
-      setLoading(false);
-    }
+  // Reset and clear all Closer and Admin form fields
+  const clearForm = () => {
+    setSelectedRequest(null);
+    setAdminEditCloser(false);
+    setCloserWhyWhy(['', '', '', '', '']);
+    setCloserW1Error(false);
+    setCloserAction('');
+    setCloserActionError(false);
+    setCloserTargetDate('');
+    setCloserTargetDateError(false);
+    setCloserPermanentFix('');
+    setCloserPermanentFixError(false);
+    setExistingPermanentEvidence([]);
+    setNewPermanentEvidenceFiles([]);
+    setCloserPermanentEvidenceError(false);
+    setCloserPermanentTargetDate('');
+    setCloserPermanentTargetDateError(false);
+    setCloserRemarks('');
+    setRemarksError(false);
+    setCloserStatus('');
+    setStatusError(false);
+    setReassignedDept('');
+    setReassignedPerson('');
+    setReassignDeptError(false);
+    setReassignPersonError(false);
+    setIsReassignOpen(false);
+    setIsReassignUserDropdownOpen(false);
+    setReassignUserSearch('');
+    setExistingEvidence([]);
+    setNewEvidenceFiles([]);
+    setCloserEvidenceError(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (fileInputPermanentRef.current) fileInputPermanentRef.current.value = '';
   };
-
-  useEffect(() => {
-    if (location.state?.search) {
-      setSearch(location.state.search);
-    }
-  }, [location.state?.search]);
-
-  useEffect(() => {
-    fetchRequests();
-
-    let debounceTimer = null;
-    const handleLiveUpdate = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        fetchRequests();
-      }, 150);
-    };
-
-    window.addEventListener('ihlrLiveUpdate', handleLiveUpdate);
-
-    return () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      window.removeEventListener('ihlrLiveUpdate', handleLiveUpdate);
-    };
-  }, [user?.name, user?.email, user?.role, user?.department]);
 
   // Populate Closer form fields when a row is clicked
   const populateForm = (req, keepEditMode = false) => {
+    if (!req) {
+      clearForm();
+      return;
+    }
     setSelectedRequest(req);
     if (!keepEditMode) {
       setAdminEditCloser(false);
@@ -442,6 +410,81 @@ const IhlrApprovals = () => {
     setNewPermanentEvidenceFiles([]);
     setCloserPermanentEvidenceError(false);
   };
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    try {
+      const data = await ihlrService.getRequests();
+      // Filter out CLOSED requests: once closed they should not be shown in the approvals tab
+      const nonClosedData = (Array.isArray(data) ? data : []).filter(
+        (r) => String(r.status || '').toUpperCase() !== 'CLOSED'
+      );
+      // Enforce that closer non-admins only see requests where they are the selected person (resp_person) or creator
+      const visibleData = isAdmin ? nonClosedData : nonClosedData.filter((r) => isIhlrRequestVisibleToUser(r, user));
+      setRequests(visibleData);
+
+      // Check if a specific request was targeted via navigation (e.g. from Notifications Centre)
+      const targetReqNo = location.state?.highlightReq || location.state?.search;
+      let matchedTarget = null;
+      if (targetReqNo) {
+        const cleanTarget = String(targetReqNo).trim().toLowerCase().replace(/^#/, '');
+        matchedTarget = visibleData.find((r) => {
+          const cleanReq = String(r.req_no || '').trim().toLowerCase().replace(/^#/, '');
+          return cleanReq === cleanTarget || cleanReq === `ihlr-${cleanTarget}` || String(r.id) === cleanTarget;
+        });
+      }
+
+      // If a targeted request was found, populate it immediately
+      if (matchedTarget) {
+        populateForm(matchedTarget);
+      } else if (selectedRequest) {
+        const fresh = visibleData.find((r) => r.id === selectedRequest.id);
+        if (fresh) {
+          populateForm(fresh, adminEditCloser);
+        } else {
+          clearForm();
+        }
+      } else {
+        clearForm();
+      }
+    } catch (err) {
+      console.error('Failed to load IHLR requests for approval:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Ensure that whenever there is no selected request, all form fields are reset
+  useEffect(() => {
+    if (!selectedRequest) {
+      clearForm();
+    }
+  }, [selectedRequest]);
+
+  useEffect(() => {
+    if (location.state?.search) {
+      setSearch(location.state.search);
+    }
+  }, [location.state?.search]);
+
+  useEffect(() => {
+    fetchRequests();
+
+    let debounceTimer = null;
+    const handleLiveUpdate = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchRequests();
+      }, 150);
+    };
+
+    window.addEventListener('ihlrLiveUpdate', handleLiveUpdate);
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      window.removeEventListener('ihlrLiveUpdate', handleLiveUpdate);
+    };
+  }, [user?.name, user?.email, user?.role, user?.department]);
 
   const handleWhyChange = (index, val) => {
     setCloserWhyWhy((prev) => {
@@ -747,8 +790,25 @@ const IhlrApprovals = () => {
       if (updated && String(updated.status || '').toUpperCase() !== 'CLOSED') {
         populateForm(updated);
       } else {
-        setSelectedRequest(null);
+        clearForm();
+        const normalizeReq = (str) => String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normClosed = normalizeReq(selectedRequest?.req_no);
+        const normSearch = normalizeReq(search);
+        const normId = String(selectedRequest?.id || '');
+        const isSearchTargetingClosed = Boolean(
+          normSearch && (
+            normSearch === normClosed ||
+            normSearch === normId ||
+            normSearch === `ihlr${normId}` ||
+            (normClosed && (normClosed.includes(normSearch) || normSearch.includes(normClosed)))
+          )
+        );
+        if (isSearchTargetingClosed) {
+          setSearch('');
+          navigate(location.pathname, { replace: true, state: {} });
+        }
       }
+      setAdminEditCloser(false);
       await fetchRequests();
       modalSuccess(msg);
 
@@ -800,6 +860,31 @@ const IhlrApprovals = () => {
       (selectedStatus === 'OPEN' && !isCompleted);
     return matchesSearch && matchesStatus;
   });
+
+  // Auto-synchronize selection with filtered requests
+  useEffect(() => {
+    if (loading) return;
+    if (filtered.length === 0) {
+      clearForm();
+    } else if (selectedRequest) {
+      const stillInFiltered = filtered.find((r) => r.id === selectedRequest.id);
+      if (stillInFiltered) {
+        if (
+          stillInFiltered.status !== selectedRequest.status ||
+          stillInFiltered.resp_person !== selectedRequest.resp_person ||
+          stillInFiltered.remarks !== selectedRequest.remarks ||
+          stillInFiltered.temporary_action !== selectedRequest.temporary_action ||
+          stillInFiltered.permanent_fix !== selectedRequest.permanent_fix
+        ) {
+          populateForm(stillInFiltered, adminEditCloser);
+        }
+      } else {
+        populateForm(filtered[0]);
+      }
+    } else {
+      populateForm(filtered[0]);
+    }
+  }, [requests, search, selectedStatus, loading]);
 
   // Pagination calculation
   const totalRecords = filtered.length;

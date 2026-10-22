@@ -636,6 +636,14 @@ const IhlrDashboard = () => {
       {/* Interactive IHLR Bar Chart Section */}
       <IhlrBarChart
         stats={stats}
+        startDate={startDate}
+        endDate={endDate}
+        defaultStartDate={defaultStartDate}
+        defaultEndDate={defaultEndDate}
+        onDateRangeChange={(newStart, newEnd) => {
+          setStartDate(newStart);
+          setEndDate(newEnd);
+        }}
         onSelectDepartment={(dept) => {
           if (isAdmin) {
             setSelectedDept(dept);
