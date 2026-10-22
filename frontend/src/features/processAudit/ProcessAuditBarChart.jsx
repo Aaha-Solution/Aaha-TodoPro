@@ -4,7 +4,6 @@ import {
   TrendingUp,
   Calendar,
   Building2,
-  Layers,
   Clock,
   CheckCircle2,
   AlertCircle,
@@ -44,7 +43,7 @@ export const ProcessAuditBarChart = ({
   onSelectStatus,
   currentYear = new Date().getFullYear(),
 }) => {
-  // Dimension view tab: 'monthly' | 'department' | 'shift' | 'stage'
+  // Dimension view tab: 'monthly' | 'department' | 'shift'
   const [activeTab, setActiveTab] = useState('monthly');
   // Hovered bar anchor: { item, idx, centerX, barTopY }
   const [hoveredBar, setHoveredBar] = useState(null);
@@ -148,27 +147,6 @@ export const ProcessAuditBarChart = ({
       return shiftList.map((s) => ({ key: s, label: s, total: 0, open: 0, inProgress: 0, closed: 0 }));
     }
 
-    if (activeTab === 'stage') {
-      if (hasRequests) {
-        const stageMap = {};
-        for (const r of requests) {
-          const st = (r.process_operation || 'General Audit').trim();
-          if (!stageMap[st]) {
-            stageMap[st] = { key: st, label: st, total: 0, open: 0, inProgress: 0, closed: 0 };
-          }
-          stageMap[st].total += 1;
-          const cat = getStatusCategory(r);
-          stageMap[st][cat] += 1;
-        }
-        const sorted = Object.values(stageMap).sort((a, b) => b.total - a.total).slice(0, 8);
-        return sorted.length > 0 ? sorted : [{ key: 'General Audit', label: 'General Audit', total: 0, open: 0, inProgress: 0, closed: 0 }];
-      }
-      if (stats.stageBreakdown && stats.stageBreakdown.length > 0) {
-        return stats.stageBreakdown.map((item) => ({ key: item.stage, label: item.stage, ...item }));
-      }
-      return [{ key: 'General Audit', label: 'General Audit', total: 0, open: 0, inProgress: 0, closed: 0 }];
-    }
-
     return [];
   }, [activeTab, requests, stats]);
 
@@ -247,7 +225,7 @@ export const ProcessAuditBarChart = ({
                 </h2>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Visual distribution of shopfloor audit observations by timeline, responsible department, shifts, and process operations.
+                Visual distribution of shopfloor audit observations by timeline, responsible department, and shifts.
               </p>
             </div>
           </div>
@@ -290,18 +268,6 @@ export const ProcessAuditBarChart = ({
               >
                 <Clock className="w-3.5 h-3.5" />
                 <span>Shift</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('stage')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeTab === 'stage'
-                    ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
-                    : 'hover:text-slate-900 hover:bg-slate-200/50'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>Process / Stage</span>
               </button>
             </div>
           </div>
