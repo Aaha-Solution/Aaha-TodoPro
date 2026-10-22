@@ -1,6 +1,7 @@
 import pool from '../../../shared/db.js';
 import { successResponse, errorResponse } from '../../../shared/response.js';
 import { broadcastEvent } from '../../../shared/realtimeNotifier.js';
+import { ProcessAuditRequest } from '../models/Request.js';
 
 // Auto-ensure process_audit_notifications table exists
 const ensureNotificationTable = async () => {
@@ -11,6 +12,7 @@ const ensureNotificationTable = async () => {
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NULL,
         user_name VARCHAR(100) NOT NULL,
+        user_email VARCHAR(150) NULL,
         request_id INT NOT NULL,
         issue_no VARCHAR(50) NOT NULL,
         type VARCHAR(50) DEFAULT 'assignment',
@@ -21,6 +23,12 @@ const ensureNotificationTable = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Ensure user_email column exists in existing tables
+    const [cols] = await pool.query(`SHOW COLUMNS FROM process_audit_notifications LIKE 'user_email'`).catch(() => [[]]);
+    if (!cols || cols.length === 0) {
+      await pool.query(`ALTER TABLE process_audit_notifications ADD COLUMN user_email VARCHAR(150) NULL`).catch(() => {});
+    }
   } catch (err) {
     console.warn('[process_audit_notifications] table ensure warning:', err.message);
   }
@@ -33,17 +41,19 @@ export const getNotifications = async (req, res) => {
     await ensureNotificationTable();
 
     const userName = (req.query.user || req.query.user_name || req.query.user_email || req.user?.name || req.user?.email || '').trim();
-    const userId = req.query.user_id || req.user?.id || null;
+    const userId = req.query.user_id ? Number(req.query.user_id) : (req.user?.id || null);
+    const userEmail = (req.query.user_email || req.query.email || req.user?.email || '').trim().toLowerCase();
     const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
     const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'INCOMING QUALITY';
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'INCOMING QUALITY' || userName.toLowerCase().includes('admin');
 
     // Auto-sync any unnotified assigned pending requests from process_audit_requests
     await pool.query(`
-      INSERT INTO process_audit_notifications (user_name, user_id, request_id, issue_no, type, title, message, link)
+      INSERT INTO process_audit_notifications (user_name, user_id, user_email, request_id, issue_no, type, title, message, link)
       SELECT 
         r.executor, 
         u.id,
+        u.email,
         r.id, 
         r.issue_no, 
         'approval_required',
@@ -61,36 +71,168 @@ export const getNotifications = async (req, res) => {
         )
     `).catch(() => {});
 
-    if (!isAdmin && !userName && !userId) {
-      return successResponse(res, []);
-    }
-
+    let notifRows = [];
     let query = `SELECT * FROM process_audit_notifications`;
     const params = [];
+    const conditions = [];
 
-    if (!isAdmin) {
-      if (userName && userId) {
-        query += ` WHERE (LOWER(TRIM(user_name)) = LOWER(TRIM(?)) OR user_id = ?)`;
-        params.push(userName, userId);
-      } else if (userName) {
-        query += ` WHERE LOWER(TRIM(user_name)) = LOWER(TRIM(?))`;
-        params.push(userName);
-      } else if (userId) {
-        query += ` WHERE user_id = ?`;
-        params.push(userId);
-      }
+    if (userId) {
+      conditions.push('user_id = ?');
+      params.push(userId);
+    }
+    if (userName) {
+      conditions.push('LOWER(TRIM(user_name)) = LOWER(TRIM(?))');
+      params.push(userName);
+      conditions.push('FIND_IN_SET(?, REPLACE(LOWER(user_name), ", ", ","))');
+      params.push(userName.toLowerCase());
+    }
+    if (userEmail) {
+      conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
+      params.push(userEmail);
+      conditions.push('FIND_IN_SET(?, REPLACE(LOWER(user_email), ", ", ","))');
+      params.push(userEmail.toLowerCase());
+    }
+    if (isAdmin) {
+      conditions.push("LOWER(TRIM(user_name)) LIKE '%admin%'");
+      conditions.push("LOWER(TRIM(user_email)) LIKE '%admin%'");
+      conditions.push("type LIKE '%admin%'");
+      conditions.push("type = 'approval_required'");
+      conditions.push("type = 'request_approved'");
+      conditions.push("type = 'request_closed'");
+      conditions.push("type = 'request_created'");
+      conditions.push("type = 'request_rejected'");
+      conditions.push("type = 'reassigned'");
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE (${conditions.join(' OR ')})`;
+    } else if (!isAdmin) {
+      return successResponse(res, [], 'Process Audit notifications retrieved');
     }
 
     query += ` ORDER BY id DESC LIMIT 50`;
 
-    const [rows] = await pool.query(query, params);
+    const [rows] = await pool.query(query, params).catch(() => [[]]);
+    const rawRows = rows || [];
 
-    const formatted = rows.map((n) => {
+    // Deduplicate so that no user receives duplicate notifications for the same request and event type
+    const seen = new Set();
+    notifRows = rawRows.filter((r) => {
+      const key = `${r.request_id || r.issue_no}_${r.type}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // Also include synthetic recent request stream if notifications table is empty
+    if (notifRows.length === 0) {
+      let requests = (await ProcessAuditRequest.getAll()) || [];
+      if (!isAdmin) {
+        if (!userName && !userId && !userEmail) {
+          return successResponse(res, [], 'Process Audit notifications retrieved');
+        }
+        requests = requests.filter(r => {
+          const execNames = (r.executor || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+          const rCreatedBy = (r.created_by || '').trim().toLowerCase();
+          const isExec = userName && execNames.includes(userName.toLowerCase());
+          const isCreator = (userName && rCreatedBy === userName.toLowerCase()) || (userId && String(r.created_by_id) === String(userId));
+          return isExec || isCreator;
+        });
+      }
+      const notifications = requests.slice(0, 15).map(r => {
+        const isClosed = (r.status || '').toLowerCase() === 'closed';
+        const isApproved = (r.status || '').toLowerCase().includes('approved');
+        const isRejected = (r.status || '').toLowerCase().includes('reject');
+        let title = `Audit Request Raised: #${r.issue_no}`;
+        let msg = `Audit request #${r.issue_no} (${r.model || 'Model'} - ${r.department}) logged with problem "${r.problem || '—'}".`;
+        let badgeLabel = 'AUDIT ALERT';
+        let accentColor = 'blue';
+
+        if (isClosed) {
+          title = `Audit Request Closed: #${r.issue_no}`;
+          msg = `Request #${r.issue_no} (${r.model || 'Model'}) has been signed off and closed.`;
+          badgeLabel = 'CASE CLOSED';
+          accentColor = 'emerald';
+        } else if (isApproved) {
+          title = `Audit Sign-Off Completed: #${r.issue_no}`;
+          msg = `Request #${r.issue_no} has been reviewed and signed off by ${r.executor}.`;
+          badgeLabel = 'AUDIT APPROVED';
+          accentColor = 'emerald';
+        } else if (isRejected) {
+          title = `Request Needs Attention: #${r.issue_no}`;
+          msg = `Audit request #${r.issue_no} could not be signed off by ${r.executor}.`;
+          badgeLabel = 'CORRECTION NEEDED';
+          accentColor = 'rose';
+        } else {
+          title = `New Request Assigned: #${r.issue_no}`;
+          msg = `Audit request #${r.issue_no} (${r.department}) assigned to ${r.executor} for review & sign-off.`;
+          badgeLabel = 'SIGN-OFF REQUIRED';
+          accentColor = 'amber';
+        }
+
+        return {
+          id: r.id,
+          rawId: r.id,
+          requestId: r.issue_no,
+          reqNo: String(r.issue_no).startsWith('#') ? r.issue_no : `#${r.issue_no}`,
+          title,
+          message: msg,
+          date: r.created_at ? new Date(r.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent Today',
+          time: r.created_at ? new Date(r.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent Today',
+          badgeLabel,
+          accentColor,
+          department: r.department || 'QUALITY AUDIT',
+          subCategory: 'PROCESS AUDIT OBSERVATION',
+          footerFlag: isClosed ? 'CASE_CLOSED' : isApproved ? 'SYSTEM_LOGS' : 'ACTION_REQUIRED',
+          status: r.status || 'Open',
+          read: false,
+          type: r.status || 'info',
+          link: '/process-audit/approvals'
+        };
+      });
+      return successResponse(res, notifications, 'Process Audit notifications retrieved');
+    }
+
+    const formatted = notifRows.map((n) => {
       const d = n.created_at ? new Date(n.created_at) : new Date();
+      const isApproval = n.type === 'approval_required' || (n.title && n.title.toLowerCase().includes('sign-off'));
+      const isApproved = n.type === 'request_approved' || n.type === 'approved' || (n.title && n.title.toLowerCase().includes('approved'));
+      const isClosed = n.type === 'request_closed' || n.type === 'closed' || (n.title && n.title.toLowerCase().includes('closed'));
+      const isRejected = n.type === 'request_rejected' || n.type === 'rejected' || (n.title && n.title.toLowerCase().includes('rejected'));
+
+      let badgeLabel = 'AUDIT ALERT';
+      let accentColor = 'blue';
+      let footerFlag = 'OPERATIONAL_UPDATE';
+
+      if (isClosed) {
+        badgeLabel = 'CASE CLOSED';
+        accentColor = 'emerald';
+        footerFlag = 'CASE_CLOSED';
+      } else if (isApproved) {
+        badgeLabel = 'AUDIT APPROVED';
+        accentColor = 'emerald';
+        footerFlag = 'SYSTEM_LOGS';
+      } else if (isRejected) {
+        badgeLabel = 'CORRECTION NEEDED';
+        accentColor = 'rose';
+        footerFlag = 'ACTION_REQUIRED';
+      } else if (isApproval) {
+        badgeLabel = 'SIGN-OFF REQUIRED';
+        accentColor = 'amber';
+        footerFlag = 'ACTION_REQUIRED';
+      }
+
       return {
         id: n.id,
         user_id: n.user_id,
         user_name: n.user_name,
+        user_email: n.user_email,
+        rawId: n.request_id,
+        requestId: n.issue_no,
+        reqNo: String(n.issue_no).startsWith('#') ? n.issue_no : `#${n.issue_no}`,
+        badgeLabel,
+        accentColor,
+        department: n.department || 'QUALITY AUDIT',
         title: n.title,
         message: n.message,
         date: d.toLocaleDateString('en-GB', {
@@ -107,7 +249,15 @@ export const getNotifications = async (req, res) => {
           hour: '2-digit',
           minute: '2-digit',
         }),
-        requestId: n.issue_no,
+        timeDisplay: d.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        subCategory: 'PROCESS AUDIT OBSERVATION',
+        footerFlag,
         type: n.type,
         link: n.link || '/process-audit/approvals',
         read: Boolean(n.is_read),
@@ -115,7 +265,7 @@ export const getNotifications = async (req, res) => {
       };
     });
 
-    return successResponse(res, formatted);
+    return successResponse(res, formatted, 'Process Audit notifications retrieved');
   } catch (error) {
     return errorResponse(res, error.message, 500);
   }
@@ -124,9 +274,25 @@ export const getNotifications = async (req, res) => {
 export const markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query('UPDATE process_audit_notifications SET is_read = 1 WHERE id = ?', [id]);
-    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'read', id });
-    return successResponse(res, { id }, 'Notification marked as read');
+    const isRead = req.body?.read !== undefined ? (req.body.read ? 1 : 0) : 1;
+    if (pool) {
+      await pool.query('UPDATE process_audit_notifications SET is_read = ? WHERE id = ?', [isRead, id]);
+    }
+    broadcastEvent('notifications:refresh', { module: 'process_audit', action: isRead ? 'read' : 'unread', id });
+    return successResponse(res, { id }, `Notification marked as ${isRead ? 'read' : 'unread'}`);
+  } catch (error) {
+    return errorResponse(res, error.message, 500);
+  }
+};
+
+export const markAsUnread = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (pool) {
+      await pool.query('UPDATE process_audit_notifications SET is_read = 0 WHERE id = ?', [id]);
+    }
+    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'unread', id });
+    return successResponse(res, { id }, 'Notification marked as unread');
   } catch (error) {
     return errorResponse(res, error.message, 500);
   }
@@ -134,11 +300,49 @@ export const markAsRead = async (req, res) => {
 
 export const markAllAsRead = async (req, res) => {
   try {
-    const userName = (req.body.user || req.query.user || req.user?.name || '').trim();
-    if (userName) {
-      await pool.query('UPDATE process_audit_notifications SET is_read = 1 WHERE LOWER(TRIM(user_name)) = LOWER(TRIM(?))', [userName]);
-    } else {
-      await pool.query('UPDATE process_audit_notifications SET is_read = 1');
+    const userName = (req.body?.user || req.body?.user_name || req.query.user || req.query.user_name || req.user?.name || '').trim();
+    const userId = req.body?.user_id || req.query.user_id || req.user?.id;
+    const userEmail = (req.body?.user_email || req.query.user_email || req.user?.email || '').trim().toLowerCase();
+    const userRole = (req.body?.role || req.query.role || req.user?.role || '').trim().toUpperCase();
+    const userDept = (req.body?.department || req.query.department || req.user?.department || '').trim().toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'INCOMING QUALITY' || userName.toLowerCase().includes('admin');
+
+    if (pool) {
+      if (isAdmin) {
+        await pool.query(
+          `UPDATE process_audit_notifications SET is_read = 1 WHERE 
+           user_id = ? OR 
+           LOWER(TRIM(user_name)) LIKE '%admin%' OR 
+           LOWER(TRIM(user_email)) LIKE '%admin%' OR 
+           type IN ('approval_required', 'request_approved', 'request_closed', 'request_rejected', 'reassigned', 'request_created')`,
+          [userId || 1]
+        );
+      } else {
+        const conditions = [];
+        const params = [];
+        if (userId) {
+          conditions.push('user_id = ?');
+          params.push(userId);
+        }
+        if (userName) {
+          conditions.push('LOWER(TRIM(user_name)) = LOWER(TRIM(?))');
+          params.push(userName);
+          conditions.push('FIND_IN_SET(?, REPLACE(LOWER(user_name), ", ", ","))');
+          params.push(userName.toLowerCase());
+        }
+        if (userEmail) {
+          conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
+          params.push(userEmail);
+          conditions.push('FIND_IN_SET(?, REPLACE(LOWER(user_email), ", ", ","))');
+          params.push(userEmail.toLowerCase());
+        }
+
+        if (conditions.length > 0) {
+          await pool.query(`UPDATE process_audit_notifications SET is_read = 1 WHERE ${conditions.join(' OR ')}`, params);
+        } else {
+          await pool.query('UPDATE process_audit_notifications SET is_read = 1');
+        }
+      }
     }
     broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'mark_all_read', userName });
     return successResponse(res, null, 'All notifications marked as read');

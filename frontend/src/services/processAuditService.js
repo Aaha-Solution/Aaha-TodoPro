@@ -104,31 +104,40 @@ export const processAuditService = {
     return res.data?.data || res.data;
   },
 
-  getNotifications: async (params) => {
+  getNotifications: async (params = {}) => {
     try {
       const res = await api.get('/process-audit/notifications', { params });
       return res.data?.data || res.data || [];
-    } catch (err) {
-      console.error('Failed to fetch notifications from DB:', err);
+    } catch {
       return [];
     }
   },
 
   markNotificationAsRead: async (id) => {
     try {
-      const res = await api.patch(`/process-audit/notifications/${id}/read`);
+      const res = await api.patch(`/process-audit/notifications/${id}/read`, { read: true });
       return res.data?.data || res.data;
-    } catch (err) {
-      console.error(`Failed to mark notification ${id} as read:`, err);
+    } catch {
+      return null;
     }
   },
 
-  markAllNotificationsAsRead: async (user) => {
+  markNotificationAsUnread: async (id) => {
     try {
-      const res = await api.patch('/process-audit/notifications/mark-all-read', { user });
+      const res = await api.patch(`/process-audit/notifications/${id}/unread`, { read: false });
       return res.data?.data || res.data;
-    } catch (err) {
-      console.error('Failed to mark all notifications as read:', err);
+    } catch {
+      return null;
+    }
+  },
+
+  markAllNotificationsAsRead: async (user = '') => {
+    try {
+      const payload = typeof user === 'object' && user !== null ? user : { user };
+      const res = await api.patch('/process-audit/notifications/mark-all-read', payload);
+      return res.data?.data || res.data;
+    } catch {
+      return null;
     }
   }
 };

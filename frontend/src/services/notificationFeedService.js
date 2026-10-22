@@ -337,61 +337,186 @@ export const fetchIhlrNotificationsFeed = async (user) => {
  */
 export const fetchProcessAuditNotificationsFeed = async (user) => {
   try {
-    const activeUser = user || storage.getUser();
-    const apiNotifs = await processAuditService
-      .getNotifications({
-        user: activeUser?.name,
-        user_name: activeUser?.name,
-        user_id: activeUser?.id,
-        role: activeUser?.role,
-        department: activeUser?.department,
-      })
-      .catch(() => []);
+    const storedUser = storage.getUser() || {};
+    const resolvedUser = {
+      ...storedUser,
+      ...(user || {}),
+      department: (user?.department || storedUser?.department || '').trim().toUpperCase(),
+    };
+
+    const userRole = (resolvedUser?.role || '').trim().toUpperCase();
+    const userDept = (resolvedUser?.department || '').trim().toUpperCase();
+    const isAdmin =
+      userRole === 'ADMIN' ||
+      userRole === 'SUPER_ADMIN' ||
+      userRole === 'SUPER ADMIN' ||
+      userDept === 'INCOMING QUALITY' ||
+      (resolvedUser?.name || '').toLowerCase().includes('admin');
+
+    const [apiNotifs, requests] = await Promise.all([
+      processAuditService
+        .getNotifications({
+          user: resolvedUser?.name,
+          user_name: resolvedUser?.name,
+          user_id: resolvedUser?.id,
+          user_email: resolvedUser?.email,
+          role: resolvedUser?.role,
+          department: resolvedUser?.department,
+        })
+        .catch(() => []),
+      processAuditService.getRequests().catch(() => []),
+    ]);
 
     const streamList = [];
 
-    if (Array.isArray(apiNotifs)) {
+    if (Array.isArray(apiNotifs) && apiNotifs.length > 0) {
       apiNotifs.forEach((n) => {
-        const isApproval = n.type === 'approval_required' || (n.title && n.title.toLowerCase().includes('sign-off'));
-        const isApproved = n.type === 'approved' || (n.title && n.title.toLowerCase().includes('approved'));
-        const isRejected = n.type === 'rejected' || (n.title && n.title.toLowerCase().includes('rejected'));
+        const uName = (resolvedUser?.name || '').trim().toLowerCase();
+        const uEmail = (resolvedUser?.email || '').trim().toLowerCase();
+        const uId = String(resolvedUser?.id || '');
 
-        const badgeLabel = isApproval ? 'SIGN-OFF REQUIRED' : isApproved ? 'AUDIT APPROVED' : isRejected ? 'CORRECTION NEEDED' : 'AUDIT ALERT';
-        const accentColor = isApproval ? 'amber' : isApproved ? 'emerald' : isRejected ? 'rose' : 'blue';
-        const footerFlag = isApproval || isRejected ? 'ACTION_REQUIRED' : isApproved ? 'SYSTEM_LOGS' : 'OPERATIONAL_UPDATE';
+        const nName = (n.user_name || '').trim().toLowerCase();
+        const nEmail = (n.user_email || '').trim().toLowerCase();
+        const nId = String(n.user_id || '');
+
+        const nNameList = nName.split(',').map((s) => s.trim()).filter(Boolean);
+        const nEmailList = nEmail.split(',').map((s) => s.trim()).filter(Boolean);
+
+        const isDirectMatch =
+          (uId && nId && uId === nId) ||
+          (uName && nName && (uName === nName || nNameList.includes(uName))) ||
+          (uEmail && nEmail && (uEmail === nEmail || nEmailList.includes(uEmail)));
+
+        if (!isAdmin && !isDirectMatch) return;
+
+        const isApproval = n.type === 'approval_required' || (n.title && n.title.toLowerCase().includes('sign-off'));
+        const isApproved = n.type === 'request_approved' || n.type === 'approved' || (n.title && n.title.toLowerCase().includes('approved'));
+        const isClosed = n.type === 'request_closed' || n.type === 'closed' || (n.title && n.title.toLowerCase().includes('closed'));
+        const isRejected = n.type === 'request_rejected' || n.type === 'rejected' || (n.title && n.title.toLowerCase().includes('rejected'));
+
+        const badgeLabel = isClosed
+          ? 'CASE CLOSED'
+          : isApproved
+          ? 'AUDIT APPROVED'
+          : isRejected
+          ? 'CORRECTION NEEDED'
+          : isApproval
+          ? 'SIGN-OFF REQUIRED'
+          : n.badgeLabel || 'AUDIT ALERT';
+        const accentColor = isClosed
+          ? 'emerald'
+          : isApproved
+          ? 'emerald'
+          : isRejected
+          ? 'rose'
+          : isApproval
+          ? 'amber'
+          : n.accentColor || 'blue';
+        const footerFlag = isClosed
+          ? 'CASE_CLOSED'
+          : isApproved
+          ? 'SYSTEM_LOGS'
+          : isRejected || isApproval
+          ? 'ACTION_REQUIRED'
+          : n.footerFlag || 'OPERATIONAL_UPDATE';
 
         const rawReq = n.requestId || n.issue_no || '';
         const reqNo = rawReq ? (String(rawReq).startsWith('#') ? rawReq : `#${rawReq}`) : '#PA';
 
+        const notifIdStr = `pa-notif-${n.id}`;
         let isRead = false;
         if (n.is_read !== undefined && n.is_read !== null) {
           isRead = Number(n.is_read) === 1;
+          if (!isRead) {
+            setReadOverride('process-audit', resolvedUser, notifIdStr, false);
+            setReadOverride('process-audit', resolvedUser, n.id, false);
+          }
         } else {
           const savedRead =
-            getReadOverride('process-audit', activeUser, `pa-notif-${n.id}`) ??
-            getReadOverride('process-audit', activeUser, n.id);
+            getReadOverride('process-audit', resolvedUser, notifIdStr) ??
+            getReadOverride('process-audit', resolvedUser, n.id);
           isRead = savedRead !== null ? savedRead : Boolean(n.read);
         }
 
-        const notifIdStr = `pa-notif-${n.id}`;
-        if (streamList.some((s) => s.id === notifIdStr || (reqNo && s.reqNo === reqNo && s.badgeLabel === badgeLabel))) return;
+        const isDuplicate = streamList.some((s) => {
+          if (s.id === notifIdStr) return true;
+          if (reqNo && s.reqNo === reqNo) {
+            if (isClosed && s.badgeLabel === 'CASE CLOSED') return true;
+            if (isApproved && s.badgeLabel === 'AUDIT APPROVED') return true;
+            if (isRejected && s.badgeLabel === 'CORRECTION NEEDED') return true;
+            if (isApproval && s.badgeLabel === 'SIGN-OFF REQUIRED') return true;
+            if (s.type === n.type && s.title === n.title) return true;
+          }
+          return false;
+        });
+
+        if (isDuplicate) return;
 
         streamList.push({
           id: notifIdStr,
           notifId: n.id,
-          rawId: n.id,
+          rawId: n.rawId || n.id,
           reqNo,
           badgeLabel,
           accentColor,
           department: n.department || 'QUALITY AUDIT',
           title: n.title,
           message: n.message,
-          timeDisplay: formatStreamDate(n.date || n.time),
+          timeDisplay: formatStreamDate(n.date || n.time || n.created_at),
           subCategory: 'PROCESS AUDIT OBSERVATION',
           footerFlag,
           read: isRead,
           type: n.type || 'info',
           link: n.link || (isApproval ? '/process-audit/approvals' : '/process-audit/all-requests'),
+        });
+      });
+    }
+
+    if (Array.isArray(requests)) {
+      requests.forEach((r, idx) => {
+        const uName = (resolvedUser?.name || '').trim().toLowerCase();
+        const uId = String(resolvedUser?.id || '');
+        const execNames = (r.executor || '').toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
+        const rCreatedBy = (r.created_by || '').trim().toLowerCase();
+        const isExec = uName && execNames.includes(uName);
+        const isCreator = (uName && rCreatedBy === uName) || (uId && String(r.created_by_id) === uId);
+
+        if (!isAdmin && !isExec && !isCreator) return;
+
+        const reqNo = r.issue_no ? (String(r.issue_no).startsWith('#') ? r.issue_no : `#${r.issue_no}`) : `#PA-${r.id || idx + 1}`;
+        if (streamList.some((s) => s.reqNo === reqNo)) return;
+
+        const isClosed = (r.status || '').toLowerCase() === 'closed';
+        const isApproved = (r.status || '').toLowerCase().includes('approved');
+        const isRejected = (r.status || '').toLowerCase().includes('reject');
+
+        const badgeLabel = isClosed
+          ? 'CASE CLOSED'
+          : isApproved
+          ? 'AUDIT APPROVED'
+          : isRejected
+          ? 'CORRECTION NEEDED'
+          : 'SIGN-OFF REQUIRED';
+        const accentColor = isClosed ? 'emerald' : isApproved ? 'emerald' : isRejected ? 'rose' : 'amber';
+        const footerFlag = isClosed ? 'CASE_CLOSED' : isApproved ? 'SYSTEM_LOGS' : 'ACTION_REQUIRED';
+
+        const savedRead = getReadOverride('process-audit', resolvedUser, `req-${r.id || idx}`) ?? getReadOverride('process-audit', resolvedUser, reqNo);
+
+        streamList.push({
+          id: `pa-req-${r.id || idx}`,
+          rawId: r.id,
+          reqNo,
+          badgeLabel,
+          accentColor,
+          department: r.department || 'QUALITY AUDIT',
+          title: `Audit Request ${r.issue_no || r.id}`,
+          message: `Request #${r.issue_no || r.id} (${r.model || 'Process'}) - "${r.problem || 'Audit observation'}".`,
+          timeDisplay: formatStreamDate(r.created_at || r.batch_date),
+          subCategory: 'PROCESS AUDIT OBSERVATION',
+          footerFlag,
+          read: savedRead !== null ? savedRead : false,
+          type: r.status || 'info',
+          link: '/process-audit/approvals',
         });
       });
     }
@@ -431,7 +556,9 @@ export const markNotificationReadForTab = async (tab, notifId, rawId, isRead = t
       ? ihlrService.markNotificationAsRead(idToMark).catch(() => {})
       : ihlrService.markNotificationAsUnread(idToMark).catch(() => {});
   } else {
-    return processAuditService.markNotificationAsRead(idToMark).catch(() => {});
+    return isRead
+      ? processAuditService.markNotificationAsRead(idToMark).catch(() => {})
+      : processAuditService.markNotificationAsUnread(idToMark).catch(() => {});
   }
 };
 
@@ -455,5 +582,5 @@ export const markAllNotificationsReadForTab = async (tab, userName, user = null,
   }
   return tab === 'ihlr'
     ? ihlrService.markAllNotificationsAsRead(payload).catch(() => {})
-    : processAuditService.markAllNotificationsAsRead(userName || resolvedUser?.name).catch(() => {});
+    : processAuditService.markAllNotificationsAsRead(payload).catch(() => {});
 };

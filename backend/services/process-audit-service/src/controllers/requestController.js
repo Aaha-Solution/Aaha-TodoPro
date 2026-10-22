@@ -459,6 +459,23 @@ export const reassignRequest = async (req, res) => {
           notifMsg
         ]
       );
+
+      // Notify creator about the reassignment
+      if (updated.created_by) {
+        await pool.query(
+          `INSERT INTO process_audit_notifications 
+           (user_name, user_id, request_id, issue_no, type, title, message, link) 
+           VALUES (?, ?, ?, ?, 'reassigned', ?, ?, '/process-audit/all-requests')`,
+          [
+            updated.created_by.trim(),
+            updated.created_by_id || null,
+            updated.id,
+            issueNo,
+            `Request #${issueNo} Reassigned`,
+            `Audit request #${issueNo} (${updated.department || 'Process'}) has been reassigned to ${new_executor} by ${reassignedByName}.${reasonText}`
+          ]
+        ).catch(() => {});
+      }
     } catch (notifErr) {
       console.warn('Failed to insert reassignment notification:', notifErr.message);
     }
