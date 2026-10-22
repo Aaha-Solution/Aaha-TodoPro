@@ -965,16 +965,7 @@ const AllRequests = () => {
                             </button>
                           )}
 
-                          {/* Reassign Closer */}
-                          {canEdit && (
-                            <button
-                              onClick={() => handleOpenReassignModal(r)}
-                              className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition cursor-pointer"
-                              title="Reassign Closer / Department"
-                            >
-                              <ArrowRightLeft className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                         
                         </div>
                       </td>
                     </tr>
