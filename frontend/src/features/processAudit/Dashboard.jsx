@@ -338,34 +338,49 @@ const ProcessAuditDashboard = () => {
     });
   }, [requests, selectedDept, startDate, endDate]);
 
+  const isRequestClosed = (r) => {
+    const s = (r?.status || '').toLowerCase();
+    return s.includes('close');
+  };
+
+  const isRequestAwaitingReview = (r) => {
+    const s = (r?.status || '').toLowerCase();
+    if (isRequestClosed(r)) return false;
+    return (
+      s.includes('review') ||
+      s.includes('progress') ||
+      s.includes('signed') ||
+      s.includes('approval') ||
+      (s.includes('approved') && !s.includes('pending')) ||
+      Boolean(r?.root_cause && String(r?.root_cause).trim()) ||
+      Boolean((r?.corrective_action || r?.action) && String(r?.corrective_action || r?.action).trim())
+    );
+  };
+
+  const isRequestPending = (r) => {
+    if (isRequestClosed(r) || isRequestAwaitingReview(r)) return false;
+    const s = (r?.status || '').toLowerCase();
+    return s.includes('pending') || (!s.includes('open') && !s.includes('reject'));
+  };
+
   const total = baseFilteredRequests.length;
-
-  const pendingExec = baseFilteredRequests.filter((r) => {
-    const s = (r.status || '').toLowerCase();
-    return s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject') && !s.includes('progress') && !s.includes('signed'));
-  }).length;
-
-  const inProgress = baseFilteredRequests.filter((r) => {
-    const s = (r.status || '').toLowerCase();
-    return (s.includes('progress') || s.includes('approved') || s.includes('signed')) && !s.includes('close');
-  }).length;
-
-  const closed = baseFilteredRequests.filter((r) => (r.status || '').toLowerCase().includes('close')).length;
+  const pendingExec = baseFilteredRequests.filter(isRequestPending).length;
+  const inProgress = baseFilteredRequests.filter(isRequestAwaitingReview).length;
+  const closed = baseFilteredRequests.filter(isRequestClosed).length;
 
   // Filter requests based on selected status (for display table and recent logs)
   const filteredRequests = React.useMemo(() => {
     if (selectedStatus === 'All') return baseFilteredRequests;
 
     return baseFilteredRequests.filter((r) => {
-      const s = (r.status || '').toLowerCase();
       if (selectedStatus === 'PENDING') {
-        return s.includes('pending') || (!s.includes('approved') && !s.includes('close') && !s.includes('open') && !s.includes('reject') && !s.includes('progress') && !s.includes('signed'));
+        return isRequestPending(r);
       }
-      if (selectedStatus === 'IN_PROGRESS') {
-        return (s.includes('progress') || s.includes('approved') || s.includes('signed') || s.includes('approval') || s.includes('review')) && !s.includes('close');
+      if (selectedStatus === 'IN_PROGRESS' || selectedStatus === 'AWAITING_REVIEW' || selectedStatus === 'Awaiting Review') {
+        return isRequestAwaitingReview(r);
       }
       if (selectedStatus === 'CLOSED') {
-        return s.includes('close');
+        return isRequestClosed(r);
       }
       return true;
     });

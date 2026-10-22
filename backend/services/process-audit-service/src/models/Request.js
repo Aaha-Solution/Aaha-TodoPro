@@ -474,8 +474,7 @@ export const ProcessAuditRequest = {
       params.push(actionTakenBy);
       updates.push('action_taken_at = NOW()');
     }
-    const isClosureOrReopen = status.toLowerCase().includes('close') || status.toLowerCase().includes('open');
-    if (creatorRemark !== null && isClosureOrReopen) {
+    if (creatorRemark !== null) {
       updates.push('creator_remark = ?');
       params.push(creatorRemark);
     }
@@ -600,9 +599,9 @@ export const ProcessAuditRequest = {
 
     await pool.query(
       `UPDATE process_audit_requests 
-       SET department = ?, executor = ?, reassignment_history = ? 
+       SET department = ?, executor = ?, reassignment_history = ?, creator_remark = COALESCE(?, creator_remark), status = 'Pending' 
        WHERE id = ? OR issue_no = ?`,
-      [newDept, newExec, JSON.stringify(history), numericId, String(id)]
+      [newDept, newExec, JSON.stringify(history), reason || null, numericId, String(id)]
     );
 
     const [updatedRows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?', [numericId, String(id)]);

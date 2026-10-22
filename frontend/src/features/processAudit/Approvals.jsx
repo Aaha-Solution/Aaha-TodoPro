@@ -321,9 +321,9 @@ const ProcessAuditApprovals = () => {
 
   const isLockedForCloserUser = !isAdmin && (isSelectedClosed || hasCloserSubmitted);
 
-  // Reassign Closer is disabled when no request is selected, or when review fields are disabled/pending closer submission, or closed
+  // Reassign Closer is disabled when no request is selected, or when request is closed or editing closer fields
   const isReassignDisabled = Boolean(
-    !selectedRequest || isCloserDataToBeUpdated || isSelectedClosed || adminEditCloser
+    !selectedRequest || isSelectedClosed || adminEditCloser
   );
 
   // Fetch users for department-based reassignment
@@ -524,7 +524,7 @@ const ProcessAuditApprovals = () => {
           : req.target_date
         : ''
     );
-    setCloserRemarks(req.creator_remark || req.comments || req.remarks || '');
+    setCloserRemarks(req.creator_remark || '');
     setCloserStatus('');
     setReassignedDept(req.department || '');
     setReassignedPerson(req.executor || '');
@@ -743,7 +743,7 @@ const ProcessAuditApprovals = () => {
           user_department: userDept || 'INCOMING QUALITY'
         });
 
-        await processAuditService.updateRequestStatus(reqId, 'Open', {
+        await processAuditService.updateRequestStatus(reqId, 'Pending', {
           creator_remark: closerRemarks.trim(),
           remark: closerRemarks.trim(),
           closed_by: currentUser?.name || null
@@ -754,9 +754,20 @@ const ProcessAuditApprovals = () => {
         setIsReassignOpen(false);
         setIsReassignUserDropdownOpen(false);
         setReassignUserSearch('');
+        setSelectedRequest((prev) =>
+          prev
+            ? {
+                ...prev,
+                department: reassignedDept,
+                executor: reassignedPerson,
+                status: 'Pending',
+                creator_remark: closerRemarks.trim()
+              }
+            : prev
+        );
         await loadRequests();
       } else {
-        const targetStatus = closerStatus === 'CLOSED' ? 'Closed' : (closerStatus === 'OPEN' ? 'Open' : closerStatus);
+        const targetStatus = closerStatus === 'CLOSED' ? 'Closed' : (closerStatus === 'PENDING' || closerStatus === 'OPEN' ? 'Pending' : closerStatus);
 
         const payload = {
           creator_remark: closerRemarks.trim(),
@@ -810,7 +821,7 @@ const ProcessAuditApprovals = () => {
     const creator = String(r.created_by || r.creator || '').toLowerCase();
     const prod = String(r.product || r.production || '').toLowerCase();
     const obs = String(r.issue_observation || r.problem || '').toLowerCase();
-    const remarks = String(r.creator_remark || r.comments || r.remarks || '').toLowerCase();
+    const remarks = String(r.creator_remark || r.remarks || '').toLowerCase();
     const q = search.trim().toLowerCase();
 
     const matchesSearch =
@@ -886,10 +897,10 @@ const ProcessAuditApprovals = () => {
           'ACTION': r.corrective_action || r.action || '—',
           'STANDARDIZATION': r.standardization_details || '—',
           'TARGET DATE': r.target_date ? formatDateDDMMYYYY(r.target_date) : '—',
-          'REMARKS': r.creator_remark || r.comments || r.remarks || '—',
+          'REMARKS': r.creator_remark || r.remarks || '—',
           'STATUS': (() => {
             const s = (r.status || '').toLowerCase();
-            if (s.includes('progress') || s.includes('approved') || s.includes('signed')) {
+            if (s.includes('progress') || s.includes('approved') || s.includes('signed') || s.includes('review') || s.includes('approval')) {
               return isAdmin ? 'In Progress' : 'Signed off';
             }
             if (s.includes('close')) return 'Closed';
@@ -1467,7 +1478,7 @@ const ProcessAuditApprovals = () => {
                   <span className="text-[10px] text-slate-400 font-medium">Independent Update</span>
                 </div>
 
-                {/* Pending Sign-Off Alert Banner or Disabled Notice Banner */}
+                {/* Alert Banner / Guidance */}
                 {adminEditCloser ? (
                   <div className="p-2.5 px-3 rounded-xl border border-amber-300 bg-amber-50/90 text-amber-900 text-[11px] flex items-center gap-2 animate-in fade-in">
                     <Lock className="w-4 h-4 text-amber-600 shrink-0" />
@@ -1478,24 +1489,16 @@ const ProcessAuditApprovals = () => {
                       </span>
                     </div>
                   </div>
-                ) : isCloserDataToBeUpdated ? (
-                  <div className="p-2.5 px-3 rounded-xl border border-amber-200 bg-amber-50/80 text-amber-900 text-[11px] flex items-center gap-2 animate-in fade-in">
-                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                    <div className="leading-tight">
-                      <span className="font-bold">Closer Pending: </span>
-                      <span className="text-amber-800">
-                        Action &amp; Target Date required before Admin Sign-Off.
-                      </span>
-                    </div>
-                  </div>
                 ) : (
                   selectedRequest && !isSelectedClosed && (
-                    <div className="p-2.5 px-3 rounded-xl border border-amber-200 bg-amber-50/70 text-amber-900 text-[11px] flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div className="p-2.5 px-3 rounded-xl border border-blue-200 bg-blue-50/70 text-blue-900 text-[11px] flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-blue-600 shrink-0" />
                       <div className="leading-tight">
-                        <span className="font-bold">Ready for Review: </span>
-                        <span className="text-amber-800">
-                          Add remarks and finalize status below.
+                        <span className="font-bold">{isReassignOpen ? 'Reassignment: ' : 'Admin Review: '}</span>
+                        <span className="text-blue-800">
+                          {isReassignOpen
+                            ? 'Enter reassignment remarks and select the new executor.'
+                            : 'Enter review remarks and select CLOSED to finalize sign-off.'}
                         </span>
                       </div>
                     </div>
@@ -1541,7 +1544,7 @@ const ProcessAuditApprovals = () => {
                           setReassignUserSearch('');
                           setReassignedDept(selectedRequest?.department || '');
                           setReassignedPerson(selectedRequest?.executor || '');
-                          setCloserStatus('OPEN');
+                          setCloserStatus('PENDING');
                         }}
                         title={
                           !selectedRequest
@@ -1799,10 +1802,10 @@ const ProcessAuditApprovals = () => {
                   <textarea
                     rows={2}
                     maxLength={1000}
-                    disabled={!selectedRequest || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
+                    disabled={!selectedRequest || adminEditCloser}
                     value={closerRemarks}
                     onChange={(e) => {
-                      if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
+                      if (adminEditCloser) return;
                       setCloserRemarks(e.target.value);
                       if (remarksError && e.target.value.trim()) {
                         setRemarksError(false);
@@ -1813,12 +1816,12 @@ const ProcessAuditApprovals = () => {
                         ? 'Click a row on the right to select'
                         : adminEditCloser
                         ? 'Disabled while editing closer fields...'
-                        : isCloserDataToBeUpdated && !isReassignOpen
-                        ? 'Awaiting closer Action & Target Date...'
-                        : 'Enter remarks and validation summary...'
+                        : isReassignOpen
+                        ? 'Enter reason for reassigning to new executor...'
+                        : 'Enter admin review remarks and sign-off notes...'
                     }
                     className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none ${
-                      adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
+                      adminEditCloser
                         ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed select-none'
                         : remarksError
                         ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
@@ -1829,17 +1832,17 @@ const ProcessAuditApprovals = () => {
                     <p className="text-[10px] text-slate-400 mt-0.5">
                       Disabled while editing closer fields.
                     </p>
-                  ) : isCloserDataToBeUpdated && !isReassignOpen ? (
-                    <p className="text-[10px] text-amber-700 mt-0.5 font-medium">
-                      Closer Action &amp; Target Date required first.
-                    </p>
                   ) : remarksError ? (
                     <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
-                      <span>* Remarks is required to save Admin Review and Status Sign-Off.</span>
+                      <span>* Remarks is required before admin sign-off or reassignment.</span>
+                    </p>
+                  ) : isReassignOpen ? (
+                    <p className="text-[10px] text-blue-600 mt-0.5 font-medium">
+                      Enter reason for transferring to the new executor.
                     </p>
                   ) : (
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      Provide admin sign-off or review remarks.
+                      Enter admin review remarks before final closure.
                     </p>
                   )}
                 </div>
@@ -1863,15 +1866,15 @@ const ProcessAuditApprovals = () => {
                     </label>
                   </div>
                   <select
-                    value={isReassignOpen ? 'OPEN' : closerStatus}
+                    value={isReassignOpen ? 'PENDING' : closerStatus}
                     onChange={(e) => {
-                      if (adminEditCloser || isReassignOpen || isCloserDataToBeUpdated) return;
+                      if (adminEditCloser || isReassignOpen) return;
                       setCloserStatus(e.target.value);
                       if (e.target.value) setStatusError(false);
                     }}
-                    disabled={adminEditCloser || !selectedRequest || isReassignOpen || isCloserDataToBeUpdated}
+                    disabled={adminEditCloser || !selectedRequest || isReassignOpen}
                     className={`w-full px-3.5 py-2.5 border rounded-xl font-bold outline-none transition ${
-                      adminEditCloser || isCloserDataToBeUpdated
+                      adminEditCloser
                         ? 'cursor-not-allowed bg-slate-100 border-slate-200 text-slate-400 select-none'
                         : isReassignOpen
                         ? 'cursor-not-allowed bg-slate-50 border-slate-200 text-slate-700'
@@ -1883,7 +1886,7 @@ const ProcessAuditApprovals = () => {
                     }`}
                   >
                     {isReassignOpen ? (
-                      <option value="OPEN">PENDING (Awaiting Closer)</option>
+                      <option value="PENDING">PENDING (Awaiting Closer)</option>
                     ) : (
                       <>
                         <option value="">Select Status...</option>
@@ -1900,10 +1903,6 @@ const ProcessAuditApprovals = () => {
                       {adminEditCloser ? (
                         <span className="text-slate-400">
                           Disabled while editing closer fields.
-                        </span>
-                      ) : isCloserDataToBeUpdated ? (
-                        <span className="text-amber-700 font-medium">
-                          Status unlocks after closer submission.
                         </span>
                       ) : isReassignOpen ? (
                         <span className="text-amber-700 font-medium">
@@ -1942,32 +1941,27 @@ const ProcessAuditApprovals = () => {
                       <Lock className="w-4 h-4 text-slate-400" />
                       <span>Sign-Off Locked (Closer Edit Active)</span>
                     </button>
-                  ) : isCloserDataToBeUpdated && !isReassignOpen ? (
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full py-2.5 px-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
-                      title="Action & Target Date required before Admin Sign-Off"
-                    >
-                      <Lock className="w-4 h-4 text-amber-600" />
-                      <span>Sign-Off Locked (Closer Pending)</span>
-                    </button>
                   ) : (
                     <button
                       type="button"
                       onClick={handleSaveAdmin}
-                      disabled={isSavingAdmin || isSavingCloser}
+                      disabled={isSavingAdmin || isSavingCloser || (!isReassignOpen && !closerStatus)}
                       className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition transform active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSavingAdmin ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Saving Admin Sign-Off...</span>
+                          <span>Saving...</span>
+                        </>
+                      ) : isReassignOpen ? (
+                        <>
+                          <UserCheck className="w-4 h-4" />
+                          <span>Reassign Closer &amp; Save Remarks</span>
                         </>
                       ) : (
                         <>
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>Save Admin Review &amp; Status Sign-Off</span>
+                          <span>Save Admin Review &amp; Close Request</span>
                         </>
                       )}
                     </button>
@@ -2087,7 +2081,7 @@ const ProcessAuditApprovals = () => {
                       const isSignedOff = (statusLower.includes('approved') || statusLower.includes('signed')) && !isClosed;
                       const isPending = !isSignedOff && !isClosed && !isOpen && !isRejected;
 
-                      const remarksText = r.creator_remark || r.corrective_action || r.comments || r.remarks || r.rejection_reason || '—';
+                      const remarksText = r.creator_remark || r.remarks || '—';
                       const attachmentsRaw = r.action_attachments || r.attachments || r.evidence_attachment;
 
                       return (
