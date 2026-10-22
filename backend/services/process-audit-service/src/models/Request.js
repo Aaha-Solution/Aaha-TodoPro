@@ -249,6 +249,13 @@ export const ProcessAuditRequest = {
     }
   },
 
+  findById: async (id) => {
+    if (!pool) return null;
+    const numericId = parseInt(String(id).replace(/\D/g, ''), 10) || id;
+    const [rows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?', [numericId, String(id)]);
+    return rows[0] || null;
+  },
+
   create: async (data) => {
     if (!pool) throw new Error('Database connection pool is not available');
     const escalation_date = data.escalation_date || data.date || new Date().toISOString().split('T')[0];

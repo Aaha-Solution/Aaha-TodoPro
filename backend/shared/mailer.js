@@ -566,4 +566,250 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
   return results;
 }
 
+/**
+ * Send request creation emails for Process Audit requests
+ */
+export async function sendProcessAuditRequestEmails({ request, creatorUser, assignedUser }) {
+  const reqNo = request.issue_no || (request.id ? `PA-${request.id}` : 'PA-1');
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const myRequestsUrl = `${baseUrl}/process-audit/all-requests`;
+
+  const creatorEmail = creatorUser?.email || request.created_by_email || 'sridharkesava@outlook.com';
+  const creatorName = creatorUser?.name || request.created_by || 'Quality Auditor';
+
+  const assignedEmail = assignedUser?.email || request.executor_email || 'sridharkesava@outlook.com';
+  const assignedName = assignedUser?.name || request.executor || 'Assigned Executor';
+  const assignedDept = request.department || assignedUser?.department || 'Production';
+
+  const tableSummary = [
+    { label: 'Request Number', value: reqNo },
+    { label: 'Product / Model', value: `${request.product || '—'} (${request.model || '—'})` },
+    { label: 'Process / Operation', value: request.process_operation || '—' },
+    { label: 'Issue Type / Priority', value: `${request.issue_type || 'Process'} / ${request.priority || 'Medium'}` },
+    { label: 'Responsible Dept', value: assignedDept },
+    { label: 'Responsible Executor', value: assignedName },
+    { label: 'Audit Observation', value: request.issue_observation || request.problem || '—' },
+    { label: 'Audited By', value: creatorName },
+    { label: 'Status', value: request.status || 'Pending' }
+  ];
+
+  const results = {};
+
+  // 1. Email to Creator (Confirmation)
+  if (creatorEmail) {
+    const creatorSubject = `[Process Audit Confirmation] Observation Request #${reqNo} Successfully Submitted`;
+    const creatorHtml = generateEmailTemplate({
+      headerTitle: `Process Audit Report Logged: #${reqNo}`,
+      headerSubtitle: `Your process audit observation finding has been recorded and assigned for root cause containment.`,
+      recipientName: creatorName,
+      greetingMessage: `Your Process Audit observation report for <strong>${request.model || request.product}</strong> has been logged into the database and assigned to <strong>${assignedName}</strong> (${assignedDept}) for 5-Why root cause analysis and corrective action.`,
+      tableData: tableSummary,
+      actionButtonText: 'View Process Audit Requests',
+      actionButtonUrl: myRequestsUrl,
+      footerNote: 'You will receive an alert once the responsible department submits containment action and 5-Why analysis.',
+      badgeColor: '#10b981',
+      badgeText: 'SUBMITTED',
+    });
+
+    results.creator = await sendEmail({
+      to: creatorEmail,
+      recipientName: creatorName,
+      recipientRole: 'RAISED_PERSON',
+      subject: creatorSubject,
+      text: `Your Process Audit request #${reqNo} (${request.model || request.product} - "${request.issue_observation || request.problem}") has been successfully logged and assigned to ${assignedName} (${assignedDept}).`,
+      html: creatorHtml,
+      moduleType: 'PROCESS_AUDIT',
+      requestId: request.id,
+      referenceNo: reqNo,
+    });
+  }
+
+  // 2. Email to Assigned Executor (Action Required)
+  if (assignedEmail) {
+    const assignedSubject = `[Action Required] Process Audit #${reqNo} Assigned to You (${assignedDept})`;
+    const assignedHtml = generateEmailTemplate({
+      headerTitle: `Action Required: Process Audit Finding #${reqNo}`,
+      headerSubtitle: `A process audit finding has been assigned to you for investigation and corrective action.`,
+      recipientName: assignedName,
+      greetingMessage: `<strong>${creatorName}</strong> from QAD has logged a process audit finding and designated you as the responsible owner for containment and 5-Why analysis.`,
+      tableData: tableSummary,
+      actionButtonText: 'Open Report & Submit Countermeasure',
+      actionButtonUrl: `${baseUrl}/process-audit/approvals`,
+      footerNote: 'Immediate action required: please inspect the process finding and record corrective containment measures in the portal.',
+      badgeColor: '#f59e0b',
+      badgeText: 'ACTION REQUIRED',
+    });
+
+    results.assigned = await sendEmail({
+      to: assignedEmail,
+      recipientName: assignedName,
+      recipientRole: 'SELECTED_PERSON',
+      subject: assignedSubject,
+      text: `Process Audit Request #${reqNo} (${request.model || request.product} - "${request.issue_observation || request.problem}") has been assigned to you by ${creatorName}. Please log in to complete containment analysis.`,
+      html: assignedHtml,
+      moduleType: 'PROCESS_AUDIT',
+      requestId: request.id,
+      referenceNo: reqNo,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Send closer / countermeasure update emails for Process Audit requests
+ */
+export async function sendProcessAuditCloserEmails({ request, closerUser, creatorUser, assignedUser, adminUsers = [] }) {
+  const reqNo = request.issue_no || (request.id ? `PA-${request.id}` : 'PA-1');
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const approvalsUrl = `${baseUrl}/process-audit/approvals`;
+
+  const creatorEmail = creatorUser?.email || request.created_by_email || 'sridharkesava@outlook.com';
+  const creatorName = creatorUser?.name || request.created_by || 'Quality Auditor';
+
+  const assignedEmail = assignedUser?.email || request.executor_email || 'sridharkesava@outlook.com';
+  const assignedName = assignedUser?.name || request.executor || 'Assigned Lead';
+  const assignedDept = request.department || assignedUser?.department || 'Production';
+
+  const isClosed = String(request.status).toLowerCase().includes('close');
+  const closerWhy1 = Array.isArray(request.prod_why_why) ? (request.prod_why_why[0] || '—') : (typeof request.prod_why_why === 'string' ? JSON.parse(request.prod_why_why || '[]')[0] || '—' : request.root_cause || '—');
+
+  const tableSummary = [
+    { label: 'Request Number', value: reqNo },
+    { label: 'Product / Model', value: `${request.product || '—'} (${request.model || '—'})` },
+    { label: 'Responsible Dept', value: assignedDept },
+    { label: 'Responsible Executor', value: assignedName },
+    { label: 'Occurrence Cause (Why 1)', value: closerWhy1 },
+    { label: 'Action Taken', value: request.temporary_action || request.permanent_fix || request.corrective_action || 'Containment in progress' },
+    { label: 'Target / Close Date', value: request.temporary_target_date || request.permanent_target_date || request.target_date || 'N/A' },
+    { label: 'Updated Status', value: request.status || (isClosed ? 'Closed' : 'Awaiting Review') },
+    { label: 'Auditor Remarks', value: request.creator_remark || request.remarks || (isClosed ? 'Closed' : '(Pending validation by Auditor/Admin)') }
+  ];
+
+  const results = { admins: [] };
+
+  // 1. Notify Creator (Raised Person / Auditor)
+  if (creatorEmail) {
+    const subject = isClosed 
+      ? `[Process Audit Case Closed] Audit Finding #${reqNo} Verified & Closed`
+      : `[Action Required] Closer Completed Countermeasures for #${reqNo} - Pending Remarks & Status Sign-Off`;
+
+    const html = generateEmailTemplate({
+      headerTitle: isClosed ? `Process Audit Case Closed: #${reqNo}` : `Closer Countermeasure Completed: #${reqNo}`,
+      headerSubtitle: isClosed
+        ? `Audit observation containment and corrective actions have been completed and verified.`
+        : `Closer ${assignedName} (${assignedDept}) has completed 5-Why root cause analysis and corrective action. Please complete pending remarks and status sign-off.`,
+      recipientName: creatorName,
+      greetingMessage: isClosed
+        ? `Process Audit report <strong>${reqNo}</strong> (${request.model || 'Model'}) has been signed off and marked as <strong>CLOSED</strong>.`
+        : `Closer <strong>${assignedName}</strong> (${assignedDept}) has completed the 5-Why root cause analysis and corrective action for audit report <strong>${reqNo}</strong> (${request.model || 'Report'}).<br><br><strong>Action Required:</strong> Please review the containment countermeasure details below and complete the pending fields: <strong>Remarks</strong> &amp; <strong>Status sign-off</strong>.`,
+      tableData: tableSummary,
+      actionButtonText: isClosed ? 'Review Full Audit Report' : 'Complete Pending Remarks & Sign-Off',
+      actionButtonUrl: approvalsUrl,
+      footerNote: isClosed ? 'Verification complete in the INEL portal.' : 'Action required: Please enter your review remarks and sign off status in the portal.',
+      badgeColor: isClosed ? '#10b981' : '#d97706',
+      badgeText: isClosed ? 'CASE CLOSED' : 'ACTION REQUIRED: PENDING SIGN-OFF',
+    });
+
+    results.creator = await sendEmail({
+      to: creatorEmail,
+      recipientName: creatorName,
+      recipientRole: 'RAISED_PERSON',
+      subject,
+      text: isClosed
+        ? `Audit report #${reqNo} verified and closed.`
+        : `Action Required: Closer ${assignedName} (${assignedDept}) completed root cause countermeasures for #${reqNo}. Please complete remarks and sign off status at: ${approvalsUrl}`,
+      html,
+      moduleType: 'PROCESS_AUDIT',
+      requestId: request.id,
+      referenceNo: reqNo,
+    });
+  }
+
+  // 2. Notify Quality Admins
+  if (Array.isArray(adminUsers) && adminUsers.length > 0) {
+    for (const admin of adminUsers) {
+      const adminEmail = admin?.email;
+      const adminName = admin?.name || 'Quality Admin';
+      if (!adminEmail || (creatorEmail && adminEmail.toLowerCase() === creatorEmail.toLowerCase())) {
+        continue;
+      }
+
+      const adminSubject = isClosed
+        ? `[Process Audit Case Closed] Incident #${reqNo} Closed by Quality Team`
+        : `[Admin Action Required] Closer Completed Countermeasures for #${reqNo} - Pending Sign-Off`;
+
+      const adminHtml = generateEmailTemplate({
+        headerTitle: isClosed ? `Case Closed: #${reqNo}` : `Pending Closer Review: #${reqNo}`,
+        headerSubtitle: isClosed
+          ? `Process audit report #${reqNo} has been finalized and closed.`
+          : `Closer ${assignedName} (${assignedDept}) has completed root cause analysis and countermeasures. Ready for validation remarks and status sign-off.`,
+        recipientName: adminName,
+        greetingMessage: isClosed
+          ? `Audit report <strong>${reqNo}</strong> (${request.model || 'Model'}) has been signed off and closed.`
+          : `Closer <strong>${assignedName}</strong> (${assignedDept}) has completed the 5-Why root cause analysis and corrective action for audit report <strong>${reqNo}</strong> (${request.model || 'Report'}).<br><br><strong>Admin Action Required:</strong> Please review root cause details, provide validation remarks, and finalize the audit status.`,
+        tableData: tableSummary,
+        actionButtonText: 'Review & Sign-Off Incident',
+        actionButtonUrl: approvalsUrl,
+        footerNote: 'Please sign off in the INEL Quality Portal.',
+        badgeColor: isClosed ? '#10b981' : '#d97706',
+        badgeText: isClosed ? 'CASE CLOSED' : 'PENDING ADMIN SIGN-OFF',
+      });
+
+      const adminRes = await sendEmail({
+        to: adminEmail,
+        recipientName: adminName,
+        recipientRole: 'ADMIN',
+        subject: adminSubject,
+        text: `Admin Action Required: Closer ${assignedName} completed countermeasures for #${reqNo}. Please review and finalize sign-off at: ${approvalsUrl}`,
+        html: adminHtml,
+        moduleType: 'PROCESS_AUDIT',
+        requestId: request.id,
+        referenceNo: reqNo,
+      });
+      results.admins.push(adminRes);
+    }
+  }
+
+  // 3. Acknowledge to Closer (Assigned Executor)
+  if (assignedEmail) {
+    const subject = isClosed
+      ? `[Process Audit Case Closed] Closer Confirmation: Finding #${reqNo} Marked as CLOSED`
+      : `[Process Audit Acknowledgment] Closer Countermeasures Submitted for #${reqNo}`;
+
+    const html = generateEmailTemplate({
+      headerTitle: isClosed ? `Case Closed & Signed-Off: #${reqNo}` : `Closer Submission Acknowledged: #${reqNo}`,
+      headerSubtitle: isClosed
+        ? `Your closure sign-off and root cause containment measures have been confirmed in the quality portal.`
+        : `Your 5-Why root cause countermeasures have been successfully submitted. Auditor and Admin have been alerted to complete the pending fields.`,
+      recipientName: assignedName,
+      greetingMessage: isClosed
+        ? `You have successfully verified and marked Process Audit Report <strong>${reqNo}</strong> as <strong>CLOSED</strong>.`
+        : `Thank you <strong>${assignedName}</strong>. Your 5-Why root cause analysis and corrective actions for Process Audit Report <strong>${reqNo}</strong> have been recorded in the quality system.<br><br>The Auditor (<strong>${creatorName}</strong>) and Quality Admin have been alerted with notifications and email to complete the pending validation remarks and finalize status.`,
+      tableData: tableSummary,
+      actionButtonText: 'View Closer Approvals',
+      actionButtonUrl: approvalsUrl,
+      footerNote: 'Thank you for submitting quality containment measures.',
+      badgeColor: isClosed ? '#10b981' : '#2563eb',
+      badgeText: isClosed ? 'CASE CLOSED' : 'SUBMITTED & ACKNOWLEDGED',
+    });
+
+    results.assigned = await sendEmail({
+      to: assignedEmail,
+      recipientName: assignedName,
+      recipientRole: 'SELECTED_PERSON',
+      subject,
+      text: isClosed
+        ? `Process audit report #${reqNo} has been marked as CLOSED. Containment verified.`
+        : `Closer Log Acknowledged for #${reqNo}. Auditor and Admin have been notified to complete pending remarks and status.`,
+      html,
+      moduleType: 'PROCESS_AUDIT',
+      requestId: request.id,
+      referenceNo: reqNo,
+    });
+  }
+
+  return results;
+}
+
 

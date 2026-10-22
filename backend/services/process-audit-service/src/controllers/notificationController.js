@@ -96,12 +96,14 @@ export const getNotifications = async (req, res) => {
       conditions.push("LOWER(TRIM(user_name)) LIKE '%admin%'");
       conditions.push("LOWER(TRIM(user_email)) LIKE '%admin%'");
       conditions.push("type LIKE '%admin%'");
-      conditions.push("type = 'approval_required'");
-      conditions.push("type = 'request_approved'");
-      conditions.push("type = 'request_closed'");
-      conditions.push("type = 'request_created'");
-      conditions.push("type = 'request_rejected'");
+      conditions.push("type = 'closer_completed_pending_admin_signoff'");
+      conditions.push("type = 'closer_completed_pending_review'");
+      conditions.push("type = 'submission_confirmed'");
+      conditions.push("type = 'case_closed'");
       conditions.push("type = 'reassigned'");
+      conditions.push("type = 'approval_required'");
+      conditions.push("type = 'assignment_required'");
+      conditions.push("type = 'countermeasure_saved'");
     }
 
     if (conditions.length > 0) {
@@ -141,11 +143,11 @@ export const getNotifications = async (req, res) => {
       }
       const notifications = requests.slice(0, 15).map(r => {
         const isClosed = (r.status || '').toLowerCase() === 'closed';
-        const isApproved = (r.status || '').toLowerCase().includes('approved');
+        const isApproved = (r.status || '').toLowerCase().includes('approved') || (r.status || '').toLowerCase().includes('review');
         const isRejected = (r.status || '').toLowerCase().includes('reject');
         let title = `Audit Request Raised: #${r.issue_no}`;
-        let msg = `Audit request #${r.issue_no} (${r.model || 'Model'} - ${r.department}) logged with problem "${r.problem || '—'}".`;
-        let badgeLabel = 'AUDIT ALERT';
+        let msg = `Audit request #${r.issue_no} (${r.model || 'Model'} - ${r.department}) logged with problem "${r.problem || r.issue_observation || '—'}".`;
+        let badgeLabel = 'REPORT LOGGED';
         let accentColor = 'blue';
 
         if (isClosed) {
@@ -154,19 +156,19 @@ export const getNotifications = async (req, res) => {
           badgeLabel = 'CASE CLOSED';
           accentColor = 'emerald';
         } else if (isApproved) {
-          title = `Audit Sign-Off Completed: #${r.issue_no}`;
-          msg = `Request #${r.issue_no} has been reviewed and signed off by ${r.executor}.`;
-          badgeLabel = 'AUDIT APPROVED';
-          accentColor = 'emerald';
+          title = `Pending Sign-Off: #${r.issue_no}`;
+          msg = `Request #${r.issue_no} has countermeasures submitted and is pending sign-off.`;
+          badgeLabel = 'PENDING SIGN-OFF';
+          accentColor = 'amber';
         } else if (isRejected) {
           title = `Request Needs Attention: #${r.issue_no}`;
           msg = `Audit request #${r.issue_no} could not be signed off by ${r.executor}.`;
           badgeLabel = 'CORRECTION NEEDED';
           accentColor = 'rose';
         } else {
-          title = `New Request Assigned: #${r.issue_no}`;
-          msg = `Audit request #${r.issue_no} (${r.department}) assigned to ${r.executor} for review & sign-off.`;
-          badgeLabel = 'SIGN-OFF REQUIRED';
+          title = `Action Required: Process Audit #${r.issue_no}`;
+          msg = `Audit request #${r.issue_no} (${r.department}) assigned to ${r.executor} for root cause countermeasures.`;
+          badgeLabel = 'ACTION REQUIRED';
           accentColor = 'amber';
         }
 
@@ -183,11 +185,11 @@ export const getNotifications = async (req, res) => {
           accentColor,
           department: r.department || 'QUALITY AUDIT',
           subCategory: 'PROCESS AUDIT OBSERVATION',
-          footerFlag: isClosed ? 'CASE_CLOSED' : isApproved ? 'SYSTEM_LOGS' : 'ACTION_REQUIRED',
+          footerFlag: isClosed ? 'CASE_CLOSED' : isApproved ? 'ACTION_REQUIRED' : 'SYSTEM_LOGS',
           status: r.status || 'Open',
           read: false,
           type: r.status || 'info',
-          link: '/process-audit/approvals'
+          link: isClosed ? '/process-audit/all-requests' : '/process-audit/approvals'
         };
       });
       return successResponse(res, notifications, 'Process Audit notifications retrieved');
@@ -195,31 +197,48 @@ export const getNotifications = async (req, res) => {
 
     const formatted = notifRows.map((n) => {
       const d = n.created_at ? new Date(n.created_at) : new Date();
-      const isApproval = n.type === 'approval_required' || (n.title && n.title.toLowerCase().includes('sign-off'));
-      const isApproved = n.type === 'request_approved' || n.type === 'approved' || (n.title && n.title.toLowerCase().includes('approved'));
-      const isClosed = n.type === 'request_closed' || n.type === 'closed' || (n.title && n.title.toLowerCase().includes('closed'));
-      const isRejected = n.type === 'request_rejected' || n.type === 'rejected' || (n.title && n.title.toLowerCase().includes('rejected'));
+      const isConfirmed = n.type === 'submission_confirmed' || n.type === 'request_created';
+      const isClosed = ['case_closed', 'closed', 'request_closed'].includes(n.type) || (n.title && n.title.toLowerCase().includes('closed'));
+      const isUpdated = ['countermeasure_updated', 'countermeasure_saved'].includes(n.type);
+      const isPendingSignoff = ['closer_completed_pending_review', 'closer_completed_pending_admin_signoff', 'pending_requester_signoff'].includes(n.type) || (n.title && n.title.toLowerCase().includes('sign-off pending'));
+      const isReassigned = n.type === 'reassigned' || n.type === 'pa_reassigned';
+      const isApproval = n.type === 'assignment_required' || n.type === 'approval_required' || (n.title && n.title.toLowerCase().includes('action required'));
 
-      let badgeLabel = 'AUDIT ALERT';
-      let accentColor = 'blue';
-      let footerFlag = 'OPERATIONAL_UPDATE';
+      let badgeLabel = 'ACTION REQUIRED';
+      let accentColor = 'amber';
+      let footerFlag = 'ACTION_REQUIRED';
+      let dept = n.department || 'QUALITY AUDIT';
 
-      if (isClosed) {
+      if (isPendingSignoff) {
+        badgeLabel = 'PENDING SIGN-OFF';
+        accentColor = 'amber';
+        footerFlag = 'ACTION_REQUIRED';
+        dept = 'QUALITY SIGN-OFF';
+      } else if (isConfirmed) {
+        badgeLabel = 'REPORT LOGGED';
+        accentColor = 'blue';
+        footerFlag = 'SYSTEM_LOGS';
+        dept = 'QAD';
+      } else if (isClosed) {
         badgeLabel = 'CASE CLOSED';
         accentColor = 'emerald';
         footerFlag = 'CASE_CLOSED';
-      } else if (isApproved) {
-        badgeLabel = 'AUDIT APPROVED';
-        accentColor = 'emerald';
-        footerFlag = 'SYSTEM_LOGS';
-      } else if (isRejected) {
-        badgeLabel = 'CORRECTION NEEDED';
-        accentColor = 'rose';
-        footerFlag = 'ACTION_REQUIRED';
+        dept = 'QUALITY VERIFIED';
+      } else if (isUpdated) {
+        badgeLabel = 'COUNTERMEASURE SUBMITTED';
+        accentColor = 'indigo';
+        footerFlag = 'OPERATIONAL_UPDATE';
+        dept = 'PRODUCTION';
+      } else if (isReassigned) {
+        badgeLabel = 'REASSIGNED';
+        accentColor = 'purple';
+        footerFlag = 'OPERATIONAL_UPDATE';
+        dept = 'QUALITY AUDIT';
       } else if (isApproval) {
-        badgeLabel = 'SIGN-OFF REQUIRED';
+        badgeLabel = 'ACTION REQUIRED';
         accentColor = 'amber';
         footerFlag = 'ACTION_REQUIRED';
+        dept = 'PRODUCTION';
       }
 
       return {
@@ -232,7 +251,7 @@ export const getNotifications = async (req, res) => {
         reqNo: String(n.issue_no).startsWith('#') ? n.issue_no : `#${n.issue_no}`,
         badgeLabel,
         accentColor,
-        department: n.department || 'QUALITY AUDIT',
+        department: dept,
         title: n.title,
         message: n.message,
         date: d.toLocaleDateString('en-GB', {
@@ -259,7 +278,7 @@ export const getNotifications = async (req, res) => {
         subCategory: 'PROCESS AUDIT OBSERVATION',
         footerFlag,
         type: n.type,
-        link: n.link || '/process-audit/approvals',
+        link: n.link || (isClosed ? '/process-audit/all-requests' : '/process-audit/approvals'),
         read: Boolean(n.is_read),
         is_read: n.is_read,
       };
@@ -314,7 +333,7 @@ export const markAllAsRead = async (req, res) => {
            user_id = ? OR 
            LOWER(TRIM(user_name)) LIKE '%admin%' OR 
            LOWER(TRIM(user_email)) LIKE '%admin%' OR 
-           type IN ('approval_required', 'request_approved', 'request_closed', 'request_rejected', 'reassigned', 'request_created')`,
+           type IN ('approval_required', 'assignment_required', 'request_approved', 'request_closed', 'case_closed', 'request_rejected', 'reassigned', 'request_created', 'submission_confirmed', 'closer_completed_pending_review', 'closer_completed_pending_admin_signoff', 'countermeasure_saved')`,
           [userId || 1]
         );
       } else {

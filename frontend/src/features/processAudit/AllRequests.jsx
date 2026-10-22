@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Download,
   Search,
@@ -40,6 +40,7 @@ import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
 
 const AllRequests = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const savedUser = storage.getUser();
   const currentUser = user || savedUser;
@@ -77,7 +78,13 @@ const AllRequests = () => {
   const defaultStartDate = `${currentYear}-01-01`;
   const defaultEndDate = `${currentYear}-12-31`;
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => location.state?.search || '');
+
+  useEffect(() => {
+    if (location.state?.search) {
+      setSearch(location.state.search);
+    }
+  }, [location.state]);
   const [selectedShift, setSelectedShift] = useState('All Shifts');
   const [selectedStage, setSelectedStage] = useState('All Stages');
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments');

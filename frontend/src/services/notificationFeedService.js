@@ -387,47 +387,39 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           (uName && nName && (uName === nName || nNameList.includes(uName))) ||
           (uEmail && nEmail && (uEmail === nEmail || nEmailList.includes(uEmail)));
 
+        // Non-admins only see notifications directly addressed to them
         if (!isAdmin && !isDirectMatch) return;
 
-        const isApproval = n.type === 'approval_required' || (n.title && n.title.toLowerCase().includes('sign-off'));
-        const isApproved = n.type === 'request_approved' || n.type === 'approved' || (n.title && n.title.toLowerCase().includes('approved'));
-        const isClosed = n.type === 'request_closed' || n.type === 'closed' || (n.title && n.title.toLowerCase().includes('closed'));
-        const isRejected = n.type === 'request_rejected' || n.type === 'rejected' || (n.title && n.title.toLowerCase().includes('rejected'));
+        // Personal action & acknowledgment notifications:
+        // 'assignment_required' ("assigned to you by Auditor") and 'countermeasure_saved' ("Your 5-Why analysis... submitted")
+        // are personal to the assignee/closer and MUST NEVER duplicate into other users' streams (including Admin)
+        if ((n.type === 'assignment_required' || n.type === 'countermeasure_saved') && !isDirectMatch) {
+          return;
+        }
 
-        const badgeLabel = isClosed
-          ? 'CASE CLOSED'
-          : isApproved
-          ? 'AUDIT APPROVED'
-          : isRejected
-          ? 'CORRECTION NEEDED'
-          : isApproval
-          ? 'SIGN-OFF REQUIRED'
-          : n.badgeLabel || 'AUDIT ALERT';
-        const accentColor = isClosed
-          ? 'emerald'
-          : isApproved
-          ? 'emerald'
-          : isRejected
-          ? 'rose'
-          : isApproval
-          ? 'amber'
-          : n.accentColor || 'blue';
-        const footerFlag = isClosed
-          ? 'CASE_CLOSED'
-          : isApproved
-          ? 'SYSTEM_LOGS'
-          : isRejected || isApproval
-          ? 'ACTION_REQUIRED'
-          : n.footerFlag || 'OPERATIONAL_UPDATE';
-
-        const rawReq = n.requestId || n.issue_no || '';
-        const reqNo = rawReq ? (String(rawReq).startsWith('#') ? rawReq : `#${rawReq}`) : '#PA';
+        const isClosedNotif =
+          ['case_closed', 'closure_confirmed', 'closed', 'request_closed'].includes(n.type) ||
+          (n.title && n.title.toLowerCase().includes('closed')) ||
+          n.badgeLabel === 'CASE CLOSED';
+        const isPendingSignoff =
+          ['closer_completed_pending_review', 'closer_completed_pending_admin_signoff', 'pending_requester_signoff'].includes(n.type) ||
+          (n.title && n.title.toLowerCase().includes('pending sign-off')) ||
+          (n.title && n.title.toLowerCase().includes('pending fields'));
+        const isUpdatedNotif =
+          ['countermeasure_updated', 'countermeasure_saved'].includes(n.type) ||
+          n.badgeLabel === 'COUNTERMEASURE SUBMITTED';
+        const isConfirmedNotif = n.type === 'submission_confirmed' || n.type === 'request_created';
+        const isReassignedNotif = n.type === 'reassigned' || n.type === 'pa_reassigned';
 
         const notifIdStr = `pa-notif-${n.id}`;
-        let isRead = false;
+        const rawReq = n.requestId || n.issue_no || '';
+        const reqNoKey = rawReq ? (String(rawReq).startsWith('#') ? rawReq : `#${rawReq}`) : '#PA';
+
+        // Authoritative read status
+        let isItemRead = false;
         if (n.is_read !== undefined && n.is_read !== null) {
-          isRead = Number(n.is_read) === 1;
-          if (!isRead) {
+          isItemRead = Number(n.is_read) === 1;
+          if (!isItemRead) {
             setReadOverride('process-audit', resolvedUser, notifIdStr, false);
             setReadOverride('process-audit', resolvedUser, n.id, false);
           }
@@ -435,16 +427,18 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           const savedRead =
             getReadOverride('process-audit', resolvedUser, notifIdStr) ??
             getReadOverride('process-audit', resolvedUser, n.id);
-          isRead = savedRead !== null ? savedRead : Boolean(n.read);
+          isItemRead = savedRead !== null ? savedRead : Boolean(n.read);
         }
 
+        // Deduplicate streamList
         const isDuplicate = streamList.some((s) => {
           if (s.id === notifIdStr) return true;
-          if (reqNo && s.reqNo === reqNo) {
-            if (isClosed && s.badgeLabel === 'CASE CLOSED') return true;
-            if (isApproved && s.badgeLabel === 'AUDIT APPROVED') return true;
-            if (isRejected && s.badgeLabel === 'CORRECTION NEEDED') return true;
-            if (isApproval && s.badgeLabel === 'SIGN-OFF REQUIRED') return true;
+          if (reqNoKey && s.reqNo === reqNoKey) {
+            if (isClosedNotif && s.badgeLabel === 'CASE CLOSED') return true;
+            if (isPendingSignoff && s.badgeLabel === 'PENDING SIGN-OFF') return true;
+            if (isUpdatedNotif && s.badgeLabel === 'COUNTERMEASURE SUBMITTED') return true;
+            if (isConfirmedNotif && s.badgeLabel === 'REPORT LOGGED') return true;
+            if (isReassignedNotif && s.badgeLabel === 'REASSIGNED') return true;
             if (s.type === n.type && s.title === n.title) return true;
           }
           return false;
@@ -456,18 +450,46 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           id: notifIdStr,
           notifId: n.id,
           rawId: n.rawId || n.id,
-          reqNo,
-          badgeLabel,
-          accentColor,
-          department: n.department || 'QUALITY AUDIT',
+          reqNo: reqNoKey,
+          badgeLabel: isClosedNotif
+            ? 'CASE CLOSED'
+            : isPendingSignoff
+            ? 'PENDING SIGN-OFF'
+            : isUpdatedNotif
+            ? 'COUNTERMEASURE SUBMITTED'
+            : isConfirmedNotif
+            ? 'REPORT LOGGED'
+            : isReassignedNotif
+            ? 'REASSIGNED'
+            : n.badgeLabel || 'ACTION REQUIRED',
+          accentColor: isClosedNotif
+            ? 'emerald'
+            : isPendingSignoff
+            ? 'amber'
+            : isUpdatedNotif
+            ? 'indigo'
+            : isConfirmedNotif
+            ? 'blue'
+            : isReassignedNotif
+            ? 'purple'
+            : n.accentColor || 'amber',
+          department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : 'PRODUCTION'),
           title: n.title,
           message: n.message,
           timeDisplay: formatStreamDate(n.date || n.time || n.created_at),
           subCategory: 'PROCESS AUDIT OBSERVATION',
-          footerFlag,
-          read: isRead,
-          type: n.type || 'info',
-          link: n.link || (isApproval ? '/process-audit/approvals' : '/process-audit/all-requests'),
+          footerFlag: isClosedNotif
+            ? 'CASE_CLOSED'
+            : isPendingSignoff
+            ? 'ACTION_REQUIRED'
+            : isUpdatedNotif
+            ? 'OPERATIONAL_UPDATE'
+            : isConfirmedNotif
+            ? 'SYSTEM_LOGS'
+            : n.footerFlag || 'ACTION_REQUIRED',
+          read: isItemRead,
+          type: n.type || (isClosedNotif ? 'closed' : 'info'),
+          link: n.link || (isClosedNotif ? '/process-audit/all-requests' : '/process-audit/approvals'),
         });
       });
     }
@@ -487,18 +509,15 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         if (streamList.some((s) => s.reqNo === reqNo)) return;
 
         const isClosed = (r.status || '').toLowerCase() === 'closed';
-        const isApproved = (r.status || '').toLowerCase().includes('approved');
-        const isRejected = (r.status || '').toLowerCase().includes('reject');
+        const isApproved = (r.status || '').toLowerCase().includes('approved') || (r.status || '').toLowerCase().includes('review') || (r.status || '').toLowerCase().includes('progress');
 
         const badgeLabel = isClosed
           ? 'CASE CLOSED'
           : isApproved
-          ? 'AUDIT APPROVED'
-          : isRejected
-          ? 'CORRECTION NEEDED'
-          : 'SIGN-OFF REQUIRED';
-        const accentColor = isClosed ? 'emerald' : isApproved ? 'emerald' : isRejected ? 'rose' : 'amber';
-        const footerFlag = isClosed ? 'CASE_CLOSED' : isApproved ? 'SYSTEM_LOGS' : 'ACTION_REQUIRED';
+          ? 'COUNTERMEASURE REQUIRED'
+          : 'ACTION REQUIRED';
+        const accentColor = isClosed ? 'emerald' : 'amber';
+        const footerFlag = isClosed ? 'CASE_CLOSED' : 'ACTION_REQUIRED';
 
         const savedRead = getReadOverride('process-audit', resolvedUser, `req-${r.id || idx}`) ?? getReadOverride('process-audit', resolvedUser, reqNo);
 
@@ -508,15 +527,15 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           reqNo,
           badgeLabel,
           accentColor,
-          department: r.department || 'QUALITY AUDIT',
+          department: r.department || (isClosed ? 'QUALITY VERIFIED' : 'PRODUCTION'),
           title: `Audit Request ${r.issue_no || r.id}`,
-          message: `Request #${r.issue_no || r.id} (${r.model || 'Process'}) - "${r.problem || 'Audit observation'}".`,
-          timeDisplay: formatStreamDate(r.created_at || r.batch_date),
+          message: `Request #${r.issue_no || r.id} (${r.model || 'Process'}) - "${r.issue_observation || r.problem || 'Audit observation'}".`,
+          timeDisplay: formatStreamDate(r.created_at || r.escalation_date),
           subCategory: 'PROCESS AUDIT OBSERVATION',
           footerFlag,
           read: savedRead !== null ? savedRead : false,
           type: r.status || 'info',
-          link: '/process-audit/approvals',
+          link: isClosed ? '/process-audit/all-requests' : '/process-audit/approvals',
         });
       });
     }

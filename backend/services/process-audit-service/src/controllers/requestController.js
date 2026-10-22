@@ -5,6 +5,7 @@ import { ProcessAuditRequest } from '../models/Request.js';
 import Attachment from '../models/Attachment.js';
 import { successResponse, errorResponse } from '../../../shared/response.js';
 import { broadcastEvent } from '../../../shared/realtimeNotifier.js';
+import { sendProcessAuditRequestEmails, sendProcessAuditCloserEmails, sendEmail } from '../../../shared/mailer.js';
 
 export const getNextId = async (req, res) => {
   try {
@@ -122,96 +123,147 @@ export const createRequest = async (req, res) => {
     }
 
     requestData.attachments = parsedAttachments;
-    requestData.created_by = requestData.created_by || req.user?.name || req.user?.email || null;
-    requestData.created_by_id = requestData.created_by_id || req.user?.id || null;
+
+    // Resolve Creator User details
+    let creatorUser = {
+      id: requestData.created_by_id || req.user?.id || null,
+      name: requestData.created_by || req.user?.name || 'Quality Auditor',
+      email: req.user?.email || null,
+      department: req.user?.department || 'QAD'
+    };
+
+    if (pool && (!creatorUser.email || !creatorUser.id)) {
+      const [uRows] = await pool.query(
+        'SELECT id, name, email, department, role FROM users WHERE id = ? OR (email IS NOT NULL AND LOWER(email) = LOWER(?)) OR (name IS NOT NULL AND LOWER(name) = LOWER(?)) LIMIT 1',
+        [creatorUser.id || 0, creatorUser.email || '', creatorUser.name || '']
+      ).catch(() => [[]]);
+      if (uRows && uRows.length > 0) {
+        creatorUser = {
+          id: uRows[0].id,
+          name: uRows[0].name,
+          email: uRows[0].email,
+          department: uRows[0].department || 'QAD',
+          role: uRows[0].role
+        };
+      }
+    }
 
     // Verify department authorization: Authenticated user must be from QAD or ADMIN
-    const authUserId = req.user?.id || requestData.created_by_id;
-    const authUserEmail = req.user?.email || null;
-    const authUserName = req.user?.name || null;
-    if (authUserId || authUserEmail || authUserName) {
-      const [uRows] = await pool.query(
-        'SELECT department, role FROM users WHERE id = ? OR (email IS NOT NULL AND LOWER(email) = LOWER(?)) OR (name IS NOT NULL AND LOWER(name) = LOWER(?)) LIMIT 1',
-        [authUserId || 0, authUserEmail || '', authUserName || '']
+    const uDept = (creatorUser.department || '').trim().toUpperCase();
+    const uRole = (creatorUser.role || req.user?.role || '').trim().toUpperCase();
+    if (uRole !== 'ADMIN' && uDept !== 'QAD') {
+      return errorResponse(
+        res,
+        'Access Denied: Only personnel from the QAD department are authorized to create Process Audit requests.',
+        403
       );
-      if (uRows.length > 0) {
-        const uDept = (uRows[0].department || '').trim().toUpperCase();
-        const uRole = (uRows[0].role || '').trim().toUpperCase();
-        if (uRole !== 'ADMIN' && uDept !== 'QAD') {
-          return errorResponse(
-            res,
-            'Access Denied: Only personnel from the QAD department are authorized to create Process Audit requests.',
-            403
-          );
+    }
+
+    // Resolve Executor(s) list and their user accounts for notifications & emails
+    const executorList = String(requestData.executor || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const assignedUsersList = [];
+    if (executorList.length > 0) {
+      for (const execName of executorList) {
+        let [execUserRows] = await pool.query(
+          'SELECT id, name, email, department FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
+          [execName, execName]
+        ).catch(() => [[]]);
+
+        if (execUserRows && execUserRows.length > 0) {
+          assignedUsersList.push(execUserRows[0]);
+        } else {
+          assignedUsersList.push({
+            id: null,
+            name: execName,
+            email: `${execName.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
+            department: requestData.department || 'Production'
+          });
         }
       }
+    } else {
+      assignedUsersList.push({
+        id: null,
+        name: 'Assigned Executor',
+        email: 'executor@gmail.com',
+        department: requestData.department || 'Production'
+      });
     }
+
+    const assignedUser = assignedUsersList[0];
+    const combinedAssignedEmails = assignedUsersList.map((u) => u.email).filter(Boolean).join(', ');
+
+    requestData.created_by = (requestData.created_by && String(requestData.created_by).replace(/[0-9]/g, '').trim()) || creatorUser.name;
+    requestData.created_by_id = creatorUser.id || requestData.created_by_id;
+    requestData.created_by_email = creatorUser.email || requestData.created_by_email;
+    requestData.executor_email = combinedAssignedEmails || assignedUser.email;
 
     const created = await ProcessAuditRequest.create(requestData);
+    const issueNo = created.issue_no || (created.id ? `PA-${created.id}` : 'PA-1');
+    const assignedNamesDisplay = assignedUsersList.map((u) => u.name).join(', ') || assignedUser.name;
 
-    // Auto-create in-app notification for assigned executor(s)
-    if (created && created.executor) {
+    // 1. Insert In-App Notifications: exactly matching IHLR architecture
+    if (pool && created) {
       try {
-        const issueNo = created.issue_no || (created.id ? `PA-${created.id}` : 'PA-1');
-        const creator = created.created_by || 'Quality Auditor';
-        const dept = created.department || 'Production';
-        const stage = created.model || 'Standard';
-        const line = created.process_operation || 'General';
+        // Notification A: For Raised Person (Confirmation)
+        await pool.query(
+          `INSERT INTO process_audit_notifications 
+           (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
+           VALUES (?, ?, ?, ?, ?, 'submission_confirmed', ?, ?, '/process-audit/all-requests', 0)`,
+          [
+            creatorUser.id,
+            creatorUser.name,
+            creatorUser.email,
+            created.id,
+            issueNo,
+            `Process Audit Finding Logged: #${issueNo}`,
+            `Your Process Audit observation report for "${created.model || created.product || 'Audit'}" has been logged and assigned to ${assignedNamesDisplay} (${created.department || 'Production'}).`
+          ]
+        ).catch((e) => console.warn('[PA Notification A Error]:', e.message));
 
-        const executorList = String(created.executor)
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean);
-
-        for (const execName of executorList) {
-          // Resolve executor user_id if available
-          const [execUserRows] = await pool.query(
-            'SELECT id FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
-            [execName, execName]
-          ).catch(() => [[]]);
-          const execUserId = execUserRows?.[0]?.id || null;
-
+        // Notification B: For Each Assigned Executor in the field (Action Required)
+        for (const userItem of assignedUsersList) {
           await pool.query(
             `INSERT INTO process_audit_notifications 
-             (user_name, user_id, request_id, issue_no, type, title, message, link) 
-             VALUES (?, ?, ?, ?, 'approval_required', ?, ?, '/process-audit/approvals')`,
+             (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
+             VALUES (?, ?, ?, ?, ?, 'assignment_required', ?, ?, '/process-audit/approvals', 0)`,
             [
-              execName,
-              execUserId,
+              userItem.id,
+              userItem.name,
+              userItem.email,
               created.id,
               issueNo,
-              `New Request Assigned: #${issueNo}`,
-              `${creator} assigned request #${issueNo} (${dept}) to you for review and sign-off.`
+              `Action Required: Process Audit #${issueNo} Assigned`,
+              `Process Audit report #${issueNo} (${created.model || 'Process'} - "${created.issue_observation || created.problem || 'Observation'}") has been assigned to you by ${creatorUser.name}. Please inspect and submit root cause countermeasure.`
             ]
-          );
-        }
-
-        // Auto-create in-app notification for the request creator / requestor
-        if (created.created_by) {
-          await pool.query(
-            `INSERT INTO process_audit_notifications 
-             (user_name, user_id, request_id, issue_no, type, title, message, link) 
-             VALUES (?, ?, ?, ?, 'request_created', ?, ?, '/process-audit/my-requests')`,
-            [
-              created.created_by,
-              created.created_by_id || null,
-              created.id,
-              issueNo,
-              `Request Created: #${issueNo}`,
-              `Audit request #${issueNo} for ${dept} (${created.model || 'Process'}) has been raised and assigned to ${created.executor}.`
-            ]
-          );
+          ).catch((e) => console.warn('[PA Notification B Error]:', e.message));
         }
       } catch (notifErr) {
-        console.warn('Failed to insert executor/creator notification:', notifErr.message);
+        console.warn('[Process Audit Notifications] Error inserting multi-user in-app notifications:', notifErr.message);
       }
     }
 
-    // Broadcast Realtime WebSocket Event
-    broadcastEvent('process_audit:created', created);
-    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'created', id: created.id });
+    // 2. Trigger Emails to Raised Person AND All Assigned Executors
+    try {
+      for (const userItem of assignedUsersList) {
+        sendProcessAuditRequestEmails({
+          request: created,
+          creatorUser,
+          assignedUser: userItem
+        }).catch((mailErr) => console.warn('[Process Audit Mailer] Non-blocking email dispatch warning:', mailErr.message));
+      }
+    } catch (mailSyncErr) {
+      console.warn('[Process Audit Mailer] Sync email dispatch warning:', mailSyncErr.message);
+    }
 
-    return successResponse(res, created, 'Production request created', 201);
+    // 3. Broadcast Realtime WebSocket Event
+    broadcastEvent('process_audit:created', created);
+    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'created', id: created.id, reqNo: issueNo });
+
+    return successResponse(res, created, 'Process audit request created successfully. Notifications and emails dispatched to both auditor and assigned executor.', 201);
   } catch (err) {
     return errorResponse(res, err.message);
   }
@@ -274,117 +326,305 @@ export const updateRequestStatus = async (req, res) => {
       permanent_closed_by: body.permanent_closed_by || null,
     };
 
-    const updated = await ProcessAuditRequest.updateStatus(id, status, details);
+    // Retrieve previous state to detect transitions
+    const numericId = parseInt(String(id).replace(/\D/g, ''), 10) || id;
+    const [existingRows] = await pool.query(
+      'SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?',
+      [numericId, String(id)]
+    ).catch(() => [[]]);
+    const existing = existingRows?.[0] || null;
 
-    // Auto-mark the executor's approval notification as read once actioned
-    if (updated) {
-      try {
-        await pool.query(
-          `UPDATE process_audit_notifications 
-           SET is_read = 1 
-           WHERE (request_id = ? OR issue_no = ?) AND type = 'approval_required'`,
-          [updated.id, updated.issue_no || id]
-        );
-      } catch (notifErr) {
-        console.warn('Failed to update executor notification read status:', notifErr.message);
-      }
+    const updated = await ProcessAuditRequest.updateStatus(id, status, details);
+    if (!updated) {
+      return errorResponse(res, 'Request not found or status update failed', 404);
     }
 
-    if (updated) {
-      const issueNo = updated.issue_no || (updated.id ? `PA-${updated.id}` : 'PA-1');
-      const lowerStatus = status.toLowerCase();
-      const isApproved = lowerStatus.includes('approved') || lowerStatus.includes('progress') || lowerStatus.includes('signed') || lowerStatus.includes('approval') || lowerStatus.includes('review');
-      const isRejected = lowerStatus.includes('reject');
-      const isClosed = lowerStatus.includes('close');
-      const isOpen = lowerStatus === 'open';
+    const issueNo = updated.issue_no || (updated.id ? `PA-${updated.id}` : 'PA-1');
 
-      // 1. When approved / signed off by executor: Notify Creator with direct deep-link to request
-      if (isApproved && updated.created_by) {
-        try {
-          const msg = `${updated.executor} completed the sign-off for request #${issueNo}. Please review and close when ready.`;
-          await pool.query(
-            `INSERT INTO process_audit_notifications 
-             (user_name, user_id, request_id, issue_no, type, title, message, link) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              updated.created_by.trim(),
-              updated.created_by_id || null,
-              updated.id,
-              issueNo,
-              'request_approved',
-              `Request #${issueNo} Signed Off`,
-              msg,
-              `/process-audit/my-requests?requestId=${updated.id}`
-            ]
-          );
-        } catch (notifErr) {
-          console.warn('Failed to insert creator approval notification:', notifErr.message);
-        }
-      } else if (isRejected && updated.created_by) {
-        // When rejected by executor
-        try {
-          const msg = rejectionReason
-            ? `${updated.executor} could not sign off request #${issueNo}. Note: "${rejectionReason}"`
-            : `${updated.executor} could not sign off request #${issueNo}.`;
-          await pool.query(
-            `INSERT INTO process_audit_notifications 
-             (user_name, user_id, request_id, issue_no, type, title, message, link) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              updated.created_by.trim(),
-              updated.created_by_id || null,
-              updated.id,
-              issueNo,
-              'request_rejected',
-              `Request #${issueNo} Needs Attention`,
-              msg,
-              `/process-audit/my-requests?requestId=${updated.id}`
-            ]
-          );
-        } catch (notifErr) {
-          console.warn('Failed to insert creator rejection notification:', notifErr.message);
-        }
-      }
+    // Trigger In-App Notifications and Email Dispatch matching IHLR pattern
+    if (pool && updated) {
+      try {
+        const wasAlreadyClosed = String(existing?.status || '').toUpperCase() === 'CLOSED';
+        const isNowClosed = String(updated.status || '').toUpperCase() === 'CLOSED';
+        const isClosed = isNowClosed && !wasAlreadyClosed;
+        const closerName = req.user?.name || details.action_taken_by || updated.executor || 'Assigned Executor';
+        const closerDept = updated.department || req.user?.department || 'PRODUCTION';
 
-      // 2. When creator reviews and marks Closed or Open: Notify Executor & mark creator's notification as read
-      if ((isClosed || isOpen) && updated.executor) {
-        try {
-          // Mark creator's request_approved notification as read
+        // Fetch Quality Admin users from DB
+        let adminUsers = [];
+        const [aRows] = await pool.query(
+          "SELECT id, name, email FROM users WHERE UPPER(role) = 'ADMIN' OR UPPER(department) = 'QAD'"
+        ).catch(() => [[]]);
+        if (aRows && aRows.length > 0) {
+          adminUsers = aRows;
+        } else {
+          adminUsers = [{ id: null, name: 'Quality Admin', email: 'admin@gmail.com' }];
+        }
+
+        // Resolve Creator User details
+        let creatorEmail = updated.created_by_email || null;
+        let creatorName = updated.created_by || 'Quality Auditor';
+        let creatorId = updated.created_by_id || null;
+        if (pool && (!creatorEmail || !creatorId)) {
+          const [crRows] = await pool.query(
+            'SELECT id, name, email FROM users WHERE id = ? OR LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1',
+            [creatorId || 0, creatorName]
+          ).catch(() => [[]]);
+          if (crRows && crRows.length > 0) {
+            creatorId = crRows[0].id;
+            creatorEmail = crRows[0].email;
+            creatorName = crRows[0].name;
+          }
+        }
+
+        if (isClosed) {
+          // SCENARIO 2: CASE CLOSED by Admin
+          // Build a deduplicated map of unique recipients so that no person receives duplicate notifications.
+          const recipientsMap = new Map();
+
+          const addRecipient = (userId, userName, userEmail, link) => {
+            const cleanEmail = userEmail ? String(userEmail).trim().toLowerCase() : '';
+            const cleanName = userName ? String(userName).trim().toLowerCase() : '';
+            const cleanId = userId ? String(userId).trim() : '';
+
+            const key = cleanId ? `id_${cleanId}` : (cleanEmail ? `email_${cleanEmail}` : `name_${cleanName}`);
+            if (!key) return;
+
+            for (const [_, ex] of recipientsMap) {
+              if (cleanId && ex.user_id && String(ex.user_id) === cleanId) return;
+              if (cleanEmail && ex.user_email && String(ex.user_email).toLowerCase() === cleanEmail) return;
+              if (cleanName && ex.user_name && String(ex.user_name).toLowerCase() === cleanName) return;
+            }
+
+            recipientsMap.set(key, {
+              user_id: userId || null,
+              user_name: userName || 'User',
+              user_email: userEmail || '',
+              link: link || '/process-audit/approvals'
+            });
+          };
+
+          // 1. Requester / Creator
+          if (creatorId || creatorName || creatorEmail) {
+            addRecipient(creatorId, creatorName, creatorEmail, '/process-audit/all-requests');
+          }
+
+          // 2. Assigned Executor(s)
+          const closedCloserNames = (updated.executor || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          if (closedCloserNames.length > 0) {
+            const placeholders = closedCloserNames.map(() => '?').join(',');
+            const [closerRows] = await pool.query(
+              `SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) IN (${placeholders})`,
+              closedCloserNames.map((n) => n.toLowerCase())
+            ).catch(() => [[]]);
+            if (closerRows && closerRows.length > 0) {
+              for (const cUser of closerRows) {
+                addRecipient(cUser.id, cUser.name, cUser.email, '/process-audit/approvals');
+              }
+            }
+          }
+
+          // 3. Quality Admin users
+          for (const admin of adminUsers) {
+            addRecipient(admin.id, admin.name, admin.email, '/process-audit/approvals');
+          }
+
+          // Insert exactly one notification per unique recipient into DB
+          for (const [_, recipient] of recipientsMap) {
+            const [existingRows] = await pool.query(
+              `SELECT id FROM process_audit_notifications 
+               WHERE request_id = ? AND type = 'case_closed' 
+                 AND (
+                   (? IS NOT NULL AND user_id = ?) OR 
+                   (? != '' AND LOWER(TRIM(user_email)) = LOWER(TRIM(?)))
+                 ) LIMIT 1`,
+              [
+                updated.id || id,
+                recipient.user_id, recipient.user_id,
+                recipient.user_email, recipient.user_email
+              ]
+            ).catch(() => [[]]);
+
+            if (!existingRows || existingRows.length === 0) {
+              await pool.query(
+                `INSERT INTO process_audit_notifications 
+                 (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
+                 VALUES (?, ?, ?, ?, ?, 'case_closed', ?, ?, ?, 0)`,
+                [
+                  recipient.user_id,
+                  recipient.user_name,
+                  recipient.user_email,
+                  updated.id || id,
+                  issueNo,
+                  `Process Audit Case Closed: #${issueNo}`,
+                  `Process Audit finding #${issueNo} (${updated.model || 'Process'}) has been verified and marked as CLOSED.`,
+                  recipient.link
+                ]
+              ).catch((e) => console.warn('[Process Audit Case Closed Notif Error]:', e.message));
+            }
+          }
+
+          // Mark pending assignment and sign-off notifications as read for this closed request
           await pool.query(
             `UPDATE process_audit_notifications 
              SET is_read = 1 
-             WHERE (request_id = ? OR issue_no = ?) AND type = 'request_approved'`,
-            [updated.id, updated.issue_no || id]
+             WHERE (request_id = ? OR issue_no = ?) AND type IN ('assignment_required', 'approval_required', 'closer_completed_pending_review', 'closer_completed_pending_admin_signoff')`,
+            [updated.id, issueNo]
           ).catch(() => {});
 
-          const remarkText = details.creator_remark ? ` Remark: "${details.creator_remark}"` : '';
-          const actionText = isClosed ? 'Closed' : 'Reopened';
-          const msg = `Request #${issueNo} was marked as ${isClosed ? 'Closed' : 'Open'} by ${updated.created_by || 'Creator'}.${remarkText}`;
+          // Dispatch Case Closed emails
+          try {
+            sendProcessAuditCloserEmails({
+              request: updated,
+              closerUser: req.user,
+              creatorUser: {
+                id: creatorId,
+                name: creatorName,
+                email: creatorEmail
+              },
+              assignedUser: {
+                name: updated.executor,
+                email: updated.executor_email,
+                department: updated.department
+              },
+              adminUsers
+            }).catch((mailErr) => console.warn('[Process Audit Mailer] Case closed email dispatch warning:', mailErr.message));
+          } catch (mailSyncErr) {
+            console.warn('[Process Audit Mailer] Sync case closed email dispatch warning:', mailSyncErr.message);
+          }
 
+        } else {
+          // SCENARIO 3: CLOSER DETAILS SUBMITTED (Countermeasures & 5-Why)
+          // Mark the executor's previous pending assignment/approval notification as read
           await pool.query(
-            `INSERT INTO process_audit_notifications 
-             (user_name, user_id, request_id, issue_no, type, title, message, link) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              updated.executor.trim(),
-              null,
-              updated.id,
-              issueNo,
-              isClosed ? 'request_closed' : 'request_reopened',
-              `Request #${issueNo} ${actionText}`,
-              msg,
-              `/process-audit/approvals?requestId=${updated.id}`
-            ]
-          );
-        } catch (notifErr) {
-          console.warn('Failed to insert executor closure notification:', notifErr.message);
+            `UPDATE process_audit_notifications 
+             SET is_read = 1 
+             WHERE (request_id = ? OR issue_no = ?) AND type IN ('assignment_required', 'approval_required')`,
+            [updated.id, issueNo]
+          ).catch(() => {});
+
+          // Notification A: For Raised Person (Requester) to complete pending review
+          if (creatorId || creatorName || creatorEmail) {
+            await pool.query(
+              `INSERT INTO process_audit_notifications 
+               (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, 'closer_completed_pending_review', ?, ?, '/process-audit/approvals', 0)`,
+              [
+                creatorId,
+                creatorName,
+                creatorEmail || '',
+                updated.id || id,
+                issueNo,
+                `Closer Countermeasures Submitted #${issueNo}`,
+                `Closer ${closerName} (${closerDept}) has completed 5-Why root cause analysis and corrective action for #${issueNo} (${updated.model || 'Process'}). Quality Admin review and closure sign-off pending.`
+              ]
+            ).catch((e) => console.warn('[PA Closer Review Notif Error]:', e.message));
+          }
+
+          // Notification B: For Quality Admins to review and sign-off pending fields
+          for (const admin of adminUsers) {
+            if (creatorEmail && admin.email && creatorEmail.toLowerCase() === admin.email.toLowerCase()) {
+              continue;
+            }
+            await pool.query(
+              `INSERT INTO process_audit_notifications 
+               (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, 'closer_completed_pending_admin_signoff', ?, ?, '/process-audit/approvals', 0)`,
+              [
+                admin.id || null,
+                admin.name || 'Admin',
+                admin.email || 'admin@gmail.com',
+                updated.id || id,
+                issueNo,
+                `Admin Action Required: Pending Sign-Off #${issueNo}`,
+                `Closer ${closerName} (${closerDept}) has completed countermeasures for #${issueNo} (${updated.model || 'Process'}). Action required: Please enter validation remarks and update status to finalize closure.`
+              ]
+            ).catch((e) => console.warn('[PA Admin Notif Error]:', e.message));
+          }
+
+          // Notification C: For Each Closer / Assigned Person Individually (Acknowledgment)
+          const closerNamesList = (updated.executor || closerName || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+          const targetClosers = [];
+          if (closerNamesList.length > 0) {
+            const placeholders = closerNamesList.map(() => '?').join(',');
+            const [uRows] = await pool.query(
+              `SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) IN (${placeholders})`,
+              closerNamesList.map((n) => n.toLowerCase())
+            ).catch(() => [[]]);
+            if (uRows && uRows.length > 0) {
+              targetClosers.push(...uRows);
+            }
+          }
+
+          if (req.user?.id && !targetClosers.some((u) => String(u.id) === String(req.user.id))) {
+            targetClosers.push({
+              id: req.user.id,
+              name: req.user.name,
+              email: req.user.email
+            });
+          }
+
+          if (targetClosers.length === 0 && (closerName || updated.executor)) {
+            targetClosers.push({
+              id: null,
+              name: closerName || updated.executor,
+              email: updated.executor_email || ''
+            });
+          }
+
+          for (const cUser of targetClosers) {
+            await pool.query(
+              `INSERT INTO process_audit_notifications 
+               (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, 'countermeasure_saved', ?, ?, '/process-audit/approvals', 0)`,
+              [
+                cUser.id || null,
+                cUser.name,
+                cUser.email || '',
+                updated.id || id,
+                issueNo,
+                `Closer Submission Acknowledged: #${issueNo}`,
+                `Your 5-Why root cause analysis and corrective action for #${issueNo} (${updated.model || 'Process'}) have been submitted. The Auditor and Quality Admin have been alerted with notification & email to complete the pending validation remarks and status sign-off.`
+              ]
+            ).catch((e) => console.warn('[PA Closer Notif Error]:', e.message));
+          }
+
+          // Trigger Closer Email Dispatch to Requester, Quality Admins, and Closer
+          try {
+            sendProcessAuditCloserEmails({
+              request: updated,
+              closerUser: req.user,
+              creatorUser: {
+                id: creatorId,
+                name: creatorName,
+                email: creatorEmail
+              },
+              assignedUser: {
+                name: updated.executor,
+                email: updated.executor_email,
+                department: updated.department
+              },
+              adminUsers
+            }).catch((mailErr) => console.warn('[Process Audit Mailer] Closer email dispatch warning:', mailErr.message));
+          } catch (mailSyncErr) {
+            console.warn('[Process Audit Mailer] Sync closer email dispatch warning:', mailSyncErr.message);
+          }
         }
+      } catch (notifErr) {
+        console.warn('[Process Audit Closer Notification Warning]:', notifErr.message);
       }
     }
 
     // Broadcast Realtime WebSocket Event
     broadcastEvent('process_audit:updated', updated);
-    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'updated', id: updated.id, status });
+    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'updated', id: updated.id, reqNo: issueNo });
 
     return successResponse(res, updated, `Request status updated to ${status}`);
   } catch (err) {
@@ -445,65 +685,126 @@ export const reassignRequest = async (req, res) => {
     const updated = result.updated;
     const issueNo = updated.issue_no || (updated.id ? `PA-${updated.id}` : 'PA-1');
 
-    // Notify new executor and clean up old executor notification
+    // Notify new executor(s) and clean up old executor notification
     try {
-      // Mark old executor approval notification as read
+      // Mark old executor pending notifications as read
       await pool.query(
         `UPDATE process_audit_notifications 
          SET is_read = 1 
-         WHERE (request_id = ? OR issue_no = ?) AND type = 'approval_required' AND LOWER(TRIM(user_name)) = LOWER(TRIM(?))`,
+         WHERE (request_id = ? OR issue_no = ?) AND type IN ('assignment_required', 'approval_required') AND LOWER(TRIM(user_name)) = LOWER(TRIM(?))`,
         [updated.id, issueNo, result.prevExec]
       ).catch(() => {});
 
-      // Lookup new executor user_id
-      const [execUserRows] = await pool.query(
-        'SELECT id FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1',
-        [new_executor.trim()]
-      ).catch(() => [[]]);
-      const newExecUserId = execUserRows?.[0]?.id || null;
+      // A. Send in-app notification and email to ALL newly selected assignee(s)
+      const newNames = String(new_executor || '').split(',').map((s) => s.trim()).filter(Boolean);
+      const targetUsers = [];
+
+      if (newNames.length > 0) {
+        for (const nameItem of newNames) {
+          let [nuRows] = await pool.query(
+            'SELECT id, name, email, department, role FROM users WHERE (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?))) AND UPPER(TRIM(department)) = UPPER(TRIM(?)) LIMIT 1',
+            [nameItem, nameItem, new_department]
+          ).catch(() => [[]]);
+          if (!nuRows || nuRows.length === 0) {
+            [nuRows] = await pool.query(
+              'SELECT id, name, email, department, role FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
+              [nameItem, nameItem]
+            ).catch(() => [[]]);
+          }
+          if (nuRows && nuRows.length > 0) {
+            targetUsers.push(nuRows[0]);
+          } else {
+            targetUsers.push({
+              id: null,
+              name: nameItem,
+              email: `${nameItem.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
+              department: new_department
+            });
+          }
+        }
+      } else {
+        const [deptRows] = await pool.query(
+          'SELECT id, name, email FROM users WHERE UPPER(TRIM(department)) = UPPER(TRIM(?))',
+          [new_department]
+        ).catch(() => [[]]);
+        if (deptRows && deptRows.length > 0) {
+          targetUsers.push(...deptRows);
+        }
+      }
 
       const reasonText = reason ? ` Reason: "${reason}"` : '';
-      const notifMsg = `Request #${issueNo} was reassigned to you by ${reassignedByName}.${reasonText}`;
 
-      await pool.query(
-        `INSERT INTO process_audit_notifications 
-         (user_name, user_id, request_id, issue_no, type, title, message, link) 
-         VALUES (?, ?, ?, ?, 'approval_required', ?, ?, '/process-audit/approvals')`,
-        [
-          new_executor.trim(),
-          newExecUserId,
-          updated.id,
-          issueNo,
-          `Request #${issueNo} Reassigned to You`,
-          notifMsg
-        ]
-      );
-
-      // Notify creator about the reassignment
-      if (updated.created_by) {
+      for (const u of targetUsers) {
         await pool.query(
           `INSERT INTO process_audit_notifications 
-           (user_name, user_id, request_id, issue_no, type, title, message, link) 
-           VALUES (?, ?, ?, ?, 'reassigned', ?, ?, '/process-audit/all-requests')`,
+           (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
+           VALUES (?, ?, ?, ?, ?, 'assignment_required', ?, ?, '/process-audit/approvals', 0)`,
           [
-            updated.created_by.trim(),
-            updated.created_by_id || null,
-            updated.id,
+            u.id || null,
+            u.name,
+            u.email,
+            updated.id || id,
             issueNo,
-            `Request #${issueNo} Reassigned`,
-            `Audit request #${issueNo} (${updated.department || 'Process'}) has been reassigned to ${new_executor} by ${reassignedByName}.${reasonText}`
+            `Action Required: Process Audit #${issueNo} Assigned`,
+            `Process Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to you for ${new_department} by ${reassignedByName}.${reasonText} Please inspect and submit root cause countermeasures.`
           ]
-        ).catch(() => {});
+        ).catch((e) => console.warn('[PA Reassign Notif Error]:', e.message));
+
+        try {
+          sendEmail({
+            to: u.email || 'sridharkesava@outlook.com',
+            recipientName: u.name || new_executor || 'Assigned Closer',
+            recipientRole: 'ASSIGNED_CLOSER',
+            subject: `[Process Audit Action Required] Audit Finding Assigned to You: #${issueNo}`,
+            text: `Dear ${u.name || 'Team Member'},\n\nProcess Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to you (${new_department}) by ${reassignedByName}.${reasonText}\n\nPlease review and submit root cause analysis and containment actions at: http://localhost:5173/process-audit/approvals\n\nThank you,\nQuality Portal`,
+            referenceNo: issueNo,
+            moduleType: 'PROCESS_AUDIT'
+          }).catch((err) => console.warn('[PA Reassign Mail Warning]:', err.message));
+        } catch (mErr) {
+          console.warn('[PA Reassign Mail Sync Warning]:', mErr.message);
+        }
+      }
+
+      // B. Notify Creator / Requester about the reassignment
+      if (updated.created_by_id || updated.created_by || updated.created_by_email) {
+        await pool.query(
+          `INSERT INTO process_audit_notifications 
+           (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
+           VALUES (?, ?, ?, ?, ?, 'reassigned', ?, ?, '/process-audit/all-requests', 0)`,
+          [
+            updated.created_by_id || null,
+            updated.created_by || 'Quality Requester',
+            updated.created_by_email || '',
+            updated.id || id,
+            issueNo,
+            `Process Audit Case Reassigned: #${issueNo}`,
+            `Process Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to ${new_executor} (${new_department}) by ${reassignedByName}.${reasonText}`
+          ]
+        ).catch((e) => console.warn('[PA Reassign Req Notif Error]:', e.message));
+
+        try {
+          sendEmail({
+            to: updated.created_by_email || 'sridharkesava@outlook.com',
+            recipientName: updated.created_by || 'Quality Requester',
+            recipientRole: 'RAISED_PERSON',
+            subject: `[Process Audit Case Reassigned] Audit Report #${issueNo} Reassigned to ${new_executor}`,
+            text: `Dear ${updated.created_by || 'Quality Requester'},\n\nYour Process Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to ${new_executor} (${new_department}) by ${reassignedByName}.${reasonText}\n\nView details: http://localhost:5173/process-audit/all-requests\n\nThank you,\nQuality Portal`,
+            referenceNo: issueNo,
+            moduleType: 'PROCESS_AUDIT'
+          }).catch((err) => console.warn('[PA Reassign Req Mail Warning]:', err.message));
+        } catch (mReqErr) {
+          console.warn('[PA Reassign Req Mail Sync Warning]:', mReqErr.message);
+        }
       }
     } catch (notifErr) {
-      console.warn('Failed to insert reassignment notification:', notifErr.message);
+      console.warn('[Process Audit Reassignment Notifications Warning]:', notifErr.message);
     }
 
     // Broadcast Realtime WebSocket Event
     broadcastEvent('process_audit:reassigned', updated);
-    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'reassigned', id: updated.id });
+    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'reassigned', id: updated.id, reqNo: issueNo });
 
-    return successResponse(res, updated, 'Request reassigned successfully');
+    return successResponse(res, updated, 'Request reassigned successfully. Notifications and emails dispatched.');
   } catch (err) {
     return errorResponse(res, err.message);
   }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import {
   ClipboardCheck,
   CheckCircle2,
@@ -80,12 +80,19 @@ const ProcessAuditApprovals = () => {
   const isQad = userDept === 'QAD';
   const isAdmin = userRole === 'ADMIN' || isQad;
 
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const queryRequestId = searchParams.get('requestId') || searchParams.get('id');
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => location.state?.search || '');
+
+  useEffect(() => {
+    if (location.state?.search) {
+      setSearch(location.state.search);
+    }
+  }, [location.state]);
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [activeModalRequest, setActiveModalRequest] = useState(null);
   const [modalTab, setModalTab] = useState('requester');
@@ -517,17 +524,22 @@ const ProcessAuditApprovals = () => {
       const list = Array.isArray(data) ? data : [];
       setRequests(list);
 
-      // Deep linking or re-selecting active request
-      if (selectedRequest) {
+      // Deep linking, notification highlight, or re-selecting active request
+      const targetReqNo = location.state?.highlightReq || location.state?.search || queryRequestId;
+      let matchedTarget = null;
+      if (targetReqNo) {
+        const cleanTarget = String(targetReqNo).trim().toLowerCase().replace(/^#/, '');
+        matchedTarget = list.find((r) => {
+          const cleanReq = String(r.issue_no || '').trim().toLowerCase().replace(/^#/, '');
+          return cleanReq === cleanTarget || cleanReq === `pa-${cleanTarget}` || String(r.id) === cleanTarget;
+        });
+      }
+
+      if (matchedTarget) {
+        populateForm(matchedTarget);
+      } else if (selectedRequest) {
         const fresh = list.find((r) => r.id === selectedRequest.id || r.issue_no === selectedRequest.issue_no);
         if (fresh) populateForm(fresh);
-      } else if (queryRequestId && list.length > 0) {
-        const match = list.find(
-          (r) =>
-            String(r.id) === String(queryRequestId) ||
-            String(r.issue_no || '').toLowerCase() === String(queryRequestId).toLowerCase()
-        );
-        if (match) populateForm(match);
       } else if (list.length > 0) {
         populateForm(list[0]);
       }
@@ -1401,7 +1413,7 @@ const ProcessAuditApprovals = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
                     <span>Occurrence Cause (Production Team - 5 Why)</span>
-                    {selectedRequest && (
+                    {selectedRequest && canUpdateCloserFields && (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
                         {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
                       </span>
@@ -1459,16 +1471,10 @@ const ProcessAuditApprovals = () => {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY ACTION</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin && !isCloser ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
               </div>
@@ -1500,16 +1506,10 @@ const ProcessAuditApprovals = () => {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY EVIDENCE ATTACHMENT</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin && !isCloser ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
                 <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
@@ -1570,16 +1570,10 @@ const ProcessAuditApprovals = () => {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY TARGET DATE</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin && !isCloser ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
               </div>
@@ -1608,16 +1602,10 @@ const ProcessAuditApprovals = () => {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY CLOSED BY</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin && !isCloser ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
               </div>
@@ -1649,16 +1637,10 @@ const ProcessAuditApprovals = () => {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT ACTION</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin && !isCloser ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
               </div>
@@ -1685,16 +1667,10 @@ const ProcessAuditApprovals = () => {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT EVIDENCE ATTACHMENT</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin && !isCloser ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
                 <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
@@ -1754,16 +1730,10 @@ const ProcessAuditApprovals = () => {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT TARGET DATE</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin && !isCloser ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
               </div>
@@ -1792,16 +1762,10 @@ const ProcessAuditApprovals = () => {
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT CLOSED BY</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin && !isCloser ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
               </div>
