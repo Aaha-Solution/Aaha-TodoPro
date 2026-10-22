@@ -5,9 +5,9 @@ import { useAuth } from '../../hooks/useAuth';
 const IhlrProfile = () => {
   const { user } = useAuth();
 
-  const activeName = user?.name || 'iyyu';
-  const activeEmail = user?.email || 'iyyu@inel.co.in';
-  const activeRole = user?.role || 'Quality Assurance Lead';
+  const activeName = user?.name || 'User';
+  const activeEmail = user?.email || '';
+  const activeRole = user?.role || 'User';
   const activeDepartment = user?.department || 'INCOMING QUALITY';
 
   return (

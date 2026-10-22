@@ -170,11 +170,15 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
           {/* User Profile Card */}
           <div className="my-5 p-3 rounded-2xl bg-[#131b2e] border border-slate-800 flex items-center gap-3">
             <div className={`w-9 h-9 rounded-full ${isIhlr ? 'bg-amber-600' : 'bg-blue-600'} text-white flex items-center justify-center font-bold text-sm shadow-sm`}>
-              {user?.name ? user.name.charAt(0).toUpperCase() : 'I'}
+              {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
             <div className="text-left flex-1 min-w-0">
-              <p className="text-xs font-bold text-white truncate">{user?.name || 'iyyu'}</p>
-              <p className="text-[10px] text-slate-400">{isIhlr ? 'IHLR Quality Team' : (userDept || 'Request Creator')}</p>
+              <p className="text-xs font-bold text-white truncate">{user?.name || 'User'}</p>
+              <p className="text-[10px] text-slate-400">
+                {isIhlr 
+                  ? (isIncomingQuality ? 'IHLR Quality Team' : (userDept ? userDept.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Production')) 
+                  : (userDept ? userDept.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Request Creator')}
+              </p>
             </div>
           </div>
 

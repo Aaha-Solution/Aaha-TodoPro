@@ -38,9 +38,9 @@ const ProfileMenu = () => {
     }
   };
 
-  const displayName = user?.name || 'iyyu';
-  const displayEmail = user?.email || 'iyyu@inel.co.in';
-  const displayRole = user?.role || 'ADMIN';
+  const displayName = user?.name || 'User';
+  const displayEmail = user?.email || '';
+  const displayRole = user?.role || 'USER';
 
   return (
     <div className="relative" ref={menuRef}>

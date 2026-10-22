@@ -34,6 +34,15 @@ const Header = ({ toggleSidebar }) => {
   const isIncomingQuality = userDept === 'INCOMING QUALITY';
   const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isIncomingQuality;
 
+  const currentUserName = user?.name || (() => {
+    try {
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.name : '';
+    } catch {
+      return '';
+    }
+  })() || 'User';
+
   return (
     <header className="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-8 flex items-center justify-between shadow-2xs">
       <div className="flex items-center gap-3 sm:gap-6">
@@ -70,11 +79,13 @@ const Header = ({ toggleSidebar }) => {
           title={isAdmin ? "Manage Users & Profile" : "View Profile"}
         >
           <div className="w-8 h-8 rounded-full bg-[#2563eb] text-white flex items-center justify-center font-bold text-xs shadow-sm">
-            {user?.name ? user.name.charAt(0).toUpperCase() : 'I'}
+            {currentUserName.charAt(0).toUpperCase()}
           </div>
           <div className="text-left hidden sm:block leading-tight">
-            <span className="block text-xs font-bold text-slate-900">{user?.name || 'iyyu'}</span>
-            <span className="block text-[10px] text-slate-400 font-medium">{user?.department || 'PRODUCTION'}</span>
+            <span className="block text-xs font-bold text-slate-900">{currentUserName}</span>
+            <span className="block text-[10px] text-slate-400 font-medium">
+              {userDept ? userDept.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Production'}
+            </span>
           </div>
         </div>
       </div>

@@ -85,8 +85,32 @@ const SystemSelection = () => {
     },
   ];
 
-  const currentUserName = user?.name || 'Admin';
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+  const currentUser = user || (() => {
+    try {
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+      return u ? JSON.parse(u) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const currentUserName = currentUser?.name || 'User';
+  const isAdmin = currentUser?.role?.toUpperCase() === 'ADMIN';
+
+  const formatTitleCase = (str) => {
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const displayRole = isAdmin 
+    ? 'Admin' 
+    : (currentUser?.role ? formatTitleCase(currentUser.role) : 'User');
+    
+  const displayDepartment = currentUser?.department ? formatTitleCase(currentUser.department) : '';
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col justify-between text-slate-800 antialiased">
@@ -136,7 +160,7 @@ const SystemSelection = () => {
                 Logged in as <span className="font-bold text-slate-900">{currentUserName}</span>
               </div>
               <div className="text-[10px] text-slate-400 font-medium">
-                Admin • Production Planning
+                {displayRole}{displayDepartment ? ` • ${displayDepartment}` : ''}
               </div>
             </div>
           </div>

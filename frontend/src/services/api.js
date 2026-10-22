@@ -1,14 +1,14 @@
 import axios from 'axios';
 import { storage } from '../utils/storage';
 
-const DEFAULT_GATEWAY_URL = 'http://192.168.0.157:5000';
+const DEFAULT_GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:5000';
 
 /**
  * Dynamically resolves the API Gateway Base URL.
  * Priority:
  * 1. import.meta.env.VITE_GATEWAY_URL
  * 2. import.meta.env.VITE_API_BASE_URL (stripping trailing /api)
- * 3. Default: http://192.168.0.168:5000
+ * 3. Default: DEFAULT_GATEWAY_URL (from env)
  */
 export const getGatewayBaseUrl = () => {
   if (import.meta.env.VITE_GATEWAY_URL) {
@@ -17,7 +17,7 @@ export const getGatewayBaseUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, '').replace(/\/+$/, '');
   }
-  return DEFAULT_GATEWAY_URL;
+  return DEFAULT_GATEWAY_URL.replace(/\/+$/, '');
 };
 
 /**
