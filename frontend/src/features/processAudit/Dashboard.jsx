@@ -38,6 +38,7 @@ import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
 import { storage } from '../../utils/storage';
 import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
 import { getProcessAuditDisplayStatus } from './processAuditExportUtils';
+import ProcessAuditBarChart from './ProcessAuditBarChart';
 
 const ProcessAuditDashboard = () => {
   const navigate = useNavigate();
@@ -823,6 +824,20 @@ const ProcessAuditDashboard = () => {
           );
         })}
       </div>
+
+      {/* Interactive Process Audit Bar Chart Section */}
+      <ProcessAuditBarChart
+        stats={metrics}
+        requests={baseFilteredRequests}
+        onSelectDepartment={(dept) => {
+          if (isAdmin) {
+            setSelectedDept(dept);
+            setShowFilters(true);
+          }
+        }}
+        onSelectStatus={(status) => setSelectedStatus(status)}
+        currentYear={currentYear}
+      />
 
       {/* Department Distribution Breakdown Banner */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">

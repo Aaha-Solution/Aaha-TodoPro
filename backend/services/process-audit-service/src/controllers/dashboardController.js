@@ -118,6 +118,75 @@ export const getDashboardMetrics = async (req, res) => {
       if (d) departmentBreakdown[d] = Number(r.count) || 0;
     });
 
+    // Fetch matching requests for analytical chart breakdowns
+    let chartReqQuery = 'SELECT id, status, department, shift, process_operation, escalation_date, created_at FROM process_audit_requests';
+    if (conditions.length > 0) {
+      chartReqQuery += ' WHERE ' + conditions.join(' AND ');
+    }
+    const [chartRows] = await pool.query(chartReqQuery, params).catch(() => [[]]);
+
+    const getStatusCategory = (r) => {
+      const s = (r.status || '').toLowerCase();
+      if (s.includes('close')) return 'closed';
+      if (s.includes('progress') || s.includes('signed') || s.includes('review') || s.includes('approval') || (s.includes('approved') && !s.includes('pending'))) return 'inProgress';
+      return 'open';
+    };
+
+    // 1. Monthly Trend (12 Months)
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyTrend = monthNames.map((name, index) => {
+      const mReqs = (chartRows || []).filter(r => {
+        const dVal = r.escalation_date || r.created_at;
+        if (!dVal) return false;
+        const d = new Date(dVal);
+        return !isNaN(d.getTime()) && d.getMonth() === index;
+      });
+      return {
+        month: name,
+        monthIndex: index,
+        total: mReqs.length,
+        open: mReqs.filter(r => getStatusCategory(r) === 'open').length,
+        inProgress: mReqs.filter(r => getStatusCategory(r) === 'inProgress').length,
+        closed: mReqs.filter(r => getStatusCategory(r) === 'closed').length
+      };
+    });
+
+    // 2. Department Breakdown List
+    const standardDepts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY'];
+    const existingDepts = (chartRows || []).map(r => (r.department || '').trim().toUpperCase()).filter(Boolean);
+    const uniqueDepts = Array.from(new Set([...standardDepts, ...existingDepts]));
+    const departmentBreakdownList = uniqueDepts.map(dept => {
+      const dReqs = (chartRows || []).filter(r => (r.department || '').trim().toUpperCase() === dept);
+      return {
+        department: dept,
+        total: dReqs.length,
+        open: dReqs.filter(r => getStatusCategory(r) === 'open').length,
+        inProgress: dReqs.filter(r => getStatusCategory(r) === 'inProgress').length,
+        closed: dReqs.filter(r => getStatusCategory(r) === 'closed').length
+      };
+    }).sort((a, b) => b.total - a.total);
+
+    // 3. Shift Breakdown
+    const normalizeShift = (val) => {
+      const s = String(val || '').toLowerCase().trim();
+      if (s.includes('night') || s.includes('3') || s === 'iii') return 'Night (Shift 3)';
+      if (s.includes('even') || s.includes('2') || s === 'ii') return 'Evening (Shift 2)';
+      if (s.includes('morn') || s.includes('1') || s === 'i') return 'Morning (Shift 1)';
+      if (s.includes('gen')) return 'General';
+      return 'General';
+    };
+    const shiftList = ['Morning (Shift 1)', 'Evening (Shift 2)', 'Night (Shift 3)', 'General'];
+    const shiftBreakdown = shiftList.map(shiftName => {
+      const sReqs = (chartRows || []).filter(r => normalizeShift(r.shift) === shiftName);
+      return {
+        shift: shiftName,
+        total: sReqs.length,
+        open: sReqs.filter(r => getStatusCategory(r) === 'open').length,
+        inProgress: sReqs.filter(r => getStatusCategory(r) === 'inProgress').length,
+        closed: sReqs.filter(r => getStatusCategory(r) === 'closed').length
+      };
+    });
+
     const data = {
       totalRequests,
       pendingExecution,
@@ -130,7 +199,10 @@ export const getDashboardMetrics = async (req, res) => {
       pendingApproval: 0,
       openCapa: rejected,
       auditPerformance,
-      departmentBreakdown
+      departmentBreakdown,
+      departmentBreakdownList,
+      monthlyTrend,
+      shiftBreakdown
     };
     return successResponse(res, data, 'Process audit dashboard metrics retrieved from DB');
   } catch (error) {
