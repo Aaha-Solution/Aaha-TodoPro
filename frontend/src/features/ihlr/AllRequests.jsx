@@ -78,6 +78,11 @@ const IhlrAllRequests = () => {
   );
 
   const isDefaultYear = startDate === defaultStartDate && endDate === defaultEndDate;
+  const carryoverCount = requests.filter(r => {
+    if (!r.batch_date) return false;
+    const y = new Date(r.batch_date).getFullYear();
+    return y < currentYear && (r.status || '').toUpperCase() !== 'CLOSED';
+  }).length;
   const hasActiveFilters =
     selectedShift !== 'All' ||
     selected4M !== 'All' ||
@@ -455,13 +460,19 @@ const IhlrAllRequests = () => {
       {/* IHLR Analysis Report Master Table */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-extrabold uppercase tracking-widest text-slate-600 font-mono">
-              SEP'26 IHLR- ANALYSIS REPORT
+              IHLR ANALYSIS REPORT
             </span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 font-mono">
               {requests.length} Records
             </span>
+            {carryoverCount > 0 && isDefaultYear && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span>{carryoverCount} unclosed from prior year rolled over</span>
+              </span>
+            )}
           </div>
           <button
             onClick={handleOpenExportModal}
@@ -538,6 +549,18 @@ const IhlrAllRequests = () => {
                       <div className="font-semibold text-slate-900">
                         {formatDateDDMMYYYY(r.batch_date)}
                       </div>
+                      {Boolean(
+                        r.batch_date &&
+                        new Date(r.batch_date).getFullYear() < currentYear &&
+                        (r.status || '').toUpperCase() !== 'CLOSED'
+                      ) && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            {new Date(r.batch_date).getFullYear()} Carryover
+                          </span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[10px] font-bold text-slate-600 font-mono">
                           {formatIhlrShiftDisplay(r.shift)}

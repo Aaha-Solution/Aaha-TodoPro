@@ -64,11 +64,24 @@ export const ihlrService = {
         endDate = `${year}-12-31`;
       }
 
+      let carryoverCount = 0;
       if (startDate || endDate) {
         scopedStore = scopedStore.filter(r => {
           const dStr = (r.batch_date || r.created_at || '').split('T')[0];
           if (!dStr) return false;
-          if (startDate && dStr < startDate) return false;
+
+          const s = (r.status || '').toUpperCase();
+          const isClosed = s === 'CLOSED';
+
+          if (startDate && dStr < startDate) {
+            if (!isClosed) {
+              if (endDate && dStr > endDate) return false;
+              carryoverCount++;
+              return true;
+            }
+            return false;
+          }
+
           if (endDate && dStr > endDate) return false;
           return true;
         });
@@ -88,7 +101,19 @@ export const ihlrService = {
           const dStr = (r.batch_date || r.created_at || '').split('T')[0];
           if (!dStr) return false;
           const d = new Date(dStr);
-          return !isNaN(d.getTime()) && d.getMonth() === idx;
+          if (isNaN(d.getTime())) return false;
+
+          if (d.getMonth() === idx && (!startDate || dStr >= startDate)) {
+            return true;
+          }
+
+          if (startDate && dStr < startDate) {
+            const s = (r.status || '').toUpperCase();
+            if (s !== 'CLOSED' && idx === 0) {
+              return true;
+            }
+            return false;
+          }
         });
         return {
           month: name,
@@ -207,7 +232,18 @@ export const ihlrService = {
         data = data.filter(r => {
           const dStr = (r.batch_date || r.created_at || '').split('T')[0];
           if (!dStr) return false;
-          if (filters.startDate && dStr < filters.startDate) return false;
+
+          const s = (r.status || '').toUpperCase();
+          const isClosed = s === 'CLOSED';
+
+          if (filters.startDate && dStr < filters.startDate) {
+            if (!isClosed) {
+              if (filters.endDate && dStr > filters.endDate) return false;
+              return true;
+            }
+            return false;
+          }
+
           if (filters.endDate && dStr > filters.endDate) return false;
           return true;
         });

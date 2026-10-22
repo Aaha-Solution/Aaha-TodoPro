@@ -105,11 +105,26 @@ export const getDashboardStats = async (req, res) => {
       endDate = `${year}-12-31`;
     }
 
+    let carryoverCount = 0;
     if (startDate || endDate) {
       requests = requests.filter(r => {
         const itemDateStr = parseToDateStr(r.batch_date || r.created_at);
         if (!itemDateStr) return false;
-        if (startDate && itemDateStr < startDate) return false;
+
+        const s = (r.status || '').toUpperCase();
+        const isClosed = s === 'CLOSED';
+
+        // Carryover logic: if request was raised prior to startDate (e.g. in 2025 when viewing current year)
+        if (startDate && itemDateStr < startDate) {
+          // If NOT closed, it must roll over into current year dashboard and views!
+          if (!isClosed) {
+            if (endDate && itemDateStr > endDate) return false;
+            carryoverCount++;
+            return true;
+          }
+          return false;
+        }
+
         if (endDate && itemDateStr > endDate) return false;
         return true;
       });
@@ -158,7 +173,22 @@ export const getDashboardStats = async (req, res) => {
         const itemDateStr = parseToDateStr(r.batch_date || r.created_at);
         if (!itemDateStr) return false;
         const d = new Date(itemDateStr);
-        return !isNaN(d.getTime()) && d.getMonth() === index;
+        if (isNaN(d.getTime())) return false;
+
+        // Current period requests match their creation month
+        if (d.getMonth() === index && (!startDate || itemDateStr >= startDate)) {
+          return true;
+        }
+
+        // Requests carried over from previous periods:
+        if (startDate && itemDateStr < startDate) {
+          const s = (r.status || '').toUpperCase();
+          if (s !== 'CLOSED' && index === 0) {
+            // Unclosed carryover issues are accounted for in January (initial open backlog)
+            return true;
+          }
+          return false;
+        }
       });
       return {
         month: name,
@@ -279,6 +309,7 @@ export const getDashboardStats = async (req, res) => {
       approvalPending: inProgress,
       awaitingReview: inProgress,
       closed,
+      carryoverCount,
       fourMBreakdown,
       fourMDetails,
       monthlyTrend,
@@ -293,6 +324,7 @@ export const getDashboardStats = async (req, res) => {
         status: targetStatus || 'All',
         department: effectiveDept || 'All',
         year: req.query.year || currentYear,
+        carryoverCount,
         isDefaultYear: !isAllTime && startDate === `${currentYear}-01-01` && endDate === `${currentYear}-12-31`
       }
     }, 'IHLR dashboard metrics retrieved successfully');
@@ -399,7 +431,19 @@ export const getIhlrRequests = async (req, res) => {
       requests = requests.filter(r => {
         const itemDateStr = parseToDateStr(r.batch_date || r.created_at);
         if (!itemDateStr) return false;
-        if (startDate && itemDateStr < startDate) return false;
+
+        const s = (r.status || '').toUpperCase();
+        const isClosed = s === 'CLOSED';
+
+        // Carryover logic: If request was raised before startDate and is NOT closed, keep it visible!
+        if (startDate && itemDateStr < startDate) {
+          if (!isClosed) {
+            if (endDate && itemDateStr > endDate) return false;
+            return true;
+          }
+          return false;
+        }
+
         if (endDate && itemDateStr > endDate) return false;
         return true;
       });

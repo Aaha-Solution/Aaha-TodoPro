@@ -245,15 +245,19 @@ const IhlrDashboard = () => {
     {
       title: 'Total Issues',
       value: stats.total || 0,
-      subtitle: hasActiveFilters ? 'Filtered line rejections' : 'Recorded line rejections',
+      subtitle: (stats.carryoverCount || 0) > 0
+        ? `${stats.carryoverCount} rolled over from previous year`
+        : hasActiveFilters ? 'Filtered line rejections' : (isDefaultYear ? `Current Year ${currentYear}` : 'Recorded line rejections'),
       icon: Layers,
       iconBg: 'bg-blue-50 text-blue-600',
-      subtitleColor: 'text-blue-600',
+      subtitleColor: (stats.carryoverCount || 0) > 0 ? 'text-amber-600' : 'text-blue-600',
     },
     {
       title: 'Pending',
       value: stats.open !== undefined ? stats.open : (stats.pending || 0),
-      subtitle: hasActiveFilters ? 'Filtered pending' : 'Awaiting root cause closer actions',
+      subtitle: (stats.carryoverCount || 0) > 0
+        ? `Includes ${stats.carryoverCount} unclosed carryover`
+        : hasActiveFilters ? 'Filtered pending' : 'Awaiting root cause closer actions',
       icon: AlertCircle,
       iconBg: 'bg-rose-50 text-rose-600',
       subtitleColor: 'text-rose-600',
@@ -516,11 +520,18 @@ const IhlrDashboard = () => {
             )}
           </div>
 
-          {/* Active Badges Row (Only shown when custom filter applied) */}
-          {hasActiveFilters && (
+          {/* Active Badges Row (Only shown when custom filter applied or carryover present) */}
+          {(hasActiveFilters || ((stats.carryoverCount || 0) > 0 && isDefaultYear)) && (
             <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 text-xs">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Active:</span>
+
+                {(stats.carryoverCount || 0) > 0 && isDefaultYear && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    <span><strong>{stats.carryoverCount}</strong> unclosed from prior year rolled over</span>
+                  </span>
+                )}
 
                 {isAdmin && selectedDept !== 'All' && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
@@ -717,6 +728,18 @@ const IhlrDashboard = () => {
                       <div className="font-semibold text-slate-900">
                         {formatDateDDMMYYYY(req.batch_date)}
                       </div>
+                      {Boolean(
+                        req.batch_date &&
+                        new Date(req.batch_date).getFullYear() < currentYear &&
+                        (req.status || '').toUpperCase() !== 'CLOSED'
+                      ) && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            {new Date(req.batch_date).getFullYear()} Carryover
+                          </span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[10px] font-bold text-slate-600 font-mono">
                           {formatIhlrShiftDisplay(req.shift)}
