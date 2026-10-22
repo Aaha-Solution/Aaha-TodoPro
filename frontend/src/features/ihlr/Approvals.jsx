@@ -648,12 +648,12 @@ const IhlrApprovals = () => {
       setCloserTargetDateError(false);
     }
 
-    // 4. Tem Closed By is mandatory (text-only)
+    // 4. Temporary Closed By is mandatory (text-only)
     if (!closerTemporaryClosedBy || !closerTemporaryClosedBy.trim()) {
-      setCloserTemporaryClosedByError('Tem Closed By is required. Please enter person name.');
+      setCloserTemporaryClosedByError('Temporary Closed By is required. Please enter person name.');
       hasCloserErrors = true;
     } else if (/\d/.test(closerTemporaryClosedBy)) {
-      setCloserTemporaryClosedByError('Tem Closed By must contain text only, numbers are not allowed');
+      setCloserTemporaryClosedByError('Temporary Closed By must contain text only, numbers are not allowed');
       hasCloserErrors = true;
     } else {
       setCloserTemporaryClosedByError(false);
@@ -687,12 +687,12 @@ const IhlrApprovals = () => {
       setCloserPermanentTargetDateError(false);
     }
 
-    // 8. Perm Closed By is mandatory (text-only)
+    // 8. Permanent Closed By is mandatory (text-only)
     if (!closerPermanentClosedBy || !closerPermanentClosedBy.trim()) {
-      setCloserPermanentClosedByError('Perm Closed By is required. Please enter person name.');
+      setCloserPermanentClosedByError('Permanent Closed By is required. Please enter person name.');
       hasCloserErrors = true;
     } else if (/\d/.test(closerPermanentClosedBy)) {
-      setCloserPermanentClosedByError('Perm Closed By must contain text only, numbers are not allowed');
+      setCloserPermanentClosedByError('Permanent Closed By must contain text only, numbers are not allowed');
       hasCloserErrors = true;
     } else {
       setCloserPermanentClosedByError(false);
@@ -1449,7 +1449,7 @@ const IhlrApprovals = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>TEM CLOSED BY</span>
+                  <span>TEMPORARY CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
                   {selectedRequest && (
                     canUpdateCloserFields ? (
@@ -1489,7 +1489,7 @@ const IhlrApprovals = () => {
                   if (/\d/.test(raw)) {
                     setCloserTemporaryClosedByError('Only text / letters allowed, numbers are not allowed');
                   } else if (!cleaned.trim()) {
-                    setCloserTemporaryClosedByError('Tem Closed By is required. Please enter person name.');
+                    setCloserTemporaryClosedByError('Temporary Closed By is required. Please enter person name.');
                   } else {
                     setCloserTemporaryClosedByError(false);
                   }
@@ -1697,7 +1697,7 @@ const IhlrApprovals = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>PERM CLOSED BY</span>
+                  <span>PERMANENT CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
                   {selectedRequest && (
                     canUpdateCloserFields ? (
@@ -1737,7 +1737,7 @@ const IhlrApprovals = () => {
                   if (/\d/.test(raw)) {
                     setCloserPermanentClosedByError('Only text / letters allowed, numbers are not allowed');
                   } else if (!cleaned.trim()) {
-                    setCloserPermanentClosedByError('Perm Closed By is required. Please enter person name.');
+                    setCloserPermanentClosedByError('Permanent Closed By is required. Please enter person name.');
                   } else {
                     setCloserPermanentClosedByError(false);
                   }

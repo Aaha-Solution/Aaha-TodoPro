@@ -845,7 +845,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             { content: tempTargetDateVal }
           ],
           [
-            { content: 'Tem Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Temporary Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: targetReq.temporary_closed_by || '—' }
           ],
           [
@@ -861,7 +861,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             { content: permTargetDateVal }
           ],
           [
-            { content: 'Perm Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Permanent Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: targetReq.permanent_closed_by || '—' }
           ],
           [
@@ -1244,7 +1244,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                   <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      TEM CLOSED BY
+                      TEMPORARY CLOSED BY
                     </span>
                     <span className="font-bold text-slate-900 block text-xs">
                       {request.temporary_closed_by || '—'}
@@ -1327,7 +1327,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                     <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        PERM CLOSED BY
+                        PERMANENT CLOSED BY
                       </span>
                       <span className="font-bold text-slate-900 block text-xs">
                         {request.permanent_closed_by || '—'}
