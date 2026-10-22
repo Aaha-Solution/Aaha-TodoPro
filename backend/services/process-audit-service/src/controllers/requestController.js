@@ -34,11 +34,17 @@ export const getAllRequests = async (req, res) => {
 
     const filters = {};
 
+    const targetDept = (req.query.filter_dept || req.query.filterDept || (department && department.trim().toUpperCase() !== 'ALL' ? department.trim() : '')).trim();
+
     let effectiveDept = null;
     if (!isAdmin && userDept && userDept !== 'INCOMING QUALITY') {
       effectiveDept = userDept;
-    } else if (department && department !== 'All') {
-      effectiveDept = department.trim();
+    } else if (targetDept && targetDept.toUpperCase() !== 'ALL') {
+      if (isAdmin && userDept === 'INCOMING QUALITY' && targetDept.toUpperCase() === 'INCOMING QUALITY' && !req.query.filter_dept) {
+        effectiveDept = null;
+      } else {
+        effectiveDept = targetDept;
+      }
     }
 
     if (effectiveDept) {

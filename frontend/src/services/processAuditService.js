@@ -10,8 +10,7 @@ export const processAuditService = {
         user_email: currentUser.email,
         user_id: currentUser.id,
         role: currentUser.role,
-        user_department: currentUser.department,
-        department: currentUser.department
+        user_department: currentUser.department
       } : {};
       const res = await api.get('/process-audit/dashboard', { params: { ...userParams, ...params } });
       return res.data?.data || res.data || {};
@@ -29,8 +28,7 @@ export const processAuditService = {
         user_email: currentUser.email,
         user_id: currentUser.id,
         role: currentUser.role,
-        user_department: currentUser.department,
-        department: currentUser.department
+        user_department: currentUser.department
       } : {};
       const res = await api.get('/process-audit/requests', { params: { ...userParams, ...params } });
       return res.data?.data || res.data || [];

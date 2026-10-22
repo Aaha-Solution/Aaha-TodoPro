@@ -20,11 +20,17 @@ export const getDashboardMetrics = async (req, res) => {
     const userDept = (req.query.user_department || req.query.department_user || tokenUser?.department || req.user?.department || '').trim().toUpperCase();
     const isAdmin = userRole === 'ADMIN' || userDept === 'INCOMING QUALITY';
 
+    const targetDept = (req.query.filter_dept || req.query.filterDept || (department && department.trim().toUpperCase() !== 'ALL' ? department.trim() : '')).trim();
+
     let effectiveDept = null;
     if (!isAdmin && userDept && userDept !== 'INCOMING QUALITY') {
       effectiveDept = userDept;
-    } else if (department && department !== 'All') {
-      effectiveDept = department.trim();
+    } else if (targetDept && targetDept.toUpperCase() !== 'ALL') {
+      if (isAdmin && userDept === 'INCOMING QUALITY' && targetDept.toUpperCase() === 'INCOMING QUALITY' && !req.query.filter_dept) {
+        effectiveDept = null;
+      } else {
+        effectiveDept = targetDept;
+      }
     }
 
     let query = 'SELECT status, COUNT(*) as count FROM process_audit_requests';
