@@ -176,7 +176,22 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           isItemRead = savedRead !== null ? savedRead : Boolean(n.read);
         }
 
-        if (streamList.some((s) => s.id === notifIdStr)) return;
+        // Deduplicate streamList:
+        // 1. By unique notification ID
+        // 2. By request key and event badge (e.g. prevent multiple duplicate CASE CLOSED cards for the same request)
+        const isDuplicate = streamList.some((s) => {
+          if (s.id === notifIdStr) return true;
+          if (reqNoKey && s.reqNo === reqNoKey) {
+            if (isClosedNotif && s.badgeLabel === 'CASE CLOSED') return true;
+            if (isPendingSignoff && s.badgeLabel === 'PENDING SIGN-OFF') return true;
+            if (isUpdatedNotif && s.badgeLabel === 'COUNTERMEASURE SUBMITTED') return true;
+            if (isConfirmedNotif && s.badgeLabel === 'REPORT LOGGED') return true;
+            if (s.type === n.type && s.title === n.title) return true;
+          }
+          return false;
+        });
+
+        if (isDuplicate) return;
 
         streamList.push({
           id: notifIdStr,
@@ -358,8 +373,11 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           isRead = savedRead !== null ? savedRead : Boolean(n.read);
         }
 
+        const notifIdStr = `pa-notif-${n.id}`;
+        if (streamList.some((s) => s.id === notifIdStr || (reqNo && s.reqNo === reqNo && s.badgeLabel === badgeLabel))) return;
+
         streamList.push({
-          id: `pa-notif-${n.id}`,
+          id: notifIdStr,
           notifId: n.id,
           rawId: n.id,
           reqNo,
