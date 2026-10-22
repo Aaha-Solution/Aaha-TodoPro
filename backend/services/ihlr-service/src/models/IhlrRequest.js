@@ -194,7 +194,8 @@ export const IhlrRequest = {
           'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date',
           'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date',
           'remarks', 'status',
-          'created_by', 'created_by_id', 'created_by_email'
+          'created_by', 'created_by_id', 'created_by_email',
+          'reviewed_by', 'reviewed_by_id', 'reviewed_by_email'
         ];
 
         for (const key of allowed) {
@@ -204,7 +205,7 @@ export const IhlrRequest = {
             if ((key === 'batch_date' || key === 'permanent_target_date' || key === 'temporary_target_date') && (val === '' || !val)) {
               val = null;
             }
-            if ((key === 'created_by' || key === 'analysis_done_by') && val) {
+            if ((key === 'created_by' || key === 'analysis_done_by' || key === 'reviewed_by') && val) {
               val = String(val).replace(/[0-9]/g, '').trim();
             }
             if (key === 'shift' && val) {

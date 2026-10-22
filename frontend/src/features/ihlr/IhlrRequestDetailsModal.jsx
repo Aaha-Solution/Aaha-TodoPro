@@ -607,8 +607,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
       // Closure details
       const closedByVal = isClosedStatus
-        ? (targetReq.closed_by || targetReq.resp_person || user?.name || 'Quality Admin')
-        : 'Pending Closure Authorization';
+        ? (targetReq.reviewed_by || targetReq.closed_by || targetReq.resp_person || user?.name || 'Quality Admin')
+        : (targetReq.reviewed_by ? `Reviewed: ${targetReq.reviewed_by}` : 'Pending Closure Authorization');
       const closedDateVal = isClosedStatus
         ? (formatDate(targetReq.closed_at || targetReq.updated_at || targetReq.temporary_target_date || targetReq.permanent_target_date || targetReq.created_at) || '—')
         : '—';
@@ -887,7 +887,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             }
           ],
           [
-            { content: 'Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Reviewed / Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: closedByVal }
           ],
           [
@@ -1234,13 +1234,22 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     </span>
                   </div>
 
-                  <div className="sm:col-span-2 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       REMARKS
                     </span>
                     <div className="text-slate-800 leading-relaxed font-medium">
                       {request.remarks || <span className="text-slate-400 italic">No remarks provided.</span>}
                     </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      REVIEWED BY
+                    </span>
+                    <span className="font-bold text-slate-900 block text-xs">
+                      {request.reviewed_by || '—'}
+                    </span>
                   </div>
                 </div>
 

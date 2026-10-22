@@ -859,10 +859,15 @@ export const updateIhlrRequest = async (req, res) => {
         'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date',
         'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date',
         'remarks', 'status',
-        'created_by', 'created_by_id', 'created_by_email'
+        'created_by', 'created_by_id', 'created_by_email',
+        'reviewed_by', 'reviewed_by_id', 'reviewed_by_email'
       ];
       for (const k of allowed) {
         if (req.body[k] !== undefined) safeUpdates[k] = req.body[k];
+      }
+
+      if (req.body.reviewed_by !== undefined) {
+        safeUpdates.reviewed_by = String(req.body.reviewed_by || '').replace(/[0-9]/g, '').trim();
       }
 
       // Mandatory validation: If Admin updates remarks or admin review, remarks cannot be empty (unless reassigning)

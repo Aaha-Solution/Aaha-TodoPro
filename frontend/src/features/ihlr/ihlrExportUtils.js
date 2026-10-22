@@ -234,9 +234,10 @@ export const exportIhlrToExcel = async ({
     // 33-34: REASSIGNMENT TRACKING
     16, // 33: REASSIGNED STATUS
     38, // 34: REASSIGNMENT DETAILS
-    // 35-36: REMARKS & STATUS
+    // 35-37: REMARKS, REVIEWED BY & STATUS
     24, // 35: REMARKS
-    20  // 36: STATUS
+    18, // 36: REVIEWED BY
+    20  // 37: STATUS
   ];
 
   colWidths.forEach((w, i) => {
@@ -267,9 +268,9 @@ export const exportIhlrToExcel = async ({
   superReassign.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } }; // violet-100
   superReassign.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('AI1:AJ1');
+  worksheet.mergeCells('AI1:AK1');
   const superStatus = worksheet.getCell('AI1');
-  superStatus.value = 'REMARKS & STATUS';
+  superStatus.value = 'REMARKS, REVIEW & STATUS';
   superStatus.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E293B' } }; // slate-800
   superStatus.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; // slate-100
   superStatus.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -302,8 +303,8 @@ export const exportIhlrToExcel = async ({
     'PERMANENT ACTION', 'PERMANENT TARGET DATE', 'PERMANENT EVIDENCE',
     // 33-34 Reassignment Tracking
     'REASSIGNED STATUS', 'REASSIGNMENT DETAILS',
-    // 35-36 Remarks & Status
-    'REMARKS', 'STATUS'
+    // 35-37 Remarks, Reviewed By & Status
+    'REMARKS', 'REVIEWED BY', 'STATUS'
   ];
 
   const headerRow2 = worksheet.addRow(subHeaders);
@@ -394,8 +395,9 @@ export const exportIhlrToExcel = async ({
       reassignedStatus,
       reassignmentDetails,
 
-      // 35-36 Remarks & Status
+      // 35-37 Remarks, Reviewed By & Status
       r.remarks || '—',
+      r.reviewed_by || '—',
       getIhlrDisplayStatus(r.status, r)
     ];
 
@@ -421,10 +423,11 @@ export const exportIhlrToExcel = async ({
     row.getCell(28).alignment = { vertical: 'middle', horizontal: 'center' }; // TEMPORARY TARGET DATE
     row.getCell(31).alignment = { vertical: 'middle', horizontal: 'center' }; // PERMANENT TARGET DATE
     row.getCell(33).alignment = { vertical: 'middle', horizontal: 'center' }; // REASSIGNED STATUS
-    row.getCell(36).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
+    row.getCell(36).alignment = { vertical: 'middle', horizontal: 'center' }; // REVIEWED BY
+    row.getCell(37).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
 
     // Apply UI-matched status styling in Excel
-    const statusCell = row.getCell(36);
+    const statusCell = row.getCell(37);
     if (displayStatus === 'CLOSED') {
       statusCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF15803D' } }; // emerald-700
       statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }; // emerald-100
@@ -612,6 +615,9 @@ export const exportIhlrToPdf = async ({
 
     const displayStatus = getIhlrDisplayStatus(r.status, r);
     let statusStr = displayStatus;
+    if (r.reviewed_by && r.reviewed_by.trim()) {
+      statusStr += `\nReviewed: ${r.reviewed_by.trim()}`;
+    }
     if (r.remarks && r.remarks.trim()) {
       statusStr += `\n[${r.remarks.trim()}]`;
     }

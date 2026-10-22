@@ -164,6 +164,8 @@ const IhlrApprovals = () => {
   })();
   const [closerRemarks, setCloserRemarks] = useState('');
   const [remarksError, setRemarksError] = useState(false);
+  const [reviewedBy, setReviewedBy] = useState('');
+  const [reviewedByError, setReviewedByError] = useState(false);
   const [closerStatus, setCloserStatus] = useState('');
   const [statusError, setStatusError] = useState(false);
   const [isReassignOpen, setIsReassignOpen] = useState(false);
@@ -217,6 +219,22 @@ const IhlrApprovals = () => {
     'MARKETING',
     'INCOMING QUALITY'
   ];
+
+  const getLoggedInUserName = () => {
+    return (
+      user?.name ||
+      (() => {
+        try {
+          const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+          return u ? JSON.parse(u)?.name : '';
+        } catch {
+          return '';
+        }
+      })() ||
+      user?.email ||
+      'Quality Admin'
+    );
+  };
 
   const isUserActive = (u) => {
     if (!u) return false;
@@ -340,6 +358,8 @@ const IhlrApprovals = () => {
     setCloserPermanentTargetDateError(false);
     setCloserRemarks('');
     setRemarksError(false);
+    setReviewedBy('');
+    setReviewedByError(false);
     setCloserStatus('');
     setStatusError(false);
     setReassignedDept('');
@@ -391,6 +411,8 @@ const IhlrApprovals = () => {
     setCloserPermanentTargetDateError(false);
     setCloserRemarks(req.remarks || '');
     setRemarksError(false);
+    setReviewedBy(req.reviewed_by || '');
+    setReviewedByError(false);
     setCloserStatus('');
     setStatusError(false);
     setReassignedDept(req.resp || '');
@@ -707,6 +729,12 @@ const IhlrApprovals = () => {
     }
     setRemarksError(false);
 
+    if (reviewedBy && /\d/.test(reviewedBy)) {
+      setReviewedByError('Reviewed By must contain text only, numbers are not allowed');
+      return; // DO NOT TRIGGER BACKEND!
+    }
+    setReviewedByError(false);
+
     if (!isReassignOpen && !closerStatus) {
       setStatusError(true);
       return; // DO NOT TRIGGER BACKEND!
@@ -741,8 +769,15 @@ const IhlrApprovals = () => {
         ? `Reassigned to ${reassignedPerson} (${reassignedDept}) for analysis.`
         : '';
 
+      const effectiveReviewer = (reviewedBy && reviewedBy.trim())
+        ? reviewedBy.trim()
+        : getLoggedInUserName();
+
       const payload = {
         remarks: effectiveRemarks,
+        reviewed_by: effectiveReviewer,
+        reviewed_by_id: user?.id || null,
+        reviewed_by_email: user?.email || null,
         status: isReassignOpen ? 'OPEN' : (closerStatus || 'CLOSED')
       };
 
@@ -1950,6 +1985,67 @@ const IhlrApprovals = () => {
                   ) : (
                     <p className="text-[10px] text-slate-400 mt-0.5">
                       Provide admin sign-off or review remarks.
+                    </p>
+                  )}
+                </div>
+
+                {/* Reviewed By (Manual entry by admin / quality - Text only, references CreateRequest Created By) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                      <span>REVIEWED BY</span>
+                      <span className="text-slate-400 font-normal lowercase text-[10px]">(optional)</span>
+                      {selectedRequest && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                          Admin
+                        </span>
+                      )}
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-normal truncate max-w-[200px]" title={`Defaults to: ${getLoggedInUserName()}`}>
+                      Defaults to: <strong className="text-slate-600 font-semibold">{getLoggedInUserName()}</strong>
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    disabled={!selectedRequest || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
+                    placeholder={
+                      !selectedRequest
+                        ? 'Click a row on the right to select'
+                        : `e.g. Leave empty to attach ${getLoggedInUserName()}`
+                    }
+                    value={reviewedBy || ''}
+                    onKeyDown={(e) => {
+                      if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                        e.preventDefault();
+                        setReviewedByError('Only text / letters allowed, numbers are not allowed');
+                      }
+                    }}
+                    onChange={(e) => {
+                      if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
+                      const raw = e.target.value;
+                      const cleaned = raw.replace(/[0-9]/g, '');
+                      setReviewedBy(cleaned);
+                      if (/\d/.test(raw)) {
+                        setReviewedByError('Only text / letters allowed, numbers are not allowed');
+                      } else if (reviewedByError) {
+                        setReviewedByError(false);
+                      }
+                    }}
+                    className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${
+                      adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
+                        ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed select-none'
+                        : reviewedByError
+                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                        : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
+                  />
+                  {reviewedByError ? (
+                    <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
+                      <span>* {reviewedByError}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Admin / Quality Engineer reviewing this incident (defaults to logged-in user).
                     </p>
                   )}
                 </div>
