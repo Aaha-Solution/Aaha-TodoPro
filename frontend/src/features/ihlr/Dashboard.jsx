@@ -62,10 +62,20 @@ const IhlrDashboard = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedPreviewAttachment, setSelectedPreviewAttachment] = useState(null);
 
-  // Department & Date Filters State (Defaults to Current Year)
+  // Department & Date Filters State (Defaults to Last 12 Months)
+  const getDefault12MonthsRange = () => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const startD = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const endD = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      defaultStartDate: `${startD.getFullYear()}-${pad(startD.getMonth() + 1)}-01`,
+      defaultEndDate: `${endD.getFullYear()}-${pad(endD.getMonth() + 1)}-${pad(endD.getDate())}`
+    };
+  };
+
+  const { defaultStartDate, defaultEndDate } = getDefault12MonthsRange();
   const currentYear = new Date().getFullYear();
-  const defaultStartDate = `${currentYear}-01-01`;
-  const defaultEndDate = `${currentYear}-12-31`;
 
   const [selectedDept, setSelectedDept] = useState(!isAdmin && userDept ? userDept : 'All');
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -80,9 +90,9 @@ const IhlrDashboard = () => {
     }
   }, [isAdmin, userDept]);
 
-  const isDefaultYear = startDate === defaultStartDate && endDate === defaultEndDate;
+  const isDefaultRange = startDate === defaultStartDate && endDate === defaultEndDate;
   const isDefaultDept = !isAdmin && userDept ? selectedDept === userDept : selectedDept === 'All';
-  const hasActiveFilters = !isDefaultDept || selectedStatus !== 'All' || !isDefaultYear;
+  const hasActiveFilters = !isDefaultDept || selectedStatus !== 'All' || !isDefaultRange;
 
   const loadData = async (overrides = {}) => {
     setLoading(true);
@@ -317,7 +327,7 @@ const IhlrDashboard = () => {
             <span>/</span>
             <span>Overview Dashboard</span>
             <span>/</span>
-            <span className="font-bold text-slate-700">Data on Current Year ({currentYear})</span>
+            <span className="font-bold text-slate-700">{isDefaultRange ? 'Last 12 Months Data' : `Timeline Data (${startDate} → ${endDate})`}</span>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -379,7 +389,7 @@ const IhlrDashboard = () => {
                   </h2>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
                     <Calendar className="w-3 h-3 text-blue-600" />
-                    <span>{isDefaultYear ? `Data on Current Year (${currentYear})` : hasActiveFilters ? 'Active Custom Filter' : 'All Data'}</span>
+                    <span>{isDefaultRange ? 'Last 12 Months Data' : hasActiveFilters ? 'Active Custom Filter' : 'All Data'}</span>
                   </span>
                   <button
                     type="button"
@@ -475,9 +485,9 @@ const IhlrDashboard = () => {
                       <Calendar className="w-3.5 h-3.5 text-indigo-600" />
                       <span>Timeline Range</span>
                     </span>
-                    {isDefaultYear && (
+                    {isDefaultRange && (
                       <span className="text-[10px] font-bold text-blue-600">
-                        Current Year {currentYear}
+                        Default: Last 12 Months
                       </span>
                     )}
                   </label>
@@ -730,7 +740,7 @@ const IhlrDashboard = () => {
                       </div>
                       {Boolean(
                         req.batch_date &&
-                        new Date(req.batch_date).getFullYear() < currentYear &&
+                        (String(req.batch_date).slice(0, 10) < defaultStartDate || new Date(req.batch_date).getFullYear() < currentYear) &&
                         (req.status || '').toUpperCase() !== 'CLOSED'
                       ) && (
                         <div className="mt-1">
