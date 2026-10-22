@@ -288,6 +288,7 @@ const ProcessAuditApprovals = () => {
   const isCloserCompleted = (r) => {
     if (!r) return false;
     const s = String(r.status || '').toLowerCase();
+    if (s.includes('pending') || s.includes('open') || s.includes('reject')) return false;
     if (s.includes('approval') || s.includes('progress') || s.includes('signed') || s.includes('review')) return true;
     return Boolean(
       (r.corrective_action && String(r.corrective_action).trim()) ||
