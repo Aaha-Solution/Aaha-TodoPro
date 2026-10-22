@@ -91,6 +91,7 @@ const IhlrDashboard = () => {
   }, [isAdmin, userDept]);
 
   const isDefaultRange = startDate === defaultStartDate && endDate === defaultEndDate;
+  const isDefaultYear = isDefaultRange;
   const isDefaultDept = !isAdmin && userDept ? selectedDept === userDept : selectedDept === 'All';
   const hasActiveFilters = !isDefaultDept || selectedStatus !== 'All' || !isDefaultRange;
 
@@ -257,7 +258,7 @@ const IhlrDashboard = () => {
       value: stats.total || 0,
       subtitle: (stats.carryoverCount || 0) > 0
         ? `${stats.carryoverCount} rolled over from previous year`
-        : hasActiveFilters ? 'Filtered line rejections' : (isDefaultYear ? `Current Year ${currentYear}` : 'Recorded line rejections'),
+        : hasActiveFilters ? 'Filtered line rejections' : (isDefaultRange ? 'Default: Last 12 Months' : 'Recorded line rejections'),
       icon: Layers,
       iconBg: 'bg-blue-50 text-blue-600',
       subtitleColor: (stats.carryoverCount || 0) > 0 ? 'text-amber-600' : 'text-blue-600',
@@ -531,12 +532,12 @@ const IhlrDashboard = () => {
           </div>
 
           {/* Active Badges Row (Only shown when custom filter applied or carryover present) */}
-          {(hasActiveFilters || ((stats.carryoverCount || 0) > 0 && isDefaultYear)) && (
+          {(hasActiveFilters || ((stats.carryoverCount || 0) > 0 && isDefaultRange)) && (
             <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 text-xs">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Active:</span>
 
-                {(stats.carryoverCount || 0) > 0 && isDefaultYear && (
+                {(stats.carryoverCount || 0) > 0 && isDefaultRange && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                     <span><strong>{stats.carryoverCount}</strong> unclosed from prior year rolled over</span>
@@ -573,7 +574,7 @@ const IhlrDashboard = () => {
                   </span>
                 )}
 
-                {!isDefaultYear && (Boolean(startDate) || Boolean(endDate)) && (
+                {!isDefaultRange && (Boolean(startDate) || Boolean(endDate)) && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
                     <span>
                       {startDate ? formatDateDDMMYYYY(startDate) : 'Start'} → {endDate ? formatDateDDMMYYYY(endDate) : 'End'}
@@ -582,14 +583,14 @@ const IhlrDashboard = () => {
                       type="button"
                       onClick={() => { setStartDate(defaultStartDate); setEndDate(defaultEndDate); }}
                       className="hover:text-indigo-900 cursor-pointer p-0.5 rounded hover:bg-indigo-100/60 transition-colors"
-                      title="Reset to current year"
+                      title="Reset to default range"
                     >
                       <X className="w-3 h-3" />
                     </button>
                   </span>
                 )}
 
-                {!isDefaultYear && !startDate && !endDate && (
+                {!isDefaultRange && !startDate && !endDate && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs">
                     <span>All Time (All Years)</span>
                   </span>

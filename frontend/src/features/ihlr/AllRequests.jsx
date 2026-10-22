@@ -88,6 +88,7 @@ const IhlrAllRequests = () => {
   );
 
   const isDefaultRange = startDate === defaultStartDate && endDate === defaultEndDate;
+  const isDefaultYear = isDefaultRange;
   const carryoverCount = requests.filter(r => {
     if (!r.batch_date) return false;
     const itemDateStr = String(r.batch_date).slice(0, 10);
@@ -477,7 +478,7 @@ const IhlrAllRequests = () => {
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 font-mono">
               {requests.length} Records
             </span>
-            {carryoverCount > 0 && isDefaultYear && (
+            {carryoverCount > 0 && isDefaultRange && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                 <span>{carryoverCount} unclosed from prior year rolled over</span>
