@@ -771,21 +771,9 @@ const ProcessAuditApprovals = () => {
       hasCloserErrors = true;
     }
 
-    // Temporary Target Date is optional; check if user selected a past date
-    if (closerTargetDate && closerTargetDate.trim() && closerTargetDate < todayStr && !isAdmin) {
-      setCloserTargetDateError('Temporary Target Date cannot be a previous date. Please select today or a future date.');
-      hasCloserErrors = true;
-    } else {
-      setCloserTargetDateError(false);
-    }
-
-    // Permanent Target Date is optional; check if user selected a past date
-    if (closerPermanentTargetDate && closerPermanentTargetDate.trim() && closerPermanentTargetDate < todayStr && !isAdmin) {
-      setCloserPermanentTargetDateError('Permanent Target Date cannot be a previous date. Please select today or a future date.');
-      hasCloserErrors = true;
-    } else {
-      setCloserPermanentTargetDateError(false);
-    }
+    // Target dates can be present, past, or future
+    setCloserTargetDateError(false);
+    setCloserPermanentTargetDateError(false);
 
     if (hasCloserErrors) {
       setErrorMessage('Please fill in all mandatory closer fields (W1, W2, W3) before submitting.');
@@ -1543,16 +1531,10 @@ const ProcessAuditApprovals = () => {
               </div>
               <DateInput
                 disabled={!canUpdateCloserFields}
-                min={todayStr}
                 value={closerTargetDate}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  setCloserTargetDate(val);
-                  if (val && val < todayStr && !isAdmin) {
-                    setCloserTargetDateError('Temporary Target Date cannot be a previous date. Please select today or a future date.');
-                  } else {
-                    setCloserTargetDateError(false);
-                  }
+                  setCloserTargetDate(e.target.value);
+                  setCloserTargetDateError(false);
                 }}
                 className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${
                   closerTargetDateError
@@ -1562,7 +1544,7 @@ const ProcessAuditApprovals = () => {
               />
               {closerTargetDateError && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* {typeof closerTargetDateError === 'string' ? closerTargetDateError : 'Temporary Target Date cannot be in the past.'}</span>
+                  <span>* {typeof closerTargetDateError === 'string' ? closerTargetDateError : 'Temporary Target Date error.'}</span>
                 </p>
               )}
             </div>
@@ -1733,16 +1715,10 @@ const ProcessAuditApprovals = () => {
               </div>
               <DateInput
                 disabled={!canUpdateCloserFields}
-                min={todayStr}
                 value={closerPermanentTargetDate}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  setCloserPermanentTargetDate(val);
-                  if (val && val < todayStr && !isAdmin) {
-                    setCloserPermanentTargetDateError('Permanent Target Date cannot be a previous date. Please select today or a future date.');
-                  } else {
-                    setCloserPermanentTargetDateError(false);
-                  }
+                  setCloserPermanentTargetDate(e.target.value);
+                  setCloserPermanentTargetDateError(false);
                 }}
                 className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${
                   closerPermanentTargetDateError
@@ -1752,7 +1728,7 @@ const ProcessAuditApprovals = () => {
               />
               {closerPermanentTargetDateError && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* {typeof closerPermanentTargetDateError === 'string' ? closerPermanentTargetDateError : 'Permanent Target Date cannot be in the past.'}</span>
+                  <span>* {typeof closerPermanentTargetDateError === 'string' ? closerPermanentTargetDateError : 'Permanent Target Date error.'}</span>
                 </p>
               )}
             </div>
