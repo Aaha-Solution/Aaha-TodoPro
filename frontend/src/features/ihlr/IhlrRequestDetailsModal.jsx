@@ -845,6 +845,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             { content: tempTargetDateVal }
           ],
           [
+            { content: 'Tem Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: targetReq.temporary_closed_by || '—' }
+          ],
+          [
             { content: 'Temporary Evidence Attachment(s):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: tempEvidenceStr }
           ],
@@ -855,6 +859,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
           [
             { content: 'Permanent Target Date:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: permTargetDateVal }
+          ],
+          [
+            { content: 'Perm Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: targetReq.permanent_closed_by || '—' }
           ],
           [
             { content: 'Permanent Evidence Attachment(s):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
@@ -1224,13 +1232,22 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 </div>
 
                 {/* 5. Target Date & Remarks (Image 1: REMARKS Word) */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                   <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       TEMPORARY TARGET DATE
                     </span>
                     <span className="font-mono font-bold text-slate-900 text-sm">
                       {formatDate(request.temporary_target_date) || '—'}
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      TEM CLOSED BY
+                    </span>
+                    <span className="font-bold text-slate-900 block text-xs">
+                      {request.temporary_closed_by || '—'}
                     </span>
                   </div>
 
@@ -1298,13 +1315,22 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   </div>
 
                   {/* 3. Permanent Fix Target Date */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         PERMANENT TARGET DATE
                       </span>
                       <span className="font-mono font-bold text-slate-900 text-sm">
                         {formatDate(request.permanent_target_date) || '—'}
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        PERM CLOSED BY
+                      </span>
+                      <span className="font-bold text-slate-900 block text-xs">
+                        {request.permanent_closed_by || '—'}
                       </span>
                     </div>
                   </div>

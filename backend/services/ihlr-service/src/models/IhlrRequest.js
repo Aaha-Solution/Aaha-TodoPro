@@ -191,8 +191,8 @@ export const IhlrRequest = {
           'req_no', 'batch_date', 'shift', 'problem', 'model', 
           'problem_detected_at', 'received_from', 'analysis_done_by', 
           'defect_image', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
-          'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date',
-          'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date',
+          'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date', 'temporary_closed_by',
+          'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date', 'permanent_closed_by',
           'remarks', 'status',
           'created_by', 'created_by_id', 'created_by_email',
           'reviewed_by', 'reviewed_by_id', 'reviewed_by_email'
@@ -205,7 +205,7 @@ export const IhlrRequest = {
             if ((key === 'batch_date' || key === 'permanent_target_date' || key === 'temporary_target_date') && (val === '' || !val)) {
               val = null;
             }
-            if ((key === 'created_by' || key === 'analysis_done_by' || key === 'reviewed_by') && val) {
+            if ((key === 'created_by' || key === 'analysis_done_by' || key === 'reviewed_by' || key === 'temporary_closed_by' || key === 'permanent_closed_by') && val) {
               val = String(val).replace(/[0-9]/g, '').trim();
             }
             if (key === 'shift' && val) {

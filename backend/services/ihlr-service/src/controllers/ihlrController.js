@@ -856,8 +856,8 @@ export const updateIhlrRequest = async (req, res) => {
         'problem_detected_at', 'received_from', 'analysis_done_by', 
         'defect_image', 'qa_why_why', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
         'prod_why_why',
-        'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date',
-        'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date',
+        'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date', 'temporary_closed_by',
+        'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date', 'permanent_closed_by',
         'remarks', 'status',
         'created_by', 'created_by_id', 'created_by_email',
         'reviewed_by', 'reviewed_by_id', 'reviewed_by_email'
@@ -868,6 +868,12 @@ export const updateIhlrRequest = async (req, res) => {
 
       if (req.body.reviewed_by !== undefined) {
         safeUpdates.reviewed_by = String(req.body.reviewed_by || '').replace(/[0-9]/g, '').trim();
+      }
+      if (req.body.temporary_closed_by !== undefined) {
+        safeUpdates.temporary_closed_by = String(req.body.temporary_closed_by || '').replace(/[0-9]/g, '').trim();
+      }
+      if (req.body.permanent_closed_by !== undefined) {
+        safeUpdates.permanent_closed_by = String(req.body.permanent_closed_by || '').replace(/[0-9]/g, '').trim();
       }
 
       // Mandatory validation: If Admin updates remarks or admin review, remarks cannot be empty (unless reassigning)
@@ -898,9 +904,15 @@ export const updateIhlrRequest = async (req, res) => {
         if (req.body.temporary_action !== undefined) safeUpdates.temporary_action = req.body.temporary_action;
         if (req.body.temporary_evidence_attachment !== undefined) safeUpdates.temporary_evidence_attachment = req.body.temporary_evidence_attachment;
         if (req.body.temporary_target_date !== undefined) safeUpdates.temporary_target_date = req.body.temporary_target_date;
+        if (req.body.temporary_closed_by !== undefined) {
+          safeUpdates.temporary_closed_by = String(req.body.temporary_closed_by || '').replace(/[0-9]/g, '').trim();
+        }
         if (req.body.permanent_fix !== undefined) safeUpdates.permanent_fix = req.body.permanent_fix;
         if (req.body.permanent_evidence_attachment !== undefined) safeUpdates.permanent_evidence_attachment = req.body.permanent_evidence_attachment;
         if (req.body.permanent_target_date !== undefined) safeUpdates.permanent_target_date = req.body.permanent_target_date;
+        if (req.body.permanent_closed_by !== undefined) {
+          safeUpdates.permanent_closed_by = String(req.body.permanent_closed_by || '').replace(/[0-9]/g, '').trim();
+        }
 
         // Automatically transition status to IN_PROGRESS when closer updates their fields
         const currentStatus = String(existing.status || '').toUpperCase();
