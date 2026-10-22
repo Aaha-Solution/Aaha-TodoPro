@@ -1188,9 +1188,11 @@ const CreateRequest = () => {
                   setSelectedExecutors([]);
                   setExecutorDropdownOpen(false);
                   setExecutorSearch('');
-                  if (errors.department) {
-                    setErrors((prev) => ({ ...prev, department: '' }));
-                  }
+                  setErrors((prev) => ({
+                    ...prev,
+                    department: '',
+                    ...(prev.executor === 'Department must be selected first' ? { executor: '' } : {})
+                  }));
                 }}
                 className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-xs font-medium transition cursor-pointer ${
                   errors.department
@@ -1239,14 +1241,20 @@ const CreateRequest = () => {
                   }
                 }}
                 className={`w-full min-h-[42px] px-3.5 py-2 border rounded-xl text-xs font-medium transition flex items-center justify-between gap-2 ${
-                  !formData.department
+                  errors.executor
+                    ? `border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 ${
+                        !formData.department || availableExecutors.length === 0
+                          ? 'cursor-not-allowed text-slate-500'
+                          : loadingExecutors
+                          ? 'cursor-wait text-slate-500'
+                          : 'cursor-pointer text-slate-800'
+                      }`
+                    : !formData.department
                     ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
                     : loadingExecutors
                     ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-wait'
                     : availableExecutors.length === 0
                     ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-                    : errors.executor
-                    ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 cursor-pointer'
                     : executorDropdownOpen
                     ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 cursor-pointer shadow-xs'
                     : 'bg-white border-slate-200 hover:border-slate-300 text-slate-800 cursor-pointer shadow-2xs'
