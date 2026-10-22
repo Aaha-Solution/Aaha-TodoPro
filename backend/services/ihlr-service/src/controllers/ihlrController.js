@@ -91,18 +91,30 @@ export const getDashboardStats = async (req, res) => {
     }
 
 
-    // 2. Date filter (by incident batch_date or created_at - defaults to current year)
+    // 2. Date filter (by incident batch_date or created_at - defaults to last 12 months)
     const currentYear = new Date().getFullYear();
     const isAllTime = req.query.allTime === 'true' || req.query.all_time === 'true';
 
     let startDate = (req.query.startDate || req.query.start_date || req.query.from_date || '').trim();
     let endDate = (req.query.endDate || req.query.end_date || req.query.to_date || '').trim();
 
-    // By default for dashboard, fetch current year data unless allTime or custom range is given
+    // Calculate default rolling 12 months range
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const start12D = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const end12D = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const default12MonthsStart = `${start12D.getFullYear()}-${pad(start12D.getMonth() + 1)}-01`;
+    const default12MonthsEnd = `${end12D.getFullYear()}-${pad(end12D.getMonth() + 1)}-${pad(end12D.getDate())}`;
+
+    // By default for dashboard, fetch last 12 months data unless allTime, specific year, or custom range is given
     if (!isAllTime && !startDate && !endDate) {
-      const year = req.query.year || currentYear;
-      startDate = `${year}-01-01`;
-      endDate = `${year}-12-31`;
+      if (req.query.year) {
+        startDate = `${req.query.year}-01-01`;
+        endDate = `${req.query.year}-12-31`;
+      } else {
+        startDate = default12MonthsStart;
+        endDate = default12MonthsEnd;
+      }
     }
 
     let carryoverCount = 0;
@@ -166,33 +178,66 @@ export const getDashboardStats = async (req, res) => {
       return 'open';
     };
 
-    // 1. Monthly Trend Bar Chart (12 Months)
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const monthlyTrend = monthNames.map((name, index) => {
+    // 1. Monthly Trend Bar Chart (Last 12 Rolling Months or Calendar Months)
+    let trendMonths = [];
+    const isSingleCalendarYear = Boolean(startDate && endDate && startDate.endsWith('-01-01') && endDate.endsWith('-12-31') && startDate.slice(0, 4) === endDate.slice(0, 4));
+
+    if (isSingleCalendarYear) {
+      const yr = startDate.slice(0, 4);
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      trendMonths = monthNames.map((name, index) => {
+        const monthNumStr = String(index + 1).padStart(2, '0');
+        return {
+          label: name,
+          month: name,
+          yearMonth: `${yr}-${monthNumStr}`,
+          monthIndex: index,
+          isFirst: index === 0
+        };
+      });
+    } else {
+      // Rolling 12 months ending at endDate (or current month)
+      const endD = endDate ? new Date(endDate) : new Date();
+      const refEnd = isNaN(endD.getTime()) ? new Date() : endD;
+
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(refEnd.getFullYear(), refEnd.getMonth() - i, 1);
+        const mName = d.toLocaleString('en-US', { month: 'short' });
+        const yr = d.getFullYear();
+        const yrShort = String(yr).slice(-2);
+        trendMonths.push({
+          label: `${mName} '${yrShort}`,
+          month: `${mName} '${yrShort}`,
+          yearMonth: `${yr}-${pad(d.getMonth() + 1)}`,
+          monthIndex: d.getMonth(),
+          isFirst: i === 11
+        });
+      }
+    }
+
+    const monthlyTrend = trendMonths.map((mObj) => {
       const mReqs = requests.filter(r => {
         const itemDateStr = parseToDateStr(r.batch_date || r.created_at);
         if (!itemDateStr) return false;
-        const d = new Date(itemDateStr);
-        if (isNaN(d.getTime())) return false;
 
-        // Current period requests match their creation month
-        if (d.getMonth() === index && (!startDate || itemDateStr >= startDate)) {
+        // Current period requests match their year and month
+        if (itemDateStr.startsWith(mObj.yearMonth)) {
           return true;
         }
 
-        // Requests carried over from previous periods:
-        if (startDate && itemDateStr < startDate) {
+        // Requests carried over from prior to the 12-month window:
+        if (mObj.isFirst && startDate && itemDateStr < startDate) {
           const s = (r.status || '').toUpperCase();
-          if (s !== 'CLOSED' && index === 0) {
-            // Unclosed carryover issues are accounted for in January (initial open backlog)
+          if (s !== 'CLOSED') {
             return true;
           }
-          return false;
         }
+        return false;
       });
+
       return {
-        month: name,
-        monthIndex: index,
+        month: mObj.label,
+        yearMonth: mObj.yearMonth,
         total: mReqs.length,
         open: mReqs.filter(r => getStatusCategory(r) === 'open').length,
         inProgress: mReqs.filter(r => getStatusCategory(r) === 'inProgress').length,
@@ -325,6 +370,7 @@ export const getDashboardStats = async (req, res) => {
         department: effectiveDept || 'All',
         year: req.query.year || currentYear,
         carryoverCount,
+        isDefault12Months: !isAllTime && startDate === default12MonthsStart && endDate === default12MonthsEnd,
         isDefaultYear: !isAllTime && startDate === `${currentYear}-01-01` && endDate === `${currentYear}-12-31`
       }
     }, 'IHLR dashboard metrics retrieved successfully');

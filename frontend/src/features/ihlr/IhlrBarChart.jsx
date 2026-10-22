@@ -60,9 +60,17 @@ export const IhlrBarChart = ({
     if (activeTab === 'monthly') {
       const list = stats.monthlyTrend || [];
       if (list.length > 0) return list.map(item => ({ key: item.month, label: item.month, ...item }));
-      // Fallback 12 months with zeros
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return months.map(m => ({ key: m, label: m, total: 0, open: 0, inProgress: 0, closed: 0 }));
+      // Fallback rolling 12 months with zeros
+      const fallbackMonths = [];
+      const now = new Date();
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const mName = d.toLocaleString('en-US', { month: 'short' });
+        const yrShort = String(d.getFullYear()).slice(-2);
+        const label = `${mName} '${yrShort}`;
+        fallbackMonths.push({ key: label, label, total: 0, open: 0, inProgress: 0, closed: 0 });
+      }
+      return fallbackMonths;
     }
 
     if (activeTab === 'department') {

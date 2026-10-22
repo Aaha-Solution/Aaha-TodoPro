@@ -62,10 +62,20 @@ const IhlrAllRequests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters (including date range filter like dashboard)
+  // Filters (defaults to Last 12 Months)
+  const getDefault12MonthsRange = () => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const startD = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const endD = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      defaultStartDate: `${startD.getFullYear()}-${pad(startD.getMonth() + 1)}-01`,
+      defaultEndDate: `${endD.getFullYear()}-${pad(endD.getMonth() + 1)}-${pad(endD.getDate())}`
+    };
+  };
+
+  const { defaultStartDate, defaultEndDate } = getDefault12MonthsRange();
   const currentYear = new Date().getFullYear();
-  const defaultStartDate = `${currentYear}-01-01`;
-  const defaultEndDate = `${currentYear}-12-31`;
 
   const [search, setSearch] = useState(location.state?.search || '');
   const [selectedShift, setSelectedShift] = useState('All');
@@ -77,17 +87,17 @@ const IhlrAllRequests = () => {
     Boolean(location.state?.search || (location.state?.filterStatus && location.state.filterStatus !== 'All'))
   );
 
-  const isDefaultYear = startDate === defaultStartDate && endDate === defaultEndDate;
+  const isDefaultRange = startDate === defaultStartDate && endDate === defaultEndDate;
   const carryoverCount = requests.filter(r => {
     if (!r.batch_date) return false;
-    const y = new Date(r.batch_date).getFullYear();
-    return y < currentYear && (r.status || '').toUpperCase() !== 'CLOSED';
+    const itemDateStr = String(r.batch_date).slice(0, 10);
+    return itemDateStr < defaultStartDate && (r.status || '').toUpperCase() !== 'CLOSED';
   }).length;
   const hasActiveFilters =
     selectedShift !== 'All' ||
     selected4M !== 'All' ||
     selectedStatus !== 'All' ||
-    !isDefaultYear ||
+    !isDefaultRange ||
     Boolean((search || '').trim());
 
   const handleResetFilters = () => {
@@ -335,7 +345,7 @@ const IhlrAllRequests = () => {
             </span>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
               <Calendar className="w-3 h-3 text-blue-600" />
-              <span>{isDefaultYear ? `Data on Current Year (${currentYear})` : hasActiveFilters ? 'Active Custom Filter' : 'All Data'}</span>
+              <span>{isDefaultRange ? 'Last 12 Months Data' : hasActiveFilters ? 'Active Custom Filter' : 'All Data'}</span>
             </span>
             <button
               type="button"
@@ -551,7 +561,7 @@ const IhlrAllRequests = () => {
                       </div>
                       {Boolean(
                         r.batch_date &&
-                        new Date(r.batch_date).getFullYear() < currentYear &&
+                        (String(r.batch_date).slice(0, 10) < defaultStartDate || new Date(r.batch_date).getFullYear() < currentYear) &&
                         (r.status || '').toUpperCase() !== 'CLOSED'
                       ) && (
                         <div className="mt-1">
