@@ -107,6 +107,7 @@ const ProcessAuditDashboard = () => {
       const filters = { scope: 'dashboard', all: true };
       if (activeDept && activeDept !== 'All') {
         filters.department = activeDept;
+        filters.filter_dept = activeDept;
       }
       if (activeStart) {
         filters.startDate = activeStart;
@@ -118,6 +119,7 @@ const ProcessAuditDashboard = () => {
       const reqFilters = { scope: 'dashboard', all: true };
       if (activeDept && activeDept !== 'All') {
         reqFilters.department = activeDept;
+        reqFilters.filter_dept = activeDept;
       }
 
       const [reqsData, statsData] = await Promise.allSettled([
@@ -140,7 +142,9 @@ const ProcessAuditDashboard = () => {
 
   useEffect(() => {
     loadDashboardData();
+  }, [selectedDept, startDate, endDate]);
 
+  useEffect(() => {
     let debounceTimer = null;
     const handleLiveUpdate = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
