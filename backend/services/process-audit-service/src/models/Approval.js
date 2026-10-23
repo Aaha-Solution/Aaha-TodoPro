@@ -20,6 +20,9 @@ export const ensureApprovalsTable = async () => {
         action_attachments JSON NULL,
         standardization_details TEXT NULL,
         target_date VARCHAR(50) NULL,
+        reviewed_by VARCHAR(100) NULL,
+        reviewed_by_id INT NULL,
+        reviewed_by_email VARCHAR(150) NULL,
         status VARCHAR(50) DEFAULT 'Approved',
         comments TEXT NULL,
         approved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -28,6 +31,12 @@ export const ensureApprovalsTable = async () => {
         INDEX idx_approved_by (approved_by)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // Safe column migrations
+    await pool.query(`ALTER TABLE process_audit_approvals ADD COLUMN reviewed_by VARCHAR(100) NULL`).catch(() => {});
+    await pool.query(`ALTER TABLE process_audit_approvals ADD COLUMN reviewed_by_id INT NULL`).catch(() => {});
+    await pool.query(`ALTER TABLE process_audit_approvals ADD COLUMN reviewed_by_email VARCHAR(150) NULL`).catch(() => {});
+
     console.log('[Process Audit Service] process_audit_approvals table verified.');
   } catch (err) {
     console.warn('[Process Audit Service] ensureApprovalsTable warning:', err.message);
@@ -56,13 +65,16 @@ export const Approval = {
       : null;
     const standardizationDetails = data.standardization_details || data.standardizationDetails || null;
     const targetDate = data.target_date || data.targetDate || null;
+    const reviewedBy = data.reviewed_by || data.reviewedBy || null;
+    const reviewedById = data.reviewed_by_id || data.reviewedById || null;
+    const reviewedByEmail = data.reviewed_by_email || data.reviewedByEmail || null;
     const status = data.status || 'Approved';
     const comments = data.comments || null;
 
     const query = `
       INSERT INTO process_audit_approvals
-      (request_id, issue_no, approved_by, approved_by_id, approved_by_email, approved_by_role, department, executor, root_cause, corrective_action, action_attachments, standardization_details, target_date, status, comments, approved_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      (request_id, issue_no, approved_by, approved_by_id, approved_by_email, approved_by_role, department, executor, root_cause, corrective_action, action_attachments, standardization_details, target_date, reviewed_by, reviewed_by_id, reviewed_by_email, status, comments, approved_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `;
 
     const [res] = await pool.query(query, [
@@ -79,6 +91,9 @@ export const Approval = {
       actionAttachments,
       standardizationDetails,
       targetDate,
+      reviewedBy,
+      reviewedById,
+      reviewedByEmail,
       status,
       comments,
     ]);

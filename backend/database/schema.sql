@@ -123,6 +123,9 @@ CREATE TABLE process_audit_approvals (
   permanent_evidence_attachment JSON NULL,
   permanent_target_date VARCHAR(50) NULL,
   permanent_closed_by VARCHAR(100) NULL,
+  reviewed_by VARCHAR(100) NULL,
+  reviewed_by_id INT NULL,
+  reviewed_by_email VARCHAR(150) NULL,
   status VARCHAR(50) DEFAULT 'Approved',
   comments TEXT NULL,
   approved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -230,25 +233,6 @@ CREATE TABLE ihlr_notifications (
   INDEX idx_ihlr_notif_req (request_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ==============================================================================
--- 7b. PROCESS AUDIT IN-APP NOTIFICATIONS
--- ==============================================================================
-CREATE TABLE process_audit_notifications (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NULL,
-  user_name VARCHAR(100) NOT NULL,
-  user_email VARCHAR(150) NULL,
-  request_id INT NOT NULL,
-  issue_no VARCHAR(50) NOT NULL,
-  type VARCHAR(50) DEFAULT 'assignment',
-  title VARCHAR(255) NOT NULL,
-  message TEXT NOT NULL,
-  link VARCHAR(255) DEFAULT '/process-audit/approvals',
-  is_read TINYINT(1) DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_pa_notif_user (user_name),
-  INDEX idx_pa_notif_req (request_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==============================================================================
 -- 8. COMMON APP BINARY ATTACHMENTS STORAGE (LONGBLOB)

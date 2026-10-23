@@ -765,6 +765,9 @@ export const ProcessAuditRequest = {
           action_attachments: updatedRow.action_attachments,
           standardization_details: updatedRow.standardization_details,
           target_date: updatedRow.target_date,
+          reviewed_by: updatedRow.reviewed_by || details.reviewed_by || details.reviewedBy || null,
+          reviewed_by_id: updatedRow.reviewed_by_id || details.reviewed_by_id || details.reviewedById || null,
+          reviewed_by_email: updatedRow.reviewed_by_email || details.reviewed_by_email || details.reviewedByEmail || null,
           status: 'Approved',
           comments: details.comments || null,
         });
