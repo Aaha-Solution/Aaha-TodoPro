@@ -191,7 +191,8 @@ const ProcessAuditRequestDetailsModal = ({
       target_date: tgtDate || '',
       action_taken_by: targetReq.action_taken_by || targetReq.approved_by || targetReq.executor || '',
       status: targetReq.status || 'Pending',
-      creator_remark: targetReq.creator_remark || targetReq.remarks || ''
+      creator_remark: targetReq.creator_remark || targetReq.remarks || '',
+      reviewed_by: targetReq.reviewed_by || targetReq.approved_by || ''
     });
 
     setEditAttachments(parseAttachments(targetReq.attachments));
@@ -385,7 +386,8 @@ const ProcessAuditRequestDetailsModal = ({
         action_taken_by: editFormData.action_taken_by.trim() || null,
         action_attachments: finalActionAttachments,
         status: editFormData.status,
-        creator_remark: editFormData.creator_remark.trim()
+        creator_remark: editFormData.creator_remark.trim(),
+        reviewed_by: editFormData.reviewed_by !== undefined ? editFormData.reviewed_by.trim() : (req.reviewed_by || null)
       };
 
       const result = await processAuditService.updateRequest(req.id, updates);
@@ -946,8 +948,8 @@ const ProcessAuditRequestDetailsModal = ({
                       )}
                     </div>
 
-                    {/* Temporary Target Date, Temporary Closed By & Auditor Remarks */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                    {/* Temporary Target Date, Temporary Closed By, Auditor Remarks & Reviewed By */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                       <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                         <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                           TEMPORARY TARGET DATE
@@ -973,6 +975,15 @@ const ProcessAuditRequestDetailsModal = ({
                         <div className="text-slate-800 leading-relaxed font-medium">
                           {req.creator_remark || req.remarks || <span className="text-slate-400 italic">No auditor remarks provided.</span>}
                         </div>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          REVIEWED BY
+                        </span>
+                        <span className="font-bold text-slate-900 block text-xs">
+                          {req.reviewed_by || req.approved_by || '—'}
+                        </span>
                       </div>
                     </div>
 
@@ -1104,7 +1115,7 @@ const ProcessAuditRequestDetailsModal = ({
                       )}
                     </div>
 
-                    {/* 6. Target Date & Sign-off Remarks */}
+                    {/* 6. Target Date, Sign-off Remarks & Reviewed By */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                       <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                         <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
@@ -1115,13 +1126,22 @@ const ProcessAuditRequestDetailsModal = ({
                         </span>
                       </div>
 
-                      <div className="sm:col-span-2 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                         <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                           AUDITOR SIGN-OFF REMARKS
                         </span>
                         <div className="text-slate-800 leading-relaxed font-medium">
                           {req.creator_remark || req.remarks || <span className="text-slate-400 italic">No auditor remarks provided.</span>}
                         </div>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          REVIEWED BY
+                        </span>
+                        <span className="font-bold text-slate-900 block text-xs">
+                          {req.reviewed_by || req.approved_by || '—'}
+                        </span>
                       </div>
                     </div>
                   </>

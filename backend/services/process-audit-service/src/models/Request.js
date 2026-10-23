@@ -103,6 +103,15 @@ const ensureTable = async () => {
     if (!colNames.includes('permanent_closed_by')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN permanent_closed_by VARCHAR(100) NULL`).catch(() => {});
     }
+    if (!colNames.includes('reviewed_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN reviewed_by VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('reviewed_by_id')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN reviewed_by_id INT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('reviewed_by_email')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN reviewed_by_email VARCHAR(150) NULL`).catch(() => {});
+    }
 
     // Drop any existing defaults on MySQL columns
     await pool.query(`ALTER TABLE process_audit_requests MODIFY issue_type VARCHAR(50) NULL`).catch(() => {});
@@ -137,6 +146,13 @@ const ensureTable = async () => {
         approved_by_id INT NULL,
         approved_by_email VARCHAR(100),
         approved_at TIMESTAMP NULL,
+        creator_remark TEXT,
+        reviewed_by VARCHAR(100),
+        reviewed_by_id INT NULL,
+        reviewed_by_email VARCHAR(150),
+        closed_by VARCHAR(100),
+        closed_by_id INT NULL,
+        closed_at TIMESTAMP NULL,
         created_by VARCHAR(100),
         created_by_id INT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -347,7 +363,10 @@ export const ProcessAuditRequest = {
       { name: 'permanent_evidence_attachment', type: 'JSON NULL' },
       { name: 'permanent_target_date', type: 'VARCHAR(50) NULL' },
       { name: 'temporary_closed_by', type: 'VARCHAR(100) NULL' },
-      { name: 'permanent_closed_by', type: 'VARCHAR(100) NULL' }
+      { name: 'permanent_closed_by', type: 'VARCHAR(100) NULL' },
+      { name: 'reviewed_by', type: 'VARCHAR(100) NULL' },
+      { name: 'reviewed_by_id', type: 'INT NULL' },
+      { name: 'reviewed_by_email', type: 'VARCHAR(150) NULL' }
     ];
     for (const c of neededCols) {
       if (!colNames.includes(c.name)) {
@@ -413,7 +432,7 @@ export const ProcessAuditRequest = {
       'department', 'executor', 'comments', 'status', 'created_by', 'created_by_id',
       'root_cause', 'corrective_action', 'action_attachments', 'standardization_details',
       'target_date', 'action_taken_by', 'approved_by', 'approved_by_id',
-      'approved_by_email', 'creator_remark', 'closed_by', 'closed_by_id',
+      'approved_by_email', 'creator_remark', 'reviewed_by', 'reviewed_by_id', 'reviewed_by_email', 'closed_by', 'closed_by_id',
       'rejection_reason', 'reassignment_history',
       'prod_why_why', 'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date',
       'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date',
@@ -548,6 +567,15 @@ export const ProcessAuditRequest = {
     if (!colNames.includes('permanent_closed_by')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN permanent_closed_by VARCHAR(100) NULL`).catch(() => {});
     }
+    if (!colNames.includes('reviewed_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN reviewed_by VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('reviewed_by_id')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN reviewed_by_id INT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('reviewed_by_email')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN reviewed_by_email VARCHAR(150) NULL`).catch(() => {});
+    }
 
     let rejectionReason = null;
     let rootCause = null;
@@ -557,6 +585,9 @@ export const ProcessAuditRequest = {
     let targetDate = null;
     let actionTakenBy = null;
     let creatorRemark = null;
+    let reviewedBy = null;
+    let reviewedById = null;
+    let reviewedByEmail = null;
     let prodWhyWhy = null;
     let temporaryAction = null;
     let temporaryEvidenceAttachment = null;
@@ -578,6 +609,9 @@ export const ProcessAuditRequest = {
       targetDate = details.target_date !== undefined ? details.target_date : (details.targetDate !== undefined ? details.targetDate : null);
       actionTakenBy = details.action_taken_by !== undefined ? details.action_taken_by : (details.actionTakenBy !== undefined ? details.actionTakenBy : null);
       creatorRemark = details.creator_remark !== undefined ? details.creator_remark : (details.creatorRemark !== undefined ? details.creatorRemark : (details.remark !== undefined ? details.remark : null));
+      reviewedBy = details.reviewed_by !== undefined ? details.reviewed_by : (details.reviewedBy !== undefined ? details.reviewedBy : null);
+      reviewedById = details.reviewed_by_id !== undefined ? details.reviewed_by_id : (details.reviewedById !== undefined ? details.reviewedById : null);
+      reviewedByEmail = details.reviewed_by_email !== undefined ? details.reviewed_by_email : (details.reviewedByEmail !== undefined ? details.reviewedByEmail : null);
       prodWhyWhy = details.prod_why_why !== undefined ? details.prod_why_why : null;
       temporaryAction = details.temporary_action !== undefined ? details.temporary_action : null;
       temporaryEvidenceAttachment = details.temporary_evidence_attachment !== undefined ? details.temporary_evidence_attachment : null;
@@ -660,6 +694,18 @@ export const ProcessAuditRequest = {
     if (permanentClosedBy !== null) {
       updates.push('permanent_closed_by = ?');
       params.push(permanentClosedBy);
+    }
+    if (reviewedBy !== null) {
+      updates.push('reviewed_by = ?');
+      params.push(reviewedBy);
+    }
+    if (reviewedById !== null) {
+      updates.push('reviewed_by_id = ?');
+      params.push(reviewedById);
+    }
+    if (reviewedByEmail !== null) {
+      updates.push('reviewed_by_email = ?');
+      params.push(reviewedByEmail);
     }
 
     const isClosed = status.toLowerCase().includes('close');

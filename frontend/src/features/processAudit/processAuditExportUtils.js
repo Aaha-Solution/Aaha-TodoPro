@@ -380,7 +380,7 @@ export const exportProcessAuditToExcel = async ({
       reassignmentDetails,
       r.creator_remark || r.remarks || '—',
       displayStatus,
-      r.permanent_closed_by || r.closed_by || '—',
+      r.reviewed_by || r.permanent_closed_by || r.closed_by || '—',
       closedAt
     ];
 
@@ -573,7 +573,7 @@ export const exportProcessAuditToPdf = async ({
         [`Target Date: ${r.target_date ? formatDateDDMMYYYY(r.target_date) : '—'}  |  Action Taken By: ${r.action_taken_by || r.approved_by || r.executor || 'Assigned Executor'}`],
         ...(hasReassignments ? [[`Reassignment History: ${reassignmentDetails}`]] : []),
         ...(r.creator_remark || r.remarks ? [[`Sign-off Remarks / Auditor Notes: ${r.creator_remark || r.remarks}`]] : []),
-        [`Status: ${displayStatus.toUpperCase()}  |  Closed By: ${r.closed_by || '—'}  |  Closed Date: ${r.closed_at ? formatDateDDMMYYYY(r.closed_at) : '—'}`],
+        [`Status: ${displayStatus.toUpperCase()}  |  Reviewed By: ${r.reviewed_by || r.closed_by || '—'}  |  Closed Date: ${r.closed_at ? formatDateDDMMYYYY(r.closed_at) : '—'}`],
         ...(creatorAttachments.length > 0 ? [[`Audit Creator Attachments (${creatorAttachments.length}): ${creatorAttachments.map(a => a.name || a.filename).join(', ')}`]] : []),
         ...(actionAttachments.length > 0 ? [[`Action Evidence Attachments (${actionAttachments.length}): ${actionAttachments.map(a => a.name || a.filename).join(', ')}`]] : [])
       ],
