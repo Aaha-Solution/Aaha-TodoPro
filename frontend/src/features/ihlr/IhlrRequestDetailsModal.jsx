@@ -1428,10 +1428,14 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         <span>3. Closer Action</span>
                       </div>
                       <div className="text-slate-200 font-semibold truncate text-[11px]">
-                        {hasCloserSubmitted ? (req.temporary_closed_by || 'Submitted') : 'Pending Submission'}
+                        {hasCloserSubmitted ? (req.closer_updated_by || req.temporary_closed_by || 'Submitted') : 'Pending Submission'}
                       </div>
                       <div className="text-[10px] text-slate-400 font-mono">
-                        Target: {formatDate(req.temporary_target_date || req.permanent_target_date) || 'Not set'}
+                        {req.closer_updated_by
+                          ? `Filled by: ${req.closer_updated_by}`
+                          : req.temporary_closed_by
+                          ? `By: ${req.temporary_closed_by}`
+                          : (formatDate(req.temporary_target_date || req.permanent_target_date) ? `Target: ${formatDate(req.temporary_target_date || req.permanent_target_date)}` : 'Awaiting Closer')}
                       </div>
                     </div>
 
@@ -2035,22 +2039,28 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <History className="w-4 h-4 text-slate-500" />
                     <span>Incident Audit Trail Summary</span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
                     <div className="p-2.5 bg-white rounded-xl border border-slate-100">
                       <span className="block text-[10px] font-bold uppercase text-slate-400">Created By</span>
-                      <span className="font-semibold text-slate-800 block mt-0.5">{req.created_by || 'Admin'}</span>
+                      <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.created_by || 'Admin'}</span>
                     </div>
                     <div className="p-2.5 bg-white rounded-xl border border-slate-100">
                       <span className="block text-[10px] font-bold uppercase text-slate-400">Analysis Done By</span>
-                      <span className="font-semibold text-slate-800 block mt-0.5">{req.analysis_done_by || 'Admin'}</span>
+                      <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.analysis_done_by || 'Admin'}</span>
+                    </div>
+                    <div className="p-2.5 bg-white rounded-xl border border-emerald-200/80 bg-emerald-50/20">
+                      <span className="block text-[10px] font-bold uppercase text-emerald-600">Closer Filled By</span>
+                      <span className="font-bold text-emerald-800 block mt-0.5 truncate" title={req.closer_updated_by || req.temporary_closed_by || '—'}>
+                        {req.closer_updated_by || req.temporary_closed_by || req.permanent_closed_by || '—'}
+                      </span>
                     </div>
                     <div className="p-2.5 bg-white rounded-xl border border-slate-100">
                       <span className="block text-[10px] font-bold uppercase text-slate-400">Temp Closed By</span>
-                      <span className="font-semibold text-slate-800 block mt-0.5">{req.temporary_closed_by || '—'}</span>
+                      <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.temporary_closed_by || req.closer_updated_by || '—'}</span>
                     </div>
                     <div className="p-2.5 bg-white rounded-xl border border-slate-100">
                       <span className="block text-[10px] font-bold uppercase text-slate-400">Perm Closed By</span>
-                      <span className="font-semibold text-slate-800 block mt-0.5">{req.permanent_closed_by || '—'}</span>
+                      <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.permanent_closed_by || req.closer_updated_by || '—'}</span>
                     </div>
                   </div>
                 </div>
@@ -2089,6 +2099,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Responsibility</span>
                       <span className="font-bold text-slate-800">
                         {request.resp || 'Production'}{request.resp_person ? ` (${request.resp_person})` : ''}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-600">Closer Filled By</span>
+                      <span className="font-bold text-emerald-800">
+                        {request.closer_updated_by || request.temporary_closed_by || (hasCloserSubmitted ? 'Submitted' : 'Pending Closer')}
                       </span>
                     </div>
                     {hasReassignments && (
@@ -2201,8 +2217,13 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       TEMPORARY CLOSED BY
                     </span>
                     <span className="font-bold text-slate-900 block text-xs">
-                      {request.temporary_closed_by || '—'}
+                      {request.closer_updated_by || request.temporary_closed_by || '—'}
                     </span>
+                    {request.closer_updated_by && request.resp_person && request.resp_person.includes(',') && (
+                      <span className="text-[9px] text-emerald-700 font-semibold block">
+                        (Updated by: {request.closer_updated_by})
+                      </span>
+                    )}
                   </div>
 
                   <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">

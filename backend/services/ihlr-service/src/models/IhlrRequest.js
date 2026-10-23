@@ -18,10 +18,38 @@ const safeJsonParse = (val, fallback = []) => {
   }
 };
 
+let tableVerified = false;
+const ensureColumns = async () => {
+  if (tableVerified || !pool) return;
+  try {
+    const [cols] = await pool.query('SHOW COLUMNS FROM ihlr_requests');
+    const colNames = (cols || []).map(c => c.Field);
+    if (!colNames.includes('reassignment_history')) {
+      await pool.query('ALTER TABLE ihlr_requests ADD COLUMN reassignment_history JSON NULL AFTER remarks').catch(() => {});
+    }
+    if (!colNames.includes('closer_updated_by')) {
+      await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_by VARCHAR(100) NULL AFTER permanent_closed_by').catch(() => {});
+    }
+    if (!colNames.includes('closer_updated_by_id')) {
+      await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_by_id INT NULL AFTER closer_updated_by').catch(() => {});
+    }
+    if (!colNames.includes('closer_updated_by_email')) {
+      await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_by_email VARCHAR(150) NULL AFTER closer_updated_by_id').catch(() => {});
+    }
+    if (!colNames.includes('closer_updated_at')) {
+      await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_at TIMESTAMP NULL AFTER closer_updated_by_email').catch(() => {});
+    }
+    tableVerified = true;
+  } catch (err) {
+    console.warn('[IHLR Model] Column verification warning:', err.message);
+  }
+};
+
 export const IhlrRequest = {
   getAll: async () => {
     try {
       if (pool) {
+        await ensureColumns();
         const [rows] = await pool.query('SELECT * FROM ihlr_requests ORDER BY id DESC');
         return rows.map(r => ({
           ...r,
@@ -40,6 +68,7 @@ export const IhlrRequest = {
   getById: async (id) => {
     try {
       if (pool) {
+        await ensureColumns();
         const [rows] = await pool.query('SELECT * FROM ihlr_requests WHERE id = ? OR req_no = ? LIMIT 1', [id, id]);
         if (rows && rows.length > 0) {
           const r = rows[0];
@@ -184,6 +213,7 @@ export const IhlrRequest = {
   update: async (id, updates) => {
     try {
       if (pool) {
+        await ensureColumns();
         const fields = [];
         const values = [];
 
@@ -195,7 +225,8 @@ export const IhlrRequest = {
           'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date', 'permanent_closed_by',
           'remarks', 'status',
           'created_by', 'created_by_id', 'created_by_email',
-          'reviewed_by', 'reviewed_by_id', 'reviewed_by_email'
+          'reviewed_by', 'reviewed_by_id', 'reviewed_by_email',
+          'closer_updated_by', 'closer_updated_by_id', 'closer_updated_by_email', 'closer_updated_at'
         ];
 
         for (const key of allowed) {
@@ -205,7 +236,7 @@ export const IhlrRequest = {
             if ((key === 'batch_date' || key === 'permanent_target_date' || key === 'temporary_target_date') && (val === '' || !val)) {
               val = null;
             }
-            if ((key === 'created_by' || key === 'analysis_done_by' || key === 'reviewed_by' || key === 'temporary_closed_by' || key === 'permanent_closed_by') && val) {
+            if ((key === 'created_by' || key === 'analysis_done_by' || key === 'reviewed_by' || key === 'temporary_closed_by' || key === 'permanent_closed_by' || key === 'closer_updated_by') && val) {
               val = String(val).replace(/[0-9]/g, '').trim();
             }
             if (key === 'shift' && val) {

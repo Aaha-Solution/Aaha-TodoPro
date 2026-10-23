@@ -414,13 +414,13 @@ const IhlrApprovals = () => {
     setCloserActionError(false);
     setCloserTargetDate(req.temporary_target_date ? req.temporary_target_date.split('T')[0] : '');
     setCloserTargetDateError(false);
-    setCloserTemporaryClosedBy(req.temporary_closed_by || '');
+    setCloserTemporaryClosedBy(req.temporary_closed_by || req.closer_updated_by || (canUpdateCloserFields && !isAdmin ? (user?.name || '') : ''));
     setCloserTemporaryClosedByError(false);
     setCloserPermanentFix(req.permanent_fix || '');
     setCloserPermanentFixError(false);
     setCloserPermanentTargetDate(req.permanent_target_date ? req.permanent_target_date.split('T')[0] : '');
     setCloserPermanentTargetDateError(false);
-    setCloserPermanentClosedBy(req.permanent_closed_by || '');
+    setCloserPermanentClosedBy(req.permanent_closed_by || req.closer_updated_by || (canUpdateCloserFields && !isAdmin ? (user?.name || '') : ''));
     setCloserPermanentClosedByError(false);
     const historyInfo = formatReassignmentHistory(req.reassignment_history);
     const latestReassign = historyInfo.list && historyInfo.list.length > 0 ? historyInfo.list[historyInfo.list.length - 1] : null;
@@ -724,11 +724,11 @@ const IhlrApprovals = () => {
 
       const effectiveTempClosedBy = (closerTemporaryClosedBy && closerTemporaryClosedBy.trim())
         ? closerTemporaryClosedBy.trim()
-        : '';
+        : (user?.name || '');
 
       const effectivePermClosedBy = (closerPermanentClosedBy && closerPermanentClosedBy.trim())
         ? closerPermanentClosedBy.trim()
-        : '';
+        : (user?.name || '');
 
       const payload = {
         prod_why_why: closerWhyWhy,
@@ -739,7 +739,10 @@ const IhlrApprovals = () => {
         permanent_fix: closerPermanentFix || '',
         permanent_evidence_attachment: JSON.stringify(combinedPermEvidence),
         permanent_target_date: closerPermanentTargetDate || null,
-        permanent_closed_by: effectivePermClosedBy || null
+        permanent_closed_by: effectivePermClosedBy || null,
+        closer_updated_by: user?.name || effectiveTempClosedBy || effectivePermClosedBy,
+        closer_updated_by_id: user?.id || null,
+        closer_updated_by_email: user?.email || null
       };
 
       // When closer (non-admin) updates their fields, automatically set status to IN_PROGRESS unless already CLOSED
@@ -2571,6 +2574,18 @@ const IhlrApprovals = () => {
                             <div className="text-[11px] text-slate-500 truncate max-w-[180px]" title={r.model}>
                               {r.model}
                             </div>
+                            {r.resp_person && (
+                              <div className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[180px]" title={`Assigned: ${r.resp_person}`}>
+                                <span className="font-medium text-slate-400">Assigned: </span>
+                                <span className="font-semibold text-slate-700">{r.resp_person}</span>
+                              </div>
+                            )}
+                            {(r.closer_updated_by || r.temporary_closed_by) && (
+                              <div className="text-[10px] text-emerald-700 mt-0.5 truncate max-w-[180px]" title={`Updated by: ${r.closer_updated_by || r.temporary_closed_by}`}>
+                                <span className="font-medium text-emerald-600">Updated by: </span>
+                                <span className="font-bold text-emerald-800">{r.closer_updated_by || r.temporary_closed_by}</span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-3.5 px-3">
                             <IhlrAttachmentThumbnail

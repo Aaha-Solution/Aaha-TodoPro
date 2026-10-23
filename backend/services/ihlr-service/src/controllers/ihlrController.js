@@ -860,7 +860,8 @@ export const updateIhlrRequest = async (req, res) => {
         'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date', 'permanent_closed_by',
         'remarks', 'status',
         'created_by', 'created_by_id', 'created_by_email',
-        'reviewed_by', 'reviewed_by_id', 'reviewed_by_email'
+        'reviewed_by', 'reviewed_by_id', 'reviewed_by_email',
+        'closer_updated_by', 'closer_updated_by_id', 'closer_updated_by_email', 'closer_updated_at'
       ];
       for (const k of allowed) {
         if (req.body[k] !== undefined) safeUpdates[k] = req.body[k];
@@ -913,6 +914,9 @@ export const updateIhlrRequest = async (req, res) => {
         if (req.body.permanent_closed_by !== undefined) {
           safeUpdates.permanent_closed_by = String(req.body.permanent_closed_by || '').replace(/[0-9]/g, '').trim();
         }
+        if (req.body.closer_updated_by !== undefined) {
+          safeUpdates.closer_updated_by = String(req.body.closer_updated_by || '').replace(/[0-9]/g, '').trim();
+        }
 
         // Automatically transition status to IN_PROGRESS when closer updates their fields
         const currentStatus = String(existing.status || '').toUpperCase();
@@ -951,16 +955,49 @@ export const updateIhlrRequest = async (req, res) => {
       }
     }
 
+    const hasCloserUpdates = safeUpdates.prod_why_why !== undefined ||
+      safeUpdates.temporary_action !== undefined ||
+      safeUpdates.temporary_evidence_attachment !== undefined ||
+      safeUpdates.temporary_target_date !== undefined ||
+      safeUpdates.temporary_closed_by !== undefined ||
+      safeUpdates.permanent_fix !== undefined ||
+      safeUpdates.permanent_evidence_attachment !== undefined ||
+      safeUpdates.permanent_target_date !== undefined ||
+      safeUpdates.permanent_closed_by !== undefined;
+
     if (!safeUpdates.status && String(existing.status || '').toUpperCase() === 'OPEN') {
-      const hasCloserUpdates = safeUpdates.prod_why_why !== undefined ||
-        safeUpdates.temporary_action !== undefined ||
-        safeUpdates.temporary_evidence_attachment !== undefined ||
-        safeUpdates.temporary_target_date !== undefined ||
-        safeUpdates.permanent_fix !== undefined ||
-        safeUpdates.permanent_evidence_attachment !== undefined ||
-        safeUpdates.permanent_target_date !== undefined;
       if (hasCloserUpdates) {
         safeUpdates.status = 'IN_PROGRESS';
+      }
+    }
+
+    // Specifically identify the person who updated the closer fields based on the login
+    const closerDisplayName = (req.body?.closer_updated_by && String(req.body.closer_updated_by).trim()) ||
+      (req.user?.name && String(req.user.name).trim()) ||
+      (req.body?.user?.name && String(req.body.user.name).trim()) ||
+      (req.body?.user_name && String(req.body.user_name).trim()) ||
+      (safeUpdates.temporary_closed_by && String(safeUpdates.temporary_closed_by).trim()) ||
+      (safeUpdates.permanent_closed_by && String(safeUpdates.permanent_closed_by).trim()) ||
+      '';
+
+    const isCloserFieldBeingUpdated = Boolean(
+      isCloser ||
+      hasCloserUpdates ||
+      safeUpdates.temporary_closed_by !== undefined ||
+      safeUpdates.permanent_closed_by !== undefined
+    );
+
+    if (isCloserFieldBeingUpdated && closerDisplayName) {
+      safeUpdates.closer_updated_by = closerDisplayName;
+      safeUpdates.closer_updated_by_id = userId || null;
+      safeUpdates.closer_updated_by_email = userEmail || null;
+      safeUpdates.closer_updated_at = new Date();
+
+      if (!safeUpdates.temporary_closed_by && !existing.temporary_closed_by) {
+        safeUpdates.temporary_closed_by = closerDisplayName;
+      }
+      if (!safeUpdates.permanent_closed_by && !existing.permanent_closed_by) {
+        safeUpdates.permanent_closed_by = closerDisplayName;
       }
     }
 

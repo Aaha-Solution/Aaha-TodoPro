@@ -388,11 +388,11 @@ export const exportIhlrToExcel = async ({
       r.prod_why_why?.[4] || '—',
       r.temporary_action || r.action || '—',
       (r.temporary_target_date || r.target_date) ? formatDateDDMMYYYY(r.temporary_target_date || r.target_date) : '—',
-      r.temporary_closed_by || '—',
+      r.temporary_closed_by || r.closer_updated_by || '—',
       evidenceFiles.map((a) => a.name).join(', ') || 'None',
       r.permanent_fix || '—',
       r.permanent_target_date ? formatDateDDMMYYYY(r.permanent_target_date) : '—',
-      r.permanent_closed_by || '—',
+      r.permanent_closed_by || r.closer_updated_by || '—',
       permanentEvidenceFiles.map((a) => a.name).join(', ') || 'None',
 
       // 35-36 Reassignment Tracking

@@ -632,8 +632,13 @@ const IhlrAllRequests = () => {
                         {r.resp || '-'}
                       </div>
                       {r.resp_person && (
-                        <div className="text-[9px] text-blue-600 font-semibold truncate max-w-[110px]" title={r.resp_person}>
+                        <div className="text-[9px] text-blue-600 font-semibold truncate max-w-[110px]" title={`Assigned: ${r.resp_person}`}>
                           {r.resp_person}
+                        </div>
+                      )}
+                      {(r.closer_updated_by || r.temporary_closed_by) && (
+                        <div className="text-[9px] text-emerald-700 font-bold truncate max-w-[110px]" title={`Closer Updated by: ${r.closer_updated_by || r.temporary_closed_by}`}>
+                          ✓ {r.closer_updated_by || r.temporary_closed_by}
                         </div>
                       )}
                     </td>
