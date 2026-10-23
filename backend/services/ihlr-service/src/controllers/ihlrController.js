@@ -1200,7 +1200,7 @@ export const updateIhlrRequest = async (req, res) => {
 
             try {
               sendEmail({
-                to: u.email || 'sridharkesava@outlook.com',
+                to: u.email || process.env.SMTP_USER || '',
                 recipientName: u.name || updated.resp_person || 'Assigned Closer',
                 recipientRole: 'ASSIGNED_CLOSER',
                 subject: `[IHLR Action Required] Defect Report Assigned to You: #${reqNo}`,
@@ -1232,7 +1232,7 @@ export const updateIhlrRequest = async (req, res) => {
 
             try {
               sendEmail({
-                to: updated.created_by_email || 'sridharkesava@outlook.com',
+                to: updated.created_by_email || process.env.SMTP_USER || '',
                 recipientName: updated.created_by || 'Quality Requester',
                 recipientRole: 'RAISED_PERSON',
                 subject: `[IHLR Case Reassigned] Defect Report #${reqNo} Reassigned to ${updated.resp_person || updated.resp}`,
@@ -1812,14 +1812,14 @@ export const getIhlrEmailLogs = async (req, res) => {
 
 export const testIhlrEmail = async (req, res) => {
   try {
-    const to = req.body?.to || 'sridharkesava@outlook.com';
+    const to = req.body?.to || process.env.SMTP_USER || '';
     const result = await sendEmail({
       to,
-      recipientName: req.body?.name || 'Sridhar Kesava',
+      recipientName: req.body?.name || 'Portal Tester',
       recipientRole: 'TESTER',
       subject: '[INEL IHLR Portal] Test Email Notification',
-      text: 'This is a test notification from INEL IHLR Quality Management Portal using Outlook SMTP.',
-      html: '<p>This is a test notification from <strong>INEL IHLR Quality Management Portal</strong> using Outlook SMTP credentials (<code>sridharkesava@outlook.com</code>).</p>',
+      text: 'This is a test notification from INEL IHLR Quality Management Portal using configured SMTP credentials.',
+      html: `<p>This is a test notification from <strong>INEL IHLR Quality Management Portal</strong> using configured SMTP credentials (<code>${process.env.SMTP_USER || 'Environment Config'}</code>).</p>`,
       moduleType: 'IHLR',
       referenceNo: 'TEST-001'
     });

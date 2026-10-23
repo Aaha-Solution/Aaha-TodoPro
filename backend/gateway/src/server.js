@@ -197,6 +197,16 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(` -> /api/process-audit => ${processAuditServiceUrl}`);
   console.log(` -> /api/ihlr          => ${ihlrServiceUrl}`);
   console.log(` -> /api/tryout-status => ${tryoutServiceUrl}`);
+
+  // Automatic SMTP verification on backend restart
+  setTimeout(async () => {
+    try {
+      const { verifySmtpConnection } = await import('../../shared/mailer.js');
+      await verifySmtpConnection({ logToConsole: true });
+    } catch (err) {
+      console.warn('[Mailer Startup Check Warning]:', err.message);
+    }
+  }, 1000);
 });
 
 export { app, server, io };

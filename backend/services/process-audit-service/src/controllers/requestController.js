@@ -755,7 +755,7 @@ export const reassignRequest = async (req, res) => {
 
         try {
           sendEmail({
-            to: u.email || 'sridharkesava@outlook.com',
+            to: u.email || process.env.SMTP_USER || '',
             recipientName: u.name || new_executor || 'Assigned Closer',
             recipientRole: 'ASSIGNED_CLOSER',
             subject: `[Process Audit Action Required] Audit Finding Assigned to You: #${issueNo}`,
@@ -787,7 +787,7 @@ export const reassignRequest = async (req, res) => {
 
         try {
           sendEmail({
-            to: updated.created_by_email || 'sridharkesava@outlook.com',
+            to: updated.created_by_email || process.env.SMTP_USER || '',
             recipientName: updated.created_by || 'Quality Requester',
             recipientRole: 'RAISED_PERSON',
             subject: `[Process Audit Case Reassigned] Audit Report #${issueNo} Reassigned to ${new_executor}`,

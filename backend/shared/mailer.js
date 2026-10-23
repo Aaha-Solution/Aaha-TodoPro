@@ -12,20 +12,12 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
  * Shared Mailer Service for India Nippon Electricals Limited Portal
  */
 
-// SMTP Configuration (Capitalgrow / Secureserver)
-const SMTP_HOST = process.env.SMTP_HOST || 'smtpout.secureserver.net';
-const SMTP_PORT = Number(process.env.SMTP_PORT) || 465;
-const SMTP_SECURE = process.env.SMTP_SECURE === 'true' || SMTP_PORT === 465;
-const SMTP_USER = process.env.SMTP_USER || process.env.EMAIL_USER || 'info@capitalgrow.co.in';
-const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'Capitalgrow@2024';
-const SMTP_FROM = process.env.SMTP_FROM || `"INEL Quality Portal" <${SMTP_USER}>`;
-
-function getTransporter() {
-  const host = process.env.SMTP_HOST || 'smtpout.secureserver.net';
+export function getTransporter() {
+  const host = process.env.SMTP_HOST || 'localhost';
   const port = Number(process.env.SMTP_PORT) || 465;
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-  const user = process.env.SMTP_USER || process.env.EMAIL_USER || 'info@capitalgrow.co.in';
-  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || 'Capitalgrow@2024';
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER || '';
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
 
   if (user && pass) {
     try {
@@ -105,11 +97,11 @@ export async function sendEmail({
   referenceNo = '',
   skipCc = false,
 }) {
-  const DEFAULT_TRIGGER_EMAIL = process.env.SMTP_USER || 'info@capitalgrow.co.in';
+  const DEFAULT_TRIGGER_EMAIL = process.env.SMTP_USER || process.env.EMAIL_USER || '';
   const cleanTo = (to && to.trim()) ? to.trim() : DEFAULT_TRIGGER_EMAIL;
 
   // Whenever a mail is triggered, also ensure the configured trigger email receives the notification
-  const ccRecipient = (!skipCc && cleanTo.toLowerCase() !== DEFAULT_TRIGGER_EMAIL.toLowerCase())
+  const ccRecipient = (!skipCc && DEFAULT_TRIGGER_EMAIL && cleanTo.toLowerCase() !== DEFAULT_TRIGGER_EMAIL.toLowerCase())
     ? DEFAULT_TRIGGER_EMAIL
     : undefined;
 
@@ -126,7 +118,7 @@ export async function sendEmail({
   console.log(`======================================================\n`);
 
   const transporter = getTransporter();
-  const senderFrom = process.env.SMTP_FROM || `"INEL Quality Portal" <${process.env.SMTP_USER || DEFAULT_TRIGGER_EMAIL}>`;
+  const senderFrom = process.env.SMTP_FROM || (DEFAULT_TRIGGER_EMAIL ? `"INEL Quality Portal" <${DEFAULT_TRIGGER_EMAIL}>` : '"INEL Quality Portal"');
 
   if (transporter) {
     try {
@@ -161,8 +153,8 @@ export async function sendEmail({
       return { success: true, messageId: info.messageId };
     } catch (sendErr) {
       console.error(`[Mailer] SMTP delivery attempt to ${cleanTo}:`, sendErr.message);
-      if (sendErr.message && sendErr.message.includes('535 5.7.139')) {
-        console.warn(`[Mailer Notice] Microsoft Outlook requires an App Password or Authenticated SMTP enabled for sridharkesava@outlook.com. Visit https://account.live.com/proofs/manage/additional to create an App Password.`);
+      if (sendErr.message && sendErr.message.includes('535')) {
+        console.warn(`[Mailer Notice] SMTP authentication failed. Check SMTP_USER & SMTP_PASS in backend/.env.`);
       }
       await logEmail({
         moduleType,
@@ -326,10 +318,10 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const myRequestsUrl = `${baseUrl}/ihlr/my-requests`;
 
-  const creatorEmail = creatorUser?.email || request.created_by_email || 'sridharkesava@outlook.com';
+  const creatorEmail = creatorUser?.email || request.created_by_email || process.env.SMTP_USER || '';
   const creatorName = creatorUser?.name || request.analysis_done_by || request.created_by || 'Quality Engineer';
 
-  const assignedEmail = assignedUser?.email || request.resp_person_email || 'sridharkesava@outlook.com';
+  const assignedEmail = assignedUser?.email || request.resp_person_email || process.env.SMTP_USER || '';
   const assignedName = assignedUser?.name || request.resp_person || 'Responsible Officer';
   const assignedDept = request.resp || assignedUser?.department || 'PRODUCTION';
 
@@ -418,10 +410,10 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
   const reportUrl = `${baseUrl}/ihlr/my-requests`;
   const approvalsUrl = `${baseUrl}/ihlr/approvals`;
 
-  const creatorEmail = creatorUser?.email || request.created_by_email || 'sridharkesava@outlook.com';
+  const creatorEmail = creatorUser?.email || request.created_by_email || process.env.SMTP_USER || '';
   const creatorName = creatorUser?.name || request.analysis_done_by || request.created_by || 'Quality Engineer';
 
-  const assignedEmail = assignedUser?.email || request.resp_person_email || 'sridharkesava@outlook.com';
+  const assignedEmail = assignedUser?.email || request.resp_person_email || process.env.SMTP_USER || '';
   const assignedName = assignedUser?.name || request.resp_person || 'Responsible Officer';
   const assignedDept = request.resp || assignedUser?.department || 'PRODUCTION';
 
@@ -574,10 +566,10 @@ export async function sendProcessAuditRequestEmails({ request, creatorUser, assi
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const myRequestsUrl = `${baseUrl}/process-audit/all-requests`;
 
-  const creatorEmail = creatorUser?.email || request.created_by_email || 'sridharkesava@outlook.com';
+  const creatorEmail = creatorUser?.email || request.created_by_email || process.env.SMTP_USER || '';
   const creatorName = creatorUser?.name || request.created_by || 'Quality Auditor';
 
-  const assignedEmail = assignedUser?.email || request.executor_email || 'sridharkesava@outlook.com';
+  const assignedEmail = assignedUser?.email || request.executor_email || process.env.SMTP_USER || '';
   const assignedName = assignedUser?.name || request.executor || 'Assigned Executor';
   const assignedDept = request.department || assignedUser?.department || 'Production';
 
@@ -664,10 +656,10 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const approvalsUrl = `${baseUrl}/process-audit/approvals`;
 
-  const creatorEmail = creatorUser?.email || request.created_by_email || 'sridharkesava@outlook.com';
+  const creatorEmail = creatorUser?.email || request.created_by_email || process.env.SMTP_USER || '';
   const creatorName = creatorUser?.name || request.created_by || 'Quality Auditor';
 
-  const assignedEmail = assignedUser?.email || request.executor_email || 'sridharkesava@outlook.com';
+  const assignedEmail = assignedUser?.email || request.executor_email || process.env.SMTP_USER || '';
   const assignedName = assignedUser?.name || request.executor || 'Assigned Lead';
   const assignedDept = request.department || assignedUser?.department || 'Production';
 
@@ -811,5 +803,164 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
 
   return results;
 }
+
+/**
+ * Verify SMTP connection & authentication
+ */
+export async function verifySmtpConnection({ logToConsole = true } = {}) {
+  const host = process.env.SMTP_HOST || 'localhost';
+  const port = Number(process.env.SMTP_PORT) || 465;
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER || '';
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
+
+  const configInfo = {
+    host,
+    port,
+    secure,
+    user: user || '(not configured)',
+    hasPassword: Boolean(pass && pass.length > 0),
+    from: process.env.SMTP_FROM || `"INEL Quality Portal" <${user}>`
+  };
+
+  if (!user || !pass) {
+    if (logToConsole) {
+      console.log('\n============================================================');
+      console.log('📧 [MAILER STATUS] ⚠️ NO SMTP CREDENTIALS CONFIGURED');
+      console.log('   Host     :', host);
+      console.log('   Port     :', port);
+      console.log('   User     :', user || 'Missing');
+      console.log('   Status   : Offline / Simulation Mode (Mails logged to DB)');
+      console.log('   Action   : Set SMTP_USER and SMTP_PASS in backend/.env');
+      console.log('============================================================\n');
+    }
+    return {
+      success: false,
+      status: 'NOT_CONFIGURED',
+      message: 'SMTP credentials missing in .env. Mails will be simulated and logged to MySQL database.',
+      config: configInfo
+    };
+  }
+
+  const transporter = getTransporter();
+  if (!transporter) {
+    if (logToConsole) {
+      console.log('\n============================================================');
+      console.log('📧 [MAILER STATUS] ❌ TRANSPORTER INITIALIZATION FAILED');
+      console.log('   User     :', user);
+      console.log('   Host     :', host);
+      console.log('============================================================\n');
+    }
+    return {
+      success: false,
+      status: 'INIT_FAILED',
+      message: 'Could not create nodemailer transporter.',
+      config: configInfo
+    };
+  }
+
+  const startTime = Date.now();
+  try {
+    if (logToConsole) {
+      console.log(` Verifying SMTP connection to...`);
+    }
+    await transporter.verify();
+    const duration = Date.now() - startTime;
+
+    if (logToConsole) {
+      const banner = [
+        '',
+        '============================================================',
+        '📧 [MAILER STATUS] ✅ SMTP CONNECTION VERIFIED & WORKING!',
+        `   Host     : ${host}:${port} (${secure ? 'SSL' : 'TLS/STARTTLS'})`,
+        `   User     : ${user}`,
+        `   Latency  : ${duration}ms`,
+        '   Result   : Transporter is ready to deliver live emails to inbox.',
+        '============================================================',
+        ''
+      ].join('\n');
+      console.log(banner);
+    }
+
+    return {
+      success: true,
+      status: 'CONNECTED',
+      message: `SMTP connection established successfully in ${duration}ms.`,
+      duration,
+      config: configInfo
+    };
+  } catch (err) {
+    const duration = Date.now() - startTime;
+  
+    return {
+      success: false,
+      status: 'FAILED',
+      error: err.message,
+      code: err.code || 'AUTH_OR_CONN_ERROR',
+      duration,
+      config: configInfo
+    };
+  }
+}
+
+/**
+ * Send a diagnostic test email
+ */
+export async function sendTestEmail({ to, subject, logToConsole = true } = {}) {
+  const target = to || process.env.SMTP_USER || '';
+  const testSubject = subject || `[TEST] INEL Portal Mailer Diagnostic - ${new Date().toLocaleTimeString()}`;
+  const timestamp = new Date().toLocaleString();
+
+  if (logToConsole) {
+    console.log('\n============================================================');
+    console.log('📤 [MAILER TEST] Sending diagnostic test email...');
+    console.log(`   Recipient : ${target || '(Not Specified - check SMTP_USER in .env)'}`);
+    console.log(`   Subject   : ${testSubject}`);
+    console.log(`   Timestamp : ${timestamp}`);
+    console.log('============================================================\n');
+  }
+
+  const html = generateEmailTemplate({
+    headerTitle: 'INEL Portal Mail Diagnostic',
+    headerSubtitle: 'Outbound SMTP Verification Test',
+    recipientName: 'Portal Administrator',
+    greetingMessage: 'This is an automated test message dispatched to verify outbound email communications.',
+    tableData: [
+      { label: 'SMTP Host', value: process.env.SMTP_HOST || 'localhost' },
+      { label: 'Port', value: String(process.env.SMTP_PORT || 465) },
+      { label: 'Sender', value: process.env.SMTP_FROM || process.env.SMTP_USER || '(Not configured)' },
+      { label: 'Dispatched At', value: timestamp }
+    ],
+    footerNote: 'India Nippon Electricals Limited — Automated Notification System',
+    badgeColor: '#10b981',
+    badgeText: 'DIAGNOSTIC TEST'
+  });
+
+  const result = await sendEmail({
+    to: target,
+    recipientName: 'Portal Administrator',
+    recipientRole: 'TEST',
+    subject: testSubject,
+    text: `INEL Portal Mail Diagnostic Test dispatched at ${timestamp}.`,
+    html,
+    moduleType: 'DIAGNOSTIC',
+    referenceNo: 'TEST-MAIL',
+    skipCc: true
+  });
+
+  if (logToConsole) {
+    if (result.success && !result.simulated) {
+      console.log(`[Mailer Test] ✅ Live email successfully delivered to ${target}! Message ID: ${result.messageId}`);
+    } else if (result.success && result.simulated) {
+      console.log(`[Mailer Test] ⚠️ Simulated delivery logged to database (SMTP offline / credentials unverified).`);
+    } else {
+      console.log(`[Mailer Test] ❌ Email delivery failed: ${result.error}`);
+    }
+  }
+
+  return result;
+}
+
+
 
 

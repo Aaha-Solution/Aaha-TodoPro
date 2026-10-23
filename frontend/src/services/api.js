@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { storage } from '../utils/storage';
 
-const DEFAULT_GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'https://api.sadhish.info';
+const DEFAULT_GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:5000';
+
 
 /**
  * Dynamically resolves the API Gateway Base URL.
