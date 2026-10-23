@@ -184,7 +184,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     const effReviewedBy = targetReq.reviewed_by || latestReassign?.reassigned_by || user?.name || '';
     setAdminRemarks(effRemarks);
     setAdminReviewedBy(effReviewedBy);
-    setAdminStatus(targetReq.status || 'OPEN');
+    setAdminStatus(targetReq.status === 'CLOSED' ? 'CLOSED' : '');
     setIsReassignOpen(false);
     setReassignedDept(targetReq.resp || 'PRODUCTION');
     setReassignedPerson(targetReq.resp_person || '');
@@ -1575,8 +1575,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                               setReassignUserSearch('');
                               setReassignedDept(req.resp || 'PRODUCTION');
                               setReassignedPerson(req.resp_person || '');
-                              setAdminStatus(req.status || '');
-                              setAdminErrors(prev => ({ ...prev, reassignDept: '', reassignPerson: '' }));
+                              setAdminStatus(req.status === 'CLOSED' ? 'CLOSED' : '');
+                              setAdminErrors(prev => ({ ...prev, reassignDept: '', reassignPerson: '', status: '' }));
                             }}
                             className="text-[11px] text-slate-500 hover:text-rose-600 font-semibold cursor-pointer underline flex items-center gap-1"
                           >
@@ -1874,8 +1874,6 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         <>
                           <option value="">Select Status...</option>
                           <option value="CLOSED">CLOSED</option>
-                          <option value="IN_PROGRESS">IN_PROGRESS</option>
-                          <option value="OPEN">PENDING</option>
                         </>
                       )}
                     </select>

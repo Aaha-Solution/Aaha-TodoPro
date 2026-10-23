@@ -429,7 +429,7 @@ const IhlrApprovals = () => {
     setRemarksError(false);
     setReviewedBy(req.reviewed_by || latestReassign?.reassigned_by || '');
     setReviewedByError(false);
-    setCloserStatus(req.status || 'OPEN');
+    setCloserStatus(req.status === 'CLOSED' ? 'CLOSED' : '');
     setStatusError(false);
     setReassignedDept(req.resp || '');
     setReassignedPerson(req.resp_person || '');
@@ -2365,7 +2365,6 @@ const IhlrApprovals = () => {
                       <>
                         <option value="">Select Status...</option>
                         <option value="CLOSED">CLOSED</option>
-                        <option value="OPEN">PENDING</option>
                       </>
                     )}
                   </select>
