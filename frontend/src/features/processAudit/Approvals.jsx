@@ -1040,7 +1040,8 @@ const ProcessAuditApprovals = () => {
 
     const effectiveReviewer = (reviewedBy && reviewedBy.trim())
       ? reviewedBy.trim()
-      : getLoggedInUserName();
+      : null;
+    const adminSignerName = currentUser?.name || currentUser?.email || 'Quality Admin';
 
     try {
       if (isReassignOpen) {
@@ -1048,7 +1049,7 @@ const ProcessAuditApprovals = () => {
           new_department: reassignedDept,
           new_executor: reassignedPerson,
           reason: closerRemarks.trim(),
-          reassigned_by: effectiveReviewer,
+          reassigned_by: adminSignerName,
           reassigned_by_id: currentUser?.id || null,
           role: currentUser?.role || 'ADMIN',
           user_department: userDept || 'QAD'
@@ -1059,8 +1060,8 @@ const ProcessAuditApprovals = () => {
           remark: closerRemarks.trim(),
           remarks: closerRemarks.trim(),
           reviewed_by: effectiveReviewer,
-          reviewed_by_id: currentUser?.id || null,
-          reviewed_by_email: currentUser?.email || null,
+          reviewed_by_id: effectiveReviewer ? (currentUser?.id || null) : null,
+          reviewed_by_email: effectiveReviewer ? (currentUser?.email || null) : null,
           closed_by: null
         });
 
@@ -1090,11 +1091,11 @@ const ProcessAuditApprovals = () => {
           remark: closerRemarks.trim(),
           remarks: closerRemarks.trim(),
           reviewed_by: effectiveReviewer,
-          reviewed_by_id: currentUser?.id || null,
-          reviewed_by_email: currentUser?.email || null,
-          closed_by: effectiveReviewer,
+          reviewed_by_id: effectiveReviewer ? (currentUser?.id || null) : null,
+          reviewed_by_email: effectiveReviewer ? (currentUser?.email || null) : null,
+          closed_by: adminSignerName,
           closed_by_id: currentUser?.id || null,
-          approved_by: effectiveReviewer,
+          approved_by: adminSignerName,
           approved_by_id: currentUser?.id || null,
           approved_by_email: currentUser?.email || null,
           approved_by_role: currentUser?.role || 'ADMIN'
@@ -2578,9 +2579,6 @@ const ProcessAuditApprovals = () => {
                         </span>
                       )}
                     </label>
-                    <span className="text-[10px] text-slate-400 font-normal truncate max-w-[200px]" title={`Defaults to: ${getLoggedInUserName()}`}>
-                      Defaults to: <strong className="text-slate-600 font-semibold">{getLoggedInUserName()}</strong>
-                    </span>
                   </div>
                   <input
                     type="text"
@@ -2588,7 +2586,7 @@ const ProcessAuditApprovals = () => {
                     placeholder={
                       !selectedRequest
                         ? 'Click a row on the right to select'
-                        : `e.g. Leave empty to attach ${getLoggedInUserName()}`
+                        : 'Enter person name...'
                     }
                     value={reviewedBy || ''}
                     onKeyDown={(e) => {
@@ -2622,7 +2620,7 @@ const ProcessAuditApprovals = () => {
                     </p>
                   ) : (
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      Admin / Quality Engineer reviewing this incident (defaults to logged-in user).
+                      Admin / Quality Engineer reviewing this incident.
                     </p>
                   )}
                 </div>

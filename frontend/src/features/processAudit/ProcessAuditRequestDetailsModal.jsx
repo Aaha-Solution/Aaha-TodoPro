@@ -1746,7 +1746,7 @@ const ProcessAuditRequestDetailsModal = ({
 
                   <div>
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      AUDIT CREATED BY
+                       CREATED BY
                     </span>
                     <strong className="text-blue-700 block mt-0.5 font-semibold">
                       {req.created_by || 'Quality Auditor'}
