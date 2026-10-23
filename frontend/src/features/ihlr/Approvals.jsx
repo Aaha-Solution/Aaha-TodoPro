@@ -27,7 +27,7 @@ import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
-import { exportIhlrToExcel, exportIhlrToPdf } from './ihlrExportUtils';
+import { exportIhlrToExcel, exportIhlrToPdf, formatReassignmentHistory } from './ihlrExportUtils';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
@@ -422,11 +422,14 @@ const IhlrApprovals = () => {
     setCloserPermanentTargetDateError(false);
     setCloserPermanentClosedBy(req.permanent_closed_by || '');
     setCloserPermanentClosedByError(false);
-    setCloserRemarks(req.remarks || '');
+    const historyInfo = formatReassignmentHistory(req.reassignment_history);
+    const latestReassign = historyInfo.list && historyInfo.list.length > 0 ? historyInfo.list[historyInfo.list.length - 1] : null;
+
+    setCloserRemarks(req.remarks || latestReassign?.remarks || '');
     setRemarksError(false);
-    setReviewedBy(req.reviewed_by || '');
+    setReviewedBy(req.reviewed_by || latestReassign?.reassigned_by || '');
     setReviewedByError(false);
-    setCloserStatus('');
+    setCloserStatus(req.status || 'OPEN');
     setStatusError(false);
     setReassignedDept(req.resp || '');
     setReassignedPerson(req.resp_person || '');
@@ -842,15 +845,15 @@ const IhlrApprovals = () => {
     setErrorMessage('');
 
     try {
-      const effectiveRemarks = closerRemarks && closerRemarks.trim()
-        ? closerRemarks.trim()
-        : isReassignOpen
-        ? `Reassigned to ${reassignedPerson} (${reassignedDept}) for analysis.`
-        : '';
-
       const effectiveReviewer = (reviewedBy && reviewedBy.trim())
         ? reviewedBy.trim()
         : getLoggedInUserName();
+
+      const effectiveRemarks = (closerRemarks && closerRemarks.trim())
+        ? closerRemarks.trim()
+        : isReassignOpen
+        ? `Reassigned to ${reassignedPerson} (${reassignedDept}) for analysis by ${effectiveReviewer}.`
+        : '';
 
       const payload = {
         remarks: effectiveRemarks,
@@ -861,6 +864,9 @@ const IhlrApprovals = () => {
       };
 
       if (isReassignOpen) {
+        payload.is_reassign = true;
+        payload.reassigned_by = effectiveReviewer;
+        payload.reassign_remarks = effectiveRemarks;
 
         if (reassignedDept) {
           payload.resp = reassignedDept;
@@ -2207,7 +2213,7 @@ const IhlrApprovals = () => {
                     rows={2}
                     maxLength={1000}
                     disabled={!selectedRequest || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
-                    value={closerRemarks}
+                    value={closerRemarks || selectedRequest?.remarks || (formatReassignmentHistory(selectedRequest?.reassignment_history)?.list?.slice(-1)[0]?.remarks) || ''}
                     onChange={(e) => {
                       if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
                       setCloserRemarks(e.target.value);
@@ -2221,7 +2227,7 @@ const IhlrApprovals = () => {
                         : adminEditCloser
                         ? 'Disabled while editing closer fields...'
                         : isCloserDataToBeUpdated && !isReassignOpen
-                        ? 'Awaiting closer Temporary Action & Target Date...'
+                        ? (closerRemarks || selectedRequest?.remarks ? '' : 'Awaiting closer Temporary Action & Target Date...')
                         : 'Enter remarks and validation summary...'
                     }
                     className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none ${
@@ -2356,6 +2362,7 @@ const IhlrApprovals = () => {
                       <>
                         <option value="">Select Status...</option>
                         <option value="CLOSED">CLOSED</option>
+                        <option value="OPEN">PENDING</option>
                       </>
                     )}
                   </select>

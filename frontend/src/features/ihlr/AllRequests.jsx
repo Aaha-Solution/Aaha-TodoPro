@@ -798,7 +798,7 @@ const IhlrAllRequests = () => {
                 >
                   {isAdmin ? (
                     <>
-                      <option value="OPEN">OPEN</option>
+                      <option value="OPEN">PENDING</option>
                       <option value="IN_PROGRESS">IN PROGRESS</option>
                       <option value="CLOSED">CLOSED</option>
                     </>

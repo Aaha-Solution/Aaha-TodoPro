@@ -989,6 +989,8 @@ export const updateIhlrRequest = async (req, res) => {
 
     const isReassigned = Boolean(
       isAdmin && (
+        req.body?.is_reassign === true ||
+        req.body?.isReassign === true ||
         (safeUpdates.resp_person !== undefined && newRespPerson !== prevRespPerson) ||
         (safeUpdates.resp !== undefined && newRespDept !== prevRespDept)
       )
@@ -1013,24 +1015,33 @@ export const updateIhlrRequest = async (req, res) => {
         }
       }
 
+      // Which person reassigned: take the data from the reviewed_by field as requested
+      const reviewerName = (req.body?.reviewed_by && String(req.body.reviewed_by).trim()) ||
+        (req.body?.reassigned_by && String(req.body.reassigned_by).trim()) ||
+        req.user?.name || req.body?.user?.name || req.body?.user_name || 'Quality Admin';
+
+      const reassignRemarks = (safeUpdates.remarks && safeUpdates.remarks.trim()) ||
+        (req.body?.reassignRemarks && String(req.body.reassignRemarks).trim()) ||
+        (req.body?.reassign_remarks && String(req.body.reassign_remarks).trim()) ||
+        `Reassigned from ${existing.resp || 'previous department'} to ${safeUpdates.resp || existing.resp}${safeUpdates.resp_person ? ' (' + safeUpdates.resp_person + ')' : ''} by ${reviewerName}`;
+
+      safeUpdates.remarks = reassignRemarks;
+      safeUpdates.reviewed_by = reviewerName;
+
       const reassignEntry = {
         reassigned_at: new Date().toISOString(),
-        reassigned_by: req.user?.name || req.body?.user?.name || req.body?.user_name || 'Quality Admin',
+        reassigned_by: reviewerName,
         reassigned_by_id: req.user?.id || req.body?.user?.id || req.body?.user_id || null,
         reassigned_by_email: req.user?.email || req.body?.user?.email || req.body?.user_email || null,
         prev_resp: existing.resp || prevRespDept,
         prev_resp_person: existing.resp_person || prevRespPerson,
         new_resp: safeUpdates.resp || existing.resp || newRespDept,
         new_resp_person: safeUpdates.resp_person || existing.resp_person || newRespPerson,
-        remarks: safeUpdates.remarks || `Reassigned from ${existing.resp || 'previous department'} to ${safeUpdates.resp || existing.resp}`
+        remarks: reassignRemarks
       };
 
       currentHistory.push(reassignEntry);
       safeUpdates.reassignment_history = currentHistory;
-
-      if (!safeUpdates.remarks || !safeUpdates.remarks.trim()) {
-        safeUpdates.remarks = `Reassigned from ${existing.resp || 'previous department'} to ${safeUpdates.resp || existing.resp}${safeUpdates.resp_person ? ' (' + safeUpdates.resp_person + ')' : ''}`;
-      }
     }
 
     // Clean dates and JSON structures safely
