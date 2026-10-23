@@ -97,6 +97,17 @@ export async function sendEmail({
   referenceNo = '',
   skipCc = false,
 }) {
+  // Restrict email notifications strictly to focused module (Default: IHLR)
+  const focusModule = (process.env.EMAIL_FOCUS_MODULE || 'IHLR').toUpperCase();
+  const currentModule = (moduleType || 'IHLR').toUpperCase();
+  if (focusModule !== 'ALL' && currentModule !== focusModule && currentModule !== 'DIAGNOSTIC') {
+    return {
+      success: true,
+      skipped: true,
+      message: `Mailer is focused exclusively on ${focusModule}. Notification for '${moduleType}' skipped.`
+    };
+  }
+
   const DEFAULT_TRIGGER_EMAIL = process.env.SMTP_USER || process.env.EMAIL_USER || '';
   const cleanTo = (to && to.trim()) ? to.trim() : DEFAULT_TRIGGER_EMAIL;
 
@@ -118,7 +129,7 @@ export async function sendEmail({
   console.log(`======================================================\n`);
 
   const transporter = getTransporter();
-  const senderFrom = process.env.SMTP_FROM || (DEFAULT_TRIGGER_EMAIL ? `"INEL Quality Portal" <${DEFAULT_TRIGGER_EMAIL}>` : '"INEL Quality Portal"');
+  const senderFrom = process.env.SMTP_FROM || (DEFAULT_TRIGGER_EMAIL ? `"INEL IHLR Portal" <${DEFAULT_TRIGGER_EMAIL}>` : '"INEL IHLR Portal"');
 
   if (transporter) {
     try {
@@ -825,19 +836,12 @@ export async function verifySmtpConnection({ logToConsole = true } = {}) {
 
   if (!user || !pass) {
     if (logToConsole) {
-      console.log('\n============================================================');
-      console.log('📧 [MAILER STATUS] ⚠️ NO SMTP CREDENTIALS CONFIGURED');
-      console.log('   Host     :', host);
-      console.log('   Port     :', port);
-      console.log('   User     :', user || 'Missing');
-      console.log('   Status   : Offline / Simulation Mode (Mails logged to DB)');
-      console.log('   Action   : Set SMTP_USER and SMTP_PASS in backend/.env');
-      console.log('============================================================\n');
+      console.log('[Mailer] Transporter not configured (missing SMTP credentials)');
     }
     return {
       success: false,
       status: 'NOT_CONFIGURED',
-      message: 'SMTP credentials missing in .env. Mails will be simulated and logged to MySQL database.',
+      message: 'SMTP credentials missing in .env.',
       config: configInfo
     };
   }
@@ -845,11 +849,7 @@ export async function verifySmtpConnection({ logToConsole = true } = {}) {
   const transporter = getTransporter();
   if (!transporter) {
     if (logToConsole) {
-      console.log('\n============================================================');
-      console.log('📧 [MAILER STATUS] ❌ TRANSPORTER INITIALIZATION FAILED');
-      console.log('   User     :', user);
-      console.log('   Host     :', host);
-      console.log('============================================================\n');
+      console.log('[Mailer] Transporter initialization failed');
     }
     return {
       success: false,
@@ -861,37 +861,25 @@ export async function verifySmtpConnection({ logToConsole = true } = {}) {
 
   const startTime = Date.now();
   try {
-    if (logToConsole) {
-      console.log(` Verifying SMTP connection to...`);
-    }
     await transporter.verify();
     const duration = Date.now() - startTime;
 
     if (logToConsole) {
-      const banner = [
-        '',
-        '============================================================',
-        '📧 [MAILER STATUS] ✅ SMTP CONNECTION VERIFIED & WORKING!',
-        `   Host     : ${host}:${port} (${secure ? 'SSL' : 'TLS/STARTTLS'})`,
-        `   User     : ${user}`,
-        `   Latency  : ${duration}ms`,
-        '   Result   : Transporter is ready to deliver live emails to inbox.',
-        '============================================================',
-        ''
-      ].join('\n');
-      console.log(banner);
+      console.log('Transporter is ready');
     }
 
     return {
       success: true,
       status: 'CONNECTED',
-      message: `SMTP connection established successfully in ${duration}ms.`,
+      message: 'Transporter is ready',
       duration,
       config: configInfo
     };
   } catch (err) {
     const duration = Date.now() - startTime;
-  
+    if (logToConsole) {
+      console.warn('[Mailer] Transporter verification failed:', err.message);
+    }
     return {
       success: false,
       status: 'FAILED',
