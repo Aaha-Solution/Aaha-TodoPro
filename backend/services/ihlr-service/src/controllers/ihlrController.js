@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from '../../../shared/response.js';
 import { IhlrRequest } from '../models/IhlrRequest.js';
 import { saveBinaryFiles, streamBinaryFile } from '../../../shared/binaryStorage.js';
 import pool from '../../../shared/db.js';
-import { sendIhlrRequestEmails, sendIhlrCloserEmails, sendEmail } from '../../../../shared/mailer.js';
+import { sendIhlrRequestEmails, sendIhlrCloserEmails, sendEmail, generateEmailTemplate } from '../../../../shared/mailer.js';
 import { broadcastEvent } from '../../../shared/realtimeNotifier.js';
 
 
@@ -1198,13 +1198,34 @@ export const updateIhlrRequest = async (req, res) => {
               ]
             ).catch((e) => console.warn('[Reassign Notif Error]:', e.message));
 
+            const reassignHtml = generateEmailTemplate({
+              headerTitle: `IHLR Defect Report Assigned: #${reqNo}`,
+              headerSubtitle: `Defect report #${reqNo} has been reassigned to you for ${updated.resp || 'Department'}.`,
+              recipientName: u.name || updated.resp_person || 'Assigned Closer',
+              greetingMessage: `Dear ${u.name || 'Team Member'},<br><br>IHLR incident <strong>#${reqNo}</strong> (${updated.model || 'Model'}) has been reassigned to you (${updated.resp}) by <strong>${updated.reviewed_by || 'Quality Admin'}</strong>.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span><br><br>Please review and submit 5-Why root cause analysis and containment actions in the quality portal.`,
+              tableData: [
+                { label: 'Request Number', value: reqNo },
+                { label: 'Defect / Problem', value: updated.problem || '—' },
+                { label: 'Model', value: updated.model || '—' },
+                { label: 'Department', value: updated.resp || '—' },
+                { label: 'Assigned To', value: u.name || updated.resp_person || '—' },
+                { label: 'Reassigned By', value: updated.reviewed_by || 'Quality Admin' },
+                { label: 'Status', value: 'Pending' }
+              ],
+              actionButtonText: 'Open Report in Approvals',
+              actionButtonUrl: 'http://localhost:5173/ihlr/approvals',
+              badgeColor: '#f59e0b',
+              badgeText: 'PENDING'
+            });
+
             try {
               sendEmail({
                 to: u.email || process.env.SMTP_USER || '',
                 recipientName: u.name || updated.resp_person || 'Assigned Closer',
                 recipientRole: 'ASSIGNED_CLOSER',
-                subject: `[IHLR Action Required] Defect Report Assigned to You: #${reqNo}`,
-                text: `Dear ${u.name || 'Team Member'},\n\nIHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to you (${updated.resp}).\n\nPlease review and submit 5-Why root cause analysis and containment actions at: http://localhost:5173/ihlr/approvals\n\nThank you,\nQuality Portal`,
+                subject: `[IHLR Action Required] Defect Report Assigned to You: #${reqNo} (Pending)`,
+                text: `Dear ${u.name || 'Team Member'},\n\nIHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to you (${updated.resp}) by ${updated.reviewed_by || 'Quality Admin'}.\n\nStatus: Pending\n\nPlease review and submit 5-Why root cause analysis and containment actions at: http://localhost:5173/ihlr/approvals\n\nThank you,\nQuality Portal`,
+                html: reassignHtml,
                 referenceNo: reqNo,
                 moduleType: 'IHLR'
               }).catch((err) => console.warn('[Reassign Mail Warning]:', err.message));
@@ -1230,13 +1251,34 @@ export const updateIhlrRequest = async (req, res) => {
               ]
             ).catch((e) => console.warn('[Reassign Req Notif Error]:', e.message));
 
+            const reqReassignHtml = generateEmailTemplate({
+              headerTitle: `IHLR Case Reassigned: #${reqNo}`,
+              headerSubtitle: `Defect report #${reqNo} has been reassigned for root cause investigation.`,
+              recipientName: updated.created_by || 'Quality Requester',
+              greetingMessage: `Dear ${updated.created_by || 'Quality Requester'},<br><br>Your IHLR incident <strong>#${reqNo}</strong> (${updated.model || 'Model'}) has been reassigned to <strong>${updated.resp_person || updated.resp}</strong> (${updated.resp}) by <strong>${updated.reviewed_by || 'Quality Admin'}</strong> for investigation.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
+              tableData: [
+                { label: 'Request Number', value: reqNo },
+                { label: 'Defect / Problem', value: updated.problem || '—' },
+                { label: 'Model', value: updated.model || '—' },
+                { label: 'Reassigned Closer', value: updated.resp_person || updated.resp || '—' },
+                { label: 'Target Department', value: updated.resp || '—' },
+                { label: 'Reassigned By', value: updated.reviewed_by || 'Quality Admin' },
+                { label: 'Status', value: 'Pending' }
+              ],
+              actionButtonText: 'View My Requests',
+              actionButtonUrl: 'http://localhost:5173/ihlr/all-requests',
+              badgeColor: '#f59e0b',
+              badgeText: 'PENDING'
+            });
+
             try {
               sendEmail({
                 to: updated.created_by_email || process.env.SMTP_USER || '',
                 recipientName: updated.created_by || 'Quality Requester',
                 recipientRole: 'RAISED_PERSON',
-                subject: `[IHLR Case Reassigned] Defect Report #${reqNo} Reassigned to ${updated.resp_person || updated.resp}`,
-                text: `Dear ${updated.created_by || 'Quality Requester'},\n\nYour IHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to ${updated.resp_person || updated.resp} (${updated.resp}) for root cause investigation.\n\nView details: http://localhost:5173/ihlr/all-requests\n\nThank you,\nQuality Portal`,
+                subject: `[IHLR Case Reassigned] Defect Report #${reqNo} Reassigned to ${updated.resp_person || updated.resp} (Pending)`,
+                text: `Dear ${updated.created_by || 'Quality Requester'},\n\nYour IHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to ${updated.resp_person || updated.resp} (${updated.resp}) by ${updated.reviewed_by || 'Quality Admin'} for root cause investigation.\n\nStatus: Pending\n\nView details: http://localhost:5173/ihlr/all-requests\n\nThank you,\nQuality Portal`,
+                html: reqReassignHtml,
                 referenceNo: reqNo,
                 moduleType: 'IHLR'
               }).catch((err) => console.warn('[Reassign Req Mail Warning]:', err.message));

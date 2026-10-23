@@ -205,9 +205,47 @@ export async function sendEmail({
 }
 
 /**
+ * Resolves standard user-facing status label for IHLR emails:
+ * - 'Closed'
+ * - 'Awaiting Review'
+ * - 'Pending'
+ */
+export function formatIhlrMailStatus(statusOrReq) {
+  const req = typeof statusOrReq === 'object' && statusOrReq !== null ? statusOrReq : null;
+  const rawStatus = (typeof statusOrReq === 'string' ? statusOrReq : req?.status) || '';
+  const s = String(rawStatus).trim().toUpperCase();
+
+  if (s === 'CLOSED' || s === 'APPROVED') {
+    return 'Closed';
+  }
+
+  const isCompleted = (
+    s === 'IN_PROGRESS' ||
+    s === 'IN-PROGRESS' ||
+    s === 'APPROVAL_PENDING' ||
+    s === 'APPROVAL PENDING' ||
+    s === 'AWAITING_REVIEW' ||
+    s === 'AWAITING REVIEW' ||
+    s === 'UNDER_REVIEW' ||
+    (req && (
+      Boolean((req.temporary_action || req.permanent_fix || req.action) && String(req.temporary_action || req.permanent_fix || req.action).trim()) &&
+      (Array.isArray(req.prod_why_why)
+        ? req.prod_why_why.some((w) => Boolean(w && String(w).trim()))
+        : Boolean(req.prod_why_why?.[0] && String(req.prod_why_why[0]).trim()))
+    ))
+  );
+
+  if (isCompleted) {
+    return 'Awaiting Review';
+  }
+
+  return 'Pending';
+}
+
+/**
  * Generate standard HTML template for INEL portal emails
  */
-function generateEmailTemplate({
+export function generateEmailTemplate({
   headerTitle,
   headerSubtitle,
   recipientName,
@@ -336,6 +374,8 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
   const assignedName = assignedUser?.name || request.resp_person || 'Responsible Officer';
   const assignedDept = request.resp || assignedUser?.department || 'PRODUCTION';
 
+  const mailStatus = formatIhlrMailStatus(request); // Returns 'Pending'
+
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
     { label: 'Defect / Problem', value: request.problem },
@@ -346,25 +386,25 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
     { label: 'Actual Qty', value: String(request.actual_qty || 1) },
     { label: 'Target Dept', value: assignedDept },
     { label: 'Assigned Person', value: assignedName },
-    { label: 'Current Status', value: request.status || 'OPEN' },
+    { label: 'Status', value: mailStatus },
   ];
 
   const results = {};
 
   // 1. EMAIL TO RAISED PERSON (CREATOR)
   if (creatorEmail) {
-    const creatorSubject = `[IHLR Confirmation] Defect Request #${reqNo} Successfully Submitted`;
+    const creatorSubject = `[IHLR Confirmation] Defect Request #${reqNo} Successfully Submitted (Pending)`;
     const creatorHtml = generateEmailTemplate({
       headerTitle: `IHLR Defect Report Logged: #${reqNo}`,
       headerSubtitle: `Your In-House Line Rejection analysis report has been recorded and dispatched for containment.`,
       recipientName: creatorName,
-      greetingMessage: `Your IHLR defect observation report for <strong>${request.model}</strong> has been logged into the database and assigned to <strong>${assignedName}</strong> (${assignedDept}) for 5-Why root cause countermeasure.`,
+      greetingMessage: `Your IHLR defect observation report for <strong>${request.model}</strong> has been logged into the database and assigned to <strong>${assignedName}</strong> (${assignedDept}) for 5-Why root cause countermeasure.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
       tableData: tableSummary,
       actionButtonText: 'View My IHLR Requests',
       actionButtonUrl: myRequestsUrl,
       footerNote: 'You will receive an alert once the responsible department submits containment action and why-why analysis.',
-      badgeColor: '#10b981',
-      badgeText: 'SUBMITTED',
+      badgeColor: '#f59e0b',
+      badgeText: 'PENDING',
     });
 
     results.creator = await sendEmail({
@@ -372,7 +412,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       recipientName: creatorName,
       recipientRole: 'RAISED_PERSON',
       subject: creatorSubject,
-      text: `Your IHLR defect request #${reqNo} (${request.model} - "${request.problem}") has been successfully logged and assigned to ${assignedName} (${assignedDept}).`,
+      text: `Your IHLR defect request #${reqNo} (${request.model} - "${request.problem}") has been successfully logged (Status: Pending) and assigned to ${assignedName} (${assignedDept}).`,
       html: creatorHtml,
       moduleType: 'IHLR',
       requestId: request.id,
@@ -382,18 +422,18 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
 
   // 2. EMAIL TO SELECTED PERSON IN FIELD (ASSIGNED USER)
   if (assignedEmail) {
-    const assignedSubject = `[Action Required] IHLR Rejection #${reqNo} Assigned to You (${assignedDept})`;
+    const assignedSubject = `[Action Required] IHLR Rejection #${reqNo} Assigned to You (${assignedDept}) - Pending`;
     const assignedHtml = generateEmailTemplate({
       headerTitle: `Action Required: IHLR Incident #${reqNo}`,
       headerSubtitle: `An in-house line rejection has been assigned to you for investigation and corrective action.`,
       recipientName: assignedName,
-      greetingMessage: `<strong>${creatorName}</strong> from Incoming Quality has logged an in-house line rejection and designated you as the responsible owner for containment and 5-Why analysis.`,
+      greetingMessage: `<strong>${creatorName}</strong> from Incoming Quality has logged an in-house line rejection and designated you as the responsible owner for containment and 5-Why analysis.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
       tableData: tableSummary,
       actionButtonText: 'Open Report & Submit Countermeasure',
       actionButtonUrl: myRequestsUrl,
       footerNote: 'Immediate action required: please inspect the defective batch and record corrective containment measures in the portal.',
       badgeColor: '#f59e0b',
-      badgeText: 'ACTION REQUIRED',
+      badgeText: 'PENDING ACTION',
     });
 
     results.assigned = await sendEmail({
@@ -401,7 +441,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       recipientName: assignedName,
       recipientRole: 'SELECTED_PERSON',
       subject: assignedSubject,
-      text: `IHLR Request #${reqNo} (${request.model} - "${request.problem}") has been assigned to you by ${creatorName}. Please log in to complete containment analysis.`,
+      text: `IHLR Request #${reqNo} (${request.model} - "${request.problem}") has been assigned to you by ${creatorName} (Status: Pending). Please log in to complete containment analysis.`,
       html: assignedHtml,
       moduleType: 'IHLR',
       requestId: request.id,
@@ -428,7 +468,8 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
   const assignedName = assignedUser?.name || request.resp_person || 'Responsible Officer';
   const assignedDept = request.resp || assignedUser?.department || 'PRODUCTION';
 
-  const isClosed = String(request.status).toUpperCase() === 'CLOSED';
+  const isClosed = String(request.status).toUpperCase() === 'CLOSED' || String(request.status).toUpperCase() === 'APPROVED';
+  const mailStatus = isClosed ? 'Closed' : 'Awaiting Review';
   const closerWhy1 = Array.isArray(request.prod_why_why) ? (request.prod_why_why[0] || '—') : (typeof request.prod_why_why === 'string' ? JSON.parse(request.prod_why_why || '[]')[0] || '—' : '—');
 
   const tableSummary = [
@@ -437,9 +478,9 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
     { label: 'Responsible Dept', value: assignedDept },
     { label: 'Responsible Closer', value: assignedName },
     { label: 'Occurrence Cause (Why 1)', value: closerWhy1 },
-    { label: 'Action Taken', value: request.action || 'Containment in progress' },
-    { label: 'Target / Close Date', value: request.target_date || 'N/A' },
-    { label: 'Updated Status', value: request.status || (isClosed ? 'CLOSED' : 'IN_PROGRESS') },
+    { label: 'Action Taken', value: request.action || request.temporary_action || request.permanent_fix || 'Containment in progress' },
+    { label: 'Target / Close Date', value: request.target_date || request.permanent_target_date || request.temporary_target_date || 'N/A' },
+    { label: 'Status', value: mailStatus },
     { label: 'Remarks', value: request.remarks || (isClosed ? 'Closed' : '(Pending validation by Requester/Admin)') }
   ];
 
@@ -449,23 +490,23 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
   if (creatorEmail) {
     const subject = isClosed 
       ? `[IHLR Case Closed] Defect Report #${reqNo} Verified & Closed`
-      : `[Action Required] Closer Completed Countermeasures for #${reqNo} - Pending Remarks & Status Sign-Off`;
+      : `[Action Required] Closer Completed Countermeasures for #${reqNo} (Awaiting Review)`;
 
     const html = generateEmailTemplate({
       headerTitle: isClosed ? `IHLR Case Closed: #${reqNo}` : `Closer Countermeasure Completed: #${reqNo}`,
       headerSubtitle: isClosed
         ? `Defect containment and 5-Why corrective actions have been completed and verified.`
-        : `Closer ${assignedName} (${assignedDept}) has completed 5-Why root cause analysis and corrective action. Please complete pending remarks and status sign-off.`,
+        : `Closer ${assignedName} (${assignedDept}) has completed 5-Why root cause analysis and corrective action. Ready for review and sign-off.`,
       recipientName: creatorName,
       greetingMessage: isClosed
-        ? `Defect observation report <strong>${reqNo}</strong> (${request.model || 'Model'}) has been signed off and marked as <strong>CLOSED</strong>.`
-        : `Closer <strong>${assignedName}</strong> (${assignedDept}) has completed the 5-Why root cause analysis and corrective action for defect report <strong>${reqNo}</strong> (${request.model || 'Report'}).<br><br><strong>Action Required:</strong> Please review the containment countermeasure details below and complete the pending fields: <strong>Remarks</strong> &amp; <strong>Status sign-off</strong>.`,
+        ? `Defect observation report <strong>${reqNo}</strong> (${request.model || 'Model'}) has been signed off and marked as <strong>Closed</strong>.<br><br><strong>Final Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#dcfce7; color:#166534; border-radius:4px;">Closed</span>`
+        : `Closer <strong>${assignedName}</strong> (${assignedDept}) has completed the 5-Why root cause analysis and corrective action for defect report <strong>${reqNo}</strong> (${request.model || 'Report'}).<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Awaiting Review</span><br><br><strong>Action Required:</strong> Please review the containment countermeasure details below and complete the pending fields: <strong>Remarks</strong> &amp; <strong>Status sign-off</strong>.`,
       tableData: tableSummary,
       actionButtonText: isClosed ? 'Review Full IHLR Report' : 'Complete Pending Remarks & Sign-Off',
       actionButtonUrl: approvalsUrl,
       footerNote: isClosed ? 'Verification complete in the INEL portal.' : 'Action required: Please enter your review remarks and sign off status in the portal.',
       badgeColor: isClosed ? '#10b981' : '#d97706',
-      badgeText: isClosed ? 'CASE CLOSED' : 'ACTION REQUIRED: PENDING SIGN-OFF',
+      badgeText: isClosed ? 'CLOSED' : 'AWAITING REVIEW',
     });
 
     results.creator = await sendEmail({
@@ -474,8 +515,8 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
       recipientRole: 'RAISED_PERSON',
       subject,
       text: isClosed
-        ? `Defect report #${reqNo} verified and closed.`
-        : `Action Required: Closer ${assignedName} (${assignedDept}) completed root cause countermeasures for #${reqNo}. Please complete remarks and sign off status at: ${approvalsUrl}`,
+        ? `Defect report #${reqNo} verified and marked as Closed.`
+        : `Action Required: Closer ${assignedName} (${assignedDept}) completed root cause countermeasures for #${reqNo} (Status: Awaiting Review). Please complete remarks and sign off status at: ${approvalsUrl}`,
       html,
       moduleType: 'IHLR',
       requestId: request.id,
@@ -494,7 +535,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
 
       const adminSubject = isClosed
         ? `[IHLR Case Closed] Incident #${reqNo} Closed by Quality Team`
-        : `[Admin Action Required] Closer Completed Countermeasures for #${reqNo} - Pending Sign-Off`;
+        : `[Admin Action Required] Closer Completed Countermeasures for #${reqNo} (Awaiting Review)`;
 
       const adminHtml = generateEmailTemplate({
         headerTitle: isClosed ? `Case Closed: #${reqNo}` : `Pending Closer Review: #${reqNo}`,
@@ -503,14 +544,14 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
           : `Closer ${assignedName} (${assignedDept}) has completed root cause analysis and countermeasures. Ready for validation remarks and status sign-off.`,
         recipientName: adminName,
         greetingMessage: isClosed
-          ? `Defect report <strong>${reqNo}</strong> (${request.model || 'Model'}) has been signed off and closed.`
-          : `Closer <strong>${assignedName}</strong> (${assignedDept}) has completed the 5-Why root cause analysis and corrective action for defect report <strong>${reqNo}</strong> (${request.model || 'Report'}).<br><br><strong>Admin Action Required:</strong> Please review root cause details, provide validation remarks, and finalize the incident status.`,
+          ? `Defect report <strong>${reqNo}</strong> (${request.model || 'Model'}) has been signed off and marked as <strong>Closed</strong>.<br><br><strong>Final Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#dcfce7; color:#166534; border-radius:4px;">Closed</span>`
+          : `Closer <strong>${assignedName}</strong> (${assignedDept}) has completed the 5-Why root cause analysis and corrective action for defect report <strong>${reqNo}</strong> (${request.model || 'Report'}).<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Awaiting Review</span><br><br><strong>Admin Action Required:</strong> Please review root cause details, provide validation remarks, and finalize the incident status.`,
         tableData: tableSummary,
         actionButtonText: 'Review & Sign-Off Incident',
         actionButtonUrl: approvalsUrl,
         footerNote: 'Please sign off in the INEL Quality Portal.',
         badgeColor: isClosed ? '#10b981' : '#d97706',
-        badgeText: isClosed ? 'CASE CLOSED' : 'PENDING ADMIN SIGN-OFF',
+        badgeText: isClosed ? 'CLOSED' : 'AWAITING REVIEW',
       });
 
       const adminRes = await sendEmail({
@@ -518,7 +559,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
         recipientName: adminName,
         recipientRole: 'ADMIN',
         subject: adminSubject,
-        text: `Admin Action Required: Closer ${assignedName} completed countermeasures for #${reqNo}. Please review and finalize sign-off at: ${approvalsUrl}`,
+        text: `Admin Action Required: Closer ${assignedName} completed countermeasures for #${reqNo} (Status: Awaiting Review). Please review and finalize sign-off at: ${approvalsUrl}`,
         html: adminHtml,
         moduleType: 'IHLR',
         requestId: request.id,
@@ -531,24 +572,24 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
   // 3. Acknowledge to Closer (Assigned Person)
   if (assignedEmail) {
     const subject = isClosed
-      ? `[IHLR Case Closed] Closer Confirmation: Defect Report #${reqNo} Marked as CLOSED`
-      : `[IHLR Acknowledgment] Closer Countermeasures Submitted for #${reqNo}`;
+      ? `[IHLR Case Closed] Closer Confirmation: Defect Report #${reqNo} Marked as Closed`
+      : `[IHLR Acknowledgment] Closer Countermeasures Submitted for #${reqNo} (Awaiting Review)`;
 
     const html = generateEmailTemplate({
       headerTitle: isClosed ? `Case Closed & Signed-Off: #${reqNo}` : `Closer Submission Acknowledged: #${reqNo}`,
       headerSubtitle: isClosed
         ? `Your closure sign-off and root cause containment measures have been confirmed in the quality portal.`
-        : `Your 5-Why root cause countermeasures have been successfully submitted. Requester and Admin have been alerted to complete the pending fields.`,
+        : `Your 5-Why root cause countermeasures have been successfully submitted (Status: Awaiting Review). Requester and Admin have been alerted to complete the pending fields.`,
       recipientName: assignedName,
       greetingMessage: isClosed
-        ? `You have successfully verified and marked IHLR Report <strong>${reqNo}</strong> as <strong>CLOSED</strong>.`
-        : `Thank you <strong>${assignedName}</strong>. Your 5-Why root cause analysis and corrective actions for IHLR Report <strong>${reqNo}</strong> have been recorded in the quality system.<br><br>The Requester (<strong>${creatorName}</strong>) and Quality Admin have been alerted with notifications and email to complete the pending validation remarks and finalize status.`,
+        ? `You have successfully verified and marked IHLR Report <strong>${reqNo}</strong> as <strong>Closed</strong>.<br><br><strong>Final Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#dcfce7; color:#166534; border-radius:4px;">Closed</span>`
+        : `Thank you <strong>${assignedName}</strong>. Your 5-Why root cause analysis and corrective actions for IHLR Report <strong>${reqNo}</strong> have been recorded in the quality system.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Awaiting Review</span><br><br>The Requester (<strong>${creatorName}</strong>) and Quality Admin have been alerted with notifications and email to complete the pending validation remarks and finalize status.`,
       tableData: tableSummary,
       actionButtonText: 'View Closer Approvals',
       actionButtonUrl: approvalsUrl,
       footerNote: 'Thank you for submitting quality containment measures.',
       badgeColor: isClosed ? '#10b981' : '#2563eb',
-      badgeText: isClosed ? 'CASE CLOSED' : 'SUBMITTED & ACKNOWLEDGED',
+      badgeText: isClosed ? 'CLOSED' : 'AWAITING REVIEW',
     });
 
     results.assigned = await sendEmail({
@@ -557,8 +598,8 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
       recipientRole: 'SELECTED_PERSON',
       subject,
       text: isClosed
-        ? `Defect report #${reqNo} has been marked as CLOSED. Containment verified.`
-        : `Closer Log Acknowledged for #${reqNo}. Requester and Admin have been notified to complete pending remarks and status.`,
+        ? `Defect report #${reqNo} has been marked as Closed. Containment verified.`
+        : `Closer Log Acknowledged for #${reqNo} (Status: Awaiting Review). Requester and Admin have been notified to complete pending remarks and status.`,
       html,
       moduleType: 'IHLR',
       requestId: request.id,
