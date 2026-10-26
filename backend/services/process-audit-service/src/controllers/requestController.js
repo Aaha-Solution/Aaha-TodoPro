@@ -38,13 +38,20 @@ export const getAllRequests = async (req, res) => {
     const targetDept = (req.query.filter_dept || req.query.filterDept || (department && department.trim().toUpperCase() !== 'ALL' ? department.trim() : '')).trim();
 
     let effectiveDept = null;
-    if (!isAdmin && userDept && userDept !== 'QAD') {
-      effectiveDept = userDept;
-    } else if (targetDept && targetDept.toUpperCase() !== 'ALL') {
-      if (isAdmin && userDept === 'QAD' && targetDept.toUpperCase() === 'QAD' && !req.query.filter_dept) {
-        effectiveDept = null;
-      } else {
+    if (isDashboardScope) {
+      // Dashboard scope is plant-wide common for all roles
+      if (targetDept && targetDept.toUpperCase() !== 'ALL') {
         effectiveDept = targetDept;
+      }
+    } else {
+      if (!isAdmin && userDept && userDept !== 'QAD') {
+        effectiveDept = userDept;
+      } else if (targetDept && targetDept.toUpperCase() !== 'ALL') {
+        if (isAdmin && userDept === 'QAD' && targetDept.toUpperCase() === 'QAD' && !req.query.filter_dept) {
+          effectiveDept = null;
+        } else {
+          effectiveDept = targetDept;
+        }
       }
     }
 

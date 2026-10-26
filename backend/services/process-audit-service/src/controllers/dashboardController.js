@@ -22,15 +22,11 @@ export const getDashboardMetrics = async (req, res) => {
 
     const targetDept = (req.query.filter_dept || req.query.filterDept || (department && department.trim().toUpperCase() !== 'ALL' ? department.trim() : '')).trim();
 
+    // Dashboard is common plant-wide for all roles and departments.
+    // Filter by department only when an explicit department filter is selected.
     let effectiveDept = null;
-    if (!isAdmin && userDept && userDept !== 'QAD') {
-      effectiveDept = userDept;
-    } else if (targetDept && targetDept.toUpperCase() !== 'ALL') {
-      if (isAdmin && userDept === 'QAD' && targetDept.toUpperCase() === 'QAD' && !req.query.filter_dept) {
-        effectiveDept = null;
-      } else {
-        effectiveDept = targetDept;
-      }
+    if (targetDept && targetDept.toUpperCase() !== 'ALL') {
+      effectiveDept = targetDept;
     }
 
     let query = 'SELECT status, COUNT(*) as count FROM process_audit_requests';
