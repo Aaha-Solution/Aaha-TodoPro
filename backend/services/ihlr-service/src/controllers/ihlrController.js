@@ -67,14 +67,19 @@ const parseToDateStr = (val) => {
 
 export const getDashboardStats = async (req, res) => {
   try {
+    const userRole = (req.user?.role || req.query.role || '').toUpperCase();
+    const userDept = (req.user?.department || req.query.user_department || '').toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userDept === 'QAD';
+
     let requests = await IhlrRequest.getAll();
     if (!requests) requests = fallbackRequests;
 
     // 1. Department-wise filter:
     // Dashboard is common plant-wide for all departments. Filter only if an explicit filter is selected.
     const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
-    if (targetDept && targetDept !== 'ALL') {
-      requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === targetDept);
+    const effectiveDept = targetDept && targetDept !== 'ALL' ? targetDept : null;
+    if (effectiveDept) {
+      requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === effectiveDept);
     }
 
 
@@ -277,10 +282,8 @@ export const getDashboardStats = async (req, res) => {
       };
     });
 
-    // 2. Department Breakdown (for non-admins, show only their department; for admins show standard set)
-    const standardDepts = (!isAdmin && userDept && userDept !== 'QAD')
-      ? [userDept]
-      : ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY', 'QAD'];
+    // 2. Department Breakdown (Plant-wide common for all departments)
+    const standardDepts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY', 'QAD'];
     const existingDepts = requests.map(r => (r.resp || '').trim().toUpperCase()).filter(Boolean);
     const uniqueDepts = Array.from(new Set([...standardDepts, ...existingDepts]));
     const departmentBreakdown = uniqueDepts.map(dept => {
