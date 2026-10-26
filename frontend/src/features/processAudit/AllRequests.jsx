@@ -65,7 +65,7 @@ const AllRequests = () => {
 
   const isQad = currentDept.toUpperCase() === 'QAD';
   const isAdmin = userRole === 'ADMIN' || isQad;
-  const canEdit = isQad || isAdmin;
+  const canEdit = isAdmin;
 
   const [searchParams] = useSearchParams();
   const queryRequestId = searchParams.get('requestId') || searchParams.get('id');
@@ -117,6 +117,7 @@ const AllRequests = () => {
 
   // Modals State
   const [activeModalRequest, setActiveModalRequest] = useState(null);
+  const [modalInitialEdit, setModalInitialEdit] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
 
@@ -325,13 +326,7 @@ const AllRequests = () => {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (!isAdmin && (currentUser?.name || currentUser?.email || currentUser?.id)) {
-        params.user = currentUser?.name || currentUser?.email;
-        params.user_id = currentUser?.id;
-        params.role = currentUser?.role;
-      }
-      const data = await processAuditService.getRequests(params);
+      const data = await processAuditService.getRequests({ all: true });
       setRequests(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load requests from DB:', err);
@@ -394,12 +389,8 @@ const AllRequests = () => {
     return false;
   };
 
-  // Filter requests
+  // Filter requests (Plant-wide common for all departments)
   const filteredRequests = requests.filter((req) => {
-    if (!isAdmin) {
-      const canAccess = canUserAccessRequest(req, currentUser, isAdmin);
-      if (!canAccess) return false;
-    }
 
     const reqId = String(req.issue_no || (req.id ? `PA-${req.id}` : '')).toLowerCase();
     const line = String(req.process_operation || req.line || '').toLowerCase();
@@ -1003,6 +994,7 @@ const AllRequests = () => {
                           <button
                             onClick={() => {
                               setActiveModalRequest(r);
+                              setModalInitialEdit(false);
                             }}
                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
                             title="View Complete Report"
@@ -1010,14 +1002,15 @@ const AllRequests = () => {
                             <Eye className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* Review & Edit */}
-                          {canEdit && (
+                          {/* Review & Edit (Admin Only) */}
+                          {isAdmin && (
                             <button
                               onClick={() => {
                                 setActiveModalRequest(r);
+                                setModalInitialEdit(true);
                               }}
                               className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
-                              title="Review / Sign-off Observation"
+                              title="Edit Observation (Admin Only)"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
@@ -1097,7 +1090,11 @@ const AllRequests = () => {
       <ProcessAuditRequestDetailsModal
         isOpen={Boolean(activeModalRequest)}
         request={activeModalRequest}
-        onClose={() => setActiveModalRequest(null)}
+        initialEditMode={modalInitialEdit}
+        onClose={() => {
+          setActiveModalRequest(null);
+          setModalInitialEdit(false);
+        }}
         onUpdated={() => {
           fetchRequests();
         }}

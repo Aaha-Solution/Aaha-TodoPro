@@ -37,29 +37,18 @@ export const getAllRequests = async (req, res) => {
 
     const targetDept = (req.query.filter_dept || req.query.filterDept || (department && department.trim().toUpperCase() !== 'ALL' ? department.trim() : '')).trim();
 
+    // Requests are common plant-wide for all departments. Filter by department only when an explicit filter is specified.
     let effectiveDept = null;
-    if (isDashboardScope) {
-      // Dashboard scope is plant-wide common for all roles
-      if (targetDept && targetDept.toUpperCase() !== 'ALL') {
-        effectiveDept = targetDept;
-      }
-    } else {
-      if (!isAdmin && userDept && userDept !== 'QAD') {
-        effectiveDept = userDept;
-      } else if (targetDept && targetDept.toUpperCase() !== 'ALL') {
-        if (isAdmin && userDept === 'QAD' && targetDept.toUpperCase() === 'QAD' && !req.query.filter_dept) {
-          effectiveDept = null;
-        } else {
-          effectiveDept = targetDept;
-        }
-      }
+    if (targetDept && targetDept.toUpperCase() !== 'ALL') {
+      effectiveDept = targetDept;
     }
 
     if (effectiveDept) {
       filters.department = effectiveDept;
     }
 
-    if (!isAdmin && !isDashboardScope) {
+    const isMyRequestsScope = scope === 'my' || scope === 'my_requests' || req.query.my === 'true';
+    if (isMyRequestsScope && !isAdmin) {
       if (created_by) filters.created_by = created_by;
       if (created_by_id) filters.created_by_id = created_by_id;
       if (executor) filters.executor = executor;
@@ -824,6 +813,20 @@ export const updateRequest = async (req, res) => {
   try {
     const { id } = req.params;
     const body = req.body || {};
+
+    const authHeader = req.headers.authorization;
+    let tokenUser = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        tokenUser = verifyToken(authHeader.split(' ')[1]);
+      } catch {}
+    }
+    const userRole = (body.user?.role || tokenUser?.role || req.user?.role || '').trim().toUpperCase();
+    const userDept = (body.user?.department || tokenUser?.department || req.user?.department || '').trim().toUpperCase();
+    const isAdmin = userRole === 'ADMIN' || userDept === 'QAD';
+    if (!isAdmin) {
+      return errorResponse(res, 'Access denied. Edit mode is only permitted for Admin role.', 403);
+    }
 
     if (body.escalation_date) {
       const escStr = String(body.escalation_date).split('T')[0];

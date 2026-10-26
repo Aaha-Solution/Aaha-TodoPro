@@ -151,7 +151,7 @@ const ProcessAuditRequestDetailsModal = ({
   );
 
   const isClosed = (req?.status || '').toUpperCase() === 'CLOSED';
-  const canEdit = Boolean(req && (isAdmin || isRequester) && (!isClosed || isAdmin));
+  const canEdit = Boolean(req && isAdmin);
 
   const initEditState = (targetReq = req) => {
     if (!targetReq) return;
