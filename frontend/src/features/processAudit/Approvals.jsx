@@ -31,6 +31,7 @@ import {
   History,
   Folder,
   ShieldAlert,
+  ShieldCheck,
   Pencil,
   Lock,
   UserCheck,
@@ -2226,7 +2227,23 @@ const ProcessAuditApprovals = () => {
                       </span>
                     )}
                   </label>
-                  <span className="text-[10px] text-slate-400 font-medium">Independent Update</span>
+                  <div className="flex items-center gap-2">
+                    {selectedRequest && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveModalRequest(selectedRequest);
+                          setModalTab('sign_tracks');
+                        }}
+                        className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                        title="Open Sign Fields & Tracks"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>Sign &amp; Tracks</span>
+                      </button>
+                    )}
+                    <span className="text-[10px] text-slate-400 font-medium">Independent Update</span>
+                  </div>
                 </div>
 
                 {/* Alert Banner / Guidance */}
@@ -2977,17 +2994,30 @@ const ProcessAuditApprovals = () => {
                             {remarksText}
                           </td>
                           <td className="py-3.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveModalRequest(r);
-                                setModalTab('requester');
-                              }}
-                              className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
-                              title="View Full Report"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveModalRequest(r);
+                                  setModalTab('requester');
+                                }}
+                                className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                                title="View Full Report"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveModalRequest(r);
+                                  setModalTab('sign_tracks');
+                                }}
+                                className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
+                                title="Sign Fields & Tracks"
+                              >
+                                <ShieldCheck className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -3051,9 +3081,16 @@ const ProcessAuditApprovals = () => {
       <ProcessAuditRequestDetailsModal
         isOpen={Boolean(activeModalRequest)}
         request={activeModalRequest}
-        onClose={() => setActiveModalRequest(null)}
-        onUpdated={() => {
+        initialTab={modalTab}
+        onClose={() => {
+          setActiveModalRequest(null);
+          setModalTab('requester');
+        }}
+        onUpdated={(updatedReq) => {
           loadRequests();
+          if (updatedReq && activeModalRequest) {
+            setActiveModalRequest(updatedReq);
+          }
         }}
       />
 

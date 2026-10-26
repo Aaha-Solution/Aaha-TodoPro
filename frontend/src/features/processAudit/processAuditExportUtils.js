@@ -572,10 +572,10 @@ export const exportProcessAuditToPdf = async ({
         ...(r.standardization_details ? [[`Standardization Details: ${r.standardization_details}`]] : []),
         [`Target Date: ${r.target_date ? formatDateDDMMYYYY(r.target_date) : '—'}  |  Action Taken By: ${r.action_taken_by || r.approved_by || r.executor || 'Assigned Executor'}`],
         ...(hasReassignments ? [[`Reassignment History: ${reassignmentDetails}`]] : []),
-        ...(r.creator_remark || r.remarks ? [[`Sign-off Remarks / Auditor Notes: ${r.creator_remark || r.remarks}`]] : []),
-        [`Status: ${displayStatus.toUpperCase()}  |  Reviewed By: ${r.reviewed_by || r.closed_by || '—'}  |  Closed Date: ${r.closed_at ? formatDateDDMMYYYY(r.closed_at) : '—'}`],
         ...(creatorAttachments.length > 0 ? [[`Audit Creator Attachments (${creatorAttachments.length}): ${creatorAttachments.map(a => a.name || a.filename).join(', ')}`]] : []),
-        ...(actionAttachments.length > 0 ? [[`Action Evidence Attachments (${actionAttachments.length}): ${actionAttachments.map(a => a.name || a.filename).join(', ')}`]] : [])
+        ...(actionAttachments.length > 0 ? [[`Action Evidence Attachments (${actionAttachments.length}): ${actionAttachments.map(a => a.name || a.filename).join(', ')}`]] : []),
+        ...(r.creator_remark || r.remarks ? [[`Auditor Sign-off Remarks: ${r.creator_remark || r.remarks}`]] : []),
+        [`Status: ${displayStatus.toUpperCase()}  |  Reviewed By: ${r.reviewed_by || r.closed_by || '—'}  |  Closed Date: ${r.closed_at ? formatDateDDMMYYYY(r.closed_at) : '—'}`]
       ],
       theme: 'grid',
       headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },

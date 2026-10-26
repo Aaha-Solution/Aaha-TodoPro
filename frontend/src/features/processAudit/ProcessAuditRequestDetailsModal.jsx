@@ -29,7 +29,9 @@ import {
   Tag,
   AlertTriangle,
   ArrowRight,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Loader2,
+  Lock
 } from 'lucide-react';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
@@ -67,6 +69,7 @@ const ProcessAuditRequestDetailsModal = ({
   request,
   onClose,
   initialEditMode = false,
+  initialTab = 'requester',
   onUpdated
 }) => {
   const { error: modalError, success: modalSuccess } = useModal();
@@ -86,9 +89,25 @@ const ProcessAuditRequestDetailsModal = ({
   const isAdmin = userRole === 'ADMIN' || isQad;
 
   const [localRequest, setLocalRequest] = useState(request);
-  const [activeTab, setActiveTab] = useState('requester'); // 'requester' | 'closer'
+  const [activeTab, setActiveTab] = useState(initialTab || 'requester'); // 'requester' | 'closer' | 'sign_tracks'
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
+
+  // Admin Review & Sign-Off States (Tab 3: Sign Fields & Tracks)
+  const [adminRemarks, setAdminRemarks] = useState('');
+  const [adminReviewedBy, setAdminReviewedBy] = useState('');
+  const [adminStatus, setAdminStatus] = useState('');
+  const [isSavingAdmin, setIsSavingAdmin] = useState(false);
+  const [adminErrors, setAdminErrors] = useState({});
+
+  // Reassignment States (Tab 3: Sign Fields & Tracks)
+  const [isReassignOpen, setIsReassignOpen] = useState(false);
+  const [reassignedDept, setReassignedDept] = useState('');
+  const [reassignedPerson, setReassignedPerson] = useState('');
+  const [reassignRemarks, setReassignRemarks] = useState('');
+  const [isReassignUserDropdownOpen, setIsReassignUserDropdownOpen] = useState(false);
+  const [reassignUserSearch, setReassignUserSearch] = useState('');
+  const reassignDropdownRef = useRef(null);
 
   // Edit Mode States
   const [isEditMode, setIsEditMode] = useState(Boolean(initialEditMode));
@@ -202,18 +221,36 @@ const ProcessAuditRequestDetailsModal = ({
     setEditErrors({});
   };
 
+  const initAdminState = (targetReq = req) => {
+    if (!targetReq) return;
+    setAdminRemarks(targetReq.creator_remark || targetReq.remarks || '');
+    setAdminReviewedBy(targetReq.reviewed_by || targetReq.approved_by || '');
+    setAdminStatus(String(targetReq.status || '').toLowerCase() === 'closed' ? 'Closed' : '');
+    setIsReassignOpen(false);
+    setIsReassignUserDropdownOpen(false);
+    setReassignedDept(targetReq.department || '');
+    setReassignedPerson(targetReq.executor || '');
+    setReassignRemarks('');
+    setReassignUserSearch('');
+    setAdminErrors({});
+  };
+
   useEffect(() => {
     setLocalRequest(request);
     if (isOpen && request) {
       initEditState(request);
+      initAdminState(request);
       if (initialEditMode) {
         setIsEditMode(true);
         setActiveTab('requester');
       } else {
         setIsEditMode(false);
+        if (initialTab) {
+          setActiveTab(initialTab);
+        }
       }
     }
-  }, [request?.id, isOpen, initialEditMode]);
+  }, [request?.id, isOpen, initialEditMode, initialTab]);
 
   useEffect(() => {
     if (isOpen) {
@@ -248,6 +285,31 @@ const ProcessAuditRequestDetailsModal = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutsideReassign = (e) => {
+      if (reassignDropdownRef.current && !reassignDropdownRef.current.contains(e.target)) {
+        setIsReassignUserDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutsideReassign);
+    return () => document.removeEventListener('mousedown', handleClickOutsideReassign);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && reassignedDept) {
+      processAuditService.getUsers(reassignedDept).then((deptUsers) => {
+        if (Array.isArray(deptUsers) && deptUsers.length > 0) {
+          setDbUsers((prev) => {
+            const map = new Map();
+            prev.forEach((u) => map.set(u.id || u.name, u));
+            deptUsers.forEach((u) => map.set(u.id || u.name, u));
+            return Array.from(map.values());
+          });
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen, reassignedDept]);
+
   const isUserActive = (u) => {
     if (!u) return false;
     if (u.is_active === false || u.is_active === 0 || u.is_active === '0') return false;
@@ -270,6 +332,32 @@ const ProcessAuditRequestDetailsModal = ({
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
+  };
+
+  const getSelectedReassignedUsers = () => {
+    if (!reassignedPerson) return [];
+    return reassignedPerson
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  };
+
+  const handleToggleReassignUser = (userName) => {
+    const current = getSelectedReassignedUsers();
+    let updated;
+    if (current.includes(userName)) {
+      updated = current.filter((u) => u !== userName);
+    } else {
+      updated = [...current, userName];
+    }
+    setReassignedPerson(updated.join(', '));
+    if (updated.length > 0) {
+      setAdminErrors((prev) => ({ ...prev, reassignPerson: '' }));
+    }
+  };
+
+  const handleClearAllReassignUsers = () => {
+    setReassignedPerson('');
   };
 
   const handleToggleUser = (userName) => {
@@ -411,6 +499,143 @@ const ProcessAuditRequestDetailsModal = ({
     }
   };
 
+  const handleSaveAdminSignOff = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!req) return;
+
+    if (!isAdmin) {
+      modalError('Only Quality Auditor or Admin has permission to update Admin Review and sign off status.');
+      return;
+    }
+
+    const errors = {};
+
+    if (isReassignOpen) {
+      if (!reassignedDept) errors.reassignDept = 'Department is required for reassignment.';
+      if (!reassignedPerson || !reassignedPerson.trim()) errors.reassignPerson = 'Responsible executor is required for reassignment.';
+    } else {
+      if (!adminRemarks || !adminRemarks.trim()) {
+        errors.remarks = 'Admin remarks are mandatory for sign-off.';
+      }
+      if (adminReviewedBy && /\d/.test(adminReviewedBy)) {
+        errors.reviewedBy = 'Reviewed By must contain text only, numbers are not allowed.';
+      }
+      if (!adminStatus) {
+        errors.status = 'Please select a status to finalize admin sign-off.';
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setAdminErrors(errors);
+      modalError('Please complete all required fields indicated in red.');
+      return;
+    }
+
+    setAdminErrors({});
+    setIsSavingAdmin(true);
+
+    try {
+      const loggedInPersonName = (
+        user?.name ||
+        (() => {
+          try {
+            const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+            return u ? JSON.parse(u)?.name : '';
+          } catch {
+            return '';
+          }
+        })() ||
+        user?.email ||
+        'Quality Auditor'
+      );
+
+      const effectiveReviewer = (adminReviewedBy && adminReviewedBy.trim())
+        ? adminReviewedBy.trim()
+        : loggedInPersonName;
+
+      const effectiveRemarks = isReassignOpen
+        ? ((reassignRemarks && reassignRemarks.trim()) ||
+           (adminRemarks && adminRemarks.trim()) ||
+           `Reassigned to ${reassignedPerson} (${reassignedDept}) for root cause analysis by ${effectiveReviewer}.`)
+        : adminRemarks.trim();
+
+      const reqId = req.id || req.issue_no;
+      let reviewerId = user?.id || null;
+      let reviewerEmail = user?.email || null;
+
+      if (isReassignOpen) {
+        await processAuditService.reassignRequest(reqId, {
+          new_department: reassignedDept,
+          new_executor: reassignedPerson,
+          reason: effectiveRemarks,
+          reassigned_by: effectiveReviewer,
+          reassigned_by_id: reviewerId,
+          role: user?.role || 'ADMIN',
+          user_department: userDept || 'QAD'
+        });
+
+        const statusRes = await processAuditService.updateRequestStatus(reqId, 'Pending', {
+          creator_remark: effectiveRemarks,
+          remark: effectiveRemarks,
+          remarks: effectiveRemarks,
+          reviewed_by: effectiveReviewer,
+          reviewed_by_id: reviewerId,
+          reviewed_by_email: reviewerEmail,
+          closed_by: null
+        });
+
+        const merged = {
+          ...req,
+          department: reassignedDept,
+          executor: reassignedPerson,
+          status: 'Pending',
+          creator_remark: effectiveRemarks,
+          remarks: effectiveRemarks,
+          reviewed_by: effectiveReviewer,
+          ...(statusRes || {})
+        };
+
+        setLocalRequest(merged);
+        initAdminState(merged);
+        setIsReassignOpen(false);
+        setIsReassignUserDropdownOpen(false);
+        setReassignUserSearch('');
+        onUpdated?.(merged);
+        modalSuccess(`Request #${reqNo} status updated & reassigned to ${reassignedPerson} (${reassignedDept}) successfully!`);
+      } else {
+        const targetStatus = adminStatus || 'Closed';
+        const statusRes = await processAuditService.updateRequestStatus(reqId, targetStatus, {
+          creator_remark: effectiveRemarks,
+          remark: effectiveRemarks,
+          remarks: effectiveRemarks,
+          reviewed_by: effectiveReviewer,
+          reviewed_by_id: reviewerId,
+          reviewed_by_email: reviewerEmail,
+          closed_by: targetStatus.toLowerCase() === 'closed' ? effectiveReviewer : null
+        });
+
+        const merged = {
+          ...req,
+          status: targetStatus,
+          creator_remark: effectiveRemarks,
+          remarks: effectiveRemarks,
+          reviewed_by: effectiveReviewer,
+          ...(statusRes || {})
+        };
+
+        setLocalRequest(merged);
+        initAdminState(merged);
+        onUpdated?.(merged);
+        modalSuccess(`Admin remarks & status sign-off (${targetStatus}) updated successfully for #${reqNo}!`);
+      }
+    } catch (err) {
+      console.error('Failed to save admin sign-off in modal:', err);
+      modalError(err.response?.data?.message || err.message || 'Failed to update admin review & sign-off.');
+    } finally {
+      setIsSavingAdmin(false);
+    }
+  };
+
   const handleExportExcel = async () => {
     try {
       const targetReq = req || request;
@@ -537,6 +762,23 @@ const ProcessAuditRequestDetailsModal = ({
     list: reassignList
   } = formatReassignmentHistory(req?.reassignment_history);
 
+  const isSelectedPending = sLower === 'pending' || sLower === 'open';
+
+  const hasCloserSubmitted = Boolean(
+    req && !isSelectedPending && (
+      sLower.includes('progress') ||
+      sLower.includes('review') ||
+      sLower.includes('signed') ||
+      sLower.includes('close') ||
+      Boolean(
+        (req.corrective_action || req.temporary_action || req.permanent_fix || req.root_cause) &&
+        (req.target_date || req.temporary_target_date || req.permanent_target_date)
+      )
+    )
+  );
+
+  const isCloserDataToBeUpdated = Boolean(req && (isSelectedPending && !hasCloserSubmitted));
+
   return createPortal(
     <div
       className="fixed inset-0 !m-0 !mt-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
@@ -618,7 +860,7 @@ const ProcessAuditRequestDetailsModal = ({
           </button>
         </div>
 
-        {/* Tab Navigation: Requester Details vs Closer Details */}
+        {/* Tab Navigation: Requester Details vs Closer Details vs Sign Fields & Tracks */}
         <div className="flex items-center gap-2 sm:gap-4 px-6 pt-2 border-b border-slate-200 bg-slate-50/80 shrink-0">
           <button
             type="button"
@@ -651,11 +893,765 @@ const ProcessAuditRequestDetailsModal = ({
               {statusBadgeLabel}
             </span>
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (isEditMode) {
+                setIsEditMode(false);
+              }
+              setActiveTab('sign_tracks');
+            }}
+            className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
+              activeTab === 'sign_tracks'
+                ? 'border-indigo-600 text-indigo-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <ShieldCheck className={`w-4 h-4 ${isReqClosed ? 'text-emerald-600' : 'text-indigo-600'}`} />
+            <span>Sign Fields &amp; Tracks</span>
+            {isReqClosed ? (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+                Signed Off
+              </span>
+            ) : hasReassignments ? (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-300">
+                Tracks ({reassignCount})
+              </span>
+            ) : isCloserCompleted ? (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                Review Ready
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-100 text-indigo-800 border border-indigo-300">
+                Admin Review
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Modal Body: Scrollable Tab Content */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
-          {activeTab === 'closer' ? (
+          {activeTab === 'sign_tracks' ? (
+            /* TAB 3: SIGN FIELDS & TRACKS */
+            <div className="space-y-6 animate-in fade-in duration-150">
+              {/* 1. Incident Lifecycle & Progress Stepper Bar */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-sm space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold border border-indigo-400/30">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-sm tracking-wide text-white">
+                          {reqNo}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${statusBadgeClass}`}>
+                          {statusBadgeLabel}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 mt-0.5">
+                        Logged: <span className="text-white font-medium">{escDate}</span> | Assigned Dept: <span className="text-amber-300 font-semibold">{req.department || '—'}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    {hasReassignments ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-purple-500/20 text-purple-200 border border-purple-400/30">
+                        <ArrowRightLeft className="w-3.5 h-3.5 text-purple-300" />
+                        <span>Reassigned ({reassignCount} {reassignCount === 1 ? 'time' : 'times'})</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-white/10 text-slate-300 border border-white/15">
+                        <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Original Assignment</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4-Step Interactive Tracking Pipeline */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs pt-1">
+                  {/* Step 1: Raised */}
+                  <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                    <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[10px] uppercase tracking-wider">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>1. Finding Raised</span>
+                    </div>
+                    <div className="text-slate-200 font-semibold truncate text-[11px]">
+                      {req.created_by || 'Requester'}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      {escDate || '—'} ({req.shift || 'Shift 1'})
+                    </div>
+                  </div>
+
+                  {/* Step 2: Assigned Closer */}
+                  <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                    <div className="flex items-center gap-1.5 text-blue-400 font-bold text-[10px] uppercase tracking-wider">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>2. Assigned Closer</span>
+                    </div>
+                    <div className="text-slate-200 font-semibold truncate text-[11px]">
+                      {req.executor || 'Not Assigned'}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      Dept: {req.department || '—'}
+                    </div>
+                  </div>
+
+                  {/* Step 3: Closer Action */}
+                  <div className={`p-2.5 rounded-xl border space-y-1 ${
+                    hasCloserSubmitted
+                      ? 'bg-white/5 border-white/10'
+                      : 'bg-amber-500/10 border-amber-400/30'
+                  }`}>
+                    <div className={`flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-wider ${
+                      hasCloserSubmitted ? 'text-teal-400' : 'text-amber-300'
+                    }`}>
+                      {hasCloserSubmitted ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      ) : (
+                        <Clock className="w-3.5 h-3.5 shrink-0" />
+                      )}
+                      <span>3. Closer Action</span>
+                    </div>
+                    <div className="text-slate-200 font-semibold truncate text-[11px]">
+                      {hasCloserSubmitted ? (req.action_taken_by || req.temporary_closed_by || req.permanent_closed_by || 'Submitted') : 'Pending Submission'}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      {req.action_taken_by
+                        ? `By: ${req.action_taken_by}`
+                        : (targetDate ? `Target: ${targetDate}` : 'Awaiting Closer')}
+                    </div>
+                  </div>
+
+                  {/* Step 4: Admin Sign-Off */}
+                  <div className={`p-2.5 rounded-xl border space-y-1 ${
+                    isReqClosed
+                      ? 'bg-emerald-500/15 border-emerald-400/30'
+                      : 'bg-white/5 border-white/10'
+                  }`}>
+                    <div className={`flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-wider ${
+                      isReqClosed ? 'text-emerald-400' : 'text-slate-400'
+                    }`}>
+                      {isReqClosed ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      ) : (
+                        <Lock className="w-3.5 h-3.5 shrink-0" />
+                      )}
+                      <span>4. Auditor Sign-Off</span>
+                    </div>
+                    <div className="text-slate-200 font-semibold truncate text-[11px]">
+                      {isReqClosed ? (req.reviewed_by || req.approved_by || 'Signed Off') : 'Awaiting Sign-Off'}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      Status: {statusBadgeLabel}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Admin Review & Sign-Off Section */}
+              <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                    <ShieldAlert className="w-4 h-4 text-indigo-600" />
+                    <span>Admin Review &amp; Sign-Off</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                      ADMIN ONLY
+                    </span>
+                    {isReqClosed && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 flex items-center gap-1">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                        <span>CLOSED &amp; SIGNED</span>
+                      </span>
+                    )}
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">Independent Update</span>
+                </div>
+
+                {/* Status Notice Banner */}
+                {isReqClosed ? (
+                  <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/80 text-emerald-900 text-xs flex items-center gap-2.5 animate-in fade-in">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div className="leading-tight">
+                      <span className="font-bold">Audit Finding Signed-Off &amp; Closed: </span>
+                      <span className="text-emerald-800">
+                        Verified by <strong className="text-emerald-950">{req.reviewed_by || req.approved_by || 'Quality Auditor'}</strong>. Status finalized to CLOSED.
+                      </span>
+                    </div>
+                  </div>
+                ) : isCloserDataToBeUpdated ? (
+                  <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/80 text-amber-900 text-xs flex items-center gap-2.5 animate-in fade-in">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div className="leading-tight">
+                      <span className="font-bold">Closer Submission: </span>
+                      <span className="text-amber-800">
+                        Closer countermeasures pending. Admin can review, edit, or sign off status.
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl border border-blue-200 bg-blue-50/70 text-blue-900 text-xs flex items-center gap-2.5 animate-in fade-in">
+                    <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                    <div className="leading-tight">
+                      <span className="font-bold">Ready for Review: </span>
+                      <span className="text-blue-800">
+                        Closer countermeasures submitted. Quality Auditor can review remarks and finalize status.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Reassign Closer Block */}
+                <div className="space-y-2">
+                  {!isReassignOpen ? (
+                    <div className={`flex items-center justify-between p-3 rounded-xl border transition ${
+                      isReqClosed ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-slate-50 border-slate-200/90'
+                    }`}>
+                      <div className="flex items-center gap-2.5">
+                        <UserCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                        <div className="text-left">
+                          <div className="text-[11px] font-bold flex items-center gap-1.5 text-slate-800">
+                            <span>Reassign Closer</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border bg-purple-50 text-purple-700 border-purple-200">
+                              Admin
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            Current: <strong className="text-slate-800">{req.executor || 'Not Assigned'}</strong> ({req.department || '—'})
+                          </div>
+                        </div>
+                      </div>
+                      {isAdmin && !isReqClosed && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsReassignOpen(true);
+                            setIsReassignUserDropdownOpen(false);
+                            setReassignUserSearch('');
+                            setReassignedDept(req.department || '');
+                            setReassignedPerson(req.executor || '');
+                            setAdminStatus('Pending');
+                          }}
+                          className="px-3 py-1.5 rounded-lg font-bold text-xs border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 shadow-2xs transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+                        >
+                          <UserCheck className="w-3.5 h-3.5" />
+                          <span>Reassign</span>
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    /* Expanded Reassign Box */
+                    <div className="p-3.5 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 rounded-xl border border-blue-200/90 space-y-3 animate-in fade-in">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-blue-200/60">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                          <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                          <span>REASSIGN CLOSER</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                            Admin
+                          </span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsReassignOpen(false);
+                            setIsReassignUserDropdownOpen(false);
+                            setReassignUserSearch('');
+                            setReassignedDept(req.department || '');
+                            setReassignedPerson(req.executor || '');
+                            setAdminStatus(isReqClosed ? 'Closed' : '');
+                            setAdminErrors(prev => ({ ...prev, reassignDept: '', reassignPerson: '', status: '' }));
+                          }}
+                          className="text-[11px] text-slate-500 hover:text-rose-600 font-semibold cursor-pointer underline flex items-center gap-1"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Department */}
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                            Department *
+                          </label>
+                          <select
+                            value={reassignedDept}
+                            onChange={(e) => {
+                              setReassignedDept(e.target.value);
+                              setReassignedPerson('');
+                              if (e.target.value) {
+                                setAdminErrors(prev => ({ ...prev, reassignDept: '' }));
+                              }
+                            }}
+                            className={`w-full px-2.5 py-2 bg-white border rounded-xl font-semibold text-slate-800 text-xs outline-none cursor-pointer ${
+                              adminErrors.reassignDept
+                                ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                                : 'border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                            }`}
+                          >
+                            <option value="">Select Department</option>
+                            {departmentList.map((dept) => (
+                              <option key={dept} value={dept}>
+                                {dept}
+                              </option>
+                            ))}
+                          </select>
+                          {adminErrors.reassignDept && (
+                            <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                              * {adminErrors.reassignDept}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Multi-Select User dropdown */}
+                        <div className="relative" ref={reassignDropdownRef}>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                              Executor User Name (Dept Based) *
+                            </label>
+                            {reassignedDept && getDepartmentUsers(reassignedDept).length > 0 && getSelectedReassignedUsers().length > 0 && (
+                              <button
+                                type="button"
+                                onClick={handleClearAllReassignUsers}
+                                className="text-[10px] text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Trigger box */}
+                          <div
+                            onClick={() => {
+                              if (reassignedDept) {
+                                setIsReassignUserDropdownOpen(prev => !prev);
+                              }
+                            }}
+                            className={`min-h-[38px] p-1.5 px-2.5 bg-white border rounded-xl flex items-center justify-between gap-2 cursor-pointer transition ${
+                              !reassignedDept
+                                ? 'bg-slate-100/70 border-slate-200 cursor-not-allowed select-none'
+                                : adminErrors.reassignPerson
+                                ? 'border-rose-400 bg-rose-50/20'
+                                : 'border-slate-300 focus-within:ring-2 focus-within:ring-blue-500/20'
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                              {!reassignedDept ? (
+                                <span className="text-slate-400 text-xs italic">Select department first</span>
+                              ) : getSelectedReassignedUsers().length === 0 ? (
+                                <span className="text-slate-400 text-xs">Select user(s)...</span>
+                              ) : (
+                                getSelectedReassignedUsers().map((uName) => (
+                                  <span
+                                    key={uName}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 font-bold text-[11px] border border-blue-200"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleReassignUser(uName);
+                                    }}
+                                  >
+                                    <span>{uName}</span>
+                                    <X className="w-3 h-3 hover:text-rose-600 cursor-pointer" />
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                            <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                          </div>
+                          {adminErrors.reassignPerson && (
+                            <p className="text-[10px] text-rose-500 font-semibold mt-1">
+                              * {adminErrors.reassignPerson}
+                            </p>
+                          )}
+
+                          {/* Dropdown Menu */}
+                          {isReassignUserDropdownOpen && reassignedDept && (
+                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 space-y-1.5 max-h-56 overflow-y-auto">
+                              <div className="relative">
+                                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                                <input
+                                  type="text"
+                                  value={reassignUserSearch}
+                                  onChange={(e) => setReassignUserSearch(e.target.value)}
+                                  placeholder="Search users..."
+                                  className="w-full pl-8 pr-2 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:border-blue-500"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                              <div className="space-y-0.5">
+                                {getDepartmentUsers(reassignedDept)
+                                  .filter(u => (u.name || '').toLowerCase().includes(reassignUserSearch.toLowerCase()))
+                                  .map(u => {
+                                    const isSel = getSelectedReassignedUsers().includes(u.name);
+                                    return (
+                                      <div
+                                        key={u.id || u.name}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleToggleReassignUser(u.name);
+                                        }}
+                                        className={`p-2 rounded-lg text-xs flex items-center justify-between cursor-pointer transition ${
+                                          isSel ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                                        }`}
+                                      >
+                                        <span>{u.name}</span>
+                                        {isSel && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Reassignment Remarks */}
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                          Reassignment Reason / Remarks (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={reassignRemarks}
+                          onChange={(e) => setReassignRemarks(e.target.value)}
+                          placeholder="e.g. Reassigned to shift supervisor for root cause analysis..."
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* REMARKS * [ADMIN] */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                      <span>REMARKS</span>
+                      <span className="text-rose-500 font-bold">*</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                        ADMIN
+                      </span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {Math.max(0, 1000 - (adminRemarks?.length || 0))} chars left
+                    </span>
+                  </div>
+
+                  <textarea
+                    rows={3}
+                    disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isReqClosed && !isAdmin)}
+                    placeholder={
+                      isCloserDataToBeUpdated && !isReassignOpen
+                        ? (adminRemarks || req.creator_remark || req.remarks || (reassignList?.[reassignList.length - 1]?.remarks) ? '' : 'Awaiting closer Corrective Action & Target Date...')
+                        : 'Enter auditor review and sign-off remarks...'
+                    }
+                    value={adminRemarks || ''}
+                    onChange={(e) => {
+                      setAdminRemarks(e.target.value);
+                      if (e.target.value.trim()) {
+                        setAdminErrors(prev => ({ ...prev, remarks: '' }));
+                      }
+                    }}
+                    className={`w-full px-3.5 py-2.5 border rounded-xl text-xs outline-none transition font-medium leading-relaxed resize-none ${
+                      !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isReqClosed && !isAdmin)
+                        ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
+                        : adminErrors.remarks
+                        ? 'border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
+                        : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
+                    }`}
+                  />
+
+                  {adminErrors.remarks ? (
+                    <p className="text-[11px] text-rose-500 font-semibold mt-0.5">
+                      * {adminErrors.remarks}
+                    </p>
+                  ) : isCloserDataToBeUpdated && !isReassignOpen ? (
+                    <p className="text-[11px] text-amber-700 font-semibold mt-0.5">
+                      Closer Action &amp; Target Date required before Admin Sign-Off.
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Comprehensive Quality Auditor verification remarks and final closure statement.
+                    </p>
+                  )}
+                </div>
+
+                {/* REVIEWED BY (optional) [ADMIN] */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                      <span>REVIEWED BY</span>
+                      <span className="text-slate-400 font-normal text-[10px]">(optional)</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                        ADMIN
+                      </span>
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      DEFAULTS TO: <strong className="text-slate-700">{user?.name || 'ADMIN'}</strong>
+                    </span>
+                  </div>
+
+                  <input
+                    type="text"
+                    disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isReqClosed && !isAdmin)}
+                    placeholder={`e.g. Leave empty to attach ${user?.name || 'Admin'}`}
+                    value={adminReviewedBy}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[0-9]/g, '');
+                      setAdminReviewedBy(val);
+                      if (/\d/.test(e.target.value)) {
+                        setAdminErrors(prev => ({ ...prev, reviewedBy: 'Reviewed By must contain text only, numbers are not allowed.' }));
+                      } else {
+                        setAdminErrors(prev => ({ ...prev, reviewedBy: '' }));
+                      }
+                    }}
+                    className={`w-full px-3.5 py-2 border rounded-xl text-xs font-semibold outline-none transition ${
+                      !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isReqClosed && !isAdmin)
+                        ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
+                        : adminErrors.reviewedBy
+                        ? 'border-rose-400 bg-rose-50/20'
+                        : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
+                    }`}
+                  />
+
+                  {adminErrors.reviewedBy ? (
+                    <p className="text-[11px] text-rose-500 font-semibold mt-0.5">
+                      * {adminErrors.reviewedBy}
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Quality Auditor reviewing this finding (defaults to logged-in user).
+                    </p>
+                  )}
+                </div>
+
+                {/* STATUS * [ADMIN] */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                    <span>STATUS</span>
+                    <span className="text-rose-500 font-bold">*</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                      ADMIN
+                    </span>
+                  </label>
+
+                  <select
+                    disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isReqClosed && !isAdmin)}
+                    value={isReassignOpen ? 'Pending' : adminStatus}
+                    onChange={(e) => {
+                      setAdminStatus(e.target.value);
+                      if (e.target.value) {
+                        setAdminErrors(prev => ({ ...prev, status: '' }));
+                      }
+                    }}
+                    className={`w-full px-3.5 py-2 border rounded-xl font-bold text-xs outline-none transition cursor-pointer ${
+                      !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isReqClosed && !isAdmin)
+                        ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
+                        : adminErrors.status
+                        ? 'border-rose-400 bg-rose-50/20'
+                        : 'bg-white border-slate-300 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
+                  >
+                    {isReassignOpen ? (
+                      <option value="Pending">PENDING (Awaiting Closer)</option>
+                    ) : (
+                      <>
+                        <option value="">Select Status...</option>
+                        <option value="Closed">CLOSED</option>
+                        <option value="Pending">PENDING</option>
+                      </>
+                    )}
+                  </select>
+
+                  {adminErrors.status ? (
+                    <p className="text-[11px] text-rose-500 font-semibold mt-0.5">
+                      * {adminErrors.status}
+                    </p>
+                  ) : isCloserDataToBeUpdated && !isReassignOpen ? (
+                    <p className="text-[11px] text-amber-700 font-semibold mt-0.5">
+                      Status unlocks after closer countermeasures submission.
+                    </p>
+                  ) : isReassignOpen ? (
+                    <p className="text-[10px] text-purple-700 font-semibold mt-0.5">
+                      Status locked to PENDING for new assignee.
+                    </p>
+                  ) : adminStatus === 'Closed' ? (
+                    <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">
+                      Status will be finalized to CLOSED.
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Select CLOSED to finalize auditor sign-off.
+                    </p>
+                  )}
+                </div>
+
+                {/* Sign-Off Action Button */}
+                <div className="pt-2">
+                  {isCloserDataToBeUpdated && !isReassignOpen ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-2.5 px-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                      title="Closer Action & Target Date required before Admin Sign-Off"
+                    >
+                      <Lock className="w-4 h-4 text-amber-600" />
+                      <span>Sign-Off Locked (Closer Pending)</span>
+                    </button>
+                  ) : isReassignOpen ? (
+                    <button
+                      type="button"
+                      onClick={handleSaveAdminSignOff}
+                      disabled={isSavingAdmin}
+                      className="w-full py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {isSavingAdmin ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Reassigning Closer...</span>
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck className="w-4 h-4" />
+                          <span>Confirm &amp; Reassign Closer</span>
+                        </>
+                      )}
+                    </button>
+                  ) : isAdmin && !isReqClosed ? (
+                    <button
+                      type="button"
+                      onClick={handleSaveAdminSignOff}
+                      disabled={isSavingAdmin}
+                      className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {isSavingAdmin ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Saving Sign-Off...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Save Admin Review &amp; Status Sign-Off</span>
+                        </>
+                      )}
+                    </button>
+                  ) : isReqClosed ? (
+                    <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-center gap-2 text-emerald-800 font-bold text-xs">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Audit Finding Fully Validated &amp; Closed</span>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-center font-medium text-xs">
+                      Admin sign-off fields are view-only for non-admin users.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 3. Reassignment Tracking History Section */}
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-slate-50 border border-purple-200/90 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-purple-200/60">
+                  <div className="flex items-center gap-2 text-purple-900 text-xs font-bold uppercase tracking-wider">
+                    <ArrowRightLeft className="w-4 h-4 text-purple-600" />
+                    <span>REASSIGNMENT TRACKING HISTORY ({reassignCount})</span>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border font-mono ${
+                    hasReassignments
+                      ? 'bg-purple-100 text-purple-800 border-purple-300'
+                      : 'bg-slate-100 text-slate-600 border-slate-200'
+                  }`}>
+                    Reassigned: {hasReassignments ? 'Yes' : 'No'}
+                  </span>
+                </div>
+
+                {hasReassignments && reassignList.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {reassignList.map((entry, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3.5 bg-white rounded-xl border border-purple-100 shadow-2xs space-y-2 text-xs"
+                      >
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-mono font-bold text-[10px]">
+                              #{idx + 1}
+                            </span>
+                            <span className="text-slate-600 font-medium">
+                              From: <strong className="text-slate-900">{entry.prev_resp_person || entry.previous_executor || '—'}</strong> ({entry.prev_resp || entry.previous_department || '—'})
+                            </span>
+                            <ArrowRightLeft className="w-3 h-3 text-purple-400 inline" />
+                            <span className="text-purple-700 font-medium">
+                              To: <strong className="text-purple-900">{entry.new_resp_person || entry.new_executor || '—'}</strong> ({entry.new_resp || entry.new_department || '—'})
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            {[
+                              entry.reassigned_by ? `by ${entry.reassigned_by}` : '',
+                              entry.reassigned_at ? formatDateDDMMYYYY(entry.reassigned_at) : ''
+                            ].filter(Boolean).join(' • ')}
+                          </span>
+                        </div>
+                        {(entry.remarks || entry.reason) && (
+                          <div className="text-[11px] text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 italic">
+                            <span className="font-semibold text-slate-500 not-italic">Remarks: </span>
+                            {entry.remarks || entry.reason}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-white/80 rounded-xl border border-dashed border-purple-200 text-xs text-slate-600 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-800">Original Responsible Owner Assignment</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        Assigned to <strong className="text-slate-700">{req.executor || 'Not Assigned'}</strong> ({req.department || '—'}). No reassignments have occurred for this audit finding.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Process Audit Trail Summary */}
+              <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-2 text-slate-700 text-xs font-bold uppercase tracking-wider">
+                  <History className="w-4 h-4 text-slate-500" />
+                  <span>Audit Trail Summary</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
+                    <span className="block text-[10px] font-bold uppercase text-slate-400">Created By</span>
+                    <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.created_by || 'Admin'}</span>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
+                    <span className="block text-[10px] font-bold uppercase text-slate-400">Assigned Closer</span>
+                    <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.executor || '—'}</span>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-xl border border-emerald-200/80 bg-emerald-50/20">
+                    <span className="block text-[10px] font-bold uppercase text-emerald-600">Action Taken By</span>
+                    <span className="font-bold text-emerald-800 block mt-0.5 truncate">
+                      {req.action_taken_by || req.temporary_closed_by || req.permanent_closed_by || '—'}
+                    </span>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
+                    <span className="block text-[10px] font-bold uppercase text-slate-400">Target Date</span>
+                    <span className="font-semibold text-slate-800 block mt-0.5 truncate">{targetDate || '—'}</span>
+                  </div>
+                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
+                    <span className="block text-[10px] font-bold uppercase text-slate-400">Auditor Sign-off</span>
+                    <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.reviewed_by || req.approved_by || '—'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : activeTab === 'closer' ? (
             /* TAB 2: CLOSER DETAILS */
             isEditMode ? (
               /* TAB 2: CLOSER DETAILS - EDIT MODE */
@@ -948,8 +1944,8 @@ const ProcessAuditRequestDetailsModal = ({
                       )}
                     </div>
 
-                    {/* Temporary Target Date, Temporary Closed By, Auditor Remarks & Reviewed By */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                    {/* Temporary Target Date & Temporary Closed By */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                       <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                         <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                           TEMPORARY TARGET DATE
@@ -965,24 +1961,6 @@ const ProcessAuditRequestDetailsModal = ({
                         </span>
                         <span className="font-medium text-slate-900 text-sm">
                           {req.temporary_closed_by || req.action_taken_by || '—'}
-                        </span>
-                      </div>
-
-                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          AUDITOR SIGN-OFF REMARKS
-                        </span>
-                        <div className="text-slate-800 leading-relaxed font-medium">
-                          {req.creator_remark || req.remarks || <span className="text-slate-400 italic">No auditor remarks provided.</span>}
-                        </div>
-                      </div>
-
-                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          REVIEWED BY
-                        </span>
-                        <span className="font-bold text-slate-900 block text-xs">
-                          {req.reviewed_by || req.approved_by || '—'}
                         </span>
                       </div>
                     </div>
@@ -1051,6 +2029,27 @@ const ProcessAuditRequestDetailsModal = ({
                           </span>
                         </div>
                       </div>
+
+                      {/* Last Row: Auditor Sign-off Remarks & Reviewed By */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2 border-t border-slate-200/80">
+                        <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                          <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            AUDITOR SIGN-OFF REMARKS
+                          </span>
+                          <div className="text-slate-800 leading-relaxed font-medium">
+                            {req.creator_remark || req.remarks || <span className="text-slate-400 italic">No auditor remarks provided.</span>}
+                          </div>
+                        </div>
+
+                        <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                          <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            REVIEWED BY
+                          </span>
+                          <span className="font-bold text-slate-900 block text-xs">
+                            {req.reviewed_by || req.approved_by || '—'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -1115,17 +2114,18 @@ const ProcessAuditRequestDetailsModal = ({
                       )}
                     </div>
 
-                    {/* 6. Target Date, Sign-off Remarks & Reviewed By */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          TARGET DATE
-                        </span>
-                        <span className="font-mono font-bold text-slate-900 text-sm">
-                          {targetDate}
-                        </span>
-                      </div>
+                    {/* Target Date */}
+                    <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1 text-xs">
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        TARGET DATE
+                      </span>
+                      <span className="font-mono font-bold text-slate-900 text-sm">
+                        {targetDate}
+                      </span>
+                    </div>
 
+                    {/* Last Row: Auditor Sign-off Remarks & Reviewed By */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1 border-t border-slate-200/80">
                       <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                         <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                           AUDITOR SIGN-OFF REMARKS
@@ -1229,6 +2229,29 @@ const ProcessAuditRequestDetailsModal = ({
                     <span>Priority: <strong className="text-amber-800 font-mono">{req.priority || 'Medium'}</strong></span>
                     <span>Executor: <strong className="text-blue-700 font-mono">{req.executor || '—'}</strong></span>
                   </div>
+                </div>
+
+                {/* 8. Quick Switch to Sign Fields & Tracks */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-slate-50 border border-indigo-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5 text-slate-700">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-900 block">Sign Fields, Closer Reassignment &amp; Tracking History</span>
+                      <span className="text-[11px] text-slate-500">
+                        View or finalize admin verification sign-off and audit trail tracks.
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('sign_tracks')}
+                    className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <span>View Sign &amp; Tracks</span>
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             )
@@ -1853,8 +2876,8 @@ const ProcessAuditRequestDetailsModal = ({
                 </div>
               )}
 
-              {/* Bottom Navigation: View Closer Details */}
-              <div className="pt-2 flex justify-end">
+              {/* Bottom Navigation: View Closer Details & Sign & Tracks */}
+              <div className="pt-2 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setActiveTab('closer')}
@@ -1862,6 +2885,17 @@ const ProcessAuditRequestDetailsModal = ({
                 >
                   <span>View Closer Details</span>
                   <CheckCircle2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isEditMode) setIsEditMode(false);
+                    setActiveTab('sign_tracks');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                >
+                  <span>Sign &amp; Tracks</span>
+                  <ShieldCheck className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -1919,6 +2953,12 @@ const ProcessAuditRequestDetailsModal = ({
                       {actionAttachments.length} closer evidence attachment{actionAttachments.length > 1 ? 's' : ''} available
                     </span>
                   )
+                ) : activeTab === 'sign_tracks' ? (
+                  <span className="text-xs text-slate-500 font-medium">
+                    {hasReassignments
+                      ? `${reassignCount} reassignment track${reassignCount > 1 ? 's' : ''} recorded`
+                      : 'Original assignee tracking record'}
+                  </span>
                 ) : (
                   creatorAttachments.length > 0 && (
                     <span className="text-xs text-slate-400 font-medium">
