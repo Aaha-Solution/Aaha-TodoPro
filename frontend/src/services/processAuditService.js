@@ -139,5 +139,19 @@ export const processAuditService = {
     } catch {
       return null;
     }
+  },
+
+  getEmailLogs: async () => {
+    try {
+      const res = await api.get('/process-audit/requests/email-logs');
+      return res.data?.data || res.data || [];
+    } catch {
+      return [];
+    }
+  },
+
+  testEmail: async (data = {}) => {
+    const res = await api.post('/process-audit/requests/test-email', data);
+    return res.data?.data || res.data;
   }
 };

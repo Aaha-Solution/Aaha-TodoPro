@@ -624,6 +624,16 @@ const CreateRequest = () => {
       issue_observation: formData.issueObservation,
       department: formData.department,
       executor: selectedExecutors.length > 0 ? selectedExecutors.join(', ') : (formData.executor || ''),
+      executor_email: (() => {
+        if (selectedExecutors.length > 0) {
+          const matchedEmails = deptUsers
+            .filter((u) => selectedExecutors.includes(u.name))
+            .map((u) => u.email)
+            .filter(Boolean);
+          if (matchedEmails.length > 0) return matchedEmails.join(', ');
+        }
+        return '';
+      })(),
       comments: formData.comments,
       attachments: finalAttachments,
       created_by: creatorName,

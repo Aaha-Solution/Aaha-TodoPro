@@ -6,12 +6,16 @@ import {
   uploadAttachments, 
   updateRequestStatus, 
   reassignRequest,
-  updateRequest
+  updateRequest,
+  getProcessAuditEmailLogs,
+  testProcessAuditEmail
 } from '../controllers/requestController.js';
 import { upload } from '../middleware/upload.js';
 
 const router = Router();
 router.get('/next-id', getNextId);
+router.get('/email-logs', getProcessAuditEmailLogs);
+router.post('/test-email', testProcessAuditEmail);
 router.get('/', getAllRequests);
 router.post('/upload', upload.array('files', 15), uploadAttachments);
 router.post('/', upload.array('files', 15), createRequest);

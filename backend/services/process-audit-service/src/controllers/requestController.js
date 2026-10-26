@@ -5,7 +5,7 @@ import { ProcessAuditRequest } from '../models/Request.js';
 import Attachment from '../models/Attachment.js';
 import { successResponse, errorResponse } from '../../../shared/response.js';
 import { broadcastEvent } from '../../../shared/realtimeNotifier.js';
-import { sendProcessAuditRequestEmails, sendProcessAuditCloserEmails, sendEmail } from '../../../shared/mailer.js';
+import { sendProcessAuditRequestEmails, sendProcessAuditCloserEmails, sendEmail, generateEmailTemplate } from '../../../shared/mailer.js';
 
 export const getNextId = async (req, res) => {
   try {
@@ -144,13 +144,13 @@ export const createRequest = async (req, res) => {
       }
     }
 
-    // Verify department authorization: Authenticated user must be from QAD or ADMIN
+    // Verify department authorization: Authenticated user must be from QAD, Production, or ADMIN
     const uDept = (creatorUser.department || '').trim().toUpperCase();
     const uRole = (creatorUser.role || req.user?.role || '').trim().toUpperCase();
-    if (uRole !== 'ADMIN' && uDept !== 'QAD') {
+    if (uRole !== 'ADMIN' && uDept !== 'QAD' && uDept !== 'PRODUCTION') {
       return errorResponse(
         res,
-        'Access Denied: Only personnel from the QAD department are authorized to create Process Audit requests.',
+        'Access Denied: Only personnel from QAD, Production, or Admin are authorized to create Process Audit requests.',
         403
       );
     }
@@ -244,12 +244,15 @@ export const createRequest = async (req, res) => {
 
     // 2. Trigger Emails to Raised Person AND All Assigned Executors
     try {
+      let isFirst = true;
       for (const userItem of assignedUsersList) {
         sendProcessAuditRequestEmails({
           request: created,
           creatorUser,
-          assignedUser: userItem
+          assignedUser: userItem,
+          skipCreator: !isFirst
         }).catch((mailErr) => console.warn('[Process Audit Mailer] Non-blocking email dispatch warning:', mailErr.message));
+        isFirst = false;
       }
     } catch (mailSyncErr) {
       console.warn('[Process Audit Mailer] Sync email dispatch warning:', mailSyncErr.message);
@@ -750,14 +753,41 @@ export const reassignRequest = async (req, res) => {
         ).catch((e) => console.warn('[PA Reassign Notif Error]:', e.message));
 
         try {
+          const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+          const tableData = [
+            { label: 'Request Number', value: issueNo },
+            { label: 'Product / Model', value: `${updated.product || '—'} (${updated.model || '—'})` },
+            { label: 'Process / Operation', value: updated.process_operation || '—' },
+            { label: 'New Department', value: new_department },
+            { label: 'New Executor', value: u.name || new_executor },
+            { label: 'Reassigned By', value: reassignedByName },
+            { label: 'Reassignment Reason', value: reason || 'Department workflow reallocation' },
+            { label: 'Status', value: 'Pending' }
+          ];
+
+          const execHtml = generateEmailTemplate({
+            headerTitle: `Action Required: Process Audit #${issueNo} Reassigned`,
+            headerSubtitle: `A process audit finding has been reassigned to you for investigation and corrective action.`,
+            recipientName: u.name || new_executor,
+            greetingMessage: `Process Audit report <strong>${issueNo}</strong> (${updated.model || 'Process'}) has been reassigned to you in <strong>${new_department}</strong> by <strong>${reassignedByName}</strong>.${reasonText ? `<br><br><strong>Reason:</strong> ${reason}` : ''}<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
+            tableData,
+            actionButtonText: 'Open Report & Submit Countermeasure',
+            actionButtonUrl: `${baseUrl}/process-audit/approvals`,
+            footerNote: 'Immediate action required: please inspect the process finding and record corrective containment measures in the portal.',
+            badgeColor: '#f59e0b',
+            badgeText: 'REASSIGNED'
+          });
+
           sendEmail({
             to: u.email || process.env.SMTP_USER || '',
             recipientName: u.name || new_executor || 'Assigned Closer',
             recipientRole: 'ASSIGNED_CLOSER',
-            subject: `[Process Audit Action Required] Audit Finding Assigned to You: #${issueNo}`,
-            text: `Dear ${u.name || 'Team Member'},\n\nProcess Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to you (${new_department}) by ${reassignedByName}.${reasonText}\n\nPlease review and submit root cause analysis and containment actions at: http://localhost:5173/process-audit/approvals\n\nThank you,\nQuality Portal`,
+            subject: `[Process Audit Action Required] Audit Finding #${issueNo} Reassigned to You (${new_department}) - Pending`,
+            text: `Dear ${u.name || 'Team Member'},\n\nProcess Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to you (${new_department}) by ${reassignedByName}.${reasonText}\n\nPlease review and submit root cause analysis and containment actions at: ${baseUrl}/process-audit/approvals\n\nThank you,\nQuality Portal`,
+            html: execHtml,
             referenceNo: issueNo,
-            moduleType: 'PROCESS_AUDIT'
+            moduleType: 'PROCESS_AUDIT',
+            requestId: updated.id
           }).catch((err) => console.warn('[PA Reassign Mail Warning]:', err.message));
         } catch (mErr) {
           console.warn('[PA Reassign Mail Sync Warning]:', mErr.message);
@@ -782,14 +812,41 @@ export const reassignRequest = async (req, res) => {
         ).catch((e) => console.warn('[PA Reassign Req Notif Error]:', e.message));
 
         try {
+          const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+          const tableData = [
+            { label: 'Request Number', value: issueNo },
+            { label: 'Product / Model', value: `${updated.product || '—'} (${updated.model || '—'})` },
+            { label: 'Process / Operation', value: updated.process_operation || '—' },
+            { label: 'New Department', value: new_department },
+            { label: 'New Executor', value: new_executor },
+            { label: 'Reassigned By', value: reassignedByName },
+            { label: 'Reassignment Reason', value: reason || 'Department workflow reallocation' },
+            { label: 'Status', value: 'Pending' }
+          ];
+
+          const creatorHtml = generateEmailTemplate({
+            headerTitle: `Process Audit Reassigned: #${issueNo}`,
+            headerSubtitle: `Your process audit observation finding has been reassigned to a new department/executor.`,
+            recipientName: updated.created_by || 'Quality Requester',
+            greetingMessage: `Your Process Audit observation report <strong>${issueNo}</strong> (${updated.model || 'Process'}) has been reassigned to <strong>${new_executor}</strong> (<strong>${new_department}</strong>) by <strong>${reassignedByName}</strong>.${reasonText ? `<br><br><strong>Reason:</strong> ${reason}` : ''}`,
+            tableData,
+            actionButtonText: 'View Process Audit Requests',
+            actionButtonUrl: `${baseUrl}/process-audit/all-requests`,
+            footerNote: 'You will receive an update once the new department submits containment countermeasures.',
+            badgeColor: '#3b82f6',
+            badgeText: 'REASSIGNED'
+          });
+
           sendEmail({
             to: updated.created_by_email || process.env.SMTP_USER || '',
             recipientName: updated.created_by || 'Quality Requester',
             recipientRole: 'RAISED_PERSON',
-            subject: `[Process Audit Case Reassigned] Audit Report #${issueNo} Reassigned to ${new_executor}`,
-            text: `Dear ${updated.created_by || 'Quality Requester'},\n\nYour Process Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to ${new_executor} (${new_department}) by ${reassignedByName}.${reasonText}\n\nView details: http://localhost:5173/process-audit/all-requests\n\nThank you,\nQuality Portal`,
+            subject: `[Process Audit Notice] Request #${issueNo} Reassigned to ${new_executor} (${new_department})`,
+            text: `Dear ${updated.created_by || 'Quality Requester'},\n\nYour Process Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to ${new_executor} (${new_department}) by ${reassignedByName}.${reasonText}\n\nView details: ${baseUrl}/process-audit/all-requests\n\nThank you,\nQuality Portal`,
+            html: creatorHtml,
             referenceNo: issueNo,
-            moduleType: 'PROCESS_AUDIT'
+            moduleType: 'PROCESS_AUDIT',
+            requestId: updated.id
           }).catch((err) => console.warn('[PA Reassign Req Mail Warning]:', err.message));
         } catch (mReqErr) {
           console.warn('[PA Reassign Req Mail Sync Warning]:', mReqErr.message);
@@ -886,6 +943,40 @@ export const updateRequest = async (req, res) => {
     return successResponse(res, updated, 'Process Audit Request updated successfully');
   } catch (err) {
     return errorResponse(res, err.message);
+  }
+};
+
+export const getProcessAuditEmailLogs = async (req, res) => {
+  try {
+    if (!pool) return successResponse(res, []);
+    const [rows] = await pool.query(
+      `SELECT id, module_type, request_id, reference_no, recipient_role, recipient_name, recipient_email, subject, delivery_status, smtp_response, error_message, sent_at 
+       FROM email_logs 
+       WHERE module_type = 'PROCESS_AUDIT' 
+       ORDER BY id DESC LIMIT 50`
+    );
+    return successResponse(res, rows || [], 'Process Audit Email logs retrieved');
+  } catch (error) {
+    return errorResponse(res, error.message, 500);
+  }
+};
+
+export const testProcessAuditEmail = async (req, res) => {
+  try {
+    const to = req.body?.to || process.env.SMTP_USER || '';
+    const result = await sendEmail({
+      to,
+      recipientName: req.body?.name || 'Process Audit Tester',
+      recipientRole: 'TESTER',
+      subject: '[INEL Process Audit Portal] Test Email Notification',
+      text: 'This is a test notification from INEL Process Audit Quality Management Portal using configured SMTP credentials.',
+      html: `<p>This is a test notification from <strong>INEL Process Audit Quality Management Portal</strong> using configured SMTP credentials (<code>${process.env.SMTP_USER || 'Environment Config'}</code>).</p>`,
+      moduleType: 'PROCESS_AUDIT',
+      referenceNo: 'TEST-PA-001'
+    });
+    return successResponse(res, result, 'Test email dispatch executed');
+  } catch (error) {
+    return errorResponse(res, error.message, 500);
   }
 };
 

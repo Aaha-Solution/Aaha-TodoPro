@@ -11,6 +11,7 @@ import userRoutes from './routes/userRoutes.js';
 import approvalRoutes from './routes/approvalRoutes.js';
 import attachmentRoutes from './routes/attachmentRoutes.js';
 import { getAttachment, downloadAttachment } from './controllers/attachmentController.js';
+import { getProcessAuditEmailLogs, testProcessAuditEmail } from './controllers/requestController.js';
 import { ensureAttachmentTable } from './models/Attachment.js';
 import { errorHandler } from '../../../shared/errorMiddleware.js';
 
@@ -48,6 +49,8 @@ app.get('/api/health', (req, res) => {
 
 // Mount routes
 const mountRoutes = (prefix = '') => {
+  app.get(`${prefix}/email-logs`, getProcessAuditEmailLogs);
+  app.post(`${prefix}/test-email`, testProcessAuditEmail);
   app.use(`${prefix}/dashboard`, dashboardRoutes);
   app.use(`${prefix}/requests`, requestRoutes);
   app.use(`${prefix}/attachments`, attachmentRoutes);
