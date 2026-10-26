@@ -509,13 +509,14 @@ const CreateRequest = () => {
 
   const isQad = currentDept.toUpperCase() === 'QAD';
   const isAdmin = userRole === 'ADMIN' || isQad;
-  const canCreate = isQad || isAdmin;
+  const isProduction = currentDept.toUpperCase() === 'PRODUCTION';
+  const canCreate = isQad || isAdmin || isProduction;
 
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
     if (!canCreate) {
-      warning('Only members of the QAD department can create new requests.');
+      warning('Only members of QAD or Production departments can create new requests.');
       return;
     }
 
@@ -686,7 +687,11 @@ const CreateRequest = () => {
             <span className="font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 inline-block my-1">
               QAD
             </span>{' '}
-            department are authorized to create new production audit requests.
+            or{' '}
+            <span className="font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 inline-block my-1">
+              PRODUCTION
+            </span>{' '}
+            departments are authorized to create new production audit requests.
           </p>
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/70 text-xs text-slate-600 mb-6 max-w-md mx-auto text-left space-y-1.5">
             <div className="flex items-center justify-between">

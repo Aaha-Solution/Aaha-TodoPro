@@ -63,7 +63,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
       ]
     : [
         { name: 'Dashboard', path: '/process-audit/dashboard', icon: LayoutDashboard },
-        ...(isAdmin ? [{ name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true }] : []),
+        ...(canCreate ? [{ name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true }] : []),
         { name: 'All Requests', path: '/process-audit/all-requests', icon: Layers },
         { name: isAdmin ? 'All Approvals' : 'Approvals', path: '/process-audit/approvals', icon: ClipboardCheck },
         ...(isAdmin ? [{ name: 'User Management', path: '/process-audit/users', icon: Users }] : []),

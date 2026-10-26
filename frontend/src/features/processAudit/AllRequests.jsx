@@ -65,6 +65,8 @@ const AllRequests = () => {
 
   const isQad = currentDept.toUpperCase() === 'QAD';
   const isAdmin = userRole === 'ADMIN' || isQad;
+  const isProduction = currentDept.toUpperCase() === 'PRODUCTION';
+  const canCreate = isQad || isAdmin || isProduction;
   const canEdit = isAdmin;
 
   const [searchParams] = useSearchParams();
@@ -557,7 +559,7 @@ const AllRequests = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {canEdit && (
+          {canCreate && (
             <button
               onClick={() => navigate('/process-audit/create-request')}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"

@@ -65,7 +65,8 @@ const ProcessAuditDashboard = () => {
 
   const isQad = userDept === 'QAD';
   const isAdmin = userRole === 'ADMIN' || isQad;
-  const canCreate = isQad || isAdmin;
+  const isProduction = userDept === 'PRODUCTION';
+  const canCreate = isQad || isAdmin || isProduction;
 
   const [requests, setRequests] = useState([]);
   const [metrics, setMetrics] = useState({});
