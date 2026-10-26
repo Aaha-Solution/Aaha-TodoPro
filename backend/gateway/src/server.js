@@ -86,7 +86,7 @@ app.post('/api/internal/broadcast', express.json(), (req, res) => {
 
 // Health Check & Gateway Status
 app.get('/api/health', (req, res) => {
-  res.json({
+  const healthData = {
     status: 'ok',
     service: 'INEL API Gateway',
     timestamp: new Date().toISOString(),
@@ -97,7 +97,16 @@ app.get('/api/health', (req, res) => {
       ihlr: process.env.IHLR_SERVICE_URL || 'http://localhost:5003',
       tryoutStatus: process.env.TRYOUT_SERVICE_URL || 'http://localhost:5004',
     }
-  });
+  };
+
+  if (process.env.PUBLIC_GATEWAY_URL) {
+    healthData.public_url = process.env.PUBLIC_GATEWAY_URL;
+  }
+  if (process.env.PUBLIC_API_URL) {
+    healthData.public_api = process.env.PUBLIC_API_URL;
+  }
+
+  res.json(healthData);
 });
 
 // Proxy error helper
@@ -187,10 +196,14 @@ const getLocalIp = () => {
 
 server.listen(PORT, '0.0.0.0', () => {
   const localIp = getLocalIp();
+
   console.log(`[INEL API Gateway + WebSocket] running on:`);
-  console.log(`  > Local:   http://localhost:${PORT}`);
-  console.log(`  > Network: http://${localIp}:${PORT}`);
-  console.log(`  > WebSocket: ws://localhost:${PORT}`);
+  console.log(`  > Local:      http://localhost:${PORT}`);
+  console.log(`  > Network:    http://${localIp}:${PORT}`);
+  if (process.env.PUBLIC_API_URL) {
+    console.log(`  > Public API: ${process.env.PUBLIC_API_URL}`);
+  }
+  console.log(`  > WebSocket:  ws://localhost:${PORT}`);
   console.log(`[Gateway Routing Matrix]`);
   console.log(` -> /api/auth          => ${authServiceUrl}`);
   console.log(` -> /api/users         => ${authServiceUrl}`);

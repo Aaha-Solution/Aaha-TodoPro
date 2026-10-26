@@ -41,6 +41,7 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   // Dynamically ensure request always targets the host IP/domain of the current browser session
   config.baseURL = getApiBaseUrl();
+  config.headers['Bypass-Tunnel-Reminder'] = 'true';
 
   const token = storage.getToken();
   if (token) {
