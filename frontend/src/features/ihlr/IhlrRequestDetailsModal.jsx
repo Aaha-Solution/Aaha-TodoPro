@@ -165,7 +165,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       analysis_done_by: targetReq.analysis_done_by || '',
       created_by: targetReq.created_by || user?.name || user?.email || 'Admin',
       problem: targetReq.problem || '',
-      occurrence_cause: targetReq.occurrence_cause || targetReq.detailed_observation || targetReq.problem || ''
+      occurrence_cause: targetReq.occurrence_cause || targetReq.detailed_observation || ''
     });
     setEditAttachments(parseAttachments(targetReq.defect_image));
     setNewFiles([]);
@@ -947,12 +947,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         ],
         body: [
           [
-            { content: 'Problem / Defect Title:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Problem / Defect Description:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: targetReq.problem || '—' }
-          ],
-          [
-            { content: 'Detailed Observation / Occurrence:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
-            { content: targetReq.occurrence_cause || targetReq.problem_description || targetReq.detailed_observation || targetReq.problem || '—' }
           ],
           [
             { content: 'Defect Attachment(s) (Requester):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
@@ -2204,8 +2200,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   )}
                 </div>
 
-                {/* 5. Target Date & Remarks (Image 1: REMARKS Word) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                {/* 5. Target Date & Closed By */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       TEMPORARY TARGET DATE
@@ -2227,24 +2223,6 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         (Updated by: {request.closer_updated_by})
                       </span>
                     )}
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      REMARKS
-                    </span>
-                    <div className="text-slate-800 leading-relaxed font-medium">
-                      {request.remarks || <span className="text-slate-400 italic">No remarks provided.</span>}
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      REVIEWED BY
-                    </span>
-                    <span className="font-bold text-slate-900 block text-xs">
-                      {request.reviewed_by || '—'}
-                    </span>
                   </div>
                 </div>
 
@@ -2848,46 +2826,31 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <span>2. DEFECT PROBLEM DESCRIPTION</span>
                   </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        PROBLEM / DEFECT PHENOMENON <span className="text-rose-500">*</span>
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={editFormData.problem}
-                        onChange={(e) => {
-                          setEditFormData(prev => ({ ...prev, problem: e.target.value }));
-                          if (editErrors.problem && e.target.value.trim()) {
-                            setEditErrors(prev => ({ ...prev, problem: '' }));
-                          }
-                        }}
-                        placeholder="Describe the defect phenomenon in detail..."
-                        className={`w-full p-3 rounded-2xl text-xs text-slate-900 outline-none transition leading-relaxed ${
-                          editErrors.problem
-                            ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                            : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
-                        }`}
-                      />
-                      {editErrors.problem && (
-                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                          <span>* {editErrors.problem}</span>
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        DETAILED DEFECT OCCURRENCE &amp; OBSERVATION
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={editFormData.occurrence_cause}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, occurrence_cause: e.target.value }))}
-                        placeholder="Additional notes on defect occurrence, root observations, or line conditions..."
-                        className="w-full p-3 bg-white border border-slate-300 rounded-2xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition leading-relaxed"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      PROBLEM / DEFECT PHENOMENON <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editFormData.problem}
+                      onChange={(e) => {
+                        setEditFormData(prev => ({ ...prev, problem: e.target.value }));
+                        if (editErrors.problem && e.target.value.trim()) {
+                          setEditErrors(prev => ({ ...prev, problem: '' }));
+                        }
+                      }}
+                      placeholder="Describe the defect phenomenon in detail..."
+                      className={`w-full p-3 rounded-2xl text-xs text-slate-900 outline-none transition leading-relaxed ${
+                        editErrors.problem
+                          ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                          : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
+                      }`}
+                    />
+                    {editErrors.problem && (
+                      <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                        <span>* {editErrors.problem}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -3254,23 +3217,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <span>2. DEFECT PROBLEM DESCRIPTION</span>
                   </div>
 
-                  <div className="space-y-3">
-                    <div>
-                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        PROBLEM / DEFECT PHENOMENON
-                      </span>
-                      <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 leading-relaxed font-normal min-h-[50px]">
-                        {req.problem || 'No defect description logged.'}
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        DETAILED DEFECT OCCURRENCE &amp; OBSERVATION
-                      </span>
-                      <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 leading-relaxed font-normal min-h-[60px]">
-                        {req.occurrence_cause || req.problem || 'No detailed occurrence observations recorded.'}
-                      </div>
+                  <div>
+                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      PROBLEM / DEFECT PHENOMENON
+                    </span>
+                    <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 leading-relaxed font-normal min-h-[50px]">
+                      {req.problem || 'No defect description logged.'}
                     </div>
                   </div>
                 </div>
