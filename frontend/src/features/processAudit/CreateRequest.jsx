@@ -317,6 +317,7 @@ const CreateRequest = () => {
         return {
           id: u.id,
           name: u.name,
+          email: u.email || '',
           role: u.role || '',
           label: displayLabel,
         };
@@ -1374,12 +1375,19 @@ const CreateRequest = () => {
                     selectedExecutors.map((execName) => {
                       const matched = availableExecutors.find((e) => e.name === execName);
                       const display = matched ? matched.name : execName;
+                      const email = matched?.email;
                       return (
                         <span
                           key={execName}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200/80 text-[11px] font-semibold"
+                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200/80 text-[11px] font-semibold"
+                          title={email ? `${display} (${email})` : display}
                         >
-                          <span className="truncate max-w-[150px]">{display}</span>
+                          <span className="truncate max-w-[130px]">{display}</span>
+                          {email && (
+                            <span className="text-[10px] font-normal text-blue-600/80 truncate max-w-[140px]">
+                              ({email})
+                            </span>
+                          )}
                           <span
                             role="button"
                             tabIndex={0}
@@ -1387,7 +1395,7 @@ const CreateRequest = () => {
                               e.stopPropagation();
                               handleToggleExecutor(execName);
                             }}
-                            className="p-0.5 hover:bg-blue-200/60 rounded text-blue-600 hover:text-blue-900 transition cursor-pointer"
+                            className="p-0.5 hover:bg-blue-200/60 rounded text-blue-600 hover:text-blue-900 transition cursor-pointer shrink-0"
                             title="Remove"
                           >
                             <X className="w-3 h-3" />
@@ -1440,7 +1448,7 @@ const CreateRequest = () => {
                           type="text"
                           value={executorSearch}
                           onChange={(e) => setExecutorSearch(e.target.value)}
-                          placeholder="Search executor by name..."
+                          placeholder="Search executor by name or email..."
                           className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           onClick={(e) => e.stopPropagation()}
                         />
@@ -1450,10 +1458,14 @@ const CreateRequest = () => {
 
                   <div className="max-h-56 overflow-y-auto p-1.5 divide-y divide-slate-50">
                     {availableExecutors
-                      .filter((e) =>
-                        e.label.toLowerCase().includes(executorSearch.toLowerCase()) ||
-                        e.name.toLowerCase().includes(executorSearch.toLowerCase())
-                      )
+                      .filter((e) => {
+                        const q = executorSearch.toLowerCase();
+                        return (
+                          e.label.toLowerCase().includes(q) ||
+                          e.name.toLowerCase().includes(q) ||
+                          (e.email || '').toLowerCase().includes(q)
+                        );
+                      })
                       .map((exec) => {
                         const isChecked = selectedExecutors.includes(exec.name);
                         return (
@@ -1477,12 +1489,21 @@ const CreateRequest = () => {
                                 {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                               </div>
                               <div className="min-w-0">
-                                <div className="text-xs truncate">{exec.name}</div>
-                                {exec.role && exec.role.toLowerCase() !== 'user' && (
+                                <div className="text-xs truncate font-medium">{exec.name}</div>
+                                {exec.email ? (
+                                  <div className="text-[10px] text-slate-400 truncate flex items-center gap-1.5">
+                                    <span>{exec.email}</span>
+                                    {exec.role && exec.role.toLowerCase() !== 'user' && (
+                                      <span className="text-[9px] text-slate-500 font-medium px-1 py-0.2 bg-slate-100 rounded">
+                                        {exec.role}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : exec.role && exec.role.toLowerCase() !== 'user' ? (
                                   <div className="text-[10px] text-slate-400 truncate">
                                     {exec.role}
                                   </div>
-                                )}
+                                ) : null}
                               </div>
                             </div>
                             {isChecked && (
