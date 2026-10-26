@@ -918,6 +918,23 @@ export const updateIhlrRequest = async (req, res) => {
       }
     }
 
+    if (safeUpdates.permanent_target_date !== undefined) {
+      const trimmed = typeof safeUpdates.permanent_target_date === 'string' ? safeUpdates.permanent_target_date.trim() : '';
+      if (trimmed) {
+        const permDateOnly = trimmed.split('T')[0];
+        const effectiveTempDate = safeUpdates.temporary_target_date !== undefined
+          ? (safeUpdates.temporary_target_date ? String(safeUpdates.temporary_target_date).split('T')[0] : null)
+          : (existing.temporary_target_date ? String(existing.temporary_target_date).split('T')[0] : null);
+
+        if (effectiveTempDate && permDateOnly < effectiveTempDate) {
+          return errorResponse(res, `Permanent Target Date cannot be before Temporary Target Date (${effectiveTempDate}).`, 400);
+        }
+        safeUpdates.permanent_target_date = trimmed;
+      } else {
+        safeUpdates.permanent_target_date = null;
+      }
+    }
+
     const hasCloserUpdates = safeUpdates.prod_why_why !== undefined ||
       safeUpdates.temporary_action !== undefined ||
       safeUpdates.temporary_evidence_attachment !== undefined ||
