@@ -713,7 +713,8 @@ const ProcessAuditApprovals = () => {
 
     setCloserRemarks(req.creator_remark || '');
     setRemarksError(false);
-    setReviewedBy(req.reviewed_by || '');
+    const isClosedReq = String(req.status || '').toUpperCase() === 'CLOSED';
+    setReviewedBy(isClosedReq ? (req.reviewed_by || '') : '');
     setReviewedByError(false);
     setCloserStatus('');
     setReassignedDept(req.department || '');
@@ -873,12 +874,12 @@ const ProcessAuditApprovals = () => {
       setCloserPermanentEvidenceError(false);
     }
 
-    // 7. Permanent Target Date is mandatory (Admin cannot select future dates; Users have no date restriction)
+    // 7. Permanent Target Date is mandatory (must be on or after Temporary Target Date)
     if (!closerPermanentTargetDate || !closerPermanentTargetDate.trim()) {
       setCloserPermanentTargetDateError('Permanent Target Date is required.');
       hasCloserErrors = true;
-    } else if (isAdmin && closerPermanentTargetDate > todayStr) {
-      setCloserPermanentTargetDateError('Permanent Target Date cannot be a future date for Admin. Please select today or a past date.');
+    } else if (closerTargetDate && closerPermanentTargetDate < closerTargetDate) {
+      setCloserPermanentTargetDateError(`Permanent Target Date must be on or after Temporary Target Date (${formatDateDDMMYYYY(closerTargetDate)}).`);
       hasCloserErrors = true;
     } else {
       setCloserPermanentTargetDateError(false);
@@ -1038,10 +1039,28 @@ const ProcessAuditApprovals = () => {
     const reqId = selectedRequest.id || selectedRequest.issue_no;
     const displayId = selectedRequest.issue_no || (selectedRequest.id ? `PA-${selectedRequest.id}` : `#${selectedRequest.id}`);
 
+    const loggedInPersonName = getLoggedInUserName();
     const effectiveReviewer = (reviewedBy && reviewedBy.trim())
       ? reviewedBy.trim()
-      : null;
-    const adminSignerName = currentUser?.name || currentUser?.email || 'Quality Admin';
+      : loggedInPersonName;
+    const adminSignerName = currentUser?.name || currentUser?.email || loggedInPersonName || 'Quality Admin';
+
+    let reviewerId = currentUser?.id || null;
+    let reviewerEmail = currentUser?.email || null;
+    if (reviewedBy && reviewedBy.trim() && reviewedBy.trim().toLowerCase() !== loggedInPersonName.toLowerCase()) {
+      const match = dbUsers.find(
+        (u) =>
+          (u.name && u.name.trim().toLowerCase() === reviewedBy.trim().toLowerCase()) ||
+          (u.username && u.username.trim().toLowerCase() === reviewedBy.trim().toLowerCase())
+      );
+      if (match) {
+        reviewerId = match.id || null;
+        reviewerEmail = match.email || null;
+      } else {
+        reviewerId = null;
+        reviewerEmail = null;
+      }
+    }
 
     try {
       if (isReassignOpen) {
@@ -1049,8 +1068,8 @@ const ProcessAuditApprovals = () => {
           new_department: reassignedDept,
           new_executor: reassignedPerson,
           reason: closerRemarks.trim(),
-          reassigned_by: adminSignerName,
-          reassigned_by_id: currentUser?.id || null,
+          reassigned_by: effectiveReviewer || adminSignerName,
+          reassigned_by_id: reviewerId || currentUser?.id || null,
           role: currentUser?.role || 'ADMIN',
           user_department: userDept || 'QAD'
         });
@@ -1060,8 +1079,8 @@ const ProcessAuditApprovals = () => {
           remark: closerRemarks.trim(),
           remarks: closerRemarks.trim(),
           reviewed_by: effectiveReviewer,
-          reviewed_by_id: effectiveReviewer ? (currentUser?.id || null) : null,
-          reviewed_by_email: effectiveReviewer ? (currentUser?.email || null) : null,
+          reviewed_by_id: reviewerId,
+          reviewed_by_email: reviewerEmail,
           closed_by: null
         });
 
@@ -1078,7 +1097,9 @@ const ProcessAuditApprovals = () => {
                 executor: reassignedPerson,
                 status: 'Pending',
                 creator_remark: closerRemarks.trim(),
-                reviewed_by: effectiveReviewer
+                reviewed_by: effectiveReviewer,
+                reviewed_by_id: reviewerId,
+                reviewed_by_email: reviewerEmail
               }
             : prev
         );
@@ -1091,8 +1112,8 @@ const ProcessAuditApprovals = () => {
           remark: closerRemarks.trim(),
           remarks: closerRemarks.trim(),
           reviewed_by: effectiveReviewer,
-          reviewed_by_id: effectiveReviewer ? (currentUser?.id || null) : null,
-          reviewed_by_email: effectiveReviewer ? (currentUser?.email || null) : null,
+          reviewed_by_id: reviewerId,
+          reviewed_by_email: reviewerEmail,
           closed_by: adminSignerName,
           closed_by_id: currentUser?.id || null,
           approved_by: adminSignerName,
@@ -1106,11 +1127,11 @@ const ProcessAuditApprovals = () => {
         setSuccessMessage(msg);
 
         if (targetStatus === 'Closed') {
-          const merged = { ...selectedRequest, ...payload, ...updated, status: 'Closed', reviewed_by: effectiveReviewer };
+          const merged = { ...selectedRequest, ...payload, ...updated, status: 'Closed', reviewed_by: effectiveReviewer, reviewed_by_id: reviewerId, reviewed_by_email: reviewerEmail };
           setSelectedRequest(merged);
           populateForm(merged);
         } else if (updated) {
-          const merged = { ...selectedRequest, ...payload, ...updated, status: targetStatus, reviewed_by: effectiveReviewer };
+          const merged = { ...selectedRequest, ...payload, ...updated, status: targetStatus, reviewed_by: effectiveReviewer, reviewed_by_id: reviewerId, reviewed_by_email: reviewerEmail };
           setSelectedRequest(merged);
           populateForm(merged);
         }
@@ -1753,6 +1774,11 @@ const ProcessAuditApprovals = () => {
                   } else {
                     setCloserTargetDateError(false);
                   }
+                  if (val && closerPermanentTargetDate && closerPermanentTargetDate < val) {
+                    setCloserPermanentTargetDateError(`Permanent Target Date must be on or after Temporary Target Date (${formatDateDDMMYYYY(val)}).`);
+                  } else if (closerPermanentTargetDateError && typeof closerPermanentTargetDateError === 'string' && closerPermanentTargetDateError.includes('Temporary Target Date')) {
+                    setCloserPermanentTargetDateError(false);
+                  }
                 }}
                 className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${
                   closerTargetDateError
@@ -1988,18 +2014,23 @@ const ProcessAuditApprovals = () => {
                     )
                   )}
                 </label>
+                {closerTargetDate && (
+                  <span className="text-[10px] text-slate-400 font-normal">
+                    Min: <strong className="text-slate-600 font-semibold">{formatDateDDMMYYYY(closerTargetDate)}</strong>
+                  </span>
+                )}
               </div>
               <DateInput
                 disabled={!canUpdateCloserFields}
-                max={isAdmin ? todayStr : undefined}
+                min={closerTargetDate || undefined}
                 value={closerPermanentTargetDate}
                 onChange={(e) => {
                   const val = e.target.value;
                   setCloserPermanentTargetDate(val);
                   if (!val || !val.trim()) {
                     setCloserPermanentTargetDateError('Permanent Target Date is required.');
-                  } else if (isAdmin && val > todayStr) {
-                    setCloserPermanentTargetDateError('Permanent Target Date cannot be a future date for Admin. Please select today or a past date.');
+                  } else if (closerTargetDate && val < closerTargetDate) {
+                    setCloserPermanentTargetDateError(`Permanent Target Date must be on or after Temporary Target Date (${formatDateDDMMYYYY(closerTargetDate)}).`);
                   } else {
                     setCloserPermanentTargetDateError(false);
                   }
@@ -2012,7 +2043,7 @@ const ProcessAuditApprovals = () => {
               />
               {closerPermanentTargetDateError && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* {typeof closerPermanentTargetDateError === 'string' ? closerPermanentTargetDateError : 'Permanent Target Date is required.'}</span>
+                  <span>* {typeof closerPermanentTargetDateError === 'string' ? closerPermanentTargetDateError : 'Permanent Target Date must be on or after Temporary Target Date.'}</span>
                 </p>
               )}
             </div>
@@ -2569,7 +2600,7 @@ const ProcessAuditApprovals = () => {
 
                 {/* Reviewed By (Manual entry by admin / quality - Text only, references CreateRequest Created By) */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center justify-between mb-1.5">
                     <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                       <span>REVIEWED BY</span>
                       <span className="text-slate-400 font-normal lowercase text-[10px]">(optional)</span>
@@ -2579,6 +2610,12 @@ const ProcessAuditApprovals = () => {
                         </span>
                       )}
                     </label>
+                    <span
+                      className="text-[10px] text-slate-400 font-normal uppercase truncate max-w-[200px]"
+                      title={`Defaults to: ${getLoggedInUserName()}`}
+                    >
+                      DEFAULTS TO: <strong className="text-slate-600 font-bold">{getLoggedInUserName().toUpperCase()}</strong>
+                    </span>
                   </div>
                   <input
                     type="text"
@@ -2586,7 +2623,7 @@ const ProcessAuditApprovals = () => {
                     placeholder={
                       !selectedRequest
                         ? 'Click a row on the right to select'
-                        : 'Enter person name...'
+                        : `e.g. Leave empty to attach ${getLoggedInUserName()}`
                     }
                     value={reviewedBy || ''}
                     onKeyDown={(e) => {
@@ -2620,7 +2657,7 @@ const ProcessAuditApprovals = () => {
                     </p>
                   ) : (
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      Admin / Quality Engineer reviewing this incident.
+                      Admin / Quality Engineer reviewing this incident (defaults to {getLoggedInUserName()}).
                     </p>
                   )}
                 </div>
