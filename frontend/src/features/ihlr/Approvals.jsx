@@ -414,13 +414,13 @@ const IhlrApprovals = () => {
     setCloserActionError(false);
     setCloserTargetDate(req.temporary_target_date ? req.temporary_target_date.split('T')[0] : '');
     setCloserTargetDateError(false);
-    setCloserTemporaryClosedBy(req.temporary_closed_by || req.closer_updated_by || (canUpdateCloserFields && !isAdmin ? (user?.name || '') : ''));
+    setCloserTemporaryClosedBy(req.temporary_closed_by || '');
     setCloserTemporaryClosedByError(false);
     setCloserPermanentFix(req.permanent_fix || '');
     setCloserPermanentFixError(false);
     setCloserPermanentTargetDate(req.permanent_target_date ? req.permanent_target_date.split('T')[0] : '');
     setCloserPermanentTargetDateError(false);
-    setCloserPermanentClosedBy(req.permanent_closed_by || req.closer_updated_by || (canUpdateCloserFields && !isAdmin ? (user?.name || '') : ''));
+    setCloserPermanentClosedBy(req.permanent_closed_by || '');
     setCloserPermanentClosedByError(false);
     const historyInfo = formatReassignmentHistory(req.reassignment_history);
     const latestReassign = historyInfo.list && historyInfo.list.length > 0 ? historyInfo.list[historyInfo.list.length - 1] : null;
@@ -766,11 +766,11 @@ const IhlrApprovals = () => {
 
       const effectiveTempClosedBy = (closerTemporaryClosedBy && closerTemporaryClosedBy.trim())
         ? closerTemporaryClosedBy.trim()
-        : (user?.name || '');
+        : '';
 
       const effectivePermClosedBy = (closerPermanentClosedBy && closerPermanentClosedBy.trim())
         ? closerPermanentClosedBy.trim()
-        : (user?.name || '');
+        : '';
 
       const payload = {
         prod_why_why: closerWhyWhy,

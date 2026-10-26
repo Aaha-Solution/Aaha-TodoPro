@@ -967,13 +967,6 @@ export const updateIhlrRequest = async (req, res) => {
       safeUpdates.closer_updated_by_id = userId || null;
       safeUpdates.closer_updated_by_email = userEmail || null;
       safeUpdates.closer_updated_at = new Date();
-
-      if (!safeUpdates.temporary_closed_by && !existing.temporary_closed_by) {
-        safeUpdates.temporary_closed_by = closerDisplayName;
-      }
-      if (!safeUpdates.permanent_closed_by && !existing.permanent_closed_by) {
-        safeUpdates.permanent_closed_by = closerDisplayName;
-      }
     }
 
     // Auto-resolve new assigned closer email from users table if reassigned
