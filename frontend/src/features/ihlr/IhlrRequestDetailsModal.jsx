@@ -139,7 +139,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     (req?.status || '').toUpperCase() === 'CLOSED' ||
     (req?.status || '').toUpperCase() === 'APPROVED';
 
-  const canEditRequester = Boolean(req && (isAdmin || isRequester) && (!isClosed || isAdmin));
+  // Editing feature is restricted to Admin role only
+  const canEditRequester = Boolean(req && isAdmin && (!isClosed || isAdmin));
 
   const initEditState = (targetReq = req) => {
     if (!targetReq) return;
@@ -199,7 +200,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     if (isOpen && request) {
       initEditState(request);
       initAdminState(request);
-      if (initialEditMode) {
+      if (initialEditMode && isAdmin) {
         setIsEditMode(true);
         setActiveTab('requester');
       } else {
@@ -319,6 +320,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   };
 
   const handleSaveRequesterDetails = async () => {
+    if (!isAdmin) {
+      modalError('Editing feature is restricted to Admin role only.');
+      return;
+    }
     const newErrors = {};
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -1225,7 +1230,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                           setActiveTab('requester');
                         }}
                         className="px-3 py-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[11px] font-bold rounded-full uppercase tracking-wider transition shadow-2xs cursor-pointer flex items-center gap-1.5"
-                        title="Edit Requester Details"
+                        title="Edit Requester Details (Admin Only)"
                       >
                         <Edit2 className="w-3 h-3" />
                         <span>EDIT MODE</span>

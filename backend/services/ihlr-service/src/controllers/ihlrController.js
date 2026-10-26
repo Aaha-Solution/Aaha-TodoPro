@@ -798,13 +798,13 @@ export const updateIhlrRequest = async (req, res) => {
       (createdEmail && userEmail && userEmail === createdEmail)
     );
 
-    if (!isAdmin && !isCloser && !isRequester) {
-      return errorResponse(res, 'You are not authorized to update this IHLR request. Only the requester, assigned closer, or quality admin can update.', 403);
+    if (!isAdmin && !isCloser) {
+      return errorResponse(res, 'Access denied. The editing feature is only permitted for Admin role.', 403);
     }
 
     // Single-Submission Rule for Closer:
     // Closer user can submit details ONLY ONCE. Only Quality Admin can update multiple times.
-    if (!isAdmin && isCloser && !isRequester) {
+    if (!isAdmin && isCloser) {
       const isAlreadySubmittedByCloser = Boolean(
         String(existing.status || '').toUpperCase() === 'IN_PROGRESS' ||
         String(existing.status || '').toUpperCase() === 'CLOSED'
@@ -820,9 +820,8 @@ export const updateIhlrRequest = async (req, res) => {
     }
 
     // Role-based field segregation:
-    // - Requester can update: requester details only (batch_date, shift, problem, model, problem_detected_at, received_from, analysis_done_by, defect_image, qa_why_why, actual_qty, four_m, resp, resp_person, resp_person_email)
-    // - Closer can update: prod_why_why, action, evidence_attachment, target_date
-    // - Admin can update any field (including remarks, status, resp, resp_person, qa_why_why, etc.)
+    // - Admin can update any field (including batch_date, shift, problem, model, defect_image, qa_why_why, remarks, status, resp, resp_person, etc.)
+    // - Closer (non-admin) can only submit: prod_why_why, action, evidence_attachment, target_date
     let safeUpdates = {};
     if (isAdmin) {
       const allowed = [
@@ -860,20 +859,7 @@ export const updateIhlrRequest = async (req, res) => {
         safeUpdates.remarks = trimmedRemarks;
       }
     } else {
-      if (isRequester) {
-        const requesterAllowed = [
-          'batch_date', 'shift', 'problem', 'model', 
-          'problem_detected_at', 'received_from', 'analysis_done_by', 
-          'defect_image', 'qa_why_why', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
-          'created_by', 'created_by_id', 'created_by_email'
-        ];
-        for (const k of requesterAllowed) {
-          if (req.body[k] !== undefined) safeUpdates[k] = req.body[k];
-        }
-        if (safeUpdates.analysis_done_by !== undefined) {
-          safeUpdates.analysis_done_by = String(safeUpdates.analysis_done_by || '').replace(/[0-9]/g, '').trim();
-        }
-      }
+      // Non-admin closer submitting containment actions (editing requester details is restricted to admin only)
       if (isCloser) {
         if (req.body.prod_why_why !== undefined) safeUpdates.prod_why_why = req.body.prod_why_why;
         if (req.body.temporary_action !== undefined) safeUpdates.temporary_action = req.body.temporary_action;

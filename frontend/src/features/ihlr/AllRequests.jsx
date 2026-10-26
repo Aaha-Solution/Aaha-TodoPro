@@ -60,6 +60,7 @@ const IhlrAllRequests = () => {
   const isAdmin = userRole === 'ADMIN' || isQad;
   const isProduction = userDept === 'PRODUCTION';
   const canCreate = isQad || isAdmin || isProduction;
+  const canEdit = isAdmin;
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -340,6 +341,12 @@ const IhlrAllRequests = () => {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               <span>Plant-Wide Repository</span>
             </span>
+            {!canEdit && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                <Eye className="w-3.5 h-3.5 text-slate-500" />
+                <span>View Only</span>
+              </span>
+            )}
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Master repository of in-house line rejections, 5-Why root-causes, and containment actions across all departments.
@@ -722,7 +729,7 @@ const IhlrAllRequests = () => {
                               setModalInitialEdit(true);
                             }}
                             className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
-                            title="Edit Request (Admin)"
+                            title="Edit Request (Admin Only)"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
