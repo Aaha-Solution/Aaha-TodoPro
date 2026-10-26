@@ -543,6 +543,7 @@ const IhlrApprovals = () => {
       const added = Array.from(e.target.files);
       setNewEvidenceFiles((prev) => [...prev, ...added]);
       setCloserEvidenceError(false);
+      e.target.value = '';
     }
   };
 
@@ -559,6 +560,7 @@ const IhlrApprovals = () => {
       const added = Array.from(e.target.files);
       setNewPermanentEvidenceFiles((prev) => [...prev, ...added]);
       setCloserPermanentEvidenceError(false);
+      e.target.value = '';
     }
   };
 
@@ -572,15 +574,55 @@ const IhlrApprovals = () => {
 
   const handleSaveAnnotation = (annotatedFile) => {
     if (!annotatingItem) return;
-    if (annotatingItem.isPermanent) {
-      setNewPermanentEvidenceFiles((prev) => [...prev, annotatedFile]);
+    const { index, isExisting, isPermanent } = annotatingItem;
+
+    if (isPermanent) {
+      if (!isExisting && typeof index === 'number' && index >= 0) {
+        // Replace newly added permanent evidence file in place (no duplicate)
+        setNewPermanentEvidenceFiles((prev) =>
+          prev.map((f, i) => (i === index ? annotatedFile : f))
+        );
+      } else if (isExisting && typeof index === 'number' && index >= 0) {
+        // Replace existing permanent evidence: remove old from existing and add annotated to new
+        setExistingPermanentEvidence((prev) => prev.filter((_, i) => i !== index));
+        setNewPermanentEvidenceFiles((prev) => [...prev, annotatedFile]);
+      } else {
+        // Fallback: replace by name or append
+        setNewPermanentEvidenceFiles((prev) => {
+          const targetName = annotatingItem.attachment?.name;
+          const matchIdx = prev.findIndex((f) => f.name === targetName);
+          if (matchIdx !== -1) {
+            return prev.map((f, i) => (i === matchIdx ? annotatedFile : f));
+          }
+          return [...prev, annotatedFile];
+        });
+      }
       setCloserPermanentEvidenceError(false);
     } else {
-      setNewEvidenceFiles((prev) => [...prev, annotatedFile]);
+      if (!isExisting && typeof index === 'number' && index >= 0) {
+        // Replace newly added evidence file in place (no duplicate)
+        setNewEvidenceFiles((prev) =>
+          prev.map((f, i) => (i === index ? annotatedFile : f))
+        );
+      } else if (isExisting && typeof index === 'number' && index >= 0) {
+        // Replace existing evidence: remove old from existing and add annotated to new
+        setExistingEvidence((prev) => prev.filter((_, i) => i !== index));
+        setNewEvidenceFiles((prev) => [...prev, annotatedFile]);
+      } else {
+        // Fallback: replace by name or append
+        setNewEvidenceFiles((prev) => {
+          const targetName = annotatingItem.attachment?.name;
+          const matchIdx = prev.findIndex((f) => f.name === targetName);
+          if (matchIdx !== -1) {
+            return prev.map((f, i) => (i === matchIdx ? annotatedFile : f));
+          }
+          return [...prev, annotatedFile];
+        });
+      }
       setCloserEvidenceError(false);
     }
     setAnnotatingItem(null);
-    modalSuccess(`Annotated drawing "${annotatedFile.name}" added to evidence files! Remember to click "Submit Closer Log" to save.`);
+    modalSuccess(`Annotated drawing "${annotatedFile.name}" updated! Remember to click "Submit Closer Log" to save.`);
   };
 
   // 1. Submit Closer Updates (5-Why causes, Action, Evidence, Target Date)
@@ -1091,7 +1133,8 @@ const IhlrApprovals = () => {
       isPdf,
       isExcel,
       isWord,
-      isPpt
+      isPpt,
+      file: f
     };
   });
 
@@ -1110,7 +1153,8 @@ const IhlrApprovals = () => {
       isPdf,
       isExcel,
       isWord,
-      isPpt
+      isPpt,
+      file: f
     };
   });
 
@@ -1392,7 +1436,7 @@ const IhlrApprovals = () => {
                   <AttachmentChipList
                     attachments={existingEvidence}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    onAnnotate={canUpdateCloserFields ? (file) => setAnnotatingItem({ attachment: file }) : undefined}
+                    onAnnotate={canUpdateCloserFields ? (file, idx) => setAnnotatingItem({ attachment: file, index: idx, isExisting: true, isPermanent: false }) : undefined}
                     onRemove={canUpdateCloserFields ? (idx) => handleRemoveExistingEvidence(idx) : undefined}
                   />
                 )}
@@ -1400,7 +1444,7 @@ const IhlrApprovals = () => {
                   <AttachmentChipList
                     attachments={previewableNewFiles}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    onAnnotate={canUpdateCloserFields ? (file) => setAnnotatingItem({ attachment: file }) : undefined}
+                    onAnnotate={canUpdateCloserFields ? (file, idx) => setAnnotatingItem({ attachment: file, index: idx, isExisting: false, isPermanent: false }) : undefined}
                     onRemove={canUpdateCloserFields ? (idx) => handleRemoveNewEvidence(idx) : undefined}
                   />
                 )}
@@ -1640,7 +1684,7 @@ const IhlrApprovals = () => {
                   <AttachmentChipList
                     attachments={existingPermanentEvidence}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    onAnnotate={canUpdateCloserFields ? (file) => setAnnotatingItem({ attachment: file, isPermanent: true }) : undefined}
+                    onAnnotate={canUpdateCloserFields ? (file, idx) => setAnnotatingItem({ attachment: file, index: idx, isExisting: true, isPermanent: true }) : undefined}
                     onRemove={canUpdateCloserFields ? (idx) => handleRemoveExistingPermanentEvidence(idx) : undefined}
                   />
                 )}
@@ -1648,7 +1692,7 @@ const IhlrApprovals = () => {
                   <AttachmentChipList
                     attachments={previewableNewPermanentFiles}
                     onPreview={(att) => setSelectedPreviewAttachment(att)}
-                    onAnnotate={canUpdateCloserFields ? (file) => setAnnotatingItem({ attachment: file, isPermanent: true }) : undefined}
+                    onAnnotate={canUpdateCloserFields ? (file, idx) => setAnnotatingItem({ attachment: file, index: idx, isExisting: false, isPermanent: true }) : undefined}
                     onRemove={canUpdateCloserFields ? (idx) => handleRemoveNewPermanentEvidence(idx) : undefined}
                   />
                 )}
@@ -2730,7 +2774,29 @@ const IhlrApprovals = () => {
         isOpen={Boolean(selectedPreviewAttachment)}
         attachment={selectedPreviewAttachment}
         onClose={() => setSelectedPreviewAttachment(null)}
-        onAnnotate={canUpdateCloserFields ? (att) => setAnnotatingItem({ attachment: att }) : undefined}
+        onAnnotate={canUpdateCloserFields ? (att) => {
+          const newIdx = newEvidenceFiles.findIndex(f => f.name === att.name || (att.file && att.file === f));
+          if (newIdx !== -1) {
+            setAnnotatingItem({ attachment: att, index: newIdx, isExisting: false, isPermanent: false });
+            return;
+          }
+          const permIdx = newPermanentEvidenceFiles.findIndex(f => f.name === att.name || (att.file && att.file === f));
+          if (permIdx !== -1) {
+            setAnnotatingItem({ attachment: att, index: permIdx, isExisting: false, isPermanent: true });
+            return;
+          }
+          const exIdx = existingEvidence.findIndex(f => f.name === att.name || f.url === att.url || f.path === att.path);
+          if (exIdx !== -1) {
+            setAnnotatingItem({ attachment: att, index: exIdx, isExisting: true, isPermanent: false });
+            return;
+          }
+          const exPermIdx = existingPermanentEvidence.findIndex(f => f.name === att.name || f.url === att.url || f.path === att.path);
+          if (exPermIdx !== -1) {
+            setAnnotatingItem({ attachment: att, index: exPermIdx, isExisting: true, isPermanent: true });
+            return;
+          }
+          setAnnotatingItem({ attachment: att, isPermanent: false });
+        } : undefined}
       />
 
       {/* Technical Drawing & Defect Image Annotation Modal */}
