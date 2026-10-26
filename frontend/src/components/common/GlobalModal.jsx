@@ -144,7 +144,7 @@ const GlobalModal = ({
         </div>
 
         {/* Message Content */}
-        <div className="text-sm text-slate-600 leading-relaxed space-y-1.5 max-h-60 overflow-y-auto px-0.5">
+        <div className="text-sm text-slate-600 leading-relaxed space-y-1.5 max-h-60 overflow-y-auto overflow-x-hidden px-0.5 break-words [overflow-wrap:anywhere]">
           {formattedLines.map((line, idx) => {
             if (!line.trim()) {
               return <div key={idx} className="h-2" />;
@@ -153,7 +153,7 @@ const GlobalModal = ({
             return (
               <p 
                 key={idx} 
-                className={`${isBullet ? 'flex items-start gap-2 font-medium text-slate-700' : ''}`}
+                className={`break-words [overflow-wrap:anywhere] ${isBullet ? 'flex items-start gap-2 font-medium text-slate-700' : ''}`}
               >
                 {line}
               </p>
@@ -162,7 +162,7 @@ const GlobalModal = ({
         </div>
 
         {/* Actions Footer */}
-        <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+        <div className="flex items-center justify-end gap-3 pt-2">
           {isConfirm && (
             <button
               type="button"
