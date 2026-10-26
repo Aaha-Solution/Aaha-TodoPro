@@ -907,11 +907,6 @@ export const updateIhlrRequest = async (req, res) => {
     if (safeUpdates.temporary_target_date !== undefined) {
       const trimmed = typeof safeUpdates.temporary_target_date === 'string' ? safeUpdates.temporary_target_date.trim() : '';
       if (trimmed) {
-        const dateOnly = trimmed.split('T')[0];
-        const today = new Date().toISOString().split('T')[0];
-        if (dateOnly < today && !isAdmin) {
-          return errorResponse(res, 'Temporary Target Date cannot be in the past. Please select today or a future date.', 400);
-        }
         safeUpdates.temporary_target_date = trimmed;
       } else {
         safeUpdates.temporary_target_date = null;

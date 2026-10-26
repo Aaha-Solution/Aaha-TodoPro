@@ -685,12 +685,9 @@ const IhlrApprovals = () => {
       return `${y}-${m}-${day}`;
     })();
 
-    // 3. Temporary Target Date is mandatory (Admin cannot select future dates; Users have no date restriction)
+    // 3. Temporary Target Date is mandatory (allows past, present, and future dates)
     if (!closerTargetDate || !closerTargetDate.trim()) {
       setCloserTargetDateError('Temporary Target Date is required.');
-      hasCloserErrors = true;
-    } else if (isAdmin && closerTargetDate > todayStr) {
-      setCloserTargetDateError('Temporary Target Date cannot be a future date for Admin. Please select today or a past date.');
       hasCloserErrors = true;
     } else {
       setCloserTargetDateError(false);
@@ -724,15 +721,12 @@ const IhlrApprovals = () => {
       setCloserPermanentEvidenceError(false);
     }
 
-    // 7. Permanent Target Date is mandatory (Admin cannot select future dates; Users have no date restriction)
+    // 7. Permanent Target Date is mandatory (allows past, present, and future dates >= Temporary Target Date)
     if (!closerPermanentTargetDate || !closerPermanentTargetDate.trim()) {
       setCloserPermanentTargetDateError('Permanent Target Date is required.');
       hasCloserErrors = true;
     } else if (closerTargetDate && closerPermanentTargetDate < closerTargetDate) {
       setCloserPermanentTargetDateError(`Permanent Target Date cannot be before Temporary Target Date (${formatDateDDMMYYYY(closerTargetDate)}).`);
-      hasCloserErrors = true;
-    } else if (isAdmin && closerPermanentTargetDate > todayStr) {
-      setCloserPermanentTargetDateError('Permanent Target Date cannot be a future date for Admin. Please select today or a past date.');
       hasCloserErrors = true;
     } else {
       setCloserPermanentTargetDateError(false);
@@ -1478,15 +1472,12 @@ const IhlrApprovals = () => {
               </div>
               <DateInput
                 disabled={!canUpdateCloserFields}
-                max={isAdmin ? todayStr : undefined}
                 value={closerTargetDate}
                 onChange={(e) => {
                   const val = e.target.value;
                   setCloserTargetDate(val);
                   if (!val || !val.trim()) {
                     setCloserTargetDateError('Temporary Target Date is required.');
-                  } else if (isAdmin && val > todayStr) {
-                    setCloserTargetDateError('Temporary Target Date cannot be a future date for Admin. Please select today or a past date.');
                   } else {
                     setCloserTargetDateError(false);
                   }
@@ -1494,11 +1485,7 @@ const IhlrApprovals = () => {
                   if (val && closerPermanentTargetDate && closerPermanentTargetDate < val) {
                     setCloserPermanentTargetDateError(`Permanent Target Date cannot be before Temporary Target Date (${formatDateDDMMYYYY(val)}).`);
                   } else if (closerPermanentTargetDate) {
-                    if (isAdmin && closerPermanentTargetDate > todayStr) {
-                      setCloserPermanentTargetDateError('Permanent Target Date cannot be a future date for Admin. Please select today or a past date.');
-                    } else {
-                      setCloserPermanentTargetDateError(false);
-                    }
+                    setCloserPermanentTargetDateError(false);
                   }
                 }}
                 className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${
@@ -1509,7 +1496,7 @@ const IhlrApprovals = () => {
               />
               {closerTargetDateError && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                  <span>* {typeof closerTargetDateError === 'string' ? closerTargetDateError : 'Temporary Target Date cannot be in the past.'}</span>
+                  <span>* {typeof closerTargetDateError === 'string' ? closerTargetDateError : 'Temporary Target Date is required.'}</span>
                 </p>
               )}
             </div>
@@ -1737,7 +1724,6 @@ const IhlrApprovals = () => {
               <DateInput
                 disabled={!canUpdateCloserFields}
                 min={closerTargetDate || undefined}
-                max={isAdmin ? todayStr : undefined}
                 value={closerPermanentTargetDate}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -1746,8 +1732,6 @@ const IhlrApprovals = () => {
                     setCloserPermanentTargetDateError('Permanent Target Date is required.');
                   } else if (closerTargetDate && val < closerTargetDate) {
                     setCloserPermanentTargetDateError(`Permanent Target Date cannot be before Temporary Target Date (${formatDateDDMMYYYY(closerTargetDate)}).`);
-                  } else if (isAdmin && val > todayStr) {
-                    setCloserPermanentTargetDateError('Permanent Target Date cannot be a future date for Admin. Please select today or a past date.');
                   } else {
                     setCloserPermanentTargetDateError(false);
                   }
