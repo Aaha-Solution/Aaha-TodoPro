@@ -800,7 +800,7 @@ const ProcessAuditRequestDetailsModal = ({
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
                   Process Audit Inspection Report
                 </h3>
-                {canEdit && (
+                {canEdit && activeTab === 'requester' && (
                   isEditMode ? (
                     <div className="flex items-center gap-2">
                       <span className="px-3 py-1 bg-amber-500 text-white text-[10px] font-black rounded-full uppercase tracking-wider animate-pulse">
@@ -823,9 +823,10 @@ const ProcessAuditRequestDetailsModal = ({
                       onClick={() => {
                         initEditState(req);
                         setIsEditMode(true);
+                        setActiveTab('requester');
                       }}
                       className="px-3 py-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[11px] font-bold rounded-full uppercase tracking-wider transition shadow-2xs cursor-pointer flex items-center gap-1.5"
-                      title="Edit Audit & Closer Details"
+                      title="Edit Audit Details"
                     >
                       <Edit2 className="w-3 h-3" />
                       <span>EDIT MODE</span>
@@ -876,7 +877,12 @@ const ProcessAuditRequestDetailsModal = ({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('closer')}
+            onClick={() => {
+              if (isEditMode) {
+                setIsEditMode(false);
+              }
+              setActiveTab('closer');
+            }}
             className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
               activeTab === 'closer'
                 ? isReqClosed
@@ -1653,608 +1659,345 @@ const ProcessAuditRequestDetailsModal = ({
             </div>
           ) : activeTab === 'closer' ? (
             /* TAB 2: CLOSER DETAILS */
-            isEditMode ? (
-              /* TAB 2: CLOSER DETAILS - EDIT MODE */
-              <div className="space-y-6 animate-in fade-in duration-150">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
-                    <Wrench className="w-4 h-4" />
-                    <span>Closer &amp; Corrective Action Parameters</span>
+            <div className="space-y-6 animate-in fade-in duration-150">
+              {/* 1. Quick Summary Bar */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200/90 flex flex-wrap items-center justify-between gap-4 text-xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shadow-2xs">
+                    <CheckCircle2 className="w-5 h-5" />
                   </div>
-                  <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 uppercase tracking-wider">
-                    Editing Closer Data
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-slate-900 text-sm">
+                        {reqNo}
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusBadgeClass}`}>
+                        {statusBadgeLabel.toUpperCase()}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Model: <strong className="text-slate-800">{req.model || req.stage || '—'}</strong> | Operation:{' '}
+                      <strong className="text-slate-800">{req.process_operation || req.line || '—'}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 text-[11px] font-medium text-slate-600">
+                  <div>
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Date</span>
+                    <span className="font-mono font-bold text-slate-800">
+                      {formatDateDDMMYYYY(req.temporary_target_date || req.permanent_target_date || req.target_date) || targetDate || '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Responsibility</span>
+                    <span className="font-bold text-slate-800">
+                      {req.department || 'Production'}{req.executor ? ` (${req.executor})` : ''}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-600">Closer Filled By</span>
+                    <span className="font-bold text-emerald-800">
+                      {req.closer_updated_by || req.temporary_closed_by || req.action_taken_by || req.permanent_closed_by || (hasCloserSubmitted ? 'Submitted' : 'Pending Closer')}
+                    </span>
+                  </div>
+                  {hasReassignments && (
+                    <div>
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-purple-500">Reassigned</span>
+                      <span className="font-bold text-purple-700 font-mono">
+                        Yes ({reassignCount})
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Occurrence Cause (Production Team - 5-Why Analysis) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
+                    <ShieldAlert className="w-4 h-4" />
+                    <span>Occurrence Cause (Production Team - 5-Why Analysis)</span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-mono">W1 to W5 Breakdown</span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2.5 text-xs">
+                  {(() => {
+                    const validWhys = (Array.isArray(whyList) ? whyList : [])
+                      .map((w, idx) => ({
+                        label: `W${idx + 1}`,
+                        val: typeof w === 'string' ? w.trim() : (w ? String(w).trim() : '')
+                      }))
+                      .filter((item) => item.val.length > 0);
+
+                    if (validWhys.length > 0) {
+                      return validWhys.map((item, idx) => (
+                        <div key={idx} className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                          <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                            {item.label}:{['W1', 'W2', 'W3'].includes(item.label) && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                          </span>
+                          <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
+                            {item.val}
+                          </span>
+                        </div>
+                      ));
+                    }
+
+                    // If no data recorded, show only one clean box with W1
+                    return (
+                      <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                        <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                          W1:<span className="text-red-500 font-bold ml-0.5">*</span>
+                        </span>
+                        <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
+                          <span className="text-slate-400 italic">No entry recorded</span>
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* 3. Action (Words) - Temporary Action */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
+                  <Wrench className="w-4 h-4" />
+                  <span>Temporary Action</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                  {req.temporary_action || req.corrective_action || req.action || <span className="text-slate-400 italic">No temporary action recorded.</span>}
+                </div>
+              </div>
+
+              {/* 4. Evidence Attachment (Format: PPT, JPEG, EXCEL & PDF) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
+                    <Paperclip className="w-4 h-4" />
+                    <span>Temporary Evidence Attachments</span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
+                </div>
+
+                {temporaryEvidenceAttachments && temporaryEvidenceAttachments.length > 0 ? (
+                  <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
+                    <AttachmentChipList
+                      attachments={temporaryEvidenceAttachments}
+                      onPreview={(att) => setPreviewAttachment(att)}
+                      readonly={true}
+                    />
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
+                    No temporary evidence attachments uploaded.
+                  </div>
+                )}
+              </div>
+
+              {/* 5. Target Date & Remarks (4-Column Grid: TEMPORARY TARGET DATE, TEMPORARY CLOSED BY, REMARKS, REVIEWED BY) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    TEMPORARY TARGET DATE
+                  </span>
+                  <span className="font-mono font-bold text-slate-900 text-sm">
+                    {targetDate || '—'}
                   </span>
                 </div>
 
-                {/* Closer Form Fields */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Root Cause Analysis
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={editFormData.root_cause}
-                      onChange={(e) => setEditFormData(prev => ({ ...prev, root_cause: e.target.value }))}
-                      placeholder="Identify the fundamental root cause of this process audit finding..."
-                      className="w-full px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-900 bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition"
-                    />
+                <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    TEMPORARY CLOSED BY
+                  </span>
+                  <span className="font-bold text-slate-900 block text-xs">
+                    {req.closer_updated_by || req.temporary_closed_by || req.action_taken_by || '—'}
+                  </span>
+                  {req.closer_updated_by && req.executor && req.executor.includes(',') && (
+                    <span className="text-[9px] text-emerald-700 font-semibold block">
+                      (Updated by: {req.closer_updated_by})
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    REMARKS
+                  </span>
+                  <div className="text-slate-800 leading-relaxed font-medium">
+                    {req.creator_remark || req.remarks || <span className="text-slate-400 italic">No remarks provided.</span>}
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    REVIEWED BY
+                  </span>
+                  <span className="font-bold text-slate-900 block text-xs">
+                    {req.reviewed_by || req.approved_by || '—'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Permanent Countermeasures Section */}
+              <div className="pt-3 border-t border-slate-200/90 space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    Permanent Countermeasures
+                  </span>
+                </div>
+
+                {/* 1. Permanent Action (Words) */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold uppercase tracking-wider">
+                    <Wrench className="w-4 h-4" />
+                    <span>Permanent Action</span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                    {req.permanent_fix || <span className="text-slate-400 italic">No permanent action recorded.</span>}
+                  </div>
+                </div>
+
+                {/* 2. Permanent Action Evidence Attachment */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
+                      <Paperclip className="w-4 h-4" />
+                      <span>Permanent Evidence Attachments</span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Corrective Actions &amp; Countermeasures
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={editFormData.corrective_action}
-                      onChange={(e) => setEditFormData(prev => ({ ...prev, corrective_action: e.target.value }))}
-                      placeholder="Outline immediate containment and corrective countermeasures applied..."
-                      className="w-full px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-900 bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Standardization Details
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={editFormData.standardization_details}
-                      onChange={(e) => setEditFormData(prev => ({ ...prev, standardization_details: e.target.value }))}
-                      placeholder="Standardization steps, SOP updates, training notes..."
-                      className="w-full px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-900 bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Target Date
-                      </label>
-                      <input
-                        type="date"
-                        value={editFormData.target_date}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, target_date: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition"
+                  {permanentEvidenceAttachments && permanentEvidenceAttachments.length > 0 ? (
+                    <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
+                      <AttachmentChipList
+                        attachments={permanentEvidenceAttachments}
+                        onPreview={(att) => setPreviewAttachment(att)}
+                        readonly={true}
                       />
                     </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Action Taken By
-                      </label>
-                      <input
-                        type="text"
-                        value={editFormData.action_taken_by}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, action_taken_by: e.target.value }))}
-                        placeholder="Executor / Engineer name"
-                        className="w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition"
-                      />
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
+                      No permanent action evidence attachments uploaded.
                     </div>
+                  )}
+                </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Status
-                      </label>
-                      <select
-                        value={editFormData.status}
-                        onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition"
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="Awaiting Review">Awaiting Review</option>
-                        <option value="Signed off">Signed off</option>
-                        <option value="Closed">Closed</option>
-                        <option value="Open">Open</option>
-                        <option value="Rejected">Rejected</option>
-                      </select>
-                    </div>
+                {/* 3. Permanent Fix Target Date & Permanent Closed By */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      PERMANENT TARGET DATE
+                    </span>
+                    <span className="font-mono font-bold text-slate-900 text-sm">
+                      {permanentTargetDate || '—'}
+                    </span>
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Auditor Sign-off Remarks / Notes
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={editFormData.creator_remark}
-                      onChange={(e) => setEditFormData(prev => ({ ...prev, creator_remark: e.target.value }))}
-                      placeholder="Quality Auditor review remarks and closure notes..."
-                      className="w-full px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-900 bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition"
-                    />
-                  </div>
-
-                  {/* Action Evidence Attachments Upload in Edit Mode */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                        Action Evidence Attachments
-                      </label>
-                      <span className="text-[10px] text-slate-400 font-medium">Click any attachment to preview or download</span>
-                    </div>
-
-                    {editActionAttachments.length > 0 && (
-                      <div className="space-y-1.5">
-                        <div className="text-[10px] font-bold text-purple-600 uppercase tracking-wider flex items-center gap-1.5">
-                          <Paperclip className="w-3.5 h-3.5 text-purple-600" />
-                          <span>Existing Closer Evidence ({editActionAttachments.length})</span>
-                        </div>
-                        <AttachmentChipList
-                          attachments={editActionAttachments}
-                          onPreview={(att) => setPreviewAttachment(att)}
-                          onRemove={(idx) => handleRemoveExistingActionAttachment(idx)}
-                        />
-                      </div>
-                    )}
-
-                    {newActionFiles.length > 0 && (
-                      <div className="space-y-1.5">
-                        <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
-                          <Plus className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>New Closer Files ({newActionFiles.length})</span>
-                        </div>
-                        <AttachmentChipList
-                          attachments={newActionFiles.map(f => ({
-                            name: f.name,
-                            file: f,
-                            type: f.name.split('.').pop() || '',
-                            size: f.size
-                          }))}
-                          onPreview={(att) => setPreviewAttachment(att)}
-                          onRemove={(idx) => handleRemoveNewActionFile(idx)}
-                        />
-                      </div>
-                    )}
-
-                    <label className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-slate-300 bg-slate-50/50 hover:bg-slate-50 cursor-pointer text-xs text-slate-600 hover:text-blue-600 transition">
-                      <UploadCloud className="w-4 h-4 text-slate-400" />
-                      <span>Upload Closer Evidence (Images, PDF, Excel, PPT)</span>
-                      <input
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={handleNewActionFilesSelect}
-                      />
-                    </label>
+                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      PERMANENT CLOSED BY
+                    </span>
+                    <span className="font-bold text-slate-900 block text-xs">
+                      {req.permanent_closed_by || req.closed_by || '—'}
+                    </span>
                   </div>
                 </div>
               </div>
-            ) : (
-              /* TAB 2: CLOSER DETAILS - VIEW MODE */
-              <div className="space-y-6 animate-in fade-in duration-150">
-                {/* 1. Quick Summary Bar */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200/90 flex flex-wrap items-center justify-between gap-4 text-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shadow-2xs">
-                      <CheckCircle2 className="w-5 h-5" />
+
+              {/* 6. Reassignment Tracking History (Only shown in case of reassign status) */}
+              {hasReassignments && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-slate-50 border border-purple-200/90 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-purple-800 text-xs font-bold uppercase tracking-wider">
+                      <ArrowRightLeft className="w-4 h-4 text-purple-600" />
+                      <span>REASSIGNMENT TRACKING HISTORY ({reassignCount})</span>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-slate-900 text-sm">
-                          {reqNo}
-                        </span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusBadgeClass}`}>
-                          {statusBadgeLabel.toUpperCase()}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Model: <strong className="text-slate-800">{req.model || req.stage || '—'}</strong> | Operation:{' '}
-                        <strong className="text-slate-800">{req.process_operation || req.line || '—'}</strong>
-                      </p>
-                    </div>
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 bg-purple-100 text-purple-800 rounded-full border border-purple-200 font-mono">
+                      Reassigned: Yes
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-4 text-[11px] font-medium text-slate-600">
-                    <div>
-                      <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Date</span>
-                      <span className="font-mono font-bold text-slate-800">{targetDate}</span>
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Responsibility</span>
-                      <span className="font-bold text-slate-800">
-                        {req.department || 'Production'}{req.executor ? ` (${req.executor})` : ''}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Closer Details Content */}
-                {has5WhyOrCountermeasures ? (
-                  <>
-                    {/* Occurrence Cause (Production Team - 5-Why Analysis) */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
-                          <ShieldAlert className="w-4 h-4" />
-                          <span>Occurrence Cause (Production Team - 5-Why Analysis)</span>
-                        </div>
-                        <span className="text-[11px] text-slate-400 font-mono">W1 to W5 Breakdown</span>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-2.5 text-xs">
-                        {(() => {
-                          const validWhys = (Array.isArray(whyList) ? whyList : [])
-                            .map((w, idx) => ({
-                              label: `W${idx + 1}`,
-                              val: typeof w === 'string' ? w.trim() : (w ? String(w).trim() : '')
-                            }))
-                            .filter((item) => item.val.length > 0);
-
-                          if (validWhys.length > 0) {
-                            return validWhys.map((item, idx) => (
-                              <div key={idx} className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
-                                <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
-                                  {item.label}:{['W1', 'W2', 'W3'].includes(item.label) && <span className="text-red-500 font-bold ml-0.5">*</span>}
-                                </span>
-                                <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
-                                  {item.val}
-                                </span>
-                              </div>
-                            ));
-                          }
-
-                          return (
-                            <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
-                              <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
-                                W1:<span className="text-red-500 font-bold ml-0.5">*</span>
-                              </span>
-                              <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
-                                <span className="text-slate-400 italic">No entry recorded</span>
-                              </span>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-
-                    {/* Temporary Action */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
-                        <Wrench className="w-4 h-4" />
-                        <span>Temporary Action</span>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
-                        {req.temporary_action || req.corrective_action || req.action || <span className="text-slate-400 italic">No temporary action recorded.</span>}
-                      </div>
-                    </div>
-
-                    {/* Temporary Evidence Attachments */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
-                          <Paperclip className="w-4 h-4" />
-                          <span>Temporary Evidence Attachments</span>
-                        </div>
-                        <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
-                      </div>
-
-                      {temporaryEvidenceAttachments.length > 0 ? (
-                        <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
-                          <AttachmentChipList
-                            attachments={temporaryEvidenceAttachments}
-                            onPreview={(att) => setPreviewAttachment(att)}
-                            readonly={true}
-                          />
-                        </div>
-                      ) : (
-                        <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
-                          No temporary evidence attachments uploaded.
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Temporary Target Date & Temporary Closed By */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          TEMPORARY TARGET DATE
-                        </span>
-                        <span className="font-mono font-bold text-slate-900 text-sm">
-                          {targetDate}
-                        </span>
-                      </div>
-
-                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          TEMPORARY CLOSED BY
-                        </span>
-                        <span className="font-medium text-slate-900 text-sm">
-                          {req.temporary_closed_by || req.action_taken_by || '—'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Permanent Countermeasures Section */}
-                    <div className="pt-3 border-t border-slate-200/90 space-y-4">
-                      <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                        <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                          Permanent Countermeasures
-                        </span>
-                      </div>
-
-                      {/* Permanent Action */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold uppercase tracking-wider">
-                          <Wrench className="w-4 h-4" />
-                          <span>Permanent Action</span>
-                        </div>
-                        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
-                          {req.permanent_fix || <span className="text-slate-400 italic">No permanent action recorded.</span>}
-                        </div>
-                      </div>
-
-                      {/* Permanent Evidence Attachments */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
-                            <Paperclip className="w-4 h-4" />
-                            <span>Permanent Evidence Attachments</span>
+                  <div className="space-y-2">
+                    {reassignList.map((entry, idx) => (
+                      <div key={idx} className="p-3 bg-white rounded-xl border border-purple-100 shadow-2xs space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-mono font-bold text-[10px]">
+                              #{idx + 1}
+                            </span>
+                            <span className="text-slate-600 font-medium">
+                              From: <strong className="text-slate-900">{entry.prev_resp_person || entry.previous_executor || '—'}</strong> ({entry.prev_resp || entry.previous_department || '—'})
+                            </span>
+                            <ArrowRightLeft className="w-3 h-3 text-purple-400 inline" />
+                            <span className="text-purple-700 font-medium">
+                              To: <strong className="text-purple-900">{entry.new_resp_person || entry.new_executor || '—'}</strong> ({entry.new_resp || entry.new_department || '—'})
+                            </span>
                           </div>
-                          <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            {[entry.reassigned_by ? `by ${entry.reassigned_by}` : '', entry.reassigned_at ? formatDateDDMMYYYY(entry.reassigned_at) : ''].filter(Boolean).join(' • ')}
+                          </span>
                         </div>
-
-                        {permanentEvidenceAttachments.length > 0 ? (
-                          <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
-                            <AttachmentChipList
-                              attachments={permanentEvidenceAttachments}
-                              onPreview={(att) => setPreviewAttachment(att)}
-                              readonly={true}
-                            />
-                          </div>
-                        ) : (
-                          <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
-                            No permanent action evidence attachments uploaded.
+                        {(entry.remarks || entry.reason) && (
+                          <div className="text-[11px] text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 italic">
+                            <span className="font-semibold text-slate-500 not-italic">Remarks: </span>
+                            {entry.remarks || entry.reason}
                           </div>
                         )}
                       </div>
-
-                      {/* Permanent Target Date & Permanent Closed By */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                        <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                          <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            PERMANENT TARGET DATE
-                          </span>
-                          <span className="font-mono font-bold text-slate-900 text-sm">
-                            {permanentTargetDate}
-                          </span>
-                        </div>
-
-                        <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                          <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            PERMANENT CLOSED BY
-                          </span>
-                          <span className="font-medium text-slate-900 text-sm">
-                            {req.permanent_closed_by || req.closed_by || '—'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Last Row: Auditor Sign-off Remarks & Reviewed By */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2 border-t border-slate-200/80">
-                        <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                          <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            AUDITOR SIGN-OFF REMARKS
-                          </span>
-                          <div className="text-slate-800 leading-relaxed font-medium">
-                            {req.creator_remark || req.remarks || <span className="text-slate-400 italic">No auditor remarks provided.</span>}
-                          </div>
-                        </div>
-
-                        <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                          <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            REVIEWED BY
-                          </span>
-                          <span className="font-bold text-slate-900 block text-xs">
-                            {req.reviewed_by || req.approved_by || '—'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* 2. Root Cause Analysis */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
-                        <ShieldAlert className="w-4 h-4" />
-                        <span>Root Cause Analysis</span>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
-                        {req.root_cause || <span className="text-slate-400 italic">No root cause analysis recorded yet.</span>}
-                      </div>
-                    </div>
-
-                    {/* 3. Corrective Actions & Countermeasures */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
-                        <Wrench className="w-4 h-4" />
-                        <span>Corrective Actions &amp; Countermeasures</span>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
-                        {req.corrective_action || <span className="text-slate-400 italic">No corrective action recorded yet.</span>}
-                      </div>
-                    </div>
-
-                    {/* 4. Standardization Details */}
-                    {req.standardization_details && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-indigo-600 text-xs font-bold uppercase tracking-wider">
-                          <Layers className="w-4 h-4" />
-                          <span>Standardization Details</span>
-                        </div>
-                        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
-                          {req.standardization_details}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 5. Evidence Attachments */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
-                          <Paperclip className="w-4 h-4" />
-                          <span>Action Evidence Attachments</span>
-                        </div>
-                        <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
-                      </div>
-
-                      {actionAttachments && actionAttachments.length > 0 ? (
-                        <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
-                          <AttachmentChipList
-                            attachments={actionAttachments}
-                            onPreview={(att) => setPreviewAttachment(att)}
-                            readonly={true}
-                          />
-                        </div>
-                      ) : (
-                        <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
-                          No closer evidence attachments uploaded.
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Target Date */}
-                    <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1 text-xs">
-                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        TARGET DATE
-                      </span>
-                      <span className="font-mono font-bold text-slate-900 text-sm">
-                        {targetDate}
-                      </span>
-                    </div>
-
-                    {/* Last Row: Auditor Sign-off Remarks & Reviewed By */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1 border-t border-slate-200/80">
-                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          AUDITOR SIGN-OFF REMARKS
-                        </span>
-                        <div className="text-slate-800 leading-relaxed font-medium">
-                          {req.creator_remark || req.remarks || <span className="text-slate-400 italic">No auditor remarks provided.</span>}
-                        </div>
-                      </div>
-
-                      <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          REVIEWED BY
-                        </span>
-                        <span className="font-bold text-slate-900 block text-xs">
-                          {req.reviewed_by || req.approved_by || '—'}
-                        </span>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Reassignment Tracking History Audit Trail (Only shown in case of reassign status) */}
-                {hasReassignments && (
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-slate-50 border border-purple-200/90 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-purple-800 text-xs font-bold uppercase tracking-wider">
-                        <ArrowRightLeft className="w-4 h-4 text-purple-600" />
-                        <span>REASSIGNMENT TRACKING HISTORY ({reassignCount})</span>
-                      </div>
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 bg-purple-100 text-purple-800 rounded-full border border-purple-200 font-mono">
-                        Reassigned: Yes
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {reassignList.map((entry, idx) => (
-                        <div key={idx} className="p-3 bg-white rounded-xl border border-purple-100 shadow-2xs space-y-1.5 text-xs">
-                          <div className="flex items-center justify-between flex-wrap gap-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-mono font-bold text-[10px]">
-                                #{idx + 1}
-                              </span>
-                              <span className="text-slate-600 font-medium">
-                                From: <strong className="text-slate-900">{entry.prev_resp_person || entry.previous_executor || '—'}</strong> ({entry.prev_resp || entry.previous_department || '—'})
-                              </span>
-                              <ArrowRightLeft className="w-3 h-3 text-purple-400 inline" />
-                              <span className="text-purple-700 font-medium">
-                                To: <strong className="text-purple-900">{entry.new_resp_person || entry.new_executor || '—'}</strong> ({entry.new_resp || entry.new_department || '—'})
-                              </span>
-                            </div>
-                            <span className="text-[11px] text-slate-500 font-mono">
-                              {[entry.reassigned_by ? `by ${entry.reassigned_by}` : '', entry.reassigned_at ? formatDateDDMMYYYY(entry.reassigned_at) : ''].filter(Boolean).join(' • ')}
-                            </span>
-                          </div>
-                          {(entry.remarks || entry.reason) && (
-                            <div className="text-[11px] text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 italic">
-                              <span className="font-semibold text-slate-500 not-italic">Remarks: </span>
-                              {entry.remarks || entry.reason}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 7. Sign-off Status Bar */}
-                <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
-                  isReqClosed
-                    ? 'bg-emerald-50/70 border-emerald-200/90'
-                    : isCloserCompleted
-                    ? 'bg-amber-50/70 border-amber-200/90'
-                    : isReqSignedOff
-                    ? 'bg-indigo-50/70 border-indigo-200/90'
-                    : 'bg-rose-50/70 border-rose-200/90'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    {isReqClosed ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span className="font-bold text-emerald-900">Process Audit Finding Fully Validated &amp; Closed</span>
-                      </>
-                    ) : isCloserCompleted ? (
-                      <>
-                        <Clock className="w-4 h-4 text-amber-600" />
-                        <span className="font-bold text-amber-900">Countermeasures Submitted — Awaiting Quality Auditor Sign-Off (Awaiting Review)</span>
-                      </>
-                    ) : isReqSignedOff ? (
-                      <>
-                        <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                        <span className="font-bold text-indigo-900">Signed Off &amp; Countermeasures Submitted</span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="w-4 h-4 text-rose-600" />
-                        <span className="font-bold text-rose-900">Audit Finding Awaiting Closer Action &amp; Target Date (Pending)</span>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 text-[11px] text-slate-600 font-medium">
-                    <span>Priority: <strong className="text-amber-800 font-mono">{req.priority || 'Medium'}</strong></span>
-                    <span>Executor: <strong className="text-blue-700 font-mono">{req.executor || '—'}</strong></span>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                {/* 8. Quick Switch to Sign Fields & Tracks */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-slate-50 border border-indigo-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2.5 text-slate-700">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
-                      <ShieldCheck className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-900 block">Sign Fields, Closer Reassignment &amp; Tracking History</span>
-                      <span className="text-[11px] text-slate-500">
-                        View or finalize admin verification sign-off and audit trail tracks.
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('sign_tracks')}
-                    className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                  >
-                    <span>View Sign &amp; Tracks</span>
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                  </button>
+              {/* 7. Closer Status & Sign-off Details */}
+              <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
+                isReqClosed
+                  ? 'bg-emerald-50/70 border-emerald-200/90'
+                  : 'bg-amber-50/70 border-amber-200/90'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {isReqClosed ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span className="font-bold text-emerald-900">Incident Fully Validated &amp; Closed</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="w-4 h-4 text-amber-600" />
+                      <span className="font-bold text-amber-900">Containment Countermeasure in Progress</span>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-4 text-[11px] text-slate-600 font-medium">
+                  <span>Priority: <strong className="text-amber-800 font-mono">{req.priority || 'Medium'}</strong></span>
+                  <span>Resp: <strong className="text-blue-700 font-mono">{req.department || 'Production'}{req.executor ? ` (${req.executor})` : ''}</strong></span>
                 </div>
               </div>
-            )
+
+              {/* 8. Quick Switch to Sign Fields & Tracks */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-slate-50 border border-indigo-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5 text-slate-700">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-900 block">Sign Fields, Closer Reassignment &amp; Tracking History</span>
+                    <span className="text-[11px] text-slate-500">
+                      View or finalize admin verification sign-off and audit trail tracks.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('sign_tracks')}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                >
+                  <span>View Sign &amp; Tracks</span>
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
           ) : isEditMode ? (
             /* TAB 1: REQUESTER DETAILS - EDIT MODE */
             <div className="space-y-6 animate-in fade-in duration-150">
@@ -2948,9 +2691,9 @@ const ProcessAuditRequestDetailsModal = ({
             <>
               <div>
                 {activeTab === 'closer' ? (
-                  actionAttachments.length > 0 && (
+                  (temporaryEvidenceAttachments.length > 0 || permanentEvidenceAttachments.length > 0) && (
                     <span className="text-xs text-slate-400 font-medium">
-                      {actionAttachments.length} closer evidence attachment{actionAttachments.length > 1 ? 's' : ''} available
+                      {temporaryEvidenceAttachments.length + permanentEvidenceAttachments.length} closer evidence attachment{temporaryEvidenceAttachments.length + permanentEvidenceAttachments.length > 1 ? 's' : ''} available
                     </span>
                   )
                 ) : activeTab === 'sign_tracks' ? (
