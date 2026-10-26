@@ -336,6 +336,10 @@ export const updateRequestStatus = async (req, res) => {
     ).catch(() => [[]]);
     const existing = existingRows?.[0] || null;
 
+    if (existing && String(existing.status || '').toUpperCase() === 'CLOSED') {
+      return errorResponse(res, 'This request is closed and cannot be edited.', 403);
+    }
+
     const updated = await ProcessAuditRequest.updateStatus(id, status, details);
     if (!updated) {
       return errorResponse(res, 'Request not found or status update failed', 404);
@@ -644,6 +648,16 @@ export const reassignRequest = async (req, res) => {
       return errorResponse(res, 'New department and new executor are required for reassignment', 400);
     }
 
+    const numericId = parseInt(String(id).replace(/\D/g, ''), 10) || id;
+    const [existingRows] = await pool.query(
+      'SELECT status FROM process_audit_requests WHERE id = ? OR issue_no = ?',
+      [numericId, String(id)]
+    ).catch(() => [[]]);
+    const existing = existingRows?.[0] || null;
+    if (existing && String(existing.status || '').toUpperCase() === 'CLOSED') {
+      return errorResponse(res, 'This request is closed and cannot be reassigned or modified.', 403);
+    }
+
     // Verify department authorization: Only QAD or ADMIN can reassign
     const userId = req.user?.id || body.reassigned_by_id;
     const userName = req.user?.name || body.reassigned_by;
@@ -883,6 +897,16 @@ export const updateRequest = async (req, res) => {
     const isAdmin = userRole === 'ADMIN' || userDept === 'QAD';
     if (!isAdmin) {
       return errorResponse(res, 'Access denied. Edit mode is only permitted for Admin role.', 403);
+    }
+
+    const numericId = parseInt(String(id).replace(/\D/g, ''), 10) || id;
+    const [existingRows] = await pool.query(
+      'SELECT status FROM process_audit_requests WHERE id = ? OR issue_no = ?',
+      [numericId, String(id)]
+    ).catch(() => [[]]);
+    const existing = existingRows?.[0] || null;
+    if (existing && String(existing.status || '').toUpperCase() === 'CLOSED') {
+      return errorResponse(res, 'This request is closed and cannot be edited.', 403);
     }
 
     if (body.escalation_date) {

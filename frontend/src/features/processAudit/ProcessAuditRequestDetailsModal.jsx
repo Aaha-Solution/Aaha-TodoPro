@@ -169,8 +169,8 @@ const ProcessAuditRequestDetailsModal = ({
     )
   );
 
-  const isClosed = (req?.status || '').toUpperCase() === 'CLOSED';
-  const canEdit = Boolean(req && isAdmin);
+  const isClosed = (req?.status || '').toUpperCase() === 'CLOSED' || (req?.status || '').toUpperCase().includes('CLOSE');
+  const canEdit = Boolean(req && isAdmin && !isClosed);
 
   const initEditState = (targetReq = req) => {
     if (!targetReq) return;
@@ -240,7 +240,7 @@ const ProcessAuditRequestDetailsModal = ({
     if (isOpen && request) {
       initEditState(request);
       initAdminState(request);
-      if (initialEditMode) {
+      if (initialEditMode && !isClosed) {
         setIsEditMode(true);
         setActiveTab('requester');
       } else {
@@ -408,6 +408,11 @@ const ProcessAuditRequestDetailsModal = ({
   };
 
   const handleSaveChanges = async () => {
+    if (isClosed) {
+      modalError('This request is closed and cannot be modified.');
+      return;
+    }
+
     const newErrors = {};
 
     const todayDateStr = new Date().toISOString().split('T')[0];
@@ -502,6 +507,11 @@ const ProcessAuditRequestDetailsModal = ({
   const handleSaveAdminSignOff = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!req) return;
+
+    if (isClosed) {
+      modalError('This request is closed and cannot be modified.');
+      return;
+    }
 
     if (!isAdmin) {
       modalError('Only Quality Auditor or Admin has permission to update Admin Review and sign off status.');
@@ -1348,7 +1358,7 @@ const ProcessAuditRequestDetailsModal = ({
 
                   <textarea
                     rows={3}
-                    disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isReqClosed && !isAdmin)}
+                    disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isReqClosed}
                     placeholder={
                       isCloserDataToBeUpdated && !isReassignOpen
                         ? (adminRemarks || req.creator_remark || req.remarks || (reassignList?.[reassignList.length - 1]?.remarks) ? '' : 'Awaiting closer Corrective Action & Target Date...')
@@ -1362,7 +1372,7 @@ const ProcessAuditRequestDetailsModal = ({
                       }
                     }}
                     className={`w-full px-3.5 py-2.5 border rounded-xl text-xs outline-none transition font-medium leading-relaxed resize-none ${
-                      !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isReqClosed && !isAdmin)
+                      !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isReqClosed
                         ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                         : adminErrors.remarks
                         ? 'border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
@@ -1402,7 +1412,7 @@ const ProcessAuditRequestDetailsModal = ({
 
                   <input
                     type="text"
-                    disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isReqClosed && !isAdmin)}
+                    disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isReqClosed}
                     placeholder={`e.g. Leave empty to attach ${user?.name || 'Admin'}`}
                     value={adminReviewedBy}
                     onChange={(e) => {
@@ -1415,7 +1425,7 @@ const ProcessAuditRequestDetailsModal = ({
                       }
                     }}
                     className={`w-full px-3.5 py-2 border rounded-xl text-xs font-semibold outline-none transition ${
-                      !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isReqClosed && !isAdmin)
+                      !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isReqClosed
                         ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                         : adminErrors.reviewedBy
                         ? 'border-rose-400 bg-rose-50/20'
@@ -1445,7 +1455,7 @@ const ProcessAuditRequestDetailsModal = ({
                   </label>
 
                   <select
-                    disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isReqClosed && !isAdmin)}
+                    disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isReqClosed}
                     value={isReassignOpen ? 'Pending' : adminStatus}
                     onChange={(e) => {
                       setAdminStatus(e.target.value);
@@ -1454,7 +1464,7 @@ const ProcessAuditRequestDetailsModal = ({
                       }
                     }}
                     className={`w-full px-3.5 py-2 border rounded-xl font-bold text-xs outline-none transition cursor-pointer ${
-                      !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isReqClosed && !isAdmin)
+                      !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isReqClosed
                         ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                         : adminErrors.status
                         ? 'border-rose-400 bg-rose-50/20'

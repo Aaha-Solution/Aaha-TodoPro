@@ -251,6 +251,10 @@ const AllRequests = () => {
   const handleOpenReassignModal = (reqItem) => {
     const target = reqItem || activeModalRequest;
     if (!target) return;
+    if (String(target.status || '').toUpperCase().includes('CLOSE')) {
+      alert('This request is closed and cannot be modified.');
+      return;
+    }
     setReassigningRequest(target);
     const targetDept = target.department || 'PRODUCTION';
     setReassignDept(targetDept);
@@ -1004,8 +1008,8 @@ const AllRequests = () => {
                             <Eye className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* Review & Edit (Admin Only) */}
-                          {isAdmin && (
+                          {/* Review & Edit (Admin Only for non-closed requests) */}
+                          {isAdmin && !String(r.status || '').toUpperCase().includes('CLOSE') && (
                             <button
                               onClick={() => {
                                 setActiveModalRequest(r);

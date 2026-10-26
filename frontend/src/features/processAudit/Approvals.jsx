@@ -385,10 +385,10 @@ const ProcessAuditApprovals = () => {
   );
 
   const canUpdateAdminFields = Boolean(
-    selectedRequest && isAdmin
+    selectedRequest && isAdmin && !isSelectedClosed
   );
 
-  const isLockedForCloserUser = !isAdmin && (isSelectedClosed || hasCloserSubmitted);
+  const isLockedForCloserUser = isSelectedClosed || (!isAdmin && hasCloserSubmitted);
 
   // Reassign Closer is disabled when no request is selected, or when request is closed or editing closer fields
   const isReassignDisabled = Boolean(
@@ -650,7 +650,7 @@ const ProcessAuditApprovals = () => {
       return;
     }
     setSelectedRequest(req);
-    if (!keepEditMode) {
+    if (!keepEditMode || String(req?.status || '').toUpperCase().includes('CLOSE')) {
       setAdminEditCloser(false);
     }
     setSuccessMessage('');
@@ -831,12 +831,13 @@ const ProcessAuditApprovals = () => {
     if (e && e.preventDefault) e.preventDefault();
     if (!selectedRequest) return;
 
+    if (isSelectedClosed) {
+      setErrorMessage('This request is closed and cannot be edited.');
+      return;
+    }
+
     if (isLockedForCloserUser) {
-      if (isSelectedClosed) {
-        setErrorMessage('This request is closed. Only Admin can update closed requests.');
-      } else {
-        setErrorMessage('Closer details have already been submitted once for this request. Only Quality Admin has permission to make multiple updates.');
-      }
+      setErrorMessage('Closer details have already been submitted once for this request. Only Quality Admin has permission to make multiple updates.');
       return;
     }
 
@@ -1022,6 +1023,11 @@ const ProcessAuditApprovals = () => {
   const handleSaveAdmin = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!selectedRequest) return;
+
+    if (isSelectedClosed) {
+      setErrorMessage('This request is closed and cannot be edited.');
+      return;
+    }
 
     if (adminEditCloser) {
       setErrorMessage('Admin Sign-Off is disabled while editing closer fields. Please save or cancel closer log updates first.');
@@ -2167,6 +2173,11 @@ const ProcessAuditApprovals = () => {
                 >
                   Select a Request to Update
                 </button>
+              ) : isSelectedClosed ? (
+                <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Incident Closed — Updates Locked</span>
+                </div>
               ) : (isAdmin && !isCloser) ? (
                 adminEditCloser ? (
                   <div className="flex items-center gap-2">
@@ -2213,11 +2224,6 @@ const ProcessAuditApprovals = () => {
                     <span>Edit Closer Fields</span>
                   </button>
                 )
-              ) : isSelectedClosed ? (
-                <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Incident Closed — Updates Locked (Admin Only)</span>
-                </div>
               ) : hasCloserSubmitted ? (
                 <div className="w-full py-2.5 px-4 rounded-xl border border-blue-200 bg-blue-50/90 text-blue-900 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-blue-600" />
@@ -2287,7 +2293,17 @@ const ProcessAuditApprovals = () => {
                 </div>
 
                 {/* Alert Banner / Guidance */}
-                {adminEditCloser ? (
+                {isSelectedClosed ? (
+                  <div className="p-2.5 px-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 text-[11px] flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div className="leading-tight">
+                      <span className="font-bold">Incident Closed: </span>
+                      <span className="text-emerald-800">
+                        This request is fully closed and locked. All closer and admin sign-off fields cannot be edited.
+                      </span>
+                    </div>
+                  </div>
+                ) : adminEditCloser ? (
                   <div className="p-2.5 px-3 rounded-xl border border-amber-300 bg-amber-50/90 text-amber-900 text-[11px] flex items-center gap-2 animate-in fade-in">
                     <Lock className="w-4 h-4 text-amber-600 shrink-0" />
                     <div className="leading-tight">
@@ -2610,7 +2626,7 @@ const ProcessAuditApprovals = () => {
                   <textarea
                     rows={2}
                     maxLength={1000}
-                    disabled={!selectedRequest || adminEditCloser}
+                    disabled={!selectedRequest || adminEditCloser || isSelectedClosed}
                     value={closerRemarks}
                     onChange={(e) => {
                       if (adminEditCloser) return;
@@ -2676,7 +2692,7 @@ const ProcessAuditApprovals = () => {
                   </div>
                   <input
                     type="text"
-                    disabled={!selectedRequest || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
+                    disabled={!selectedRequest || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen) || isSelectedClosed}
                     placeholder={
                       !selectedRequest
                         ? 'Click a row on the right to select'
@@ -2740,11 +2756,11 @@ const ProcessAuditApprovals = () => {
                   <select
                     value={isReassignOpen ? 'PENDING' : closerStatus}
                     onChange={(e) => {
-                      if (adminEditCloser || isReassignOpen) return;
+                      if (adminEditCloser || isReassignOpen || isSelectedClosed) return;
                       setCloserStatus(e.target.value);
                       if (e.target.value) setStatusError(false);
                     }}
-                    disabled={adminEditCloser || !selectedRequest || isReassignOpen}
+                    disabled={adminEditCloser || !selectedRequest || isReassignOpen || isSelectedClosed}
                     className={`w-full px-3.5 py-2.5 border rounded-xl font-bold outline-none transition ${
                       adminEditCloser
                         ? 'cursor-not-allowed bg-slate-100 border-slate-200 text-slate-400 select-none'
@@ -2813,6 +2829,11 @@ const ProcessAuditApprovals = () => {
                       <Lock className="w-4 h-4 text-slate-400" />
                       <span>Sign-Off Locked (Closer Edit Active)</span>
                     </button>
+                  ) : isSelectedClosed ? (
+                    <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Audit Finding Fully Validated &amp; Closed</span>
+                    </div>
                   ) : (
                     <button
                       type="button"
