@@ -32,7 +32,7 @@ import { IhlrAttachmentThumbnail } from './IhlrAttachmentView';
 import IhlrRequestDetailsModal from './IhlrRequestDetailsModal';
 import IhlrAttachmentPreviewModal from './IhlrAttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
-import { exportIhlrToExcel, exportIhlrToPdf, getIhlrDisplayStatus } from './ihlrExportUtils';
+import { exportIhlrToExcel, exportIhlrToPdf, getIhlrDisplayStatus, formatReassignmentHistory } from './ihlrExportUtils';
 import DateInput from '../../components/common/DateInput';
 import { useAuth } from '../../hooks/useAuth';
 import { useModal } from '../../context/ModalContext';
@@ -677,11 +677,17 @@ const IhlrAllRequests = () => {
                       <div className="text-[10px] font-bold text-slate-600 font-mono">
                         {r.resp || '-'}
                       </div>
-                      {r.resp_person && (
-                        <div className="text-[9px] text-blue-600 font-semibold truncate max-w-[110px]" title={`Assigned: ${r.resp_person}`}>
-                          {r.resp_person}
-                        </div>
-                      )}
+                      {r.resp_person && (() => {
+                        const isReassigned = Boolean(formatReassignmentHistory(r.reassignment_history)?.hasReassignments);
+                        return (
+                          <div 
+                            className={`text-[9px] font-semibold truncate max-w-[110px] ${isReassigned ? 'text-purple-700' : 'text-blue-600'}`} 
+                            title={`${isReassigned ? 'Reassigned' : 'Assigned'}: ${r.resp_person}`}
+                          >
+                            {isReassigned ? `Reassigned: ${r.resp_person}` : r.resp_person}
+                          </div>
+                        );
+                      })()}
                       {(r.closer_updated_by || r.temporary_closed_by) && (
                         <div className="text-[9px] text-emerald-700 font-bold truncate max-w-[110px]" title={`Closer Updated by: ${r.closer_updated_by || r.temporary_closed_by}`}>
                           ✓ {r.closer_updated_by || r.temporary_closed_by}

@@ -1987,9 +1987,18 @@ const IhlrApprovals = () => {
                             <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
                           </div>
                           <div className="text-[10px] text-slate-500">
-                            Current: <strong className={isReassignDisabled ? 'text-slate-600' : 'text-slate-700'}>
-                              {selectedRequest ? (selectedRequest.resp_person || 'Not Assigned') : 'No Request Selected'}
-                            </strong> ({selectedRequest?.resp || 'N/A'})
+                            {(() => {
+                              const selReassignInfo = formatReassignmentHistory(selectedRequest?.reassignment_history);
+                              const isSelReassigned = Boolean(selReassignInfo?.hasReassignments);
+                              return (
+                                <>
+                                  {isSelReassigned ? 'Current (Reassigned): ' : 'Current: '}
+                                  <strong className={isReassignDisabled ? 'text-slate-600' : isSelReassigned ? 'text-purple-800' : 'text-slate-700'}>
+                                    {selectedRequest ? (selectedRequest.resp_person || 'Not Assigned') : 'No Request Selected'}
+                                  </strong> ({selectedRequest?.resp || 'N/A'})
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -2620,12 +2629,25 @@ const IhlrApprovals = () => {
                             <div className="text-[11px] text-slate-500 truncate max-w-[180px]" title={r.model}>
                               {r.model}
                             </div>
-                            {r.resp_person && (
-                              <div className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[180px]" title={`Assigned: ${r.resp_person}`}>
-                                <span className="font-medium text-slate-400">Assigned: </span>
-                                <span className="font-semibold text-slate-700">{r.resp_person}</span>
-                              </div>
-                            )}
+                            {r.resp_person && (() => {
+                              const reassignInfo = formatReassignmentHistory(r.reassignment_history);
+                              const isReassigned = Boolean(reassignInfo?.hasReassignments);
+                              return (
+                                <div
+                                  className={`text-[10px] mt-0.5 truncate max-w-[180px] ${
+                                    isReassigned ? 'text-purple-700 font-medium' : 'text-slate-500'
+                                  }`}
+                                  title={`${isReassigned ? 'Reassigned' : 'Assigned'}: ${r.resp_person}${isReassigned && reassignInfo.count > 1 ? ` (${reassignInfo.count} times)` : ''}`}
+                                >
+                                  <span className={`font-semibold ${isReassigned ? 'text-purple-700' : 'text-slate-400'}`}>
+                                    {isReassigned ? 'Reassigned: ' : 'Assigned: '}
+                                  </span>
+                                  <span className={`font-bold ${isReassigned ? 'text-purple-900' : 'text-slate-700'}`}>
+                                    {r.resp_person}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                             {(r.closer_updated_by || r.temporary_closed_by) && (
                               <div className="text-[10px] text-emerald-700 mt-0.5 truncate max-w-[180px]" title={`Updated by: ${r.closer_updated_by || r.temporary_closed_by}`}>
                                 <span className="font-medium text-emerald-600">Updated by: </span>
