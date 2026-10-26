@@ -32,8 +32,7 @@ export const ihlrService = {
         user_email: currentUser.email,
         user_id: currentUser.id,
         role: currentUser.role,
-        user_department: currentUser.department,
-        department: currentUser.department
+        user_department: currentUser.department
       } : {};
       const res = await api.get('/ihlr/dashboard', { params: { ...userParams, ...filters } });
       const stats = res.data?.data || res.data;
@@ -42,12 +41,9 @@ export const ihlrService = {
       let scopedStore = [...localIhlrStore];
       const currentUser = storage.getUser();
       const isUserAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.department?.toUpperCase() === 'QAD';
-      const userDept = (currentUser?.department || '').trim().toUpperCase();
 
-      // Apply department filter (lock to user department if not admin)
-      const deptFilter = (!isUserAdmin && userDept && userDept !== 'QAD')
-        ? userDept
-        : (filters.resp || filters.filter_dept || '').trim().toUpperCase();
+      // Apply department filter - common across all departments unless explicitly chosen
+      const deptFilter = (filters.resp || filters.filter_dept || '').trim().toUpperCase();
 
       if (deptFilter && deptFilter !== 'ALL') {
         scopedStore = scopedStore.filter(r => (r.resp || '').trim().toUpperCase() === deptFilter);
@@ -243,7 +239,6 @@ export const ihlrService = {
         user_email: currentUser.email,
         user_id: currentUser.id,
         role: currentUser.role,
-        department: currentUser.department,
         user_department: currentUser.department
       } : {};
       const res = await api.get('/ihlr/requests', { params: { ...userParams, ...filters } });
@@ -253,11 +248,8 @@ export const ihlrService = {
       let data = [...localIhlrStore];
       const currentUser = storage.getUser();
       const isUserAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.department?.toUpperCase() === 'QAD';
-      const userDept = (currentUser?.department || '').trim().toUpperCase();
 
-      const deptFilter = (!isUserAdmin && userDept && userDept !== 'QAD')
-        ? userDept
-        : (filters.resp || filters.filter_dept || '').trim().toUpperCase();
+      const deptFilter = (filters.resp || filters.filter_dept || '').trim().toUpperCase();
 
       if (deptFilter && deptFilter !== 'ALL') {
         data = data.filter(r => (r.resp || '').trim().toUpperCase() === deptFilter);

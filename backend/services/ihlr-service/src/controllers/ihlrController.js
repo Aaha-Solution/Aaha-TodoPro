@@ -70,24 +70,11 @@ export const getDashboardStats = async (req, res) => {
     let requests = await IhlrRequest.getAll();
     if (!requests) requests = fallbackRequests;
 
-    const userRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
-    const userDept = (req.query.user_department || req.user?.department || (req.query.filter_dept || req.query.resp ? '' : req.query.department) || '').trim().toUpperCase();
-    const isAdmin = userRole === 'ADMIN' || userDept === 'QAD';
-
     // 1. Department-wise filter:
-    // If user is not admin/quality, strictly lock scope to their own department (e.g. PRODUCTION)
-    let effectiveDept = null;
-    if (!isAdmin && userDept && userDept !== 'QAD') {
-      effectiveDept = userDept;
-    } else {
-      const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
-      if (targetDept && targetDept !== 'ALL') {
-        effectiveDept = targetDept;
-      }
-    }
-
-    if (effectiveDept) {
-      requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === effectiveDept);
+    // Dashboard is common plant-wide for all departments. Filter only if an explicit filter is selected.
+    const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
+    if (targetDept && targetDept !== 'ALL') {
+      requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === targetDept);
     }
 
 
@@ -496,23 +483,10 @@ export const getIhlrRequests = async (req, res) => {
       }
     }
 
-    // Department filter (resp / filter_dept)
-    const reqRole = (req.query.role || req.user?.role || '').trim().toUpperCase();
-    const reqDept = (req.query.user_department || req.user?.department || (req.query.filter_dept || req.query.resp ? '' : req.query.department) || '').trim().toUpperCase();
-    const isReqAdmin = reqRole === 'ADMIN' || reqDept === 'QAD';
-
-    let effectiveDept = null;
-    if (!isReqAdmin && reqDept && reqDept !== 'QAD') {
-      effectiveDept = reqDept;
-    } else {
-      const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
-      if (targetDept && targetDept !== 'ALL') {
-        effectiveDept = targetDept;
-      }
-    }
-
-    if (effectiveDept) {
-      requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === effectiveDept);
+    // Department filter (resp / filter_dept) - common across all departments, filter only if selected
+    const targetDept = (req.query.resp || req.query.filter_dept || '').trim().toUpperCase();
+    if (targetDept && targetDept !== 'ALL') {
+      requests = requests.filter(r => (r.resp || '').trim().toUpperCase() === targetDept);
     }
 
     // Date filter

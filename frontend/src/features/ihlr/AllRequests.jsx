@@ -24,7 +24,8 @@ import {
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
-  Pencil
+  Pencil,
+  Building2
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
 import { IhlrAttachmentThumbnail } from './IhlrAttachmentView';
@@ -37,7 +38,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { isIhlrRequestVisibleToUser } from '../../utils/ihlrAuthUtils';
-import { IHLR_SHIFTS, formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
+import { DEPARTMENTS, IHLR_SHIFTS, formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
 
 const IhlrAllRequests = () => {
   const navigate = useNavigate();
@@ -57,7 +58,8 @@ const IhlrAllRequests = () => {
   const userRole = (user?.role || '').trim().toUpperCase();
   const isQad = userDept === 'QAD';
   const isAdmin = userRole === 'ADMIN' || isQad;
-  const canCreate = isQad || isAdmin;
+  const isProduction = userDept === 'PRODUCTION';
+  const canCreate = isQad || isAdmin || isProduction;
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,13 +80,14 @@ const IhlrAllRequests = () => {
   const currentYear = new Date().getFullYear();
 
   const [search, setSearch] = useState(location.state?.search || '');
+  const [selectedDepartment, setSelectedDepartment] = useState(location.state?.filterDept || 'All');
   const [selectedShift, setSelectedShift] = useState('All');
   const [selected4M, setSelected4M] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState(location.state?.filterStatus || 'All');
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultEndDate);
   const [showFilters, setShowFilters] = useState(
-    Boolean(location.state?.search || (location.state?.filterStatus && location.state.filterStatus !== 'All'))
+    Boolean(location.state?.search || location.state?.filterDept || (location.state?.filterStatus && location.state.filterStatus !== 'All'))
   );
 
   const isDefaultRange = startDate === defaultStartDate && endDate === defaultEndDate;
@@ -95,14 +98,23 @@ const IhlrAllRequests = () => {
     return itemDateStr < defaultStartDate && (r.status || '').toUpperCase() !== 'CLOSED';
   }).length;
   const hasActiveFilters =
+    selectedDepartment !== 'All' ||
     selectedShift !== 'All' ||
     selected4M !== 'All' ||
     selectedStatus !== 'All' ||
     !isDefaultRange ||
     Boolean((search || '').trim());
 
+  const departmentOptions = Array.from(
+    new Set([
+      ...DEPARTMENTS,
+      ...requests.map((r) => (r.resp || '').trim().toUpperCase()).filter(Boolean)
+    ])
+  ).sort();
+
   const handleResetFilters = () => {
     setSearch('');
+    setSelectedDepartment('All');
     setSelectedShift('All');
     setSelected4M('All');
     setSelectedStatus('All');
@@ -111,6 +123,9 @@ const IhlrAllRequests = () => {
   };
 
   useEffect(() => {
+    if (location.state?.filterDept) {
+      setSelectedDepartment(location.state.filterDept);
+    }
     if (location.state?.filterStatus) {
       setSelectedStatus(location.state.filterStatus);
     }
@@ -135,7 +150,7 @@ const IhlrAllRequests = () => {
   // Reset to page 1 on filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selectedShift, selected4M, selectedStatus, startDate, endDate]);
+  }, [search, selectedDepartment, selectedShift, selected4M, selectedStatus, startDate, endDate]);
 
   const totalRecords = requests.length;
   const totalPages = Math.ceil(totalRecords / rowsPerPage) || 1;
@@ -186,7 +201,7 @@ const IhlrAllRequests = () => {
         requests,
         fileName: `IHLR_Analysis_Report_${today}.pdf`,
         title: 'IHLR Analysis Log & Rejection Reports',
-        filterText: `Shift: ${selectedShift} | 4M: ${selected4M} | Status: ${selectedStatus} | Range: ${startDate || 'All'} to ${endDate || 'All'}`
+        filterText: `Dept: ${selectedDepartment} | Shift: ${selectedShift} | 4M: ${selected4M} | Status: ${selectedStatus} | Range: ${startDate || 'All'} to ${endDate || 'All'}`
       });
       setShowExportModal(false);
     } catch (err) {
@@ -200,6 +215,10 @@ const IhlrAllRequests = () => {
     try {
       const filters = {};
       if (search && search.trim()) filters.search = search.trim();
+      if (selectedDepartment && selectedDepartment !== 'All') {
+        filters.resp = selectedDepartment;
+        filters.filter_dept = selectedDepartment;
+      }
       if (selectedShift !== 'All') filters.shift = selectedShift;
       if (selected4M !== 'All') filters.fourM = selected4M;
       if (selectedStatus !== 'All') filters.status = selectedStatus;
@@ -232,7 +251,7 @@ const IhlrAllRequests = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       window.removeEventListener('ihlrLiveUpdate', handleLiveUpdate);
     };
-  }, [search, selectedShift, selected4M, selectedStatus, startDate, endDate, user?.name, user?.email, user?.role, user?.department]);
+  }, [search, selectedDepartment, selectedShift, selected4M, selectedStatus, startDate, endDate, user?.name, user?.email, user?.role, user?.department]);
 
   const handleUpdateStatus = async (id, newStatus, actionUpdate) => {
     try {
@@ -317,9 +336,13 @@ const IhlrAllRequests = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               All Requests
             </h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Plant-Wide Repository</span>
+            </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Comprehensive spreadsheet view of in-house line rejections, 5-Why root-causes, and containment actions.
+            Master repository of in-house line rejections, 5-Why root-causes, and containment actions across all departments.
           </p>
         </div>
 
@@ -396,6 +419,22 @@ const IhlrAllRequests = () => {
               />
             </div>
 
+            {/* Department Filter (RESP) */}
+            <div className="lg:col-span-2">
+              <select
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+              >
+                <option value="All">All Departments</option>
+                {departmentOptions.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Shift Filter */}
             <div className="lg:col-span-2">
               <select
@@ -413,13 +452,13 @@ const IhlrAllRequests = () => {
             </div>
 
             {/* 4M Filter */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-1">
               <select
                 value={selected4M}
                 onChange={(e) => setSelected4M(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
               >
-                <option value="All">All 4M Categories</option>
+                <option value="All">All 4M</option>
                 <option value="MAN">MAN</option>
                 <option value="MACHINE">MACHINE</option>
                 <option value="METHOD">METHOD</option>
@@ -428,11 +467,11 @@ const IhlrAllRequests = () => {
             </div>
 
             {/* Status Filter */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-1">
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
               >
                 <option value="All">All Statuses</option>
                 <option value="OPEN">Pending</option>

@@ -33,7 +33,8 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   const isIhlr = location.pathname.startsWith('/ihlr');
   const isQad = userDept === 'QAD';
   const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isQad;
-  const canCreate = isQad || isAdmin;
+  const isProduction = userDept === 'PRODUCTION';
+  const canCreate = isQad || isAdmin || isProduction;
 
   const handleLogout = async () => {
     const isConfirmed = await confirm({

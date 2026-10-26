@@ -55,7 +55,8 @@ const IhlrCreateRequest = () => {
   const userRole = (user?.role || '').trim().toUpperCase();
   const isQad = userDept === 'QAD';
   const isAdmin = userRole === 'ADMIN' || isQad;
-  const canCreate = isQad || isAdmin;
+  const isProduction = userDept === 'PRODUCTION';
+  const canCreate = isQad || isAdmin || isProduction;
 
   const [submitting, setSubmitting] = useState(false);
   const [dbUsers, setDbUsers] = useState([]);
@@ -469,7 +470,7 @@ const IhlrCreateRequest = () => {
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!canCreate) {
-      warning('Access Denied: Only Administrators from the QAD department are authorized to create IHLR requests.');
+      warning('Access Denied: Only authorized departments (QAD, Production) are permitted to create IHLR requests.');
       return;
     }
 
@@ -651,9 +652,9 @@ const IhlrCreateRequest = () => {
           <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-100 shadow-sm">
             <ShieldAlert className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">QAD Authorization Required</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Authorization Required</h2>
           <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-            In this system, only Administrators from the <span className="font-semibold text-gray-800">QAD</span> department have privileges to create new IHLR defect analysis requests.
+            In this system, authorized members from the <span className="font-semibold text-gray-800">QAD</span> and <span className="font-semibold text-gray-800">Production</span> departments have privileges to create new IHLR defect analysis requests.
           </p>
           <div className="flex items-center justify-center gap-3">
             <button
