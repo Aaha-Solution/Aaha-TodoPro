@@ -824,10 +824,10 @@ const AllRequests = () => {
             <thead>
               {/* Top Phase Header Row (Matching Analysis Report) */}
               <tr className="text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-200">
-                <th colSpan={10} className="py-2.5 px-4 bg-amber-100 text-amber-900 border-r border-amber-200">
+                <th colSpan={6} className="py-2.5 px-4 bg-amber-100 text-amber-900 border-r border-amber-200">
                   REQUESTOR (Audit Observation &amp; Defect Details)
                 </th>
-                <th colSpan={4} className="py-2.5 px-4 bg-orange-100 text-orange-900 border-r border-orange-200">
+                <th colSpan={2} className="py-2.5 px-4 bg-orange-100 text-orange-900 border-r border-orange-200">
                   CLOSER (Containment &amp; Corrective Action)
                 </th>
                 <th colSpan={3} className="py-2.5 px-4 bg-slate-100 text-slate-700">
@@ -837,23 +837,17 @@ const AllRequests = () => {
 
               {/* Detailed Column Header Row */}
               <tr className="bg-[#f8fafc] border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                {/* Requestor Columns (10) */}
+                {/* Requestor Columns (6) */}
                 <th className="py-3 px-3 text-center w-12">SL NO</th>
                 <th className="py-3 px-3 whitespace-nowrap">ISSUE NO</th>
                 <th className="py-3 px-3 whitespace-nowrap">DATE / SHIFT</th>
-                <th className="py-3 px-4 min-w-[150px]">OBSERVATION</th>
-                <th className="py-3 px-3 whitespace-nowrap">PRODUCT</th>
-                <th className="py-3 px-3 whitespace-nowrap"> MODEL</th>
-                <th className="py-3 px-3 whitespace-nowrap">Process / Operation</th>
                 <th className="py-3 px-3 whitespace-nowrap">Created BY</th>
                 <th className="py-3 px-2 text-center w-12">DEFECT</th>
                 <th className="py-3 px-3 whitespace-nowrap text-center">RESP / EXECUTOR</th>
 
-                {/* Closer Columns (4) */}
-                <th className="py-3 px-4 min-w-[140px]">ROOT CAUSE</th>
-                <th className="py-3 px-4 min-w-[150px]">ACTION TAKEN</th>
-                <th className="py-3 px-4 min-w-[140px]">STANDARDIZATION</th>
-                <th className="py-3 px-3 whitespace-nowrap">TARGET DATE</th>
+                {/* Closer Columns (2) */}
+                <th className="py-3 px-4 min-w-[160px]">Why Analysis of w1</th>
+                <th className="py-3 px-3 whitespace-nowrap">TEMPORARY TARGET DATE</th>
 
                 {/* Remarks & Status Columns (3) */}
                 <th className="py-3 px-4 min-w-[130px]">REMARKS</th>
@@ -865,14 +859,14 @@ const AllRequests = () => {
             <tbody className="divide-y divide-slate-100 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan={17} className="py-16 text-center text-slate-400">
+                  <td colSpan={11} className="py-16 text-center text-slate-400">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
                     Loading process audit analysis reports from database...
                   </td>
                 </tr>
               ) : paginatedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={17} className="py-12 text-center text-slate-400">
+                  <td colSpan={11} className="py-12 text-center text-slate-400">
                     <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600">
                       No Process Audit Reports match your filter
@@ -892,34 +886,29 @@ const AllRequests = () => {
                   const auditorStr = r.created_by || r.creator || '—';
                   const deptStr = r.department || '—';
                   const executorStr = r.executor || 'Assigned Lead';
-                  const rootCauseStr = (() => {
-                    if (r.prod_why_why) {
-                      if (Array.isArray(r.prod_why_why)) {
-                        const first = r.prod_why_why.find((w) => w && String(w).trim());
+                  const why1Str = (() => {
+                    const rawWhy = r.prod_why_why || r.why_why;
+                    if (rawWhy) {
+                      if (Array.isArray(rawWhy)) {
+                        const first = rawWhy.find((w) => w && String(w).trim());
                         if (first) return first;
-                      } else if (typeof r.prod_why_why === 'string') {
+                      } else if (typeof rawWhy === 'string') {
                         try {
-                          const parsed = JSON.parse(r.prod_why_why);
+                          const parsed = JSON.parse(rawWhy);
                           if (Array.isArray(parsed)) {
                             const first = parsed.find((w) => w && String(w).trim());
                             if (first) return first;
                           }
-                        } catch {}
+                        } catch {
+                          if (rawWhy.trim()) return rawWhy.trim();
+                        }
                       }
                     }
-                    return r.root_cause || '—';
+                    return r.w1 || r.why1 || r.root_cause || '—';
                   })();
 
-                  const actionStr = (() => {
-                    if (r.temporary_action && r.permanent_fix) {
-                      return `Temp: ${r.temporary_action} | Perm: ${r.permanent_fix}`;
-                    }
-                    return r.temporary_action || r.permanent_fix || r.corrective_action || r.action || '—';
-                  })();
-
-                  const standardStr = r.standardization_details || '—';
-                  const targetDateStr = (r.temporary_target_date || r.permanent_target_date || r.target_date)
-                    ? formatDateDDMMYYYY(r.temporary_target_date || r.permanent_target_date || r.target_date)
+                  const tempTargetDateStr = (r.temporary_target_date || r.target_date || r.permanent_target_date)
+                    ? formatDateDDMMYYYY(r.temporary_target_date || r.target_date || r.permanent_target_date)
                     : '—';
                   const remarksStr = r.creator_remark || r.remarks || '—';
 
@@ -957,28 +946,6 @@ const AllRequests = () => {
                             {r.shift || 'General'}
                           </span>
                         </div>
-                      </td>
-
-                      {/* Observation */}
-                      <td className="py-3.5 px-4 font-semibold text-slate-900 max-w-[200px]" title={r.issue_observation || r.problem}>
-                        <div className="truncate">
-                          {r.issue_observation || r.problem || '—'}
-                        </div>
-                      </td>
-
-                      {/* Product */}
-                      <td className="py-3.5 px-3 font-medium text-slate-800 whitespace-nowrap">
-                        {prodStr}
-                      </td>
-
-                      {/* Stage / Model */}
-                      <td className="py-3.5 px-3 font-bold text-blue-700 whitespace-nowrap">
-                        {stageStr}
-                      </td>
-
-                      {/* Line / Operation */}
-                      <td className="py-3.5 px-3 font-medium text-slate-700 whitespace-nowrap">
-                        {lineStr}
                       </td>
 
                       {/* Audited By (Creator) */}
@@ -1022,24 +989,14 @@ const AllRequests = () => {
                         })()}
                       </td>
 
-                      {/* Root Cause */}
-                      <td className="py-3.5 px-4 text-slate-700 max-w-[160px] truncate" title={rootCauseStr}>
-                        {rootCauseStr}
+                      {/* Why Analysis of w1 */}
+                      <td className="py-3.5 px-4 text-slate-700 max-w-[180px] truncate" title={why1Str}>
+                        {why1Str}
                       </td>
 
-                      {/* Action Taken */}
-                      <td className="py-3.5 px-4 text-slate-800 font-medium max-w-[180px] truncate" title={actionStr}>
-                        {actionStr}
-                      </td>
-
-                      {/* Standardization */}
-                      <td className="py-3.5 px-4 text-slate-700 max-w-[160px] truncate" title={standardStr}>
-                        {standardStr}
-                      </td>
-
-                      {/* Target Date */}
+                      {/* Temporary Target Date */}
                       <td className="py-3.5 px-3 text-slate-600 font-mono text-[11px] whitespace-nowrap">
-                        {targetDateStr}
+                        {tempTargetDateStr}
                       </td>
 
                       {/* Remarks */}

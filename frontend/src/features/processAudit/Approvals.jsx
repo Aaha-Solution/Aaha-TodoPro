@@ -572,7 +572,12 @@ const ProcessAuditApprovals = () => {
         params.role = currentUser?.role;
       }
       const data = await processAuditService.getRequests(params);
-      const list = Array.isArray(data) ? data : [];
+      const rawList = Array.isArray(data) ? data : [];
+      // Process Audit Approvals & Sign-off Log: do not show closed status records
+      const list = rawList.filter((r) => {
+        const s = String(r.status || '').trim().toLowerCase();
+        return !s.includes('close');
+      });
       setRequests(list);
 
       // On manual refresh or browser reload, don't force deep-link highlight filter
@@ -666,7 +671,7 @@ const ProcessAuditApprovals = () => {
 
   // Populate form fields when a row is clicked
   const populateForm = (req, keepEditMode = false) => {
-    if (!req) {
+    if (!req || String(req.status || '').toUpperCase().includes('CLOSE')) {
       setSelectedRequest(null);
       setAdminEditCloser(false);
       setSuccessMessage('');
@@ -1245,9 +1250,8 @@ const ProcessAuditApprovals = () => {
         window.dispatchEvent(new Event('refreshNotifications'));
 
         if (targetStatus === 'Closed') {
-          const merged = { ...selectedRequest, ...payload, ...updated, status: 'Closed', reviewed_by: effectiveReviewer, reviewed_by_id: reviewerId, reviewed_by_email: reviewerEmail };
-          setSelectedRequest(merged);
-          populateForm(merged);
+          setSelectedRequest(null);
+          populateForm(null);
         } else if (updated) {
           const merged = { ...selectedRequest, ...payload, ...updated, status: targetStatus, reviewed_by: effectiveReviewer, reviewed_by_id: reviewerId, reviewed_by_email: reviewerEmail };
           setSelectedRequest(merged);
@@ -1305,13 +1309,16 @@ const ProcessAuditApprovals = () => {
 
     const s = (r.status || 'Pending').toLowerCase();
     const isClosed = s.includes('close');
+    // Process Audit Approvals & Sign-off Log: do not show closed status records
+    if (isClosed) return false;
+
     const isRejected = s.includes('reject');
     const isOpen = s === 'open' || s.includes('open') || s.includes('reopen');
     const closerDone = isCloserCompleted(r);
 
     let matchesStatus = true;
     if (selectedStatus === 'Pending' || selectedStatus === 'PENDING') {
-      matchesStatus = !closerDone && !isClosed && !isRejected && !isOpen;
+      matchesStatus = !closerDone && !isRejected && !isOpen;
     } else if (
       selectedStatus === 'Awaiting Review' ||
       selectedStatus === 'AWAITING REVIEW' ||
@@ -1321,9 +1328,7 @@ const ProcessAuditApprovals = () => {
       selectedStatus === 'Signed off' ||
       selectedStatus === 'IN_PROGRESS'
     ) {
-      matchesStatus = closerDone && !isClosed && !isRejected;
-    } else if (selectedStatus === 'Closed' || selectedStatus === 'CLOSED') {
-      matchesStatus = isClosed;
+      matchesStatus = closerDone && !isRejected;
     } else if (selectedStatus === 'Open' || selectedStatus === 'OPEN') {
       matchesStatus = isOpen;
     } else if (selectedStatus === 'Rejected' || selectedStatus === 'REJECTED') {
@@ -2969,10 +2974,6 @@ const ProcessAuditApprovals = () => {
                 <option value="All">All Decisions</option>
                 <option value="Pending">Pending</option>
                 <option value="Awaiting Review">Awaiting Review</option>
-                <option value="Signed off">Signed off</option>
-                <option value="Closed">Closed</option>
-                <option value="Open">Open</option>
-                <option value="Rejected">Rejected</option>
               </select>
             </div>
 
