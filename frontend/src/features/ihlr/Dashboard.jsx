@@ -227,7 +227,7 @@ const IhlrDashboard = () => {
         requests,
         fileName: `IHLR_Dashboard_Report_${today}.pdf`,
         title: 'IHLR Dashboard Summary & Analysis Reports',
-        filterText: `Dept: ${selectedDept} | Status: ${selectedStatus} | Range: ${startDate || 'All'} to ${endDate || 'All'}`
+        filterText: `Dept: ${selectedDept} | Status: ${selectedStatus} | Range: ${startDate ? formatDateDDMMYYYY(startDate) : 'All'} to ${endDate ? formatDateDDMMYYYY(endDate) : 'All'}`
       });
       setShowExportModal(false);
     } catch (err) {
@@ -321,7 +321,11 @@ const IhlrDashboard = () => {
             <span>/</span>
             <span>Overview Dashboard</span>
             <span>/</span>
-            <span className="font-bold text-slate-700">{isDefaultRange ? 'Last 12 Months Data' : `Timeline Data (${startDate} → ${endDate})`}</span>
+            <span className="font-bold text-slate-700">
+              {isDefaultRange
+                ? 'Last 12 Months Data'
+                : `Timeline Data (${startDate ? formatDateDDMMYYYY(startDate) : 'Start'} → ${endDate ? formatDateDDMMYYYY(endDate) : 'End'})`}
+            </span>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
