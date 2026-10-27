@@ -23,6 +23,14 @@ const ensureTable = async () => {
     // Ensure all existing rows have issue_no formatted with 'PA-'
     await pool.query(`UPDATE process_audit_requests SET issue_no = CONCAT('PA-', id) WHERE issue_no NOT LIKE 'PA-%'`).catch(() => {});
 
+    // Ensure no duplicate issue_no exist (resolve duplicate issue_no by re-assigning CONCAT('PA-', id))
+    await pool.query(`
+      UPDATE process_audit_requests r1
+      JOIN process_audit_requests r2 
+        ON r1.issue_no = r2.issue_no AND r1.id > r2.id
+      SET r1.issue_no = CONCAT('PA-', r1.id)
+    `).catch(() => {});
+
     // If existing table is empty and has obsolete columns, drop it
     if (cols.length > 0 && !colNames.includes('product')) {
       const [rows] = await pool.query(`SELECT COUNT(*) as count FROM process_audit_requests`).catch(() => [[{ count: 0 }]]);
@@ -321,7 +329,19 @@ export const ProcessAuditRequest = {
 
     const insertedId = result.insertId;
 
-    if (!issue_no || issue_no === 'TEMP') {
+    // Check if issue_no was not provided, or if the requested issue_no is already taken by another request (concurrent creation race condition)
+    let isDuplicate = false;
+    if (issue_no && issue_no !== 'TEMP') {
+      const [existing] = await pool.query(
+        'SELECT id FROM process_audit_requests WHERE issue_no = ? AND id != ? LIMIT 1',
+        [issue_no, insertedId]
+      );
+      if (existing && existing.length > 0) {
+        isDuplicate = true;
+      }
+    }
+
+    if (!issue_no || issue_no === 'TEMP' || isDuplicate) {
       issue_no = `PA-${insertedId}`;
       await pool.query('UPDATE process_audit_requests SET issue_no = ? WHERE id = ?', [issue_no, insertedId]);
     }
