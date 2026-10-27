@@ -424,7 +424,7 @@ const IhlrApprovals = () => {
     setCloserPermanentClosedByError(false);
     setCloserRemarks(req.remarks || '');
     setRemarksError(false);
-    setReviewedBy(req.reviewed_by || latestReassign?.reassigned_by || '');
+    setReviewedBy(req.reviewed_by || '');
     setReviewedByError(false);
     setCloserStatus(req.status === 'CLOSED' ? 'CLOSED' : '');
     setStatusError(false);
@@ -531,35 +531,16 @@ const IhlrApprovals = () => {
       }, 150);
     };
 
-    // 1. WebSocket & internal live events
+    // 1. WebSocket & live events (triggers only when changes occur in database)
     window.addEventListener('ihlrLiveUpdate', handleLiveUpdate);
     window.addEventListener('websocketNotification', handleLiveUpdate);
     window.addEventListener('refreshNotifications', handleLiveUpdate);
 
-    // 2. Auto-refresh when window or tab regains focus or visibility
-    const handleVisibilityOrFocus = () => {
-      if (document.visibilityState === 'visible') {
-        fetchRequests({ silent: true });
-      }
-    };
-    window.addEventListener('focus', handleVisibilityOrFocus);
-    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
-
-    // 3. Continuous background heartbeat (every 3 seconds while staying on the Approvals tab)
-    const pollInterval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchRequests({ silent: true });
-      }
-    }, 3000);
-
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      clearInterval(pollInterval);
       window.removeEventListener('ihlrLiveUpdate', handleLiveUpdate);
       window.removeEventListener('websocketNotification', handleLiveUpdate);
       window.removeEventListener('refreshNotifications', handleLiveUpdate);
-      window.removeEventListener('focus', handleVisibilityOrFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
     };
   }, [user?.name, user?.email, user?.role, user?.department, isAdmin]);
 
