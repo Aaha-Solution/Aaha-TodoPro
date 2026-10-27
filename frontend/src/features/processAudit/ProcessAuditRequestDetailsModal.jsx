@@ -1058,7 +1058,7 @@ const ProcessAuditRequestDetailsModal = ({
                       ) : (
                         <Lock className="w-3.5 h-3.5 shrink-0" />
                       )}
-                      <span>4. Auditor Sign-Off</span>
+                      <span>4. Sign-Off</span>
                     </div>
                     <div className="text-slate-200 font-semibold truncate text-[11px]">
                       {isReqClosed ? (req.reviewed_by || req.approved_by || 'Signed Off') : 'Awaiting Sign-Off'}
@@ -2623,28 +2623,7 @@ const ProcessAuditRequestDetailsModal = ({
                 </div>
               )}
 
-              {/* Bottom Navigation: View Closer Details & Sign & Tracks */}
-              <div className="pt-2 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('closer')}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                >
-                  <span>View Closer Details</span>
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isEditMode) setIsEditMode(false);
-                    setActiveTab('sign_tracks');
-                  }}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                >
-                  <span>Sign &amp; Tracks</span>
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                </button>
-              </div>
+            
             </div>
           )}
         </div>
