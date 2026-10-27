@@ -294,7 +294,7 @@ export const exportProcessAuditToExcel = async ({
     34, // 14: AUDIT OBSERVATION
     24, // 15: ADDITIONAL COMMENTS
     26, // 16: AUDIT EVIDENCE ATTACHMENTS
-    // 17-27: CLOSER (Root Cause, Actions & Standardization)
+    // 17-26: CLOSER (Root Cause & Actions)
     30, // 17: 5-WHY ROOT CAUSE ANALYSIS
     24, // 18: OVERALL ROOT CAUSE
     28, // 19: TEMPORARY ACTION
@@ -305,15 +305,14 @@ export const exportProcessAuditToExcel = async ({
     15, // 24: PERMANENT TARGET DATE
     18, // 25: PERMANENT CLOSED BY
     24, // 26: PERMANENT EVIDENCE
-    26, // 27: STANDARDIZATION DETAILS
-    // 28-29: REASSIGNMENT TRACKING
-    16, // 28: REASSIGNED STATUS
-    36, // 29: REASSIGNMENT DETAILS
-    // 30-33: AUDITOR REVIEW & CLOSURE SIGN-OFF
-    24, // 30: AUDITOR REVIEW REMARKS
-    16, // 31: STATUS
-    18, // 32: REVIEWED / CLOSED BY
-    14  // 33: CLOSED AT
+    // 27-28: REASSIGNMENT TRACKING
+    16, // 27: REASSIGNED STATUS
+    36, // 28: REASSIGNMENT DETAILS
+    // 29-32: AUDITOR REVIEW & CLOSURE SIGN-OFF
+    24, // 29: AUDITOR REVIEW REMARKS
+    16, // 30: STATUS
+    18, // 31: REVIEWED / CLOSED BY
+    14  // 32: CLOSED AT
   ];
 
   colWidths.forEach((w, i) => {
@@ -328,22 +327,22 @@ export const exportProcessAuditToExcel = async ({
   superReq.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }; // blue-100
   superReq.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('Q1:AA1');
+  worksheet.mergeCells('Q1:Z1');
   const superCloser = worksheet.getCell('Q1');
-  superCloser.value = 'CLOSER (ROOT CAUSE, ACTIONS & STANDARDIZATION)';
+  superCloser.value = 'CLOSER (ROOT CAUSE & ACTIONS)';
   superCloser.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF7C2D12' } }; // orange-900
   superCloser.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEDD5' } }; // orange-100
   superCloser.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('AB1:AC1');
-  const superReassign = worksheet.getCell('AB1');
+  worksheet.mergeCells('AA1:AB1');
+  const superReassign = worksheet.getCell('AA1');
   superReassign.value = 'REASSIGNMENT TRACKING';
   superReassign.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF4C1D95' } }; // violet-900
   superReassign.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } }; // violet-100
   superReassign.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('AD1:AG1');
-  const superStatus = worksheet.getCell('AD1');
+  worksheet.mergeCells('AC1:AF1');
+  const superStatus = worksheet.getCell('AC1');
   superStatus.value = 'AUDITOR REVIEW & CLOSURE SIGN-OFF';
   superStatus.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF065F46' } }; // emerald-900
   superStatus.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }; // emerald-100
@@ -379,7 +378,6 @@ export const exportProcessAuditToExcel = async ({
     'PERMANENT TARGET DATE',
     'PERMANENT CLOSED BY',
     'PERMANENT EVIDENCE',
-    'STANDARDIZATION DETAILS',
     'REASSIGNED STATUS',
     'REASSIGNMENT DETAILS',
     'AUDITOR REVIEW REMARKS',
@@ -404,9 +402,9 @@ export const exportProcessAuditToExcel = async ({
 
     if (colNumber <= 16) {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; // blue-900
-    } else if (colNumber <= 27) {
+    } else if (colNumber <= 26) {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF9A3412' } }; // orange-800
-    } else if (colNumber <= 29) {
+    } else if (colNumber <= 28) {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B21B6' } }; // violet-800
     } else {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF065F46' } }; // emerald-800
@@ -474,7 +472,6 @@ export const exportProcessAuditToExcel = async ({
       permTargetDate,
       permClosedBy,
       permAttStr,
-      r.standardization_details || '—',
       reassignedStatus,
       reassignmentDetails,
       r.creator_remark || r.remarks || '—',
@@ -856,10 +853,6 @@ export const exportProcessAuditToPdf = async ({
         [
           { content: 'Permanent Evidence Attachment(s):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           { content: permEvidenceAttStr }
-        ],
-        [
-          { content: 'Standardization Details:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
-          { content: r.standardization_details || '—' }
         ],
         [
           { content: 'Responsible Closer Person:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
