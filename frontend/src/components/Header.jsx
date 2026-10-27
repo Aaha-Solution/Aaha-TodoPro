@@ -72,12 +72,8 @@ const Header = ({ toggleSidebar }) => {
 
         <div className="h-6 w-px bg-slate-200 hidden sm:block" />
 
-        {/* User Info Avatar */}
-        <div 
-          onClick={() => navigate(isAdmin ? (isIhlr ? '/ihlr/users' : '/process-audit/users') : (isIhlr ? '/ihlr/profile' : '/process-audit/profile'))}
-          className="flex items-center gap-2.5 cursor-pointer select-none"
-          title={isAdmin ? "Manage Users & Profile" : "View Profile"}
-        >
+        {/* User Info Avatar (Non-clickable) */}
+        <div className="flex items-center gap-2.5 select-none">
           <div className="w-8 h-8 rounded-full bg-[#2563eb] text-white flex items-center justify-center font-bold text-xs shadow-sm">
             {currentUserName.charAt(0).toUpperCase()}
           </div>

@@ -20,7 +20,6 @@ import CreateRequest from '../features/processAudit/CreateRequest';
 import AllRequests from '../features/processAudit/AllRequests';
 import ProcessAuditApprovals from '../features/processAudit/Approvals';
 import ProcessAuditNotifications from '../features/processAudit/Notifications';
-import ProcessAuditProfile from '../features/processAudit/Profile';
 
 // IHLR (In-House Line Rejection) Feature
 import IhlrDashboard from '../features/ihlr/Dashboard';
@@ -73,7 +72,7 @@ const AppRoutes = () => {
           <Route path="my-requests" element={<AllRequests />} />
           <Route path="approvals" element={<ProcessAuditApprovals />} />
           <Route path="notifications" element={<ProcessAuditNotifications />} />
-          <Route path="profile" element={<ProcessAuditProfile />} />
+          <Route path="profile" element={<Navigate to="/process-audit/dashboard" replace />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="users/*" element={<Navigate to="/process-audit/users" replace />} />
         </Route>
