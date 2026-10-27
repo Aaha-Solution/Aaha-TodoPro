@@ -780,13 +780,13 @@ const AllRequests = () => {
               <tr className="bg-[#f8fafc] border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 {/* Requestor Columns (10) */}
                 <th className="py-3 px-3 text-center w-12">SL NO</th>
-                <th className="py-3 px-3 whitespace-nowrap">REQ NO</th>
+                <th className="py-3 px-3 whitespace-nowrap">ISSUE NO</th>
                 <th className="py-3 px-3 whitespace-nowrap">DATE / SHIFT</th>
                 <th className="py-3 px-4 min-w-[150px]">OBSERVATION</th>
                 <th className="py-3 px-3 whitespace-nowrap">PRODUCT</th>
-                <th className="py-3 px-3 whitespace-nowrap">STAGE / MODEL</th>
-                <th className="py-3 px-3 whitespace-nowrap">LINE / OPERATION</th>
-                <th className="py-3 px-3 whitespace-nowrap">AUDITED BY</th>
+                <th className="py-3 px-3 whitespace-nowrap"> MODEL</th>
+                <th className="py-3 px-3 whitespace-nowrap">Process / Operation</th>
+                <th className="py-3 px-3 whitespace-nowrap">Created BY</th>
                 <th className="py-3 px-2 text-center w-12">DEFECT</th>
                 <th className="py-3 px-3 whitespace-nowrap text-center">RESP / EXECUTOR</th>
 

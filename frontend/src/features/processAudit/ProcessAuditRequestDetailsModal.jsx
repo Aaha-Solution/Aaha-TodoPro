@@ -2122,7 +2122,7 @@ const ProcessAuditRequestDetailsModal = ({
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      MODEL / STAGE
+                      MODEL
                     </label>
                     <input
                       type="text"
@@ -2439,7 +2439,7 @@ const ProcessAuditRequestDetailsModal = ({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs p-4 rounded-2xl bg-slate-50/90 border border-slate-200/90">
                   <div>
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      REQ NO
+                     ISSUE NO
                     </span>
                     <strong className="text-slate-900 font-mono text-sm block mt-0.5 font-bold">
                       {reqNo}
@@ -2448,7 +2448,8 @@ const ProcessAuditRequestDetailsModal = ({
 
                   <div>
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      INCIDENT DATE
+                    ESCALATION DATE 
+
                     </span>
                     <strong className="text-slate-800 block mt-0.5 font-semibold">
                       {escDate}
@@ -2500,7 +2501,7 @@ const ProcessAuditRequestDetailsModal = ({
 
                   <div>
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      MODEL / PART
+                      MODEL
                     </span>
                     <strong className="text-slate-800 block mt-0.5 font-bold">
                       {req.model || req.stage || '—'}
