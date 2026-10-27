@@ -2566,7 +2566,7 @@ const ProcessAuditRequestDetailsModal = ({
                 <div className="space-y-3">
                   <div>
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      PROBLEM / DEFECT PHENOMENON
+                    Issue / Observation
                     </span>
                     <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-800 leading-relaxed font-medium">
                       {req.issue_observation || req.problem || 'No observation recorded.'}
@@ -2576,7 +2576,7 @@ const ProcessAuditRequestDetailsModal = ({
                   {req.comments && (
                     <div>
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        DETAILED DEFECT OCCURRENCE &amp; OBSERVATION
+                    Comments
                       </span>
                       <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-800 leading-relaxed font-medium">
                         {req.comments}
