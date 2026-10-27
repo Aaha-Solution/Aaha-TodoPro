@@ -778,7 +778,7 @@ const IhlrApprovals = () => {
         permanent_evidence_attachment: JSON.stringify(combinedPermEvidence),
         permanent_target_date: closerPermanentTargetDate || null,
         permanent_closed_by: effectivePermClosedBy || null,
-        closer_updated_by: user?.name || effectiveTempClosedBy || effectivePermClosedBy,
+        closer_updated_by: effectiveTempClosedBy || effectivePermClosedBy || user?.name || null,
         closer_updated_by_id: user?.id || null,
         closer_updated_by_email: user?.email || null
       };
@@ -2644,10 +2644,10 @@ const IhlrApprovals = () => {
                                 </div>
                               );
                             })()}
-                            {(r.closer_updated_by || r.temporary_closed_by) && (
-                              <div className="text-[10px] text-emerald-700 mt-0.5 truncate max-w-[180px]" title={`Updated by: ${r.closer_updated_by || r.temporary_closed_by}`}>
-                                <span className="font-medium text-emerald-600">Updated by: </span>
-                                <span className="font-bold text-emerald-800">{r.closer_updated_by || r.temporary_closed_by}</span>
+                            {(r.temporary_closed_by || r.permanent_closed_by || r.closer_updated_by) && (
+                              <div className="text-[10px] text-emerald-700 mt-0.5 truncate max-w-[180px]" title={`Closed by: ${r.temporary_closed_by || r.permanent_closed_by || r.closer_updated_by}`}>
+                                <span className="font-medium text-emerald-600">Closed by: </span>
+                                <span className="font-bold text-emerald-800">{r.temporary_closed_by || r.permanent_closed_by || r.closer_updated_by}</span>
                               </div>
                             )}
                           </td>

@@ -740,9 +740,9 @@ const IhlrAllRequests = () => {
                             </div>
                           );
                         })()}
-                        {(r.closer_updated_by || r.temporary_closed_by) && (
-                          <div className="text-[9px] text-emerald-700 font-bold truncate max-w-[100px] mx-auto text-center" title={`Closer Updated by: ${r.closer_updated_by || r.temporary_closed_by}`}>
-                            ✓ {r.closer_updated_by || r.temporary_closed_by}
+                        {(r.temporary_closed_by || r.permanent_closed_by || r.closer_updated_by) && (
+                          <div className="text-[9px] text-emerald-700 font-bold truncate max-w-[100px] mx-auto text-center" title={`Closed by: ${r.temporary_closed_by || r.permanent_closed_by || r.closer_updated_by}`}>
+                            ✓ {r.temporary_closed_by || r.permanent_closed_by || r.closer_updated_by}
                           </div>
                         )}
                       </div>

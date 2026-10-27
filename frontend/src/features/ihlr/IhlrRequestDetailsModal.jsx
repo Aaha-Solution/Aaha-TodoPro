@@ -1424,14 +1424,16 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         <span>3. Closer Action</span>
                       </div>
                       <div className="text-slate-200 font-semibold truncate text-[11px]">
-                        {hasCloserSubmitted ? (req.closer_updated_by || req.temporary_closed_by || 'Submitted') : 'Pending Submission'}
+                        {hasCloserSubmitted ? (req.temporary_closed_by || req.permanent_closed_by || req.closer_updated_by || 'Submitted') : 'Pending Submission'}
                       </div>
                       <div className="text-[10px] text-slate-400 font-mono">
-                        {req.closer_updated_by
-                          ? `Filled by: ${req.closer_updated_by}`
-                          : req.temporary_closed_by
-                            ? `By: ${req.temporary_closed_by}`
-                            : (formatDate(req.temporary_target_date || req.permanent_target_date) ? `Target: ${formatDate(req.temporary_target_date || req.permanent_target_date)}` : 'Awaiting Closer')}
+                        {req.temporary_closed_by
+                          ? `Closed by: ${req.temporary_closed_by}`
+                          : req.permanent_closed_by
+                            ? `Closed by: ${req.permanent_closed_by}`
+                            : req.closer_updated_by
+                              ? `Filled by: ${req.closer_updated_by}`
+                              : (formatDate(req.temporary_target_date || req.permanent_target_date) ? `Target: ${formatDate(req.temporary_target_date || req.permanent_target_date)}` : 'Awaiting Closer')}
                       </div>
                     </div>
 
@@ -1496,7 +1498,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <div className="leading-tight">
                         <span className="font-bold">Ready for Review: </span>
                         <span className="text-blue-800">
-                          Closer containment countermeasures submitted by <strong className="text-blue-950">{req.closer_updated_by || req.temporary_closed_by || req.resp_person || 'Closer'}</strong>.
+                          Closer containment countermeasures submitted by <strong className="text-blue-950">{req.temporary_closed_by || req.permanent_closed_by || req.closer_updated_by || req.resp_person || 'Closer'}</strong>.
                         </span>
                       </div>
                     </div>
@@ -1641,8 +1643,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     </div>
                     <div className="p-2.5 bg-white rounded-xl border border-emerald-200/80 bg-emerald-50/20">
                       <span className="block text-[10px] font-bold uppercase text-emerald-600">Closer Filled By</span>
-                      <span className="font-bold text-emerald-800 block mt-0.5 truncate" title={req.closer_updated_by || req.temporary_closed_by || '—'}>
-                        {req.closer_updated_by || req.temporary_closed_by || req.permanent_closed_by || '—'}
+                      <span className="font-bold text-emerald-800 block mt-0.5 truncate" title={req.temporary_closed_by || req.permanent_closed_by || req.closer_updated_by || '—'}>
+                        {req.temporary_closed_by || req.permanent_closed_by || req.closer_updated_by || '—'}
                       </span>
                     </div>
                     <div className="p-2.5 bg-white rounded-xl border border-slate-100">
@@ -1695,7 +1697,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <div>
                       <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-600">Closer Filled By</span>
                       <span className="font-bold text-emerald-800">
-                        {request.closer_updated_by || request.temporary_closed_by || (hasCloserSubmitted ? 'Submitted' : 'Pending Closer')}
+                        {request.temporary_closed_by || request.permanent_closed_by || request.closer_updated_by || (hasCloserSubmitted ? 'Submitted' : 'Pending Closer')}
                       </span>
                     </div>
                     {hasReassignments && (
@@ -1808,11 +1810,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       TEMPORARY CLOSED BY
                     </span>
                     <span className="font-bold text-slate-900 block text-xs">
-                      {request.closer_updated_by || request.temporary_closed_by || '—'}
+                      {request.temporary_closed_by || request.closer_updated_by || '—'}
                     </span>
-                    {request.closer_updated_by && request.resp_person && request.resp_person.includes(',') && (
+                    {request.closer_updated_by && request.temporary_closed_by && request.closer_updated_by !== request.temporary_closed_by && (
                       <span className="text-[9px] text-emerald-700 font-semibold block">
-                        (Updated by: {request.closer_updated_by})
+                        (Logged submitter: {request.closer_updated_by})
                       </span>
                     )}
                   </div>
@@ -1878,8 +1880,13 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         PERMANENT CLOSED BY
                       </span>
                       <span className="font-bold text-slate-900 block text-xs">
-                        {request.permanent_closed_by || '—'}
+                        {request.permanent_closed_by || request.closer_updated_by || '—'}
                       </span>
+                      {request.closer_updated_by && request.permanent_closed_by && request.closer_updated_by !== request.permanent_closed_by && (
+                        <span className="text-[9px] text-emerald-700 font-semibold block">
+                          (Logged submitter: {request.closer_updated_by})
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
