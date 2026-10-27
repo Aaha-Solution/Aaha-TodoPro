@@ -722,13 +722,14 @@ const ProcessAuditRequestDetailsModal = ({
     (req.permanent_evidence_attachment && parseAttachments(req.permanent_evidence_attachment).length > 0)
   );
 
-  const sLower = (req.status || 'Pending').toLowerCase();
+  const sLower = String(req.status || 'Pending').trim().toLowerCase();
   const isReqClosed = sLower.includes('close');
   const isReqRejected = sLower.includes('reject');
   const isReqOpen = sLower === 'open' || sLower.includes('reopen');
   const isReqSignedOff = (sLower.includes('signed off') || sLower.includes('signed')) && !isReqClosed;
+  const isReqPending = sLower.includes('pending');
 
-  const isCloserCompleted = Boolean(
+  const isCloserCompleted = !isReqPending && !isReqOpen && !isReqRejected && !isReqClosed && Boolean(
     sLower.includes('approval') ||
     sLower.includes('progress') ||
     sLower.includes('review') ||
@@ -757,6 +758,9 @@ const ProcessAuditRequestDetailsModal = ({
   } else if (isReqOpen) {
     statusBadgeLabel = 'Open';
     statusBadgeClass = 'bg-sky-50 text-sky-700 border-sky-200';
+  } else if (isReqPending) {
+    statusBadgeLabel = 'Pending';
+    statusBadgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
   } else if (isReqSignedOff) {
     statusBadgeLabel = 'Signed off';
     statusBadgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200';
@@ -773,7 +777,7 @@ const ProcessAuditRequestDetailsModal = ({
     list: reassignList
   } = formatReassignmentHistory(req?.reassignment_history);
 
-  const isSelectedPending = sLower === 'pending' || sLower === 'open';
+  const isSelectedPending = isReqPending || isReqOpen;
 
   const hasCloserSubmitted = Boolean(
     req && !isSelectedPending && (
@@ -1705,7 +1709,7 @@ const ProcessAuditRequestDetailsModal = ({
                   <div>
                     <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-600">Closer Filled By</span>
                     <span className="font-bold text-emerald-800">
-                      {req.reviewed_by || req.approved_by  || (hasCloserSubmitted ? 'Submitted' : 'Pending Closer')}
+                      {hasCloserSubmitted ? (closerSubmitter || req.approved_by || 'Submitted') : 'Pending Closer'}
                     </span>
                   </div>
                   {hasReassignments && (
