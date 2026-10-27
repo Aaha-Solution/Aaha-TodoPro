@@ -916,10 +916,10 @@ const CreateRequest = () => {
                   }`}
                 >
                   <option value="">Select Shift</option>
-                  <option value="Morning (06:00 - 14:30)">Morning (06:30 - 03:00)</option>
-                  <option value="Evening (14:30 - 22:30)">Evening (03:00 - 11:30)</option>
-                  <option value="Night (22:30 - 06:00)">Night (11:30 - 06:00)</option>
-                  <option value="General (08:30 - 17:00)">General (08:30 - 05:00)</option>
+                  <option value="Morning (06:30 - 03:00)">Morning (06:30 - 03:00)</option>
+                  <option value="Evening (03:00 - 11:30)">Evening (03:00 - 11:30)</option>
+                  <option value="Night (11:30 - 06:00)">Night (11:30 - 06:00)</option>
+                  <option value="General (08:30 - 05:00)">General (08:30 - 05:00)</option>
                 </select>
                 {errors.shift && (
                   <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">

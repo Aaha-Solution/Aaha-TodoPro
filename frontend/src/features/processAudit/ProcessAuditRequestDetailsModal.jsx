@@ -2087,15 +2087,14 @@ const ProcessAuditRequestDetailsModal = ({
                       }}
                       className="w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition"
                     >
-                      <option value="Morning (06:00 - 14:30)">Morning / Shift 1 (06:30 - 03:00)</option>
-                      <option value="Evening (14:30 - 22:30)">Evening / Shift 2 (03:00 - 11:30)</option>
-                      <option value="Night (22:30 - 06:00)">Night / Shift 3 (11:30 - 06:00)</option>
-                      <option value="General (08:30 - 17:00)">General (08:30 - 05:00)</option>
+                      <option value="Morning (06:30 - 03:00)">Morning (06:30 - 03:00)</option>
+                      <option value="Evening (03:00 - 11:30)">Evening (03:00 - 11:30)</option>
+                      <option value="Night (11:30 - 06:00)">Night (11:30 - 06:00)</option>
+                      <option value="General (08:30 - 05:00)">General (08:30 - 05:00)</option>
                       <option value="Shift 1">Shift 1 (06:30 AM - 03:00 PM)</option>
                       <option value="Shift 2">Shift 2 (03:00 PM - 11:30 PM)</option>
                       <option value="Shift 3">Shift 3 (11:30 PM - 06:30 AM)</option>
-                      <option value="General">General (08:30 AM - 05:00 PM)</option>
-                      {editFormData.shift && !['Shift 1', 'Shift 2', 'Shift 3', 'General', 'Morning (06:00 - 14:30)', 'Evening (14:30 - 22:30)', 'Night (22:30 - 06:00)', 'General (08:30 - 17:00)'].includes(editFormData.shift) && (
+                      {editFormData.shift && !['Shift 1', 'Shift 2', 'Shift 3', 'Morning (06:30 - 03:00)', 'Evening (03:00 - 11:30)', 'Night (11:30 - 06:00)', 'General (08:30 - 05:00)'].includes(editFormData.shift) && (
                         <option value={editFormData.shift}>{editFormData.shift}</option>
                       )}
                     </select>
