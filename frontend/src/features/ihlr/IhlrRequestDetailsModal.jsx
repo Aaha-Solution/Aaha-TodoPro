@@ -821,7 +821,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
       // Closure details
       const closedByVal = isClosedStatus
-        ? (targetReq.reviewed_by || targetReq.closed_by || targetReq.resp_person || user?.name || 'Quality Admin')
+        ? (targetReq.reviewed_by || targetReq.closed_by || targetReq.resp_person || user?.name || 'QAD Admin')
         : (targetReq.reviewed_by ? `Reviewed: ${targetReq.reviewed_by}` : 'Pending Closure Authorization');
       const closedDateVal = isClosedStatus
         ? (formatDate(targetReq.closed_at || targetReq.updated_at || targetReq.temporary_target_date || targetReq.permanent_target_date || targetReq.created_at) || '—')
@@ -1492,7 +1492,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <div className="leading-tight">
                         <span className="font-bold">Incident Signed-Off &amp; Closed: </span>
                         <span className="text-emerald-800">
-                          Verified by <strong className="text-emerald-950">{req.reviewed_by || 'Quality Admin'}</strong>. Status finalized to CLOSED.
+                          Verified by <strong className="text-emerald-950">{req.reviewed_by || 'QAD Admin'}</strong>. Status finalized to CLOSED.
                         </span>
                       </div>
                     </div>
@@ -1512,7 +1512,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <div className="leading-tight">
                         <span className="font-bold">Ready for Review: </span>
                         <span className="text-blue-800">
-                          Closer containment countermeasures submitted. Quality Admin can review remarks and finalize status.
+                          Closer containment countermeasures submitted. QAD Admin can review remarks and finalize status.
                         </span>
                       </div>
                     </div>

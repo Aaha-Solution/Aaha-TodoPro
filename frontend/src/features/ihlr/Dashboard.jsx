@@ -277,7 +277,7 @@ const IhlrDashboard = () => {
     {
       title: 'Closed',
       value: stats.closed || 0,
-      subtitle: hasActiveFilters ? 'Filtered verified closures' : 'Verified by Quality',
+      subtitle: hasActiveFilters ? 'Filtered verified closures' : 'Verified by QAD',
       icon: CheckCircle2,
       iconBg: 'bg-emerald-50 text-emerald-600',
       subtitleColor: 'text-emerald-600',
