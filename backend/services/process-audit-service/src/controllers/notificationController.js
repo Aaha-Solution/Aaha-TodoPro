@@ -110,12 +110,9 @@ export const getNotifications = async (req, res) => {
       conditions.push("type LIKE '%admin%'");
       conditions.push("type = 'closer_completed_pending_admin_signoff'");
       conditions.push("type = 'closer_completed_pending_review'");
-      conditions.push("type = 'submission_confirmed'");
       conditions.push("type = 'case_closed'");
       conditions.push("type = 'reassigned'");
       conditions.push("type = 'approval_required'");
-      conditions.push("type = 'assignment_required'");
-      conditions.push("type = 'countermeasure_saved'");
     }
 
     if (conditions.length > 0) {

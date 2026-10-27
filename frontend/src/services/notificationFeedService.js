@@ -136,9 +136,16 @@ export const fetchIhlrNotificationsFeed = async (user) => {
         if (!isAdmin && !isDirectMatch) return;
 
         // Personal action & acknowledgment notifications:
-        // 'assignment_required' ("assigned to you by Admin") and 'countermeasure_saved' ("Your 5-Why analysis... submitted")
-        // are personal to the assignee/closer and MUST NEVER duplicate into other users' streams (including Admin)
-        if ((n.type === 'assignment_required' || n.type === 'countermeasure_saved') && !isDirectMatch) {
+        // 'submission_confirmed' ("Your report has been logged"), 'assignment_required' ("assigned to you"),
+        // and 'countermeasure_saved' ("Your 5-Why analysis... submitted") are strictly personal to the recipient
+        // and MUST NEVER appear in other users' streams (including Admin)
+        if (
+          (n.type === 'submission_confirmed' ||
+            n.type === 'request_created' ||
+            n.type === 'assignment_required' ||
+            n.type === 'countermeasure_saved') &&
+          !isDirectMatch
+        ) {
           return;
         }
 
@@ -397,9 +404,16 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         if (!isAdmin && !isDirectMatch) return;
 
         // Personal action & acknowledgment notifications:
-        // 'assignment_required' ("assigned to you by Auditor") and 'countermeasure_saved' ("Your 5-Why analysis... submitted")
-        // are personal to the assignee/closer and MUST NEVER duplicate into other users' streams (including Admin)
-        if ((n.type === 'assignment_required' || n.type === 'countermeasure_saved') && !isDirectMatch) {
+        // 'submission_confirmed' ("Your report has been logged"), 'assignment_required' ("assigned to you"),
+        // and 'countermeasure_saved' ("Your 5-Why analysis... submitted") are strictly personal to the recipient
+        // and MUST NEVER appear in other users' streams (including Admin)
+        if (
+          (n.type === 'submission_confirmed' ||
+            n.type === 'request_created' ||
+            n.type === 'assignment_required' ||
+            n.type === 'countermeasure_saved') &&
+          !isDirectMatch
+        ) {
           return;
         }
 
