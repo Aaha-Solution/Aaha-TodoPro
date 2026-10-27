@@ -49,7 +49,7 @@ import { processAuditService } from '../../services/processAuditService';
  * - Direct single-scroll card layout
  * - Separate Tabs:
  *   1. Requester Details (Audit Observation, Process parameters, Creator attachments)
- *   2. Closer Details (Root cause, Corrective actions, Standardization, Evidence, Auditor Sign-off)
+ *   2. Closer Details (Root cause, Corrective actions, Standardization, Evidence,  Sign-off)
  * - Full Admin/Requester EDIT MODE:
  *   Allows modifying both Requester parameters & Closer execution details directly!
  * - Universal Export to Excel (.xlsx) & PDF (.pdf) with company branding & attachments
@@ -1502,7 +1502,7 @@ const ProcessAuditRequestDetailsModal = ({
                     </p>
                   ) : (
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      Select CLOSED to finalize auditor sign-off.
+                      Select CLOSED to finalize  sign-off.
                     </p>
                   )}
                 </div>
@@ -1663,7 +1663,7 @@ const ProcessAuditRequestDetailsModal = ({
                     <span className="font-semibold text-slate-800 block mt-0.5 truncate">{targetDate || '—'}</span>
                   </div>
                   <div className="p-2.5 bg-white rounded-xl border border-slate-100">
-                    <span className="block text-[10px] font-bold uppercase text-slate-400">Auditor Sign-off</span>
+                    <span className="block text-[10px] font-bold uppercase text-slate-400"> Sign-off</span>
                     <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.reviewed_by || req.approved_by || '—'}</span>
                   </div>
                 </div>

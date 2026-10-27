@@ -574,7 +574,7 @@ export const exportProcessAuditToPdf = async ({
         ...(hasReassignments ? [[`Reassignment History: ${reassignmentDetails}`]] : []),
         ...(creatorAttachments.length > 0 ? [[`Audit Creator Attachments (${creatorAttachments.length}): ${creatorAttachments.map(a => a.name || a.filename).join(', ')}`]] : []),
         ...(actionAttachments.length > 0 ? [[`Action Evidence Attachments (${actionAttachments.length}): ${actionAttachments.map(a => a.name || a.filename).join(', ')}`]] : []),
-        ...(r.creator_remark || r.remarks ? [[`Auditor Sign-off Remarks: ${r.creator_remark || r.remarks}`]] : []),
+        ...(r.creator_remark || r.remarks ? [[`Sign-off Remarks: ${r.creator_remark || r.remarks}`]] : []),
         [`Status: ${displayStatus.toUpperCase()}  |  Reviewed By: ${r.reviewed_by || r.closed_by || '—'}  |  Closed Date: ${r.closed_at ? formatDateDDMMYYYY(r.closed_at) : '—'}`]
       ],
       theme: 'grid',
