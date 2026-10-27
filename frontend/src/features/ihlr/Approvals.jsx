@@ -422,10 +422,7 @@ const IhlrApprovals = () => {
     setCloserPermanentTargetDateError(false);
     setCloserPermanentClosedBy(req.permanent_closed_by || '');
     setCloserPermanentClosedByError(false);
-    const historyInfo = formatReassignmentHistory(req.reassignment_history);
-    const latestReassign = historyInfo.list && historyInfo.list.length > 0 ? historyInfo.list[historyInfo.list.length - 1] : null;
-
-    setCloserRemarks(req.remarks || latestReassign?.remarks || '');
+    setCloserRemarks(req.remarks || '');
     setRemarksError(false);
     setReviewedBy(req.reviewed_by || latestReassign?.reassigned_by || '');
     setReviewedByError(false);
@@ -846,8 +843,8 @@ const IhlrApprovals = () => {
       return;
     }
 
-    if (!isReassignOpen && (!closerRemarks || !closerRemarks.trim())) {
-      setRemarksError(true);
+    if (!closerRemarks || !closerRemarks.trim()) {
+      setRemarksError('Remarks is required. Please enter remarks.');
       return; // DO NOT TRIGGER BACKEND!
     }
     setRemarksError(false);
@@ -890,11 +887,7 @@ const IhlrApprovals = () => {
         ? reviewedBy.trim()
         : getLoggedInUserName();
 
-      const effectiveRemarks = (closerRemarks && closerRemarks.trim())
-        ? closerRemarks.trim()
-        : isReassignOpen
-        ? `Reassigned to ${reassignedPerson} (${reassignedDept}) for analysis by ${effectiveReviewer}.`
-        : '';
+      const effectiveRemarks = closerRemarks.trim();
 
       const payload = {
         remarks: effectiveRemarks,
@@ -2268,11 +2261,14 @@ const IhlrApprovals = () => {
                     rows={2}
                     maxLength={1000}
                     disabled={!selectedRequest || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
-                    value={closerRemarks || selectedRequest?.remarks || (formatReassignmentHistory(selectedRequest?.reassignment_history)?.list?.slice(-1)[0]?.remarks) || ''}
+                    value={closerRemarks}
                     onChange={(e) => {
                       if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
-                      setCloserRemarks(e.target.value);
-                      if (remarksError && e.target.value.trim()) {
+                      const val = e.target.value;
+                      setCloserRemarks(val);
+                      if (!val.trim()) {
+                        setRemarksError('Remarks is required. Please enter remarks.');
+                      } else {
                         setRemarksError(false);
                       }
                     }}
@@ -2282,7 +2278,7 @@ const IhlrApprovals = () => {
                         : adminEditCloser
                         ? 'Disabled while editing closer fields...'
                         : isCloserDataToBeUpdated && !isReassignOpen
-                        ? (closerRemarks || selectedRequest?.remarks ? '' : 'Awaiting closer Temporary Action & Target Date...')
+                        ? 'Awaiting closer Temporary Action & Target Date...'
                         : 'Enter remarks and validation summary...'
                     }
                     className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none ${
@@ -2303,7 +2299,7 @@ const IhlrApprovals = () => {
                     </p>
                   ) : remarksError ? (
                     <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
-                      <span>* Remarks is required to save Admin Review and Status Sign-Off.</span>
+                      <span>* {typeof remarksError === 'string' ? remarksError : (isReassignOpen ? 'Remarks is required to reassign closer.' : 'Remarks is required to save Admin Review and Status Sign-Off.')}</span>
                     </p>
                   ) : (
                     <p className="text-[10px] text-slate-400 mt-0.5">

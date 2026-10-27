@@ -855,10 +855,10 @@ export const updateIhlrRequest = async (req, res) => {
         safeUpdates.permanent_closed_by = String(req.body.permanent_closed_by || '').replace(/[0-9]/g, '').trim();
       }
 
-      // Mandatory validation: If Admin updates remarks or admin review, remarks cannot be empty (unless reassigning)
+      // Mandatory validation: If Admin updates remarks or admin review, remarks cannot be empty
       if (req.body.remarks !== undefined) {
         const trimmedRemarks = typeof req.body.remarks === 'string' ? req.body.remarks.trim() : '';
-        if (!trimmedRemarks && !req.body.resp && !req.body.resp_person) {
+        if (!trimmedRemarks) {
           return errorResponse(res, 'Remarks is required for Admin Review and Status Sign-Off.', 400);
         }
         safeUpdates.remarks = trimmedRemarks;
@@ -1030,7 +1030,11 @@ export const updateIhlrRequest = async (req, res) => {
       const reassignRemarks = (safeUpdates.remarks && safeUpdates.remarks.trim()) ||
         (req.body?.reassignRemarks && String(req.body.reassignRemarks).trim()) ||
         (req.body?.reassign_remarks && String(req.body.reassign_remarks).trim()) ||
-        `Reassigned from ${existing.resp || 'previous department'} to ${safeUpdates.resp || existing.resp}${safeUpdates.resp_person ? ' (' + safeUpdates.resp_person + ')' : ''} by ${reviewerName}`;
+        '';
+
+      if (!reassignRemarks) {
+        return errorResponse(res, 'Remarks is required when reassigning closer.', 400);
+      }
 
       safeUpdates.remarks = reassignRemarks;
       safeUpdates.reviewed_by = reviewerName;
