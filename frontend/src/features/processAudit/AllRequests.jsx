@@ -842,7 +842,7 @@ const AllRequests = () => {
                 <th className="py-3 px-3 whitespace-nowrap">ISSUE NO</th>
                 <th className="py-3 px-3 whitespace-nowrap">DATE / SHIFT</th>
                 <th className="py-3 px-3 whitespace-nowrap">Created BY</th>
-                <th className="py-3 px-2 text-center w-12">DEFECT</th>
+                <th className="py-3 px-2 text-center w-12">EVIDENCE</th>
                 <th className="py-3 px-3 whitespace-nowrap text-center">RESP / EXECUTOR</th>
 
                 {/* Closer Columns (2) */}
@@ -954,14 +954,10 @@ const AllRequests = () => {
                       </td>
 
                       {/* Defect Attachment Thumbnail */}
-                      <td className="py-3.5 px-2 text-center">
+                      <td className="py-3.5 px-2 text-center cursor-default" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center">
                           <AttachmentThumbnail
                             rawAttachment={r.attachments}
-                            onClick={(e) => {
-                              e?.stopPropagation?.();
-                              setActiveModalRequest(r);
-                            }}
                           />
                         </div>
                       </td>

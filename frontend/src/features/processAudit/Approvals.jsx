@@ -3121,14 +3121,9 @@ const ProcessAuditApprovals = () => {
                               {modelText}
                             </div>
                           </td>
-                          <td className="py-3.5 px-3">
+                          <td className="py-3.5 px-3 cursor-default" onClick={(e) => e.stopPropagation()}>
                             <AttachmentThumbnail
                               rawAttachment={attachmentsRaw}
-                              onClick={(e) => {
-                                e?.stopPropagation?.();
-                                const parsed = parseAttachments(attachmentsRaw);
-                                if (parsed.length > 0) setSelectedPreviewAttachment(parsed[0]);
-                              }}
                             />
                           </td>
                           <td className="py-3.5 px-3 text-center whitespace-nowrap">
