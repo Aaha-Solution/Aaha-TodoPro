@@ -542,7 +542,7 @@ const IhlrAllRequests = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1100px]">
+          <table className="w-full text-left border-collapse min-w-[1450px]">
             <thead>
               {/* Top Phase Header Row */}
               <tr className="text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-200">
@@ -558,22 +558,22 @@ const IhlrAllRequests = () => {
               </tr>
               {/* Detailed Column Header Row */}
               <tr className="bg-[#f8fafc] border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                <th className="py-3 px-3 text-center w-12">SL NO</th>
-                <th className="py-3 px-3">REQ NO</th>
-                <th className="py-3 px-3">DATE / SHIFT</th>
-                <th className="py-3 px-4">PROBLEM</th>
-                <th className="py-3 px-3">MODEL</th>
-                <th className="py-3 px-3">DETECTED AT</th>
-                <th className="py-3 px-3">RECEIVED FROM</th>
-                <th className="py-3 px-3">ANALYSIS BY</th>
-                <th className="py-3 px-2 text-center w-12">DEFECT</th>
-                <th className="py-3 px-2 text-center">4M / RESP</th>
-                <th className="py-3 px-4">OCCURRENCE CAUSE</th>
-                <th className="py-3 px-4">ACTION TAKEN</th>
-                <th className="py-3 px-3">TARGET DATE</th>
-                <th className="py-3 px-3">REMARKS</th>
-                <th className="py-3 px-3">STATUS</th>
-                <th className="py-3 px-3 text-right">ACTIONS</th>
+                <th className="py-3 px-3 text-center w-12 whitespace-nowrap">SL NO</th>
+                <th className="py-3 px-3 whitespace-nowrap">REQ NO</th>
+                <th className="py-3 px-3 whitespace-nowrap">INCIDENT DATE / SHIFT</th>
+                <th className="py-3 px-4 min-w-[180px]">PROBLEM / DEFECT DESCRIPTION</th>
+                <th className="py-3 px-3 whitespace-nowrap">MODEL NAME / PART</th>
+                <th className="py-3 px-3 whitespace-nowrap">PROBLEM DETECTED AT</th>
+                <th className="py-3 px-3 whitespace-nowrap">RECEIVED FROM (LINE/CELL)</th>
+                <th className="py-3 px-3 whitespace-nowrap">ANALYSIS DONE BY</th>
+                <th className="py-3 px-2 text-center whitespace-nowrap">DEFECT EVIDENCE</th>
+                <th className="py-3 px-3 text-center whitespace-nowrap">4M CATEGORY / RESPONSIBILITY</th>
+                <th className="py-3 px-4 min-w-[160px]">OCCURRENCE CAUSE (5-WHY)</th>
+                <th className="py-3 px-4 min-w-[170px]">TEMPORARY ACTION TAKEN</th>
+                <th className="py-3 px-3 whitespace-nowrap">TARGET DATE</th>
+                <th className="py-3 px-3 whitespace-nowrap">ADMIN REMARKS</th>
+                <th className="py-3 px-3 whitespace-nowrap">STATUS</th>
+                <th className="py-3 px-3 text-right whitespace-nowrap">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
