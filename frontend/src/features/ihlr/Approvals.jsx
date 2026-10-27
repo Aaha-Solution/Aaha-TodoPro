@@ -981,7 +981,7 @@ const IhlrApprovals = () => {
         return prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r));
       });
 
-      if (updated && !isNowClosed) {
+      if (updated && !isNowClosed && !isReassigned) {
         populateForm(updated);
       } else {
         clearForm();
@@ -1075,10 +1075,8 @@ const IhlrApprovals = () => {
           populateForm(stillInFiltered, adminEditCloser);
         }
       } else {
-        populateForm(filtered[0]);
+        clearForm();
       }
-    } else {
-      populateForm(filtered[0]);
     }
   }, [requests, search, selectedStatus, loading]);
 

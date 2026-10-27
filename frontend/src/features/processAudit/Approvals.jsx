@@ -1218,20 +1218,7 @@ const ProcessAuditApprovals = () => {
         setIsReassignOpen(false);
         setIsReassignUserDropdownOpen(false);
         setReassignUserSearch('');
-        setSelectedRequest((prev) =>
-          prev
-            ? {
-                ...prev,
-                department: reassignedDept,
-                executor: reassignedPerson,
-                status: 'Pending',
-                creator_remark: closerRemarks.trim(),
-                reviewed_by: effectiveReviewer,
-                reviewed_by_id: reviewerId,
-                reviewed_by_email: reviewerEmail
-              }
-            : prev
-        );
+        populateForm(null);
         await loadRequests();
       } else {
         const targetStatus = closerStatus === 'CLOSED' ? 'Closed' : (closerStatus === 'PENDING' || closerStatus === 'OPEN' ? 'Pending' : closerStatus);
@@ -1345,6 +1332,18 @@ const ProcessAuditApprovals = () => {
 
     return matchesSearch && matchesStatus;
   });
+
+  // Auto-synchronize selection with filtered requests: if record is not in right-side table, clear left-side form
+  useEffect(() => {
+    if (loading) return;
+    if (!selectedRequest) return;
+    const isStillVisible = filtered.some(
+      (r) => r.id === selectedRequest.id || r.issue_no === selectedRequest.issue_no
+    );
+    if (!isStillVisible) {
+      populateForm(null);
+    }
+  }, [filtered, loading, selectedRequest]);
 
   // Pagination calculation
   const totalRecords = filtered.length;
