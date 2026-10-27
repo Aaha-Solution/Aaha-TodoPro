@@ -552,7 +552,7 @@ const IhlrAllRequests = () => {
                 <th colSpan={3} className="py-2 px-4 bg-orange-100 text-orange-900 border-r border-orange-200">
                   CLOSER (Production Containment)
                 </th>
-                <th colSpan={2} className="py-2 px-4 bg-slate-100 text-slate-700">
+                <th colSpan={3} className="py-2 px-4 bg-slate-100 text-slate-700">
                   REMARKS &amp; STATUS
                 </th>
               </tr>
@@ -571,6 +571,7 @@ const IhlrAllRequests = () => {
                 <th className="py-3 px-4">OCCURRENCE CAUSE</th>
                 <th className="py-3 px-4">ACTION TAKEN</th>
                 <th className="py-3 px-3">TARGET DATE</th>
+                <th className="py-3 px-3">REMARKS</th>
                 <th className="py-3 px-3">STATUS</th>
                 <th className="py-3 px-3 text-right">ACTIONS</th>
               </tr>
@@ -578,7 +579,7 @@ const IhlrAllRequests = () => {
             <tbody className="divide-y divide-slate-100 text-xs">
               {paginatedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={15} className="py-12 text-center text-slate-400">
+                  <td colSpan={16} className="py-12 text-center text-slate-400">
                     <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600">
                       No IHLR Reports match your filter
@@ -696,18 +697,25 @@ const IhlrAllRequests = () => {
                     </td>
 
                     {/* Occurrence Cause (First Why) */}
-                    <td className="py-3.5 px-4 text-slate-600 max-w-[160px] truncate" title={r.prod_why_why?.[0]}>
-                      {r.prod_why_why?.[0] || '—'}
+                    <td className="py-3.5 px-4 text-slate-600 max-w-[160px] truncate" title={Array.isArray(r.prod_why_why) ? (r.prod_why_why[0] || '') : (r.prod_why_why || r.occurrence_cause || '')}>
+                      {(Array.isArray(r.prod_why_why) ? r.prod_why_why[0] : (r.prod_why_why || r.occurrence_cause)) || '—'}
                     </td>
 
                     {/* Action Taken */}
-                    <td className="py-3.5 px-4 text-slate-800 font-medium max-w-[180px] truncate" title={r.temporary_action || r.permanent_fix}>
-                      {r.temporary_action || r.permanent_fix || '—'}
+                    <td className="py-3.5 px-4 text-slate-800 font-medium max-w-[180px] truncate" title={r.temporary_action || r.permanent_fix || r.action || ''}>
+                      {r.temporary_action || r.permanent_fix || r.action || '—'}
                     </td>
 
                     {/* Target Date */}
                     <td className="py-3.5 px-3 text-slate-600 font-mono text-[11px] whitespace-nowrap">
-                      {r.temporary_target_date || r.permanent_target_date || '—'}
+                      {(r.temporary_target_date || r.permanent_target_date)
+                        ? formatDateDDMMYYYY(r.temporary_target_date || r.permanent_target_date)
+                        : '—'}
+                    </td>
+
+                    {/* Remarks */}
+                    <td className="py-3.5 px-3 text-slate-600 max-w-[160px] truncate" title={r.remarks || ''}>
+                      {r.remarks || '—'}
                     </td>
 
                     {/* Status */}
