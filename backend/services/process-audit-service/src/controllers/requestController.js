@@ -505,6 +505,8 @@ export const updateRequestStatus = async (req, res) => {
             console.warn('[Process Audit Mailer] Sync case closed email dispatch warning:', mailSyncErr.message);
           }
 
+        } else if (body.is_reassign || body.isReassign || details?.is_reassign) {
+          // Reassignment in progress; do not trigger closer submission notifications or clear new assignment notifications
         } else {
           // SCENARIO 3: CLOSER DETAILS SUBMITTED (Countermeasures & 5-Why)
           // Mark the executor's previous pending assignment/approval notification as read
@@ -690,8 +692,9 @@ export const reassignRequest = async (req, res) => {
       );
     }
 
-    const reassignedByName = req.user?.name || body.reassigned_by || 'Quality Auditor';
-    const reassignedById = req.user?.id || body.reassigned_by_id || null;
+    const reassignedByName = req.user?.name || body.reassigned_by || body.reviewed_by || 'Quality Auditor';
+    const reassignedById = req.user?.id || body.reassigned_by_id || body.reviewed_by_id || null;
+    const reassignedByEmail = req.user?.email || body.reassigned_by_email || body.reviewed_by_email || null;
 
     const result = await ProcessAuditRequest.reassign(id, {
       new_department,
@@ -699,6 +702,10 @@ export const reassignRequest = async (req, res) => {
       reason,
       reassigned_by: reassignedByName,
       reassigned_by_id: reassignedById,
+      reassigned_by_email: reassignedByEmail,
+      reviewed_by: reassignedByName,
+      reviewed_by_id: reassignedById,
+      reviewed_by_email: reassignedByEmail
     });
 
     const updated = result.updated;
@@ -706,12 +713,13 @@ export const reassignRequest = async (req, res) => {
 
     // Notify new executor(s) and clean up old executor notification
     try {
-      // Mark old executor pending notifications as read
+      // Mark old executor pending assignment notifications as read
       await pool.query(
         `UPDATE process_audit_notifications 
          SET is_read = 1 
-         WHERE (request_id = ? OR issue_no = ?) AND type IN ('assignment_required', 'approval_required') AND LOWER(TRIM(user_name)) = LOWER(TRIM(?))`,
-        [updated.id, issueNo, result.prevExec]
+         WHERE (request_id = ? OR issue_no = ?) 
+           AND type IN ('assignment_required', 'approval_required', 'assigned_to_pa')`,
+        [updated.id, issueNo]
       ).catch(() => {});
 
       // A. Send in-app notification and email to ALL newly selected assignee(s)
@@ -812,15 +820,30 @@ export const reassignRequest = async (req, res) => {
       }
 
       // B. Notify Creator / Requester about the reassignment
-      if (updated.created_by_id || updated.created_by || updated.created_by_email) {
+      let creatorEmail = updated.created_by_email || null;
+      let creatorName = updated.created_by || 'Quality Requester';
+      let creatorId = updated.created_by_id || null;
+      if (pool && (!creatorEmail || !creatorId)) {
+        const [crRows] = await pool.query(
+          'SELECT id, name, email FROM users WHERE id = ? OR LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1',
+          [creatorId || 0, creatorName]
+        ).catch(() => [[]]);
+        if (crRows && crRows.length > 0) {
+          creatorId = crRows[0].id;
+          creatorEmail = crRows[0].email;
+          creatorName = crRows[0].name;
+        }
+      }
+
+      if (creatorId || creatorName || creatorEmail) {
         await pool.query(
           `INSERT INTO process_audit_notifications 
            (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
            VALUES (?, ?, ?, ?, ?, 'reassigned', ?, ?, '/process-audit/all-requests', 0)`,
           [
-            updated.created_by_id || null,
-            updated.created_by || 'Quality Requester',
-            updated.created_by_email || '',
+            creatorId || null,
+            creatorName,
+            creatorEmail || '',
             updated.id || id,
             issueNo,
             `Process Audit Case Reassigned: #${issueNo}`,
@@ -844,7 +867,7 @@ export const reassignRequest = async (req, res) => {
           const creatorHtml = generateEmailTemplate({
             headerTitle: `Process Audit Reassigned: #${issueNo}`,
             headerSubtitle: `Your process audit observation finding has been reassigned to a new department/executor.`,
-            recipientName: updated.created_by || 'Quality Requester',
+            recipientName: creatorName || 'Quality Requester',
             greetingMessage: `Your Process Audit observation report <strong>${issueNo}</strong> (${updated.model || 'Process'}) has been reassigned to <strong>${new_executor}</strong> (<strong>${new_department}</strong>) by <strong>${reassignedByName}</strong>.${reasonText ? `<br><br><strong>Reason:</strong> ${reason}` : ''}`,
             tableData,
             actionButtonText: 'View Process Audit Requests',
@@ -855,11 +878,11 @@ export const reassignRequest = async (req, res) => {
           });
 
           sendEmail({
-            to: updated.created_by_email || process.env.SMTP_USER || '',
-            recipientName: updated.created_by || 'Quality Requester',
+            to: creatorEmail || process.env.SMTP_USER || '',
+            recipientName: creatorName || 'Quality Requester',
             recipientRole: 'RAISED_PERSON',
             subject: `[Process Audit Notice] Request #${issueNo} Reassigned to ${new_executor} (${new_department})`,
-            text: `Dear ${updated.created_by || 'Quality Requester'},\n\nYour Process Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to ${new_executor} (${new_department}) by ${reassignedByName}.${reasonText}\n\nView details: ${baseUrl}/process-audit/all-requests\n\nThank you,\nQuality Portal`,
+            text: `Dear ${creatorName || 'Quality Requester'},\n\nYour Process Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to ${new_executor} (${new_department}) by ${reassignedByName}.${reasonText}\n\nView details: ${baseUrl}/process-audit/all-requests\n\nThank you,\nQuality Portal`,
             html: creatorHtml,
             referenceNo: issueNo,
             moduleType: 'PROCESS_AUDIT',

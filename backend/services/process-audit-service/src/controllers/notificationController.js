@@ -112,7 +112,10 @@ export const getNotifications = async (req, res) => {
       conditions.push("type = 'closer_completed_pending_review'");
       conditions.push("type = 'case_closed'");
       conditions.push("type = 'reassigned'");
+      conditions.push("type = 'pa_reassigned'");
       conditions.push("type = 'approval_required'");
+      conditions.push("type = 'assignment_required'");
+      conditions.push("type = 'assigned_to_pa'");
     }
 
     if (conditions.length > 0) {
@@ -126,10 +129,10 @@ export const getNotifications = async (req, res) => {
     const [rows] = await pool.query(query, params).catch(() => [[]]);
     const rawRows = rows || [];
 
-    // Deduplicate so that no user receives duplicate notifications for the same request and event type
+    // Deduplicate so that no user receives duplicate notifications for the same request, user, and event type
     const seen = new Set();
     notifRows = rawRows.filter((r) => {
-      const key = `${r.request_id || r.issue_no}_${r.type}`;
+      const key = `${r.request_id || r.issue_no}_${r.type}_${r.user_name || r.user_id || ''}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -342,7 +345,7 @@ export const markAllAsRead = async (req, res) => {
            user_id = ? OR 
            LOWER(TRIM(user_name)) LIKE '%admin%' OR 
            LOWER(TRIM(user_email)) LIKE '%admin%' OR 
-           type IN ('approval_required', 'assignment_required', 'request_approved', 'request_closed', 'case_closed', 'request_rejected', 'reassigned', 'request_created', 'submission_confirmed', 'closer_completed_pending_review', 'closer_completed_pending_admin_signoff', 'countermeasure_saved')`,
+           type IN ('approval_required', 'assignment_required', 'assigned_to_pa', 'request_approved', 'request_closed', 'case_closed', 'request_rejected', 'reassigned', 'pa_reassigned', 'request_created', 'submission_confirmed', 'closer_completed_pending_review', 'closer_completed_pending_admin_signoff', 'countermeasure_saved')`,
           [userId || 1]
         );
       } else {

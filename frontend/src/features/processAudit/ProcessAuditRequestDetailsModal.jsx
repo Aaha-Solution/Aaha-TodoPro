@@ -576,24 +576,15 @@ const ProcessAuditRequestDetailsModal = ({
       let reviewerEmail = user?.email || null;
 
       if (isReassignOpen) {
-        await processAuditService.reassignRequest(reqId, {
+        const reassignRes = await processAuditService.reassignRequest(reqId, {
           new_department: reassignedDept,
           new_executor: reassignedPerson,
           reason: effectiveRemarks,
           reassigned_by: effectiveReviewer,
           reassigned_by_id: reviewerId,
+          reassigned_by_email: reviewerEmail,
           role: user?.role || 'ADMIN',
           user_department: userDept || 'QAD'
-        });
-
-        const statusRes = await processAuditService.updateRequestStatus(reqId, 'Pending', {
-          creator_remark: effectiveRemarks,
-          remark: effectiveRemarks,
-          remarks: effectiveRemarks,
-          reviewed_by: effectiveReviewer,
-          reviewed_by_id: reviewerId,
-          reviewed_by_email: reviewerEmail,
-          closed_by: null
         });
 
         const merged = {
@@ -604,7 +595,9 @@ const ProcessAuditRequestDetailsModal = ({
           creator_remark: effectiveRemarks,
           remarks: effectiveRemarks,
           reviewed_by: effectiveReviewer,
-          ...(statusRes || {})
+          reviewed_by_id: reviewerId,
+          reviewed_by_email: reviewerEmail,
+          ...(reassignRes || {})
         };
 
         setLocalRequest(merged);
@@ -613,6 +606,9 @@ const ProcessAuditRequestDetailsModal = ({
         setIsReassignUserDropdownOpen(false);
         setReassignUserSearch('');
         onUpdated?.(merged);
+        try {
+          window.dispatchEvent(new Event('refreshNotifications'));
+        } catch (_) {}
         modalSuccess(`Request #${reqNo} status updated & reassigned to ${reassignedPerson} (${reassignedDept}) successfully!`);
       } else {
         const targetStatus = adminStatus || 'Closed';
@@ -638,6 +634,9 @@ const ProcessAuditRequestDetailsModal = ({
         setLocalRequest(merged);
         initAdminState(merged);
         onUpdated?.(merged);
+        try {
+          window.dispatchEvent(new Event('refreshNotifications'));
+        } catch (_) {}
         modalSuccess(`Admin remarks & status sign-off (${targetStatus}) updated successfully for #${reqNo}!`);
       }
     } catch (err) {

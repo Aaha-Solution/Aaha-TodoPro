@@ -899,8 +899,9 @@ export const ProcessAuditRequest = {
     const newDept = (data.new_department || data.department || prevDept).trim();
     const newExec = (data.new_executor || data.executor || prevExec).trim();
     const reason = (data.reason || '').trim();
-    const reassignedBy = (data.reassigned_by || data.reassignedBy || 'Quality Auditor').trim();
-    const reassignedById = data.reassigned_by_id || data.reassignedById || null;
+    const reassignedBy = (data.reassigned_by || data.reassignedBy || data.reviewed_by || data.reviewedBy || 'Quality Auditor').trim();
+    const reassignedById = data.reassigned_by_id || data.reassignedById || data.reviewed_by_id || data.reviewedById || null;
+    const reassignedByEmail = data.reassigned_by_email || data.reassignedByEmail || data.reviewed_by_email || data.reviewedByEmail || null;
 
     let history = [];
     if (req.reassignment_history) {
@@ -921,6 +922,7 @@ export const ProcessAuditRequest = {
       reassigned_at: new Date().toISOString(),
       reassigned_by: reassignedBy,
       reassigned_by_id: reassignedById,
+      reassigned_by_email: reassignedByEmail,
       previous_department: prevDept,
       previous_executor: prevExec,
       new_department: newDept,
@@ -937,14 +939,18 @@ export const ProcessAuditRequest = {
 
     await pool.query(
       `UPDATE process_audit_requests 
-       SET department = ?, executor = ?, reassignment_history = ?, creator_remark = COALESCE(?, creator_remark), status = 'Pending' 
+       SET department = ?, executor = ?, reassignment_history = ?, 
+           creator_remark = COALESCE(?, creator_remark), 
+           reviewed_by = ?, reviewed_by_id = ?, reviewed_by_email = ?,
+           status = 'Pending' 
        WHERE id = ? OR issue_no = ?`,
-      [newDept, newExec, JSON.stringify(history), reason || null, numericId, String(id)]
+      [newDept, newExec, JSON.stringify(history), reason || null, reassignedBy, reassignedById, reassignedByEmail, numericId, String(id)]
     );
 
+    const hydrated = await ProcessAuditRequest.findById(numericId).catch(() => null);
     const [updatedRows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?', [numericId, String(id)]);
     return {
-      updated: updatedRows[0],
+      updated: hydrated || updatedRows[0],
       logEntry,
       prevDept,
       prevExec,
