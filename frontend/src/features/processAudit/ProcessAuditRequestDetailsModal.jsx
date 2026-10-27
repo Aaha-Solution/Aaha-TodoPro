@@ -1705,12 +1705,7 @@ const ProcessAuditRequestDetailsModal = ({
                 </div>
 
                 <div className="flex items-center gap-4 text-[11px] font-medium text-slate-600">
-                  <div>
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Date</span>
-                    <span className="font-mono font-bold text-slate-800">
-                      {formatDateDDMMYYYY(req.temporary_target_date || req.permanent_target_date || req.target_date) || targetDate || '—'}
-                    </span>
-                  </div>
+                 
                   <div>
                     <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Responsibility</span>
                     <span className="font-bold text-slate-800">
