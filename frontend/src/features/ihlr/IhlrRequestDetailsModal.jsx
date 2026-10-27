@@ -2426,29 +2426,6 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <span>Resp: <strong className="text-blue-700 font-mono">{request.resp || 'PRODUCTION'}{request.resp_person ? ` (${request.resp_person})` : ''}</strong></span>
                   </div>
                 </div>
-
-                {/* 8. Quick Switch to Sign Fields & Tracks */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-slate-50 border border-indigo-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2.5 text-slate-700">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
-                      <ShieldCheck className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-900 block">Sign Fields, Closer Reassignment &amp; Tracking History</span>
-                      <span className="text-[11px] text-slate-500">
-                        View or finalize admin verification sign-off and audit trail tracks.
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('sign_tracks')}
-                    className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                  >
-                    <span>View Sign &amp; Tracks</span>
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                  </button>
-                </div>
               </div>
             ) : isEditMode ? (
               /* TAB 1: REQUESTER DETAILS - EDIT MODE */
@@ -3358,49 +3335,6 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         );
                       })()}
                     </div>
-                  </div>
-                </div>
-
-                {/* Quick Switch Banner to Closer Details & Sign Tracks */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50/60 border border-blue-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2.5 text-slate-700">
-                    <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                      <Wrench className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-900 block">Occurrence Analysis, Closer Actions &amp; Verification Tracks</span>
-                      <span className="text-[11px] text-slate-500">
-                        Production 5-Why, containment actions, closer evidence, admin sign-off, and reassignment tracks.
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isEditMode) {
-                          setIsEditMode(false);
-                        }
-                        setActiveTab('closer');
-                      }}
-                      className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                    >
-                      <span>View Closer Details</span>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isEditMode) {
-                          setIsEditMode(false);
-                        }
-                        setActiveTab('sign_tracks');
-                      }}
-                      className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                    >
-                      <span>Sign &amp; Tracks</span>
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                    </button>
                   </div>
                 </div>
               </div>
