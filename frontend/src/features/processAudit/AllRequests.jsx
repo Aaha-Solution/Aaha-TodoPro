@@ -597,15 +597,7 @@ const AllRequests = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 shadow-2xs transition active:scale-95 cursor-pointer"
-            title="Refresh requests and reset filters"
-          >
-            <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`} />
-            <span>Refresh</span>
-          </button>
+          
           {canCreate && (
             <button
               onClick={() => navigate('/process-audit/create-request')}
