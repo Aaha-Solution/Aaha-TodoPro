@@ -77,10 +77,20 @@ const ProcessAuditDashboard = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [previewAttachment, setPreviewAttachment] = useState(null);
 
-  // Department & Date Filters State (Defaults to Current Year)
+  // Department & Date Filters State (Defaults to Last 12 Months)
+  const getDefault12MonthsRange = () => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const startD = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const endD = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      defaultStartDate: `${startD.getFullYear()}-${pad(startD.getMonth() + 1)}-01`,
+      defaultEndDate: `${endD.getFullYear()}-${pad(endD.getMonth() + 1)}-${pad(endD.getDate())}`
+    };
+  };
+
+  const { defaultStartDate, defaultEndDate } = getDefault12MonthsRange();
   const currentYear = new Date().getFullYear();
-  const defaultStartDate = `${currentYear}-01-01`;
-  const defaultEndDate = `${currentYear}-12-31`;
 
   const [selectedDept, setSelectedDept] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -88,9 +98,10 @@ const ProcessAuditDashboard = () => {
   const [endDate, setEndDate] = useState(defaultEndDate);
   const [showFilters, setShowFilters] = useState(false);
 
-  const isDefaultYear = startDate === defaultStartDate && endDate === defaultEndDate;
+  const isDefaultRange = startDate === defaultStartDate && endDate === defaultEndDate;
+  const isDefaultYear = isDefaultRange;
   const isDefaultDept = selectedDept === 'All';
-  const hasActiveFilters = !isDefaultDept || selectedStatus !== 'All' || !isDefaultYear;
+  const hasActiveFilters = !isDefaultDept || selectedStatus !== 'All' || !isDefaultRange;
 
   const loadDashboardData = async (overrides = {}) => {
     setLoading(true);
@@ -474,7 +485,7 @@ const ProcessAuditDashboard = () => {
     {
       title: 'Total Issues',
       value: String(total),
-      subtitle: hasActiveFilters ? 'Filtered audit issues' : (isDefaultYear ? `Current Year ${currentYear}` : 'Recorded audit issues'),
+      subtitle: hasActiveFilters ? 'Filtered audit issues' : (isDefaultRange ? 'Default: Last 12 Months' : 'Recorded audit issues'),
       icon: Layers,
       iconBg: 'bg-blue-50 text-blue-600',
       subtitleColor: 'text-blue-600',
@@ -482,7 +493,7 @@ const ProcessAuditDashboard = () => {
     {
       title: 'Pending',
       value: String(pendingExec),
-      subtitle: hasActiveFilters ? 'Filtered pending' : (isDefaultYear ? `Current Year ${currentYear}` : 'Awaiting root cause closer actions'),
+      subtitle: hasActiveFilters ? 'Filtered pending' : 'Awaiting root cause closer actions',
       icon: AlertCircle,
       iconBg: 'bg-rose-50 text-rose-600',
       subtitleColor: 'text-rose-600',
@@ -490,7 +501,7 @@ const ProcessAuditDashboard = () => {
     {
       title: 'Awaiting Review',
       value: String(inProgress),
-      subtitle: hasActiveFilters ? 'Filtered awaiting review' : (isDefaultYear ? `Current Year ${currentYear}` : 'Awaiting Admin Sign-off & Closure'),
+      subtitle: hasActiveFilters ? 'Filtered awaiting review' : 'Awaiting Admin Sign-off & Closure',
       icon: Clock,
       iconBg: 'bg-amber-50 text-amber-600',
       subtitleColor: 'text-amber-600',
@@ -498,7 +509,7 @@ const ProcessAuditDashboard = () => {
     {
       title: 'Closed',
       value: String(closed),
-      subtitle: hasActiveFilters ? 'Filtered verified closures' : (isDefaultYear ? `Current Year ${currentYear}` : 'Verified & closed'),
+      subtitle: hasActiveFilters ? 'Filtered verified closures' : 'Verified by QAD',
       icon: CheckCircle2,
       iconBg: 'bg-emerald-50 text-emerald-600',
       subtitleColor: 'text-emerald-600',
@@ -746,9 +757,9 @@ const ProcessAuditDashboard = () => {
                       <Calendar className="w-3.5 h-3.5 text-indigo-600" />
                       <span>Timeline Range</span>
                     </span>
-                    {isDefaultYear && (
+                    {isDefaultRange && (
                       <span className="text-[10px] font-bold text-blue-600">
-                        Current Year {currentYear}
+                        Default: Last 12 Months
                       </span>
                     )}
                   </label>
@@ -827,7 +838,7 @@ const ProcessAuditDashboard = () => {
                   </span>
                 )}
 
-                {!isDefaultYear && (Boolean(startDate) || Boolean(endDate)) && (
+                {!isDefaultRange && (Boolean(startDate) || Boolean(endDate)) && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
                     <span>
                       {startDate ? formatDateDDMMYYYY(startDate) : 'Start'} → {endDate ? formatDateDDMMYYYY(endDate) : 'End'}
@@ -836,14 +847,14 @@ const ProcessAuditDashboard = () => {
                       type="button"
                       onClick={() => { setStartDate(defaultStartDate); setEndDate(defaultEndDate); }}
                       className="hover:text-indigo-900 cursor-pointer p-0.5 rounded hover:bg-indigo-100/60 transition-colors"
-                      title="Reset to current year"
+                      title="Reset to default range"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </span>
                 )}
 
-                {!isDefaultYear && !startDate && !endDate && (
+                {!isDefaultRange && !startDate && !endDate && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs">
                     <span>All Time (All Years)</span>
                   </span>
