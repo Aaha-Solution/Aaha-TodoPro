@@ -623,7 +623,8 @@ export const createIhlrRequest = async (req, res) => {
     if (!created) {
       const newId = fallbackRequests.length > 0 ? Math.max(...fallbackRequests.map(r => r.id)) + 1 : 1;
       let calculatedReqNo = data.req_no;
-      if (!calculatedReqNo) {
+      const isTaken = fallbackRequests.some(r => r.req_no === calculatedReqNo);
+      if (!calculatedReqNo || isTaken) {
         let max = 0;
         for (const r of fallbackRequests) {
           const match = String(r.req_no || '').match(/(\d+)/);
@@ -631,8 +632,9 @@ export const createIhlrRequest = async (req, res) => {
             const num = parseInt(match[1], 10);
             if (num > max) max = num;
           }
+          if (r.id && r.id > max) max = r.id;
         }
-        calculatedReqNo = `IHLR-${max + 1}`;
+        calculatedReqNo = `IHLR-${Math.max(max + 1, newId)}`;
       }
       let normalizedShift = String(data.shift || 'Shift 1').trim();
       if (normalizedShift.toLowerCase().includes('gen')) normalizedShift = 'General';

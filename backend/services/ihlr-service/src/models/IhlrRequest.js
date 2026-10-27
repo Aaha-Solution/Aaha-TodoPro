@@ -39,6 +39,13 @@ const ensureColumns = async () => {
     if (!colNames.includes('closer_updated_at')) {
       await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_at TIMESTAMP NULL AFTER closer_updated_by_email').catch(() => {});
     }
+    // Ensure no duplicate req_no exist (resolve duplicate req_no by re-assigning CONCAT('IHLR-', id))
+    await pool.query(`
+      UPDATE ihlr_requests r1
+      JOIN ihlr_requests r2 
+        ON r1.req_no = r2.req_no AND r1.id > r2.id
+      SET r1.req_no = CONCAT('IHLR-', r1.id)
+    `).catch(() => {});
     tableVerified = true;
   } catch (err) {
     console.warn('[IHLR Model] Column verification warning:', err.message);
@@ -98,6 +105,7 @@ export const IhlrRequest = {
             const num = parseInt(match[1], 10);
             if (num > max) max = num;
           }
+          if (r.id && r.id > max) max = r.id;
         }
         return `IHLR-${max + 1}`;
       }
@@ -194,7 +202,37 @@ export const IhlrRequest = {
           ]
         );
 
-        const [rows] = await pool.query('SELECT * FROM ihlr_requests WHERE id = ?', [result.insertId]);
+        const insertedId = result.insertId;
+
+        // Check if req_no was not provided, or if the requested req_no is already taken by another request (concurrent creation race condition)
+        let isDuplicate = false;
+        if (req_no && req_no !== 'TEMP') {
+          const [existing] = await pool.query(
+            'SELECT id FROM ihlr_requests WHERE req_no = ? AND id != ? LIMIT 1',
+            [req_no, insertedId]
+          );
+          if (existing && existing.length > 0) {
+            isDuplicate = true;
+          }
+        }
+
+        if (!req_no || req_no === 'TEMP' || isDuplicate) {
+          const [allRows] = await pool.query('SELECT req_no, id FROM ihlr_requests WHERE id != ?', [insertedId]);
+          let max = 0;
+          for (const r of allRows) {
+            const match = String(r.req_no || '').match(/(\d+)/);
+            if (match) {
+              const num = parseInt(match[1], 10);
+              if (num > max) max = num;
+            }
+            if (r.id && r.id > max) max = r.id;
+          }
+          const nextNum = Math.max(max + 1, insertedId);
+          req_no = `IHLR-${nextNum}`;
+          await pool.query('UPDATE ihlr_requests SET req_no = ? WHERE id = ?', [req_no, insertedId]);
+        }
+
+        const [rows] = await pool.query('SELECT * FROM ihlr_requests WHERE id = ?', [insertedId]);
         if (rows && rows.length > 0) {
           const r = rows[0];
           return {

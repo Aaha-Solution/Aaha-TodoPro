@@ -615,7 +615,7 @@ const IhlrCreateRequest = () => {
         return;
       }
 
-      await ihlrService.createRequest({
+      const createdRes = await ihlrService.createRequest({
         ...formData,
         batch_date: formData.batch_date || new Date().toISOString().split('T')[0],
         actual_qty: formData.actual_qty ? Number(formData.actual_qty) : 1,
@@ -634,7 +634,8 @@ const IhlrCreateRequest = () => {
         localStorage.removeItem(draftKey);
         localStorage.removeItem('ihlr_create_request_draft');
       } catch { }
-      await success(`IHLR Analysis Report ${formData.req_no} submitted successfully!`);
+      const finalReqNo = createdRes?.req_no || createdRes?.data?.req_no || formData.req_no;
+      await success(`IHLR Analysis Report ${finalReqNo} submitted successfully!`);
       window.dispatchEvent(new Event('refreshNotifications'));
       navigate('/ihlr/all-requests');
     } catch (err) {
