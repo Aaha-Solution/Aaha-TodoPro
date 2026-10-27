@@ -495,8 +495,8 @@ const IhlrApprovals = () => {
         } else {
           clearForm();
         }
-      } else if (visibleData.length > 0 && !isSilent) {
-        populateForm(visibleData[0]);
+      } else {
+        clearForm();
       }
     } catch (err) {
       console.error('Failed to load IHLR requests for approval:', err);

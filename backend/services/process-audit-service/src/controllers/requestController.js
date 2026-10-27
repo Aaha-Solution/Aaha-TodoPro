@@ -233,7 +233,7 @@ export const createRequest = async (req, res) => {
               created.id,
               issueNo,
               `Action Required: Process Audit #${issueNo} Assigned`,
-              `Process Audit report #${issueNo} (${created.model || 'Process'} - "${created.issue_observation || created.problem || 'Observation'}") has been assigned to you by ${creatorUser.name}. Please inspect and submit root cause countermeasure.`
+              `Process Audit report #${issueNo} (${created.model || 'Process'} - "${created.issue_observation || created.problem || 'Observation'}") has been assigned to you by ${creatorUser.name}. Please inspect and submit root cause action.`
             ]
           ).catch((e) => console.warn('[PA Notification B Error]:', e.message));
         }
@@ -542,7 +542,7 @@ export const updateRequestStatus = async (req, res) => {
                 creatorEmail || '',
                 updated.id || id,
                 issueNo,
-                `Closer Countermeasures Submitted #${issueNo}`,
+                `Closer Actions Submitted #${issueNo}`,
                 `Closer ${closerName} (${closerDept}) has completed 5-Why root cause analysis and corrective action for #${issueNo} (${updated.model || 'Process'}). Quality Admin review and closure sign-off pending.`
               ]
             ).catch((e) => console.warn('[PA Closer Review Notif Error]:', e.message));
@@ -564,7 +564,7 @@ export const updateRequestStatus = async (req, res) => {
                 updated.id || id,
                 issueNo,
                 `Admin Action Required: Pending Sign-Off #${issueNo}`,
-                `Closer ${closerName} (${closerDept}) has completed countermeasures for #${issueNo} (${updated.model || 'Process'}). Action required: Please enter validation remarks and update status to finalize closure.`
+                `Closer ${closerName} (${closerDept}) has completed actions for #${issueNo} (${updated.model || 'Process'}). Action required: Please enter validation remarks and update status to finalize closure.`
               ]
             ).catch((e) => console.warn('[PA Admin Notif Error]:', e.message));
           }
@@ -786,7 +786,7 @@ export const reassignRequest = async (req, res) => {
             updated.id || id,
             issueNo,
             `Action Required: Process Audit #${issueNo} Assigned`,
-            `Process Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to you for ${new_department} by ${reassignedByName}.${reasonText} Please inspect and submit root cause countermeasures.`
+            `Process Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to you for ${new_department} by ${reassignedByName}.${reasonText} Please inspect and submit root cause actions.`
           ]
         ).catch((e) => console.warn('[PA Reassign Notif Error]:', e.message));
 
@@ -809,7 +809,7 @@ export const reassignRequest = async (req, res) => {
             recipientName: u.name || new_executor,
             greetingMessage: `Process Audit report <strong>${issueNo}</strong> (${updated.model || 'Process'}) has been reassigned to you in <strong>${new_department}</strong> by <strong>${reassignedByName}</strong>.${reasonText ? `<br><br><strong>Reason:</strong> ${reason}` : ''}<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
             tableData,
-            actionButtonText: 'Open Report & Submit Countermeasure',
+            actionButtonText: 'Open Report & Submit Action',
             actionButtonUrl: `${baseUrl}/process-audit/approvals`,
             footerNote: 'Immediate action required: please inspect the process finding and record corrective containment measures in the portal.',
             badgeColor: '#f59e0b',
@@ -885,7 +885,7 @@ export const reassignRequest = async (req, res) => {
             tableData,
             actionButtonText: 'View Process Audit Requests',
             actionButtonUrl: `${baseUrl}/process-audit/all-requests`,
-            footerNote: 'You will receive an update once the new department submits containment countermeasures.',
+            footerNote: 'You will receive an update once the new department submits actions.',
             badgeColor: '#3b82f6',
             badgeText: 'REASSIGNED'
           });

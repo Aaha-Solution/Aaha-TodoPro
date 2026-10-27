@@ -169,7 +169,7 @@ export const getNotifications = async (req, res) => {
           accentColor = 'emerald';
         } else if (isApproved) {
           title = `Pending Sign-Off: #${r.issue_no}`;
-          msg = `Request #${r.issue_no} has countermeasures submitted and is pending sign-off.`;
+          msg = `Request #${r.issue_no} has actions submitted and is pending sign-off.`;
           badgeLabel = 'PENDING SIGN-OFF';
           accentColor = 'amber';
         } else if (isRejected) {
@@ -179,7 +179,7 @@ export const getNotifications = async (req, res) => {
           accentColor = 'rose';
         } else {
           title = `Action Required: Process Audit #${r.issue_no}`;
-          msg = `Audit request #${r.issue_no} (${r.department}) assigned to ${r.executor} for root cause countermeasures.`;
+          msg = `Audit request #${r.issue_no} (${r.department}) assigned to ${r.executor} for root cause actions.`;
           badgeLabel = 'ACTION REQUIRED';
           accentColor = 'amber';
         }
@@ -237,7 +237,7 @@ export const getNotifications = async (req, res) => {
         footerFlag = 'CASE_CLOSED';
         dept = 'QUALITY VERIFIED';
       } else if (isUpdated) {
-        badgeLabel = 'COUNTERMEASURE SUBMITTED';
+        badgeLabel = 'ACTION SUBMITTED';
         accentColor = 'indigo';
         footerFlag = 'OPERATIONAL_UPDATE';
         dept = 'PRODUCTION';

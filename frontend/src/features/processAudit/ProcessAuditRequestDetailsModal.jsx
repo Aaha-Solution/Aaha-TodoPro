@@ -1142,7 +1142,7 @@ const ProcessAuditRequestDetailsModal = ({
                     <div className="leading-tight">
                       <span className="font-bold">Closer Submission: </span>
                       <span className="text-amber-800">
-                        Closer countermeasures pending. Admin can review, edit, or sign off status.
+                        Closer actions pending. Admin can review, edit, or sign off status.
                       </span>
                     </div>
                   </div>
@@ -1152,7 +1152,7 @@ const ProcessAuditRequestDetailsModal = ({
                     <div className="leading-tight">
                       <span className="font-bold">Ready for Review: </span>
                       <span className="text-blue-800">
-                        Closer countermeasures submitted. Quality Auditor can review remarks and finalize status.
+                        Closer actions submitted. Quality Auditor can review remarks and finalize status.
                       </span>
                     </div>
                   </div>
@@ -1526,7 +1526,7 @@ const ProcessAuditRequestDetailsModal = ({
                     </p>
                   ) : isCloserDataToBeUpdated && !isReassignOpen ? (
                     <p className="text-[11px] text-amber-700 font-semibold mt-0.5">
-                      Status unlocks after closer countermeasures submission.
+                      Status unlocks after closer actions submission.
                     </p>
                   ) : isReassignOpen ? (
                     <p className="text-[10px] text-purple-700 font-semibold mt-0.5">
@@ -1830,11 +1830,11 @@ const ProcessAuditRequestDetailsModal = ({
                
               </div>
 
-              {/* Permanent Countermeasures Section */}
+              {/* Permanent Section */}
               <div className="pt-3 border-t border-slate-200/90 space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
                   <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Permanent Countermeasures
+                    Permanent
                   </span>
                 </div>
 
@@ -1955,7 +1955,7 @@ const ProcessAuditRequestDetailsModal = ({
                   ) : (
                     <>
                       <Clock className="w-4 h-4 text-amber-600" />
-                      <span className="font-bold text-amber-900">Containment Countermeasure in Progress</span>
+                      <span className="font-bold text-amber-900">Action in Progress</span>
                     </>
                   )}
                 </div>

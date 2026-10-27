@@ -127,6 +127,10 @@ const ProcessAuditApprovals = () => {
 
   // Selected row for Closer Log form (left panel)
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const selectedRequestRef = useRef(selectedRequest);
+  useEffect(() => {
+    selectedRequestRef.current = selectedRequest;
+  }, [selectedRequest]);
 
   // Form State for Process Audit Sign-off Fields
   const [rootCause, setRootCause] = useState('');
@@ -573,14 +577,19 @@ const ProcessAuditApprovals = () => {
 
       // On manual refresh or browser reload, don't force deep-link highlight filter
       if (isManualRefresh || isReload) {
-        if (list.length > 0) {
-          populateForm(list[0]);
+        const currentSel = selectedRequestRef.current;
+        if (currentSel) {
+          const fresh = list.find((r) => r.id === currentSel.id || r.issue_no === currentSel.issue_no);
+          if (fresh) populateForm(fresh);
+          else populateForm(null);
+        } else {
+          populateForm(null);
         }
         return;
       }
 
-      // Deep linking, notification highlight, or re-selecting active request
-      const targetReqNo = location.state?.highlightReq || location.state?.search || queryRequestId;
+      // Deep linking or notification highlight only when explicitly targeted
+      const targetReqNo = location.state?.highlightReq || queryRequestId;
       let matchedTarget = null;
       if (targetReqNo) {
         const cleanTarget = String(targetReqNo).trim().toLowerCase().replace(/^#/, '');
@@ -590,13 +599,16 @@ const ProcessAuditApprovals = () => {
         });
       }
 
+      const currentSel = selectedRequestRef.current;
       if (matchedTarget) {
         populateForm(matchedTarget);
-      } else if (selectedRequest) {
-        const fresh = list.find((r) => r.id === selectedRequest.id || r.issue_no === selectedRequest.issue_no);
+      } else if (currentSel) {
+        const fresh = list.find((r) => r.id === currentSel.id || r.issue_no === currentSel.issue_no);
         if (fresh) populateForm(fresh);
-      } else if (list.length > 0) {
-        populateForm(list[0]);
+        else populateForm(null);
+      } else {
+        // Without an explicit row click or notification target, do NOT auto-select
+        populateForm(null);
       }
     } catch (err) {
       console.error('Failed to load approval requests from DB:', err);
@@ -609,6 +621,7 @@ const ProcessAuditApprovals = () => {
     setSearch('');
     setSelectedStatus('All');
     setCurrentPage(1);
+    populateForm(null);
 
     try {
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -945,7 +958,7 @@ const ProcessAuditApprovals = () => {
 
     // 5. Permanent Action is mandatory
     if (!closerPermanentFix || !closerPermanentFix.trim()) {
-      setCloserPermanentFixError('Permanent Action is required. Please describe permanent countermeasure.');
+      setCloserPermanentFixError('Permanent Action is required. Please describe permanent action.');
       hasCloserErrors = true;
     } else {
       setCloserPermanentFixError(false);
@@ -1052,7 +1065,7 @@ const ProcessAuditApprovals = () => {
       const updated = await processAuditService.updateRequestStatus(reqId, targetStatus, payload);
 
       const msg = isAdmin
-        ? `Closer 5-Why root cause & countermeasures updated successfully for ${displayId}!`
+        ? `Closer 5-Why root cause & actions updated successfully for ${displayId}!`
         : `Closer details submitted successfully for ${displayId}! Quality Admin will review and sign off status.`;
 
       setSuccessMessage(msg);
@@ -1782,10 +1795,10 @@ const ProcessAuditApprovals = () => {
                   !selectedRequest
                     ? 'Click a row on the right to select'
                     : canUpdateCloserFields
-                    ? 'Describe temporary actions taken / countermeasures...'
+                    ? 'Describe temporary actions taken...'
                     : isAdmin
                     ? 'Click Edit Closer Fields below to edit...'
-                    : 'Describe temporary actions taken / countermeasures...'
+                    : 'Describe temporary actions taken...'
                 }
                 className={`w-full px-3.5 py-2 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
                   closerActionError
@@ -1966,7 +1979,7 @@ const ProcessAuditApprovals = () => {
                 </p>
               ) : (
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  Person executing temporary containment countermeasure.
+                  Person executing temporary action.
                 </p>
               )}
             </div>
@@ -1974,7 +1987,7 @@ const ProcessAuditApprovals = () => {
             {/* Permanent Fix Section Header */}
             <div className="pt-2 border-t border-slate-200/90">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                Permanent Countermeasures
+                Permanent
               </span>
             </div>
 
@@ -2005,10 +2018,10 @@ const ProcessAuditApprovals = () => {
                   !selectedRequest
                     ? 'Click a row on the right to select'
                     : canUpdateCloserFields
-                    ? 'Describe permanent corrective action / long-term countermeasure...'
+                    ? 'Describe permanent corrective action...'
                     : isAdmin
                     ? 'Click Edit Closer Fields below to edit...'
-                    : 'Describe permanent corrective action / long-term countermeasure...'
+                    : 'Describe permanent corrective action...'
                 }
                 className={`w-full px-3.5 py-2 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
                   closerPermanentFixError
@@ -2185,7 +2198,7 @@ const ProcessAuditApprovals = () => {
                 </p>
               ) : (
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  Person confirming permanent countermeasure closure (manual entry).
+                  Person confirming permanent action closure (manual entry).
                 </p>
               )}
             </div>
@@ -2642,7 +2655,7 @@ const ProcessAuditApprovals = () => {
                         </div>
                       </div>
                       <p className="text-[10px] text-slate-500 leading-tight">
-                        Selecting a new department and executor will transfer the root cause and countermeasure responsibility to them.
+                        Selecting a new department and executor will transfer the root cause and action responsibility to them.
                       </p>
                     </div>
                   )}
