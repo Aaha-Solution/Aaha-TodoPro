@@ -1047,7 +1047,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         ],
         body: [
           [
-            { content: 'Temporary Action (Containment):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Temporary Action Taken:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: tempActionVal }
           ],
           [
@@ -1091,7 +1091,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             { content: reassignVal }
           ],
           [
-            { content: 'Admin / Closer Remarks:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Admin Remarks:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: targetReq.remarks || '—' }
           ],
           [

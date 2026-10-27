@@ -310,29 +310,29 @@ export const exportIhlrToExcel = async ({
     20, // QA WHY 4
     20, // QA WHY 5
     18, // RAISED BY
-    14, // CREATED AT
+    16, // ISSUE CREATED AT
     // Closer before Temp Evidence
     20, // PROD WHY 1
     20, // PROD WHY 2
     20, // PROD WHY 3
     20, // PROD WHY 4
     20, // PROD WHY 5
-    30, // TEMPORARY ACTION
+    30, // TEMPORARY ACTION TAKEN
     16, // TEMPORARY TARGET DATE
-    18, // TEM CLOSED BY
+    20, // TEMPORARY CLOSED BY
     // Dynamic Temporary Evidence columns
     ...Array(maxTempCount).fill(22),
     // Closer between Temp and Perm Evidence
-    30, // PERMANENT ACTION
+    32, // PERMANENT ACTION (COUNTERMEASURE)
     16, // PERMANENT TARGET DATE
-    18, // PERM CLOSED BY
+    20, // PERMANENT CLOSED BY
     // Dynamic Permanent Evidence columns
     ...Array(maxPermCount).fill(22),
     // Reassignment Tracking
     16, // REASSIGNED STATUS
     38, // REASSIGNMENT DETAILS
     // Remarks, Reviewed By & Status
-    24, // REMARKS
+    24, // ADMIN REMARKS
     18, // REVIEWED BY
     20  // STATUS
   ];
@@ -396,20 +396,20 @@ export const exportIhlrToExcel = async ({
     ...defectEvidenceHeaders,
     // 7 trailing Requestor columns
     'QA WHY 1', 'QA WHY 2', 'QA WHY 3', 'QA WHY 4', 'QA WHY 5',
-    'RAISED BY', 'CREATED AT',
+    'RAISED BY', 'ISSUE CREATED AT',
     // Closer before Temp Evidence
     'PROD WHY 1', 'PROD WHY 2', 'PROD WHY 3', 'PROD WHY 4', 'PROD WHY 5',
-    'TEMPORARY ACTION', 'TEMPORARY TARGET DATE', 'TEM CLOSED BY',
+    'TEMPORARY ACTION TAKEN', 'TEMPORARY TARGET DATE', 'TEMPORARY CLOSED BY',
     // Dynamic Temporary Evidence columns (TEMPORARY EVIDENCE 1, TEMPORARY EVIDENCE 2, ...)
     ...tempEvidenceHeaders,
     // Closer between Temp and Perm Evidence
-    'PERMANENT ACTION', 'PERMANENT TARGET DATE', 'PERM CLOSED BY',
+    'PERMANENT ACTION (COUNTERMEASURE)', 'PERMANENT TARGET DATE', 'PERMANENT CLOSED BY',
     // Dynamic Permanent Evidence columns (PERMANENT EVIDENCE 1, PERMANENT EVIDENCE 2, ...)
     ...permEvidenceHeaders,
     // 2 Reassignment Tracking columns
     'REASSIGNED STATUS', 'REASSIGNMENT DETAILS',
     // 3 Remarks, Reviewed By & Status columns
-    'REMARKS', 'REVIEWED BY', 'STATUS'
+    'ADMIN REMARKS', 'REVIEWED BY', 'STATUS'
   ];
 
   const headerRow2 = worksheet.addRow(subHeaders);
@@ -612,11 +612,11 @@ export const exportIhlrToExcel = async ({
     configureEvidenceCells(permColStart, maxPermCount, permList);
 
     // Center align trailing columns
-    row.getCell(createdAtCol).alignment = { vertical: 'middle', horizontal: 'center' }; // CREATED AT
+    row.getCell(createdAtCol).alignment = { vertical: 'middle', horizontal: 'center' }; // ISSUE CREATED AT
     row.getCell(tempTargetDateCol).alignment = { vertical: 'middle', horizontal: 'center' }; // TEMPORARY TARGET DATE
-    row.getCell(tempClosedByCol).alignment = { vertical: 'middle', horizontal: 'center' }; // TEM CLOSED BY
+    row.getCell(tempClosedByCol).alignment = { vertical: 'middle', horizontal: 'center' }; // TEMPORARY CLOSED BY
     row.getCell(permTargetDateCol).alignment = { vertical: 'middle', horizontal: 'center' }; // PERMANENT TARGET DATE
-    row.getCell(permClosedByCol).alignment = { vertical: 'middle', horizontal: 'center' }; // PERM CLOSED BY
+    row.getCell(permClosedByCol).alignment = { vertical: 'middle', horizontal: 'center' }; // PERMANENT CLOSED BY
     row.getCell(reassignStatusCol).alignment = { vertical: 'middle', horizontal: 'center' }; // REASSIGNED STATUS
     row.getCell(reviewedByCol).alignment = { vertical: 'middle', horizontal: 'center' }; // REVIEWED BY
     row.getCell(statusCol).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
@@ -776,7 +776,7 @@ export const exportIhlrToPdf = async ({
       },
       {
         content: 'REMARKS & STATUS',
-        colSpan: 1,
+        colSpan: 2,
         styles: {
           fillColor: [241, 245, 249], // slate-100
           textColor: [30, 41, 59],   // slate-800
@@ -800,6 +800,7 @@ export const exportIhlrToPdf = async ({
       'OCCURRENCE CAUSE (5-WHY)',
       'TEMPORARY ACTION TAKEN',
       'TARGET DATE',
+      'ADMIN REMARKS',
       'STATUS'
     ]
   ];
@@ -821,9 +822,6 @@ export const exportIhlrToPdf = async ({
     let statusStr = displayStatus;
     if (r.reviewed_by && r.reviewed_by.trim()) {
       statusStr += `\nReviewed: ${r.reviewed_by.trim()}`;
-    }
-    if (r.remarks && r.remarks.trim()) {
-      statusStr += `\n[${r.remarks.trim()}]`;
     }
 
     let actionStr = '—';
@@ -860,6 +858,7 @@ export const exportIhlrToPdf = async ({
       occCause,
       actionStr,
       targetDateStr,
+      r.remarks || '—',
       statusStr
     ];
   });
@@ -884,26 +883,27 @@ export const exportIhlrToPdf = async ({
       fontSize: 7.5
     },
     columnStyles: {
-      0: { cellWidth: 22, halign: 'center' },
-      1: { cellWidth: 46, fontStyle: 'bold', halign: 'center' },
-      2: { cellWidth: 56, halign: 'center' },
-      3: { cellWidth: 76 },
-      4: { cellWidth: 54 },
-      5: { cellWidth: 50 },
-      6: { cellWidth: 50 },
-      7: { cellWidth: 50 },
-      8: { cellWidth: 62, minCellHeight: 36, halign: 'center', valign: 'middle' },
-      9: { cellWidth: 56, halign: 'center' },
-      10: { cellWidth: 68 },
-      11: { cellWidth: 78 },
-      12: { cellWidth: 56, halign: 'center' },
-      13: { cellWidth: 62, halign: 'center', fontStyle: 'bold' }
+      0: { cellWidth: 20, halign: 'center' },
+      1: { cellWidth: 42, fontStyle: 'bold', halign: 'center' },
+      2: { cellWidth: 52, halign: 'center' },
+      3: { cellWidth: 70 },
+      4: { cellWidth: 50 },
+      5: { cellWidth: 46 },
+      6: { cellWidth: 46 },
+      7: { cellWidth: 46 },
+      8: { cellWidth: 58, minCellHeight: 36, halign: 'center', valign: 'middle' },
+      9: { cellWidth: 54, halign: 'center' },
+      10: { cellWidth: 62 },
+      11: { cellWidth: 70 },
+      12: { cellWidth: 52, halign: 'center' },
+      13: { cellWidth: 60 },
+      14: { cellWidth: 52, halign: 'center', fontStyle: 'bold' }
     },
     alternateRowStyles: {
       fillColor: [248, 250, 252] // slate-50
     },
     didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 13) {
+      if (data.section === 'body' && data.column.index === 14) {
         const text = String(data.cell.raw || '');
         if (text.startsWith('CLOSED')) {
           data.cell.styles.textColor = [22, 101, 52]; // emerald-700
