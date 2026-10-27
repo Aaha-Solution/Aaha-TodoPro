@@ -155,6 +155,105 @@ export const getProcessAuditDisplayStatus = (r) => {
   return 'Pending';
 };
 
+export const parseWhyList = (val) => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return [val];
+    }
+  }
+  return [];
+};
+
+/**
+ * Safely resolves the Auditor Email with comprehensive fallback logic
+ */
+export const resolveAuditorEmail = (r) => {
+  if (!r) return '—';
+
+  // 1. Explicit email field directly on request
+  const directEmail = r.created_by_email || r.creator_email || r.auditor_email || r.email || r.user_email;
+  if (directEmail && typeof directEmail === 'string' && directEmail.trim() && directEmail.includes('@')) {
+    return directEmail.trim();
+  }
+
+  // 2. Nested user email
+  if (r.user && typeof r.user === 'object' && r.user.email && typeof r.user.email === 'string' && r.user.email.includes('@')) {
+    return r.user.email.trim();
+  }
+
+  // 3. If created_by itself is an email
+  if (r.created_by && typeof r.created_by === 'string' && r.created_by.includes('@')) {
+    return r.created_by.trim();
+  }
+
+  // 4. Try matching with logged-in user in session/local storage
+  try {
+    const rawUser = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+    if (rawUser) {
+      const parsed = JSON.parse(rawUser);
+      if (parsed?.email && parsed.email.includes('@')) {
+        const creatorName = (r.created_by || '').trim().toLowerCase();
+        const userName = (parsed.name || '').trim().toLowerCase();
+        if (
+          !creatorName ||
+          creatorName === 'quality auditor' ||
+          (userName && creatorName === userName) ||
+          (r.created_by_id && parsed.id && String(r.created_by_id) === String(parsed.id))
+        ) {
+          return parsed.email.trim();
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return '—';
+};
+
+/**
+ * Universal helper to collect and fetch base64 data for all defect and evidence images in Process Audit
+ */
+export const getProcessAuditExportImages = async (targetReq) => {
+  const isImg = (att) => {
+    if (!att) return false;
+    if (att.isImage) return true;
+    const n = att.name || att.filename || (typeof att === 'string' ? att : '');
+    const ext = (n.split('.').pop() || '').toUpperCase();
+    return ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP', 'SVG', 'JFIF'].includes(ext);
+  };
+
+  const reqData = targetReq || {};
+  const dFiles = parseAttachments(reqData.attachments);
+  const tFiles = parseAttachments(reqData.temporary_evidence_attachment || reqData.action_attachments);
+  const pFiles = parseAttachments(reqData.permanent_evidence_attachment);
+
+  const items = [
+    ...dFiles.filter(isImg).map((a) => ({ ...a, label: 'Issue Defect Evidence Image' })),
+    ...tFiles.filter(isImg).map((a) => ({ ...a, label: 'Temporary Action Evidence Image' })),
+    ...pFiles.filter(isImg).map((a) => ({ ...a, label: 'Permanent Action Evidence Image' }))
+  ];
+
+  const results = await Promise.all(
+    items.map(async (item) => {
+      try {
+        const data = await fetchAttachmentImageBase64(item, 'process-audit');
+        if (!data) return null;
+        return { ...data, label: item.label };
+      } catch (err) {
+        console.warn('Could not load Process Audit attachment image for export:', err);
+        return null;
+      }
+    })
+  );
+  return results.filter(Boolean);
+};
+
 /**
  * Common Excel Export function for Process Audit (Approvals, AllRequests, Dashboard, Details Modal)
  */
@@ -176,38 +275,45 @@ export const exportProcessAuditToExcel = async ({
     views: [{ showGridLines: true }]
   });
 
-  // 26 Columns configuration
+  // 33 Columns configuration
   const colWidths = [
-    // 1-13: REQUESTOR (Audit Observation & Parameters)
+    // 1-16: REQUESTOR (Audit Observation & Parameters)
     8,  // 1: SL NO
-    14, // 2: REQ NO
+    14, // 2: ISSUE NO
     14, // 3: ESCALATION DATE
     12, // 4: SHIFT
     16, // 5: PRODUCT
-    18, // 6: MODEL / STAGE
+    18, // 6: MODEL
     20, // 7: PROCESS / OPERATION
     14, // 8: ISSUE TYPE
     12, // 9: PRIORITY
     18, // 10: ASSIGNED DEPT
     20, // 11: ASSIGNED EXECUTOR
-    18, // 12: CREATED BY
-    34, // 13: OBSERVATION / COMMENTS
-    24, // 14: AUDIT EVIDENCE ATTACHMENTS
-    // 15-20: CLOSER (Root Cause & Corrective Action)
-    26, // 15: ROOT CAUSE ANALYSIS
-    32, // 16: CORRECTIVE ACTIONS & COUNTERMEASURES
-    26, // 17: STANDARDIZATION DETAILS
-    14, // 18: TARGET DATE
-    18, // 19: ACTION TAKEN BY
-    24, // 20: ACTION EVIDENCE ATTACHMENTS
-    // 21-22: REASSIGNMENT TRACKING
-    16, // 21: REASSIGNED STATUS
-    36, // 22: REASSIGNMENT DETAILS
-    // 23-26: REMARKS & STATUS
-    24, // 23: AUDITOR REMARKS
-    14, // 24: STATUS
-    18, // 25: CLOSED BY
-    14  // 26: CLOSED AT
+    18, // 12: LOGGED BY AUDITOR
+    22, // 13: AUDITOR EMAIL
+    34, // 14: AUDIT OBSERVATION
+    24, // 15: ADDITIONAL COMMENTS
+    26, // 16: AUDIT EVIDENCE ATTACHMENTS
+    // 17-27: CLOSER (Root Cause, Actions & Standardization)
+    30, // 17: 5-WHY ROOT CAUSE ANALYSIS
+    24, // 18: OVERALL ROOT CAUSE
+    28, // 19: TEMPORARY ACTION
+    15, // 20: TEMPORARY TARGET DATE
+    18, // 21: TEMPORARY CLOSED BY
+    24, // 22: TEMPORARY EVIDENCE
+    28, // 23: PERMANENT ACTION
+    15, // 24: PERMANENT TARGET DATE
+    18, // 25: PERMANENT CLOSED BY
+    24, // 26: PERMANENT EVIDENCE
+    26, // 27: STANDARDIZATION DETAILS
+    // 28-29: REASSIGNMENT TRACKING
+    16, // 28: REASSIGNED STATUS
+    36, // 29: REASSIGNMENT DETAILS
+    // 30-33: AUDITOR REVIEW & CLOSURE SIGN-OFF
+    24, // 30: AUDITOR REVIEW REMARKS
+    16, // 31: STATUS
+    18, // 32: REVIEWED / CLOSED BY
+    14  // 33: CLOSED AT
   ];
 
   colWidths.forEach((w, i) => {
@@ -215,30 +321,30 @@ export const exportProcessAuditToExcel = async ({
   });
 
   // ROW 1: SUPER HEADINGS
-  worksheet.mergeCells('A1:N1');
+  worksheet.mergeCells('A1:P1');
   const superReq = worksheet.getCell('A1');
   superReq.value = 'REQUESTOR (AUDIT OBSERVATION & PARAMETERS)';
-  superReq.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF78350F' } }; // amber-900
-  superReq.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // amber-100
+  superReq.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E3A8A' } }; // blue-900
+  superReq.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }; // blue-100
   superReq.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('O1:T1');
-  const superCloser = worksheet.getCell('O1');
-  superCloser.value = 'CLOSER (ROOT CAUSE, ACTION & STANDARDIZATION)';
+  worksheet.mergeCells('Q1:AA1');
+  const superCloser = worksheet.getCell('Q1');
+  superCloser.value = 'CLOSER (ROOT CAUSE, ACTIONS & STANDARDIZATION)';
   superCloser.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF7C2D12' } }; // orange-900
   superCloser.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEDD5' } }; // orange-100
   superCloser.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('U1:V1');
-  const superReassign = worksheet.getCell('U1');
+  worksheet.mergeCells('AB1:AC1');
+  const superReassign = worksheet.getCell('AB1');
   superReassign.value = 'REASSIGNMENT TRACKING';
   superReassign.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF4C1D95' } }; // violet-900
   superReassign.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } }; // violet-100
   superReassign.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('W1:Z1');
-  const superStatus = worksheet.getCell('W1');
-  superStatus.value = 'AUDITOR REVIEW & CLOSURE';
+  worksheet.mergeCells('AD1:AG1');
+  const superStatus = worksheet.getCell('AD1');
+  superStatus.value = 'AUDITOR REVIEW & CLOSURE SIGN-OFF';
   superStatus.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF065F46' } }; // emerald-900
   superStatus.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }; // emerald-100
   superStatus.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -248,30 +354,37 @@ export const exportProcessAuditToExcel = async ({
   // ROW 2: DETAILED COLUMN HEADINGS
   const columnHeaders = [
     'SL NO',
-    'AUDIT REQ NO',
+    'ISSUE NO',
     'ESCALATION DATE',
     'SHIFT',
     'PRODUCT',
-    'MODEL / STAGE',
+    'MODEL',
     'PROCESS / OPERATION',
     'ISSUE TYPE',
     'PRIORITY',
     'ASSIGNED DEPT',
     'ASSIGNED EXECUTOR',
-    'CREATED BY',
-    'OBSERVATION & COMMENTS',
-    'AUDIT EVIDENCE',
-    'ROOT CAUSE ANALYSIS',
-    'CORRECTIVE ACTIONS',
+    'LOGGED BY AUDITOR',
+    'AUDITOR EMAIL',
+    'AUDIT OBSERVATION',
+    'ADDITIONAL COMMENTS',
+    'AUDIT EVIDENCE ATTACHMENTS',
+    '5-WHY ROOT CAUSE ANALYSIS',
+    'OVERALL ROOT CAUSE',
+    'TEMPORARY ACTION',
+    'TEMPORARY TARGET DATE',
+    'TEMPORARY CLOSED BY',
+    'TEMPORARY EVIDENCE',
+    'PERMANENT ACTION',
+    'PERMANENT TARGET DATE',
+    'PERMANENT CLOSED BY',
+    'PERMANENT EVIDENCE',
     'STANDARDIZATION DETAILS',
-    'TARGET DATE',
-    'ACTION TAKEN BY',
-    'ACTION EVIDENCE',
     'REASSIGNED STATUS',
     'REASSIGNMENT DETAILS',
-    'AUDITOR REMARKS',
+    'AUDITOR REVIEW REMARKS',
     'STATUS',
-    'CLOSED BY',
+    'REVIEWED / CLOSED BY',
     'CLOSED AT'
   ];
 
@@ -289,11 +402,11 @@ export const exportProcessAuditToExcel = async ({
       right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
     };
 
-    if (colNumber <= 14) {
+    if (colNumber <= 16) {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; // blue-900
-    } else if (colNumber <= 20) {
+    } else if (colNumber <= 27) {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF9A3412' } }; // orange-800
-    } else if (colNumber <= 22) {
+    } else if (colNumber <= 29) {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B21B6' } }; // violet-800
     } else {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF065F46' } }; // emerald-800
@@ -305,55 +418,34 @@ export const exportProcessAuditToExcel = async ({
     const rowIdx = idx + 3;
     const reqNo = r.issue_no || (r.id ? `PA-${r.id}` : `#${idx + 1}`);
     const escDate = r.escalation_date ? formatDateDDMMYYYY(r.escalation_date) : (r.created_at ? formatDateDDMMYYYY(r.created_at) : '—');
-    const targetDate = r.target_date ? formatDateDDMMYYYY(r.target_date) : '—';
     const closedAt = r.closed_at ? formatDateDDMMYYYY(r.closed_at) : '—';
 
     const creatorAttachments = parseAttachments(r.attachments);
     const creatorAttStr = creatorAttachments.map(a => a.name || a.filename).filter(Boolean).join(', ') || '—';
 
-    const rootCauseVal = (() => {
-      if (r.prod_why_why) {
-        if (Array.isArray(r.prod_why_why)) {
-          const whys = r.prod_why_why.map((w, i) => w && w.trim() ? `W${i + 1}: ${w.trim()}` : null).filter(Boolean);
-          if (whys.length > 0) return whys.join('\n');
-        } else if (typeof r.prod_why_why === 'string') {
-          try {
-            const parsed = JSON.parse(r.prod_why_why);
-            if (Array.isArray(parsed)) {
-              const whys = parsed.map((w, i) => w && w.trim() ? `W${i + 1}: ${w.trim()}` : null).filter(Boolean);
-              if (whys.length > 0) return whys.join('\n');
-            }
-          } catch {}
-        }
+    const tempAttachments = parseAttachments(r.temporary_evidence_attachment || r.action_attachments);
+    const tempAttStr = tempAttachments.map(a => a.name || a.filename).filter(Boolean).join(', ') || '—';
+
+    const permAttachments = parseAttachments(r.permanent_evidence_attachment);
+    const permAttStr = permAttachments.map(a => a.name || a.filename).filter(Boolean).join(', ') || '—';
+
+    const whyAnalysisVal = (() => {
+      const parsedWhys = parseWhyList(r.prod_why_why || r.why_why);
+      if (parsedWhys.length > 0) {
+        return parsedWhys.map((w, i) => w && String(w).trim() ? `W${i + 1}: ${String(w).trim()}` : null).filter(Boolean).join('\n') || '—';
       }
-      return r.root_cause || '—';
+      return '—';
     })();
 
-    let actionVal = '—';
-    if (r.temporary_action && r.permanent_fix) {
-      actionVal = `Temp: ${r.temporary_action}\nPerm: ${r.permanent_fix}`;
-    } else if (r.temporary_action || r.permanent_fix) {
-      actionVal = r.temporary_action || r.permanent_fix;
-    } else {
-      actionVal = r.corrective_action || r.action || '—';
-    }
+    const tempTargetDate = (r.temporary_target_date ? formatDateDDMMYYYY(r.temporary_target_date) : '') ||
+      (r.target_date ? formatDateDDMMYYYY(r.target_date) : '—');
+    const permTargetDate = r.permanent_target_date ? formatDateDDMMYYYY(r.permanent_target_date) : '—';
 
-    const effectiveTargetDate = (r.temporary_target_date || r.permanent_target_date || r.target_date)
-      ? formatDateDDMMYYYY(r.temporary_target_date || r.permanent_target_date || r.target_date)
-      : '—';
-
-    const actionAttachments = [
-      ...parseAttachments(r.temporary_evidence_attachment),
-      ...parseAttachments(r.permanent_evidence_attachment),
-      ...parseAttachments(r.action_attachments)
-    ];
-    const actionAttStr = actionAttachments.map(a => a.name || a.filename).filter(Boolean).join(', ') || '—';
+    const tempClosedBy = r.temporary_closed_by || r.closer_updated_by || r.action_taken_by || r.executor || '—';
+    const permClosedBy = r.permanent_closed_by || r.closer_updated_by || r.approved_by || '—';
 
     const { reassignedStatus, reassignmentDetails } = formatReassignmentHistory(r.reassignment_history);
-
     const displayStatus = getProcessAuditDisplayStatus(r);
-
-    const obsText = [r.issue_observation || r.problem, r.comments].filter(Boolean).join(' | ') || '—';
 
     const rowData = [
       idx + 1,
@@ -368,19 +460,26 @@ export const exportProcessAuditToExcel = async ({
       r.department || '—',
       r.executor || '—',
       r.created_by || '—',
-      obsText,
+      resolveAuditorEmail(r),
+      r.issue_observation || r.problem || '—',
+      r.comments || '—',
       creatorAttStr,
-      rootCauseVal,
-      actionVal,
+      whyAnalysisVal,
+      r.root_cause || '—',
+      r.temporary_action || r.action || '—',
+      tempTargetDate,
+      tempClosedBy,
+      tempAttStr,
+      r.permanent_fix || r.corrective_action || '—',
+      permTargetDate,
+      permClosedBy,
+      permAttStr,
       r.standardization_details || '—',
-      effectiveTargetDate,
-      r.temporary_closed_by || r.action_taken_by || r.approved_by || '—',
-      actionAttStr,
       reassignedStatus,
       reassignmentDetails,
       r.creator_remark || r.remarks || '—',
       displayStatus,
-      r.reviewed_by || r.permanent_closed_by || r.closed_by || '—',
+      r.reviewed_by || r.approved_by || r.closed_by || '—',
       closedAt
     ];
 
@@ -403,12 +502,12 @@ export const exportProcessAuditToExcel = async ({
       }
 
       // Center-align code/date/status columns
-      if ([1, 2, 3, 4, 8, 9, 18, 21, 24, 26].includes(colNumber)) {
+      if ([1, 2, 3, 4, 8, 9, 20, 24, 28, 31, 33].includes(colNumber)) {
         cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       }
 
       // Format Status badge color
-      if (colNumber === 24) {
+      if (colNumber === 31) {
         cell.font = { name: 'Arial', size: 9, bold: true };
         if (displayStatus === 'Closed') {
           cell.font.color = { argb: 'FF15803D' }; // green-700
@@ -467,6 +566,21 @@ export const exportProcessAuditToPdf = async ({
     const reqNo = r.issue_no || (r.id ? `PA-${r.id}` : '#1');
     const escDate = r.escalation_date ? formatDateDDMMYYYY(r.escalation_date) : (r.created_at ? formatDateDDMMYYYY(r.created_at) : '—');
     const displayStatus = getProcessAuditDisplayStatus(r);
+    const isClosedStatus = displayStatus === 'Closed' || (String(r.status || '').toLowerCase().includes('close'));
+
+    // Parse all attachment categories
+    const creatorAttachments = parseAttachments(r.attachments);
+    const temporaryEvidenceAttachments = parseAttachments(r.temporary_evidence_attachment || r.action_attachments);
+    const permanentEvidenceAttachments = parseAttachments(r.permanent_evidence_attachment);
+
+    const creatorAttStr = creatorAttachments.length > 0 ? creatorAttachments.map(a => a.name || a.filename).filter(Boolean).join(', ') : 'None';
+    const tempEvidenceAttStr = temporaryEvidenceAttachments.length > 0 ? temporaryEvidenceAttachments.map(a => a.name || a.filename).filter(Boolean).join(', ') : 'None';
+    const permEvidenceAttStr = permanentEvidenceAttachments.length > 0 ? permanentEvidenceAttachments.map(a => a.name || a.filename).filter(Boolean).join(', ') : 'None';
+
+    const { hasReassignments, reassignmentDetails } = formatReassignmentHistory(r.reassignment_history);
+
+    // Fetch embedded evidence images
+    const exportImages = await getProcessAuditExportImages(r);
 
     // Header Banner
     doc.setFillColor(30, 41, 59); // slate-800
@@ -490,97 +604,343 @@ export const exportProcessAuditToPdf = async ({
     doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(191, 219, 254);
-    doc.text(`PROCESS AUDIT OBSERVATION & ACTION REPORT  |  ${reqNo}`, bannerTextX, 66);
+    doc.text(`PROCESS AUDIT INSPECTION REPORT  |  ${reqNo}`, bannerTextX, 66);
 
-    // Section 1: Basic Parameters Table
+    // Section 1: 1. AUDIT INCIDENT & PARAMETERS (Structured 4-Column Key-Value Grid)
     autoTable(doc, {
-      startY: 88,
-      theme: 'plain',
-      styles: { fontSize: 8.5, cellPadding: 3 },
+      startY: 86,
+      theme: 'grid',
+      margin: { left: 40, right: 40 },
+      tableWidth: 515,
+      columnStyles: {
+        0: { cellWidth: 105 },
+        1: { cellWidth: 152.5 },
+        2: { cellWidth: 105 },
+        3: { cellWidth: 152.5 }
+      },
+      styles: { fontSize: 8, cellPadding: 3.5, valign: 'middle' },
+      head: [
+        [
+          {
+            content: '1. AUDIT INCIDENT & PARAMETERS',
+            colSpan: 4,
+            styles: {
+              fillColor: [30, 41, 59], // slate-800
+              textColor: [255, 255, 255],
+              fontStyle: 'bold',
+              fontSize: 8.5
+            }
+          }
+        ]
+      ],
       body: [
         [
-          { content: 'Audit Req No:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+          { content: 'ISSUE NO', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           { content: reqNo, styles: { fontStyle: 'bold', textColor: [37, 99, 235] } },
-          { content: 'Status:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+          { content: 'Current Status:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           {
             content: displayStatus.toUpperCase(),
             styles: {
               fontStyle: 'bold',
-              textColor: displayStatus === 'Closed' ? [22, 101, 52] : displayStatus === 'Signed off' ? [67, 56, 202] : [180, 83, 9]
+              textColor: isClosedStatus
+                ? [22, 101, 52]
+                : (displayStatus === 'Awaiting Review' || displayStatus === 'Signed off')
+                  ? [180, 83, 9]
+                  : [225, 29, 72]
             }
           }
         ],
         [
-          { content: 'Escalation Date:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+          { content: 'Escalation Date:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           escDate,
-          { content: 'Shift:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-          r.shift || '—'
+          { content: 'Work Shift:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          r.shift || 'Shift 1'
         ],
         [
-          { content: 'Product:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+          { content: 'Product :', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           r.product || '—',
-          { content: 'Model / Stage:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+          { content: 'Model:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           r.model || r.stage || '—'
         ],
         [
-          { content: 'Process / Line:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+          { content: 'PROCESS / OPERATION:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           r.process_operation || r.line || '—',
-          { content: 'Issue Type:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+          { content: 'Issue Type:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           r.issue_type || '—'
         ],
         [
-          { content: 'Priority:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+          { content: 'Priority:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           r.priority || '—',
-          { content: 'Created By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
+          { content: 'Assigned Department:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          r.department || '—'
+        ],
+        [
+          { content: 'Assigned Closer Person:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          r.executor || '—',
+          { content: 'Logged By (Auditor):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           r.created_by || 'Quality Auditor'
         ],
         [
-          { content: 'Assigned Dept:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-          r.department || '—',
-          { content: 'Assigned Executor:', styles: { fontStyle: 'bold', textColor: [71, 85, 105] } },
-          r.executor || '—'
+          { content: 'Auditor Email:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          resolveAuditorEmail(r),
+          { content: 'Temporary Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          r.temporary_closed_by || r.closer_updated_by || r.action_taken_by || r.executor || '—'
+        ],
+        [
+          { content: 'Issue Created At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          r.created_at ? formatDateDDMMYYYY(r.created_at) : '—',
+          { content: 'Last Updated At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          r.updated_at ? formatDateDDMMYYYY(r.updated_at) : (r.created_at ? formatDateDDMMYYYY(r.created_at) : '—')
         ]
       ]
     });
 
-    // Section 2: Defect Problem Description & Observation
-    const lastY = doc.lastAutoTable.finalY + 8;
+    // Section 2: 2. AUDIT OBSERVATION & DEFECT PROBLEM DESCRIPTION
+    const sec2Y = doc.lastAutoTable.finalY + 8;
     autoTable(doc, {
-      startY: lastY,
-      head: [['AUDIT OBSERVATION & DEFECT PROBLEM DESCRIPTION']],
-      body: [
-        [`Audit Findings: ${r.issue_observation || r.problem || 'No observation recorded.'}`],
-        ...(r.comments ? [[`Additional Comments: ${r.comments}`]] : [])
-      ],
+      startY: sec2Y,
       theme: 'grid',
-      headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
-      styles: { fontSize: 8.5, cellPadding: 4 }
+      margin: { left: 40, right: 40 },
+      tableWidth: 515,
+      columnStyles: {
+        0: { cellWidth: 150 },
+        1: { cellWidth: 365 }
+      },
+      head: [
+        [
+          {
+            content: '2. AUDIT OBSERVATION & DEFECT PROBLEM DESCRIPTION',
+            colSpan: 2,
+            styles: {
+              fillColor: [37, 99, 235], // blue-600
+              textColor: [255, 255, 255],
+              fontStyle: 'bold',
+              fontSize: 8.5
+            }
+          }
+        ]
+      ],
+      body: [
+        [
+          { content: 'Issue / Observation:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: r.issue_observation || r.problem || 'No observation recorded.' }
+        ],
+        [
+          { content: 'Comments:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: r.comments || '—' }
+        ],
+        [
+          { content: 'Auditor Defect Attachment(s):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: creatorAttStr }
+        ]
+      ],
+      styles: { fontSize: 8, cellPadding: 3.5, valign: 'middle' }
     });
 
-    // Section 3: Root Cause & Corrective Actions
-    const actionY = doc.lastAutoTable.finalY + 8;
-    const actionAttachments = parseAttachments(r.action_attachments);
-    const creatorAttachments = parseAttachments(r.attachments);
-    const { hasReassignments, reassignmentDetails } = formatReassignmentHistory(r.reassignment_history);
+    // Section 3: 3. ROOT CAUSE OCCURRENCE ANALYSIS (5-WHY)
+    const sec3Y = doc.lastAutoTable.finalY + 8;
+    const whys = parseWhyList(r.prod_why_why || r.why_why);
+    const whyRows = [];
+    for (let i = 0; i < 5; i++) {
+      const cause = (whys[i] && String(whys[i]).trim()) || '—';
+      if (i === 0 || cause !== '—') {
+        whyRows.push([`Why ${i + 1} (W${i + 1})`, cause]);
+      }
+    }
 
     autoTable(doc, {
-      startY: actionY,
-      head: [['EXECUTOR CORRECTIVE ACTION & STANDARDIZATION REPORT']],
-      body: [
-        [`Root Cause Analysis: ${r.root_cause || 'Root cause pending executor submission.'}`],
-        [`Corrective Actions: ${r.corrective_action || 'Corrective action pending submission.'}`],
-        ...(r.standardization_details ? [[`Standardization Details: ${r.standardization_details}`]] : []),
-        [`Target Date: ${r.target_date ? formatDateDDMMYYYY(r.target_date) : '—'}  |  Action Taken By: ${r.action_taken_by || r.approved_by || r.executor || 'Assigned Executor'}`],
-        ...(hasReassignments ? [[`Reassignment History: ${reassignmentDetails}`]] : []),
-        ...(creatorAttachments.length > 0 ? [[`Audit Creator Attachments (${creatorAttachments.length}): ${creatorAttachments.map(a => a.name || a.filename).join(', ')}`]] : []),
-        ...(actionAttachments.length > 0 ? [[`Action Evidence Attachments (${actionAttachments.length}): ${actionAttachments.map(a => a.name || a.filename).join(', ')}`]] : []),
-        ...(r.creator_remark || r.remarks ? [[`Sign-off Remarks: ${r.creator_remark || r.remarks}`]] : []),
-        [`Status: ${displayStatus.toUpperCase()}  |  Reviewed By: ${r.reviewed_by || r.closed_by || '—'}  |  Closed Date: ${r.closed_at ? formatDateDDMMYYYY(r.closed_at) : '—'}`]
-      ],
+      startY: sec3Y,
       theme: 'grid',
-      headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
-      styles: { fontSize: 8.5, cellPadding: 4 }
+      margin: { left: 40, right: 40 },
+      tableWidth: 515,
+      head: [
+        [
+          {
+            content: '3. ROOT CAUSE OCCURRENCE ANALYSIS (5-WHY)',
+            colSpan: 2,
+            styles: {
+              fillColor: [217, 119, 6], // amber-600
+              textColor: [255, 255, 255],
+              fontStyle: 'bold',
+              fontSize: 8.5
+            }
+          }
+        ],
+        [
+          { content: 'LEVEL', styles: { halign: 'center', fontStyle: 'bold', fillColor: [245, 158, 11], textColor: [255, 255, 255] } },
+          { content: 'ROOT CAUSE OCCURRENCE INVESTIGATION (5-WHY)', styles: { fontStyle: 'bold', fillColor: [245, 158, 11], textColor: [255, 255, 255] } }
+        ]
+      ],
+      body: whyRows.length > 0 ? whyRows : [
+        ['Why 1 (W1)', r.root_cause || 'Root cause pending closer investigation.']
+      ],
+      headStyles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 110, fontStyle: 'bold', halign: 'center' },
+        1: { cellWidth: 405 }
+      },
+      styles: { fontSize: 8, cellPadding: 3.5, valign: 'middle' }
     });
+
+    // Section 4: 4. ACTION & CLOSURE SIGN-OFF
+    const sec4Y = doc.lastAutoTable.finalY + 8;
+    const tempActionVal = r.temporary_action || r.action || '—';
+    const tempTargetDateVal = (r.temporary_target_date ? formatDateDDMMYYYY(r.temporary_target_date) : '') ||
+      (r.target_date ? formatDateDDMMYYYY(r.target_date) : '—');
+    const tempClosedByVal = r.temporary_closed_by || r.closer_updated_by || r.action_taken_by || r.executor || '—';
+
+    const permActionVal = r.permanent_fix || r.corrective_action || '—';
+    const permTargetDateVal = r.permanent_target_date ? formatDateDDMMYYYY(r.permanent_target_date) : '—';
+    const permClosedByVal = r.permanent_closed_by || r.closer_updated_by || r.approved_by || '—';
+
+    const closedByVal = isClosedStatus
+      ? (r.reviewed_by || r.approved_by || r.closed_by || 'Quality Auditor')
+      : (r.reviewed_by ? `Reviewed by ${r.reviewed_by}` : 'Pending Closure Authorization');
+
+    const closedDateVal = isClosedStatus
+      ? (r.closed_at ? formatDateDDMMYYYY(r.closed_at) : (r.updated_at ? formatDateDDMMYYYY(r.updated_at) : '—'))
+      : '—';
+
+    autoTable(doc, {
+      startY: sec4Y,
+      theme: 'grid',
+      margin: { left: 40, right: 40 },
+      tableWidth: 515,
+      columnStyles: {
+        0: { cellWidth: 160 },
+        1: { cellWidth: 355 }
+      },
+      head: [
+        [
+          {
+            content: '4. ACTION & CLOSURE SIGN-OFF',
+            colSpan: 2,
+            styles: {
+              fillColor: [16, 185, 129], // emerald-600
+              textColor: [255, 255, 255],
+              fontStyle: 'bold',
+              fontSize: 8.5
+            }
+          }
+        ]
+      ],
+      body: [
+        [
+          { content: 'Temporary Action:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: tempActionVal }
+        ],
+        [
+          { content: 'Temporary Target Date:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: tempTargetDateVal }
+        ],
+        [
+          { content: 'Temporary Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: tempClosedByVal }
+        ],
+        [
+          { content: 'Temporary Evidence Attachment(s):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: tempEvidenceAttStr }
+        ],
+        [
+          { content: 'Permanent Action:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: permActionVal }
+        ],
+        [
+          { content: 'Permanent Target Date:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: permTargetDateVal }
+        ],
+        [
+          { content: 'Permanent Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: permClosedByVal }
+        ],
+        [
+          { content: 'Permanent Evidence Attachment(s):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: permEvidenceAttStr }
+        ],
+        [
+          { content: 'Standardization Details:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: r.standardization_details || '—' }
+        ],
+        [
+          { content: 'Responsible Closer Person:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: r.executor || '—' }
+        ],
+        [
+          { content: 'Responsible Department:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: r.department || '—' }
+        ],
+        [
+          { content: 'Reassignment Tracking History:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: hasReassignments ? reassignmentDetails : 'No (Re-Assignee)' }
+        ],
+        [
+          { content: 'Auditor Review / Sign-off Remarks:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: r.creator_remark || r.remarks || '—' }
+        ],
+        [
+          { content: 'Closure Sign-off Status:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          {
+            content: isClosedStatus ? 'CLOSED (Authorized & Verified)' : displayStatus.toUpperCase(),
+            styles: {
+              fontStyle: 'bold',
+              textColor: isClosedStatus ? [22, 101, 52] : [180, 83, 9]
+            }
+          }
+        ],
+        [
+          { content: 'Reviewed / Closed By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: closedByVal }
+        ],
+        [
+          { content: 'Closure Date:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: closedDateVal }
+        ]
+      ],
+      styles: { fontSize: 8, cellPadding: 3.5, valign: 'middle' }
+    });
+
+    // Section 5: 5. EMBEDDED AUDIT & ACTION EVIDENCE IMAGES
+    if (exportImages && exportImages.length > 0) {
+      let currentY = doc.lastAutoTable.finalY + 12;
+      if (currentY + 60 > doc.internal.pageSize.height - 40) {
+        doc.addPage();
+        currentY = 40;
+      }
+
+      // Section 5 Title Box
+      doc.setFillColor(30, 41, 59);
+      doc.rect(40, currentY, 515, 18, 'F');
+      doc.setFontSize(8.5);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text(`5. EMBEDDED AUDIT & ACTION EVIDENCE IMAGES (${exportImages.length})`, 48, currentY + 12);
+      currentY += 24;
+
+      for (const img of exportImages) {
+        if (currentY + 220 > doc.internal.pageSize.height - 40) {
+          doc.addPage();
+          currentY = 40;
+        }
+
+        doc.setFillColor(241, 245, 249);
+        doc.rect(40, currentY, 515, 18, 'F');
+        doc.setDrawColor(203, 213, 225);
+        doc.rect(40, currentY, 515, 18, 'S');
+
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text(`${img.label}: ${img.name}`, 48, currentY + 12);
+
+        try {
+          doc.addImage(img.dataUrl, (img.extension || 'JPEG').toUpperCase(), 40, currentY + 22, 340, 180);
+        } catch (imgErr) {
+          console.warn('Failed to embed image in PDF:', imgErr);
+        }
+
+        currentY += 210;
+      }
+    }
 
     // Footer
     const pageCount = doc.internal.getNumberOfPages();
@@ -589,14 +949,14 @@ export const exportProcessAuditToPdf = async ({
       doc.setFontSize(8);
       doc.setTextColor(148, 163, 184);
       doc.text(
-        `Page ${i} of ${pageCount}  |  Generated on ${formatDateDDMMYYYY(new Date())}`,
+        `Page ${i} of ${pageCount}  |  INDIA NIPPON ELECTRICALS LIMITED  |  Generated on ${formatDateDDMMYYYY(new Date())}`,
         40,
         doc.internal.pageSize.height - 20
       );
     }
 
     const safeNo = String(reqNo).replace(/[^a-zA-Z0-9_-]/g, '_');
-    doc.save(fileName || `Process_Audit_Report_${safeNo}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(fileName || `Process_Audit_Inspection_Report_${safeNo}_${new Date().toISOString().slice(0, 10)}.pdf`);
     return;
   }
 
