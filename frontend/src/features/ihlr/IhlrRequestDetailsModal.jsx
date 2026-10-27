@@ -882,15 +882,15 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             shiftStr
           ],
           [
-            { content: 'Model / Part:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Model Name / Part:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             targetReq.model || '—',
-            { content: 'Rejected Quantity:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Actual Rejected Qty:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             targetReq.actual_qty ? `${targetReq.actual_qty} Nos` : '1 Nos'
           ],
           [
             { content: 'Problem Detected At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             targetReq.problem_detected_at || '—',
-            { content: 'Received From Line:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Received From (Line/Cell):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             targetReq.received_from || '—'
           ],
           [
@@ -900,9 +900,9 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             targetReq.four_m || '—'
           ],
           [
-            { content: 'Responsibility Dept:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Responsibility (Resp):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             respDept,
-            { content: 'Assigned Closer Person:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'User Name (Based on Dep):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             respPerson
           ],
           [
@@ -1079,11 +1079,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             { content: permEvidenceStr }
           ],
           [
-            { content: 'Responsible Closer Person:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'User Name (Based on Dep):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: respPerson }
           ],
           [
-            { content: 'Responsible Department:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Responsibility (Resp):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: respDept }
           ],
           [
@@ -1360,7 +1360,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                           {getStatusBadge(req.status)}
                         </div>
                         <p className="text-[11px] text-slate-300 mt-0.5">
-                          Logged: <span className="text-white font-medium">{formatDate(req.batch_date)}</span> | Resp Dept: <span className="text-amber-300 font-semibold">{req.resp || 'PRODUCTION'}</span>
+                          Logged: <span className="text-white font-medium">{formatDate(req.batch_date)}</span> | Responsibility (Resp): <span className="text-amber-300 font-semibold">{req.resp || 'PRODUCTION'}</span>
                         </p>
                       </div>
                     </div>
@@ -1405,7 +1405,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         {req.resp_person || 'Not Assigned'}
                       </div>
                       <div className="text-[10px] text-slate-400 font-mono">
-                        Dept: {req.resp || 'PRODUCTION'}
+                        Responsibility (Resp): {req.resp || 'PRODUCTION'}
                       </div>
                     </div>
 
@@ -1581,7 +1581,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                           {/* Department (Resp) */}
                           <div>
                             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1">
-                              Department (Resp) *
+                              Responsibility (Resp) *
                             </label>
                             <select
                               value={reassignedDept}
@@ -1597,7 +1597,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                                   : 'border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                                 }`}
                             >
-                              <option value="">Select Department</option>
+                              <option value="">Select Responsibility</option>
                               {departmentList.map((dept) => (
                                 <option key={dept} value={dept}>
                                   {dept}
@@ -1615,7 +1615,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                           <div className="relative" ref={reassignDropdownRef}>
                             <div className="flex items-center justify-between mb-1">
                               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                                User Name (Dep Based) *
+                                User Name (Based on Dep) *
                               </label>
                               {reassignedDept && getDepartmentUsers(reassignedDept).length > 0 && getSelectedReassignedUsers().length > 0 && (
                                 <button
@@ -1733,7 +1733,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                          <span>REMARKS</span>
+                          <span>ADMIN REMARKS</span>
                           <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
                             ADMIN
                           </span>
@@ -1756,7 +1756,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                          <span>REMARKS</span>
+                          <span>ADMIN REMARKS</span>
                           <span className="text-rose-500 font-bold">*</span>
                           <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
                             ADMIN
@@ -2133,7 +2133,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-500 mt-0.5">
-                        Model: <strong className="text-slate-800">{request.model || '—'}</strong> | Detected At:{' '}
+                        Model Name / Part: <strong className="text-slate-800">{request.model || '—'}</strong> | Problem Detected At:{' '}
                         <strong className="text-slate-800">{request.problem_detected_at || '—'}</strong>
                       </p>
                     </div>
@@ -2145,7 +2145,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <span className="font-mono font-bold text-slate-800">{formatDate(request.temporary_target_date || request.permanent_target_date) || '—'}</span>
                     </div>
                     <div>
-                      <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Responsibility</span>
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Responsibility (Resp)</span>
                       <span className="font-bold text-slate-800">
                         {request.resp || 'Production'}{request.resp_person ? ` (${request.resp_person})` : ''}
                       </span>
@@ -2172,7 +2172,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
                       <ShieldAlert className="w-4 h-4" />
-                      <span>Occurrence Cause (Production Team - 5-Why Analysis)</span>
+                      <span>Occurrence Cause (Production 5-Why Analysis)</span>
                     </div>
                     <span className="text-[11px] text-slate-400 font-mono">W1 to W5 Breakdown</span>
                   </div>
@@ -2218,7 +2218,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
                     <Wrench className="w-4 h-4" />
-                    <span>Temporary Action</span>
+                    <span>Temporary Action Taken</span>
                   </div>
                   <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
                     {request.temporary_action || <span className="text-slate-400 italic">No temporary action recorded.</span>}
@@ -2230,7 +2230,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
                       <Paperclip className="w-4 h-4" />
-                      <span>Temporary Evidence Attachments</span>
+                      <span>Temporary Evidence Attachment(s)</span>
                     </div>
                     <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
                   </div>
@@ -2288,7 +2288,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold uppercase tracking-wider">
                       <Wrench className="w-4 h-4" />
-                      <span>Permanent Action</span>
+                      <span>Permanent Action (Countermeasure)</span>
                     </div>
                     <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
                       {request.permanent_fix || <span className="text-slate-400 italic">No permanent action recorded.</span>}
@@ -2300,7 +2300,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
                         <Paperclip className="w-4 h-4" />
-                        <span>Permanent Evidence Attachments</span>
+                        <span>Permanent Evidence Attachment(s)</span>
                       </div>
                       <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
                     </div>
@@ -2407,7 +2407,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   </div>
                   <div className="flex items-center gap-4 text-[11px] text-slate-600 font-medium">
                     <span>4M: <strong className="text-amber-800 font-mono">{request.four_m || 'MAN'}</strong></span>
-                    <span>Resp: <strong className="text-blue-700 font-mono">{request.resp || 'PRODUCTION'}{request.resp_person ? ` (${request.resp_person})` : ''}</strong></span>
+                    <span>Responsibility (Resp): <strong className="text-blue-700 font-mono">{request.resp || 'PRODUCTION'}{request.resp_person ? ` (${request.resp_person})` : ''}</strong></span>
                   </div>
                 </div>
               </div>
@@ -2535,7 +2535,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        RESPONSIBILITY (DEPT) <span className="text-rose-500">*</span>
+                        RESPONSIBILITY (RESP) <span className="text-rose-500">*</span>
                       </label>
                       <select
                         value={editFormData.resp}
@@ -2568,7 +2568,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     {/* RESPONSIBILITY (PERSON) MULTI-SELECT DROPDOWN */}
                     <div className="relative sm:col-span-2" ref={userDropdownRef}>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        RESPONSIBILITY PERSON(S) <span className="text-rose-500">*</span>
+                        USER NAME (BASED ON DEP) <span className="text-rose-500">*</span>
                       </label>
                       <div
                         onClick={() => setIsUserDropdownOpen(prev => !prev)}
@@ -2697,7 +2697,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        REJECTED QTY <span className="text-rose-500">*</span>
+                        ACTUAL REJECTED QTY <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="number"
@@ -2723,7 +2723,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        DETECTED AT <span className="text-rose-500">*</span>
+                        PROBLEM DETECTED AT <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -2843,7 +2843,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      PROBLEM / DEFECT PHENOMENON <span className="text-rose-500">*</span>
+                      PROBLEM / DEFECT DESCRIPTION <span className="text-rose-500">*</span>
                     </label>
                     <textarea
                       rows={3}
@@ -3095,7 +3095,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                     <div>
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        RESPONSIBILITY (DEPT)
+                        RESPONSIBILITY (RESP)
                       </span>
                       <span className="font-bold text-slate-900 font-mono">
                         {req.resp || 'N/A'}
@@ -3131,7 +3131,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                     <div>
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        REJECTED QTY
+                        ACTUAL REJECTED QTY
                       </span>
                       <span className="font-bold text-slate-900 font-mono">
                         {req.actual_qty || '1'}
@@ -3140,7 +3140,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                     <div>
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        DETECTED AT
+                        PROBLEM DETECTED AT
                       </span>
                       <span className="font-medium text-slate-800">
                         {req.problem_detected_at || 'Line Inspection'}
@@ -3230,7 +3230,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                   <div>
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      PROBLEM / DEFECT PHENOMENON
+                      PROBLEM / DEFECT DESCRIPTION
                     </span>
                     <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 leading-relaxed font-normal min-h-[50px]">
                       {req.problem || 'No defect description logged.'}
