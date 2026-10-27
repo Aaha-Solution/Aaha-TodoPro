@@ -951,15 +951,15 @@ const CreateRequest = () => {
                   }`}
                 >
                   <option value="">Select Product</option>
-                  <option value="Sets">SMT</option>
-                  <option value="Units">RR</option>
-                  <option value="Kg">Converter</option>
-                  <option value="Batches">Sensor</option>
-                  <option value="Sets">FWM</option>
-                  <option value="Sets">IU/IG</option>
-                  <option value="Sets">Display Unit</option>
-                  <option value="Sets">ISG</option>
-                  <option value="Sets">TCI/CDI</option>
+                  <option value="SMT">SMT</option>
+                  <option value="RR">RR</option>
+                  <option value="Converter">Converter</option>
+                  <option value="Sensor">Sensor</option>
+                  <option value="FWM">FWM</option>
+                  <option value="IU/IG">IU/IG</option>
+                  <option value="Display Unit">Display Unit</option>
+                  <option value="ISG">ISG</option>
+                  <option value="TCI/CDI">TCI/CDI</option>
                 </select>
                 {errors.product && (
                   <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -1570,10 +1570,7 @@ const CreateRequest = () => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-              <span>Comments</span>
-              <span className="text-slate-400 font-normal lowercase">(optional)</span>
-            </label>
+           
             <textarea
               rows={3}
               placeholder="Enter optional comments, remarks, or specific handling notes..."
