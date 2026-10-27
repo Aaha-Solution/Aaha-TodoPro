@@ -80,11 +80,35 @@ const AllRequests = () => {
   const defaultStartDate = `${currentYear}-01-01`;
   const defaultEndDate = `${currentYear}-12-31`;
 
-  const [search, setSearch] = useState(() => location.state?.search || '');
+  // Detect if current page load is a browser reload / refresh
+  const isReload = (() => {
+    try {
+      const navEntries = performance.getEntriesByType('navigation');
+      if (navEntries.length > 0) return navEntries[0].type === 'reload';
+      return performance.navigation.type === 1;
+    } catch {
+      return false;
+    }
+  })();
+
+  const [search, setSearch] = useState(() => (isReload ? '' : (location.state?.search || '')));
 
   useEffect(() => {
+    if (isReload) {
+      setSearch('');
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (_) {}
+      return;
+    }
+
     if (location.state?.search) {
       setSearch(location.state.search);
+      setShowFilters(true);
+      // Clean up location.state immediately so subsequent browser refresh does not re-apply stale search
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (_) {}
     }
   }, [location.state]);
   const [selectedShift, setSelectedShift] = useState('All Shifts');
@@ -115,6 +139,16 @@ const AllRequests = () => {
     setSelectedStatus('All Statuses');
     setStartDate(defaultStartDate);
     setEndDate(defaultEndDate);
+
+    // Completely wipe out history state so subsequent refresh won't restore the old filter!
+    try {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (_) {}
+  };
+
+  const handleRefresh = async () => {
+    handleResetFilters();
+    await fetchRequests();
   };
 
   // Modals State
@@ -562,7 +596,16 @@ const AllRequests = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 shadow-2xs transition active:scale-95 cursor-pointer"
+            title="Refresh requests and reset filters"
+          >
+            <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+            <span>Refresh</span>
+          </button>
           {canCreate && (
             <button
               onClick={() => navigate('/process-audit/create-request')}
@@ -606,8 +649,8 @@ const AllRequests = () => {
             </button>
           </div>
 
-          {hasActiveFilters && (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
               <button
                 type="button"
                 onClick={handleResetFilters}
@@ -617,8 +660,17 @@ const AllRequests = () => {
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Reset Filters</span>
               </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-xl transition-all active:scale-95 cursor-pointer shadow-2xs"
+              title="Refresh requests and reset filters"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
 
         {showFilters && (
@@ -631,8 +683,23 @@ const AllRequests = () => {
                 placeholder="Search observation, model, operation, executor, auditor, or Req#..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium"
+                className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium"
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    try {
+                      window.history.replaceState({}, document.title, window.location.pathname);
+                    } catch (_) {}
+                  }}
+                  className="absolute right-3 top-2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             {/* Filter Dropdowns Grid */}

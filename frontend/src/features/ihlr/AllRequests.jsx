@@ -80,15 +80,26 @@ const IhlrAllRequests = () => {
   const { defaultStartDate, defaultEndDate } = getDefault12MonthsRange();
   const currentYear = new Date().getFullYear();
 
-  const [search, setSearch] = useState(location.state?.search || '');
-  const [selectedDepartment, setSelectedDepartment] = useState(location.state?.filterDept || 'All');
+  // Detect if current page load is a browser reload / refresh
+  const isReload = (() => {
+    try {
+      const navEntries = performance.getEntriesByType('navigation');
+      if (navEntries.length > 0) return navEntries[0].type === 'reload';
+      return performance.navigation.type === 1;
+    } catch {
+      return false;
+    }
+  })();
+
+  const [search, setSearch] = useState(() => (isReload ? '' : (location.state?.search || '')));
+  const [selectedDepartment, setSelectedDepartment] = useState(() => (isReload ? 'All' : (location.state?.filterDept || 'All')));
   const [selectedShift, setSelectedShift] = useState('All');
   const [selected4M, setSelected4M] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState(location.state?.filterStatus || 'All');
+  const [selectedStatus, setSelectedStatus] = useState(() => (isReload ? 'All' : (location.state?.filterStatus || 'All')));
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultEndDate);
   const [showFilters, setShowFilters] = useState(
-    Boolean(location.state?.search || location.state?.filterDept || (location.state?.filterStatus && location.state.filterStatus !== 'All'))
+    !isReload && Boolean(location.state?.search || location.state?.filterDept || (location.state?.filterStatus && location.state.filterStatus !== 'All'))
   );
 
   const isDefaultRange = startDate === defaultStartDate && endDate === defaultEndDate;
@@ -121,9 +132,22 @@ const IhlrAllRequests = () => {
     setSelectedStatus('All');
     setStartDate(defaultStartDate);
     setEndDate(defaultEndDate);
+    try {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (_) {}
   };
 
   useEffect(() => {
+    if (isReload) {
+      setSearch('');
+      setSelectedDepartment('All');
+      setSelectedStatus('All');
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (_) {}
+      return;
+    }
+
     if (location.state?.filterDept) {
       setSelectedDepartment(location.state.filterDept);
     }
@@ -132,6 +156,11 @@ const IhlrAllRequests = () => {
     }
     if (location.state?.search) {
       setSearch(location.state.search);
+    }
+    if (location.state) {
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (_) {}
     }
   }, [location.state]);
 
