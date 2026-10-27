@@ -447,8 +447,21 @@ const IhlrApprovals = () => {
     setCloserPermanentEvidenceError(false);
   };
 
-  const fetchRequests = async () => {
-    setLoading(true);
+  const selectedRequestRef = useRef(selectedRequest);
+  useEffect(() => {
+    selectedRequestRef.current = selectedRequest;
+  }, [selectedRequest]);
+
+  const adminEditCloserRef = useRef(adminEditCloser);
+  useEffect(() => {
+    adminEditCloserRef.current = adminEditCloser;
+  }, [adminEditCloser]);
+
+  const fetchRequests = async (options = {}) => {
+    const isSilent = options?.silent === true;
+    if (!isSilent) {
+      setLoading(true);
+    }
     try {
       const data = await ihlrService.getRequests();
       // Filter out CLOSED requests: once closed they should not be shown in the approvals tab
@@ -470,23 +483,27 @@ const IhlrApprovals = () => {
         });
       }
 
-      // If a targeted request was found, populate it immediately
+      const currentSel = selectedRequestRef.current;
       if (matchedTarget) {
         populateForm(matchedTarget);
-      } else if (selectedRequest) {
-        const fresh = visibleData.find((r) => r.id === selectedRequest.id);
+      } else if (currentSel) {
+        const fresh = visibleData.find((r) => r.id === currentSel.id);
         if (fresh) {
-          populateForm(fresh, adminEditCloser);
+          if (!adminEditCloserRef.current) {
+            populateForm(fresh, false);
+          }
         } else {
           clearForm();
         }
-      } else {
-        clearForm();
+      } else if (visibleData.length > 0 && !isSilent) {
+        populateForm(visibleData[0]);
       }
     } catch (err) {
       console.error('Failed to load IHLR requests for approval:', err);
     } finally {
-      setLoading(false);
+      if (!isSilent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -510,17 +527,41 @@ const IhlrApprovals = () => {
     const handleLiveUpdate = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        fetchRequests();
+        fetchRequests({ silent: true });
       }, 150);
     };
 
+    // 1. WebSocket & internal live events
     window.addEventListener('ihlrLiveUpdate', handleLiveUpdate);
+    window.addEventListener('websocketNotification', handleLiveUpdate);
+    window.addEventListener('refreshNotifications', handleLiveUpdate);
+
+    // 2. Auto-refresh when window or tab regains focus or visibility
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        fetchRequests({ silent: true });
+      }
+    };
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    // 3. Continuous background heartbeat (every 3 seconds while staying on the Approvals tab)
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchRequests({ silent: true });
+      }
+    }, 3000);
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
+      clearInterval(pollInterval);
       window.removeEventListener('ihlrLiveUpdate', handleLiveUpdate);
+      window.removeEventListener('websocketNotification', handleLiveUpdate);
+      window.removeEventListener('refreshNotifications', handleLiveUpdate);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
     };
-  }, [user?.name, user?.email, user?.role, user?.department]);
+  }, [user?.name, user?.email, user?.role, user?.department, isAdmin]);
 
   const handleWhyChange = (index, val) => {
     setCloserWhyWhy((prev) => {
@@ -809,10 +850,15 @@ const IhlrApprovals = () => {
       setNewEvidenceFiles([]);
       if (updated) {
         populateForm(updated, false);
+        // Immediate optimistic table row update in local state
+        setRequests((prev) =>
+          prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r))
+        );
       }
       setAdminEditCloser(false);
-      await fetchRequests();
+      window.dispatchEvent(new CustomEvent('ihlrLiveUpdate', { detail: updated }));
       window.dispatchEvent(new Event('refreshNotifications'));
+      await fetchRequests({ silent: true });
       modalSuccess(msg);
 
       setTimeout(() => {
@@ -947,7 +993,18 @@ const IhlrApprovals = () => {
       setIsReassignOpen(false);
       setIsReassignUserDropdownOpen(false);
       setReassignUserSearch('');
-      if (updated && String(updated.status || '').toUpperCase() !== 'CLOSED') {
+
+      const isNowClosed = updated && String(updated.status || '').toUpperCase() === 'CLOSED';
+
+      // Immediate optimistic table row update in local state
+      setRequests((prev) => {
+        if (isNowClosed) {
+          return prev.filter((r) => r.id !== updated.id);
+        }
+        return prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r));
+      });
+
+      if (updated && !isNowClosed) {
         populateForm(updated);
       } else {
         clearForm();
@@ -969,7 +1026,9 @@ const IhlrApprovals = () => {
         }
       }
       setAdminEditCloser(false);
-      await fetchRequests();
+      window.dispatchEvent(new CustomEvent('ihlrLiveUpdate', { detail: updated }));
+      window.dispatchEvent(new Event('refreshNotifications'));
+      await fetchRequests({ silent: true });
       modalSuccess(msg);
 
       setTimeout(() => {
@@ -2779,8 +2838,16 @@ const IhlrApprovals = () => {
           setActiveModalRequest(null);
           setModalInitialEdit(false);
         }}
-        onUpdated={() => {
-          fetchRequests();
+        onUpdated={(updatedReq) => {
+          if (updatedReq) {
+            setRequests((prev) => {
+              if (String(updatedReq.status || '').toUpperCase() === 'CLOSED') {
+                return prev.filter((r) => r.id !== updatedReq.id);
+              }
+              return prev.map((r) => (r.id === updatedReq.id ? { ...r, ...updatedReq } : r));
+            });
+          }
+          fetchRequests({ silent: true });
           setActiveModalRequest(null);
           setModalInitialEdit(false);
         }}
