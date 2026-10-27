@@ -22,6 +22,7 @@ export const getDbPool = (customConfig = {}) => {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
+    dateStrings: true,
     ...customConfig,
   };
 

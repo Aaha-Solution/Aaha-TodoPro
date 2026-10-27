@@ -39,7 +39,7 @@ import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import { parseAttachments, resolveAttachmentUrl } from '../../components/common/attachmentUtils';
 import { exportProcessAuditToExcel, exportProcessAuditToPdf, formatReassignmentHistory } from './processAuditExportUtils';
 import { useModal } from '../../context/ModalContext';
-import { formatDateDDMMYYYY } from '../../utils/dateUtils';
+import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
 import { useAuth } from '../../hooks/useAuth';
 import { processAuditService } from '../../services/processAuditService';
 
@@ -186,23 +186,13 @@ const ProcessAuditRequestDetailsModal = ({
 
   const initEditState = (targetReq = req) => {
     if (!targetReq) return;
-    let escDate = '';
-    if (targetReq.escalation_date || targetReq.created_at) {
-      try {
-        escDate = String(targetReq.escalation_date || targetReq.created_at).split('T')[0];
-      } catch {
-        escDate = '';
-      }
-    }
+    const escDate = targetReq.escalation_date
+      ? parseDateToYYYYMMDD(targetReq.escalation_date)
+      : (targetReq.created_at ? parseDateToYYYYMMDD(targetReq.created_at) : '');
 
-    let tgtDate = '';
-    if (targetReq.target_date) {
-      try {
-        tgtDate = String(targetReq.target_date).split('T')[0];
-      } catch {
-        tgtDate = '';
-      }
-    }
+    const tgtDate = targetReq.target_date
+      ? parseDateToYYYYMMDD(targetReq.target_date)
+      : '';
 
     setEditFormData({
       escalation_date: escDate || new Date().toISOString().split('T')[0],

@@ -27,26 +27,29 @@ export const formatDateDDMMYYYY = (dateVal) => {
       return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
     }
 
-    // If YYYY-MM-DD (or ISO with T or space)
-    const datePart = str.split(/[T ]/)[0].trim();
-    const hyphenParts = datePart.split('-');
-    if (hyphenParts.length === 3 && hyphenParts[0].length === 4) {
-      const [year, month, day] = hyphenParts;
+    // If pure YYYY-MM-DD format (e.g. '2026-10-15' from MySQL DATE column)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      const [year, month, day] = str.split('-');
       return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
     }
 
-    // If DD-MM-YYYY
-    if (hyphenParts.length === 3 && hyphenParts[2].length === 4) {
-      const [day, month, year] = hyphenParts;
+    // If DD-MM-YYYY format
+    if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(str)) {
+      const [day, month, year] = str.split('-');
       return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
     }
 
+    // For ISO string or timestamp with time component (e.g. '2026-10-14T18:30:00.000Z')
+    // Parse via Date object so local timezone accurately reflects the local calendar day
     const d = new Date(str);
-    if (isNaN(d.getTime())) return str;
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+
+    return str;
   } catch {
     return String(dateVal);
   }

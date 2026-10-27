@@ -51,7 +51,7 @@ import AttachmentPreviewModal from '../../components/common/AttachmentPreviewMod
 import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
 import DateInput from '../../components/common/DateInput';
 import { resolveAttachmentUrl, triggerDirectDownload } from '../../components/common/attachmentUtils';
-import { formatDateDDMMYYYY } from '../../utils/dateUtils';
+import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
 import { storage } from '../../utils/storage';
 import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
 import { useModal } from '../../context/ModalContext';
@@ -696,20 +696,12 @@ const ProcessAuditApprovals = () => {
     setCloserAction(req.temporary_action || req.corrective_action || req.action || '');
     setCloserActionError(false);
     setStandardizationDetails(req.standardization_details || '');
-    setCloserTargetDate(
-      req.temporary_target_date
-        ? (req.temporary_target_date.includes('T') ? req.temporary_target_date.split('T')[0] : req.temporary_target_date)
-        : (req.target_date ? (req.target_date.includes('T') ? req.target_date.split('T')[0] : req.target_date) : '')
-    );
+    setCloserTargetDate(parseDateToYYYYMMDD(req.temporary_target_date || req.target_date));
     setCloserTargetDateError(false);
 
     setCloserPermanentFix(req.permanent_fix || req.standardization_details || '');
     setCloserPermanentFixError(false);
-    setCloserPermanentTargetDate(
-      req.permanent_target_date
-        ? (req.permanent_target_date.includes('T') ? req.permanent_target_date.split('T')[0] : req.permanent_target_date)
-        : ''
-    );
+    setCloserPermanentTargetDate(parseDateToYYYYMMDD(req.permanent_target_date));
     setCloserPermanentTargetDateError(false);
     setCloserTemporaryClosedBy(req.temporary_closed_by || req.action_taken_by || '');
     setCloserPermanentClosedBy(req.permanent_closed_by || req.closed_by || '');
