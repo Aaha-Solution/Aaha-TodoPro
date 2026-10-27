@@ -12,7 +12,8 @@ import {
   RefreshCw,
   X,
   ClipboardCheck,
-  CheckCircle2
+  CheckCircle2,
+  ArrowRightLeft
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useDispatch } from 'react-redux';
@@ -393,6 +394,8 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                 ? 'border-l-amber-500'
                 : item.accentColor === 'rose'
                 ? 'border-l-rose-500'
+                : item.accentColor === 'purple'
+                ? 'border-l-purple-500'
                 : 'border-l-blue-600';
 
             // Top pill badge style
@@ -403,6 +406,8 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                 ? 'bg-amber-600'
                 : item.accentColor === 'rose'
                 ? 'bg-rose-600'
+                : item.accentColor === 'purple'
+                ? 'bg-purple-600'
                 : 'bg-blue-600';
 
             // Left icon container
@@ -413,6 +418,8 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                 ? 'bg-amber-50 text-amber-600'
                 : item.accentColor === 'rose'
                 ? 'bg-rose-50 text-rose-600'
+                : item.accentColor === 'purple'
+                ? 'bg-purple-50 text-purple-600'
                 : 'bg-blue-50 text-blue-600';
 
             const IconComponent =
@@ -422,6 +429,8 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                 ? ClipboardCheck
                 : item.accentColor === 'rose'
                 ? AlertCircle
+                : item.accentColor === 'purple'
+                ? ArrowRightLeft
                 : Layers;
 
             const defaultLink = isIhlr ? '/ihlr/all-requests' : '/process-audit/approvals';
@@ -503,6 +512,11 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                       <span className="inline-flex items-center gap-1.5 text-emerald-600 font-bold">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                         Incident Closed &amp; Signed Off
+                      </span>
+                    ) : item.footerFlag === 'REASSIGNED' || item.badgeLabel === 'REASSIGNED' || item.accentColor === 'purple' ? (
+                      <span className="inline-flex items-center gap-1.5 text-purple-600 font-bold">
+                        <ArrowRightLeft className="w-3.5 h-3.5 text-purple-500" />
+                        Reassigned Case
                       </span>
                     ) : item.footerFlag === 'ACTION_REQUIRED' ? (
                       <span className="inline-flex items-center gap-1.5 text-amber-600 font-bold">

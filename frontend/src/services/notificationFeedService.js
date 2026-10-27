@@ -427,9 +427,15 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           (n.title && n.title.toLowerCase().includes('pending fields'));
         const isUpdatedNotif =
           ['countermeasure_updated', 'countermeasure_saved'].includes(n.type) ||
-          n.badgeLabel === 'COUNTERMEASURE SUBMITTED';
+          n.badgeLabel === 'COUNTERMEASURE SUBMITTED' ||
+          n.badgeLabel === 'ACTION SUBMITTED';
         const isConfirmedNotif = n.type === 'submission_confirmed' || n.type === 'request_created';
-        const isReassignedNotif = n.type === 'reassigned' || n.type === 'pa_reassigned';
+        const isReassignedNotif =
+          n.type === 'reassigned' ||
+          n.type === 'pa_reassigned' ||
+          (n.title && n.title.toLowerCase().includes('reassign')) ||
+          (n.message && n.message.toLowerCase().includes('reassign')) ||
+          n.badgeLabel === 'REASSIGNED';
         const isAssignmentNotif =
           n.type === 'assignment_required' ||
           n.type === 'approval_required' ||
@@ -462,7 +468,7 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
             if (isAssignmentNotif && (s.type === 'assignment_required' || s.type === 'approval_required' || s.badgeLabel === 'ACTION REQUIRED')) return true;
             if (isClosedNotif && s.badgeLabel === 'CASE CLOSED') return true;
             if (isPendingSignoff && s.badgeLabel === 'PENDING SIGN-OFF') return true;
-            if (isUpdatedNotif && s.badgeLabel === 'COUNTERMEASURE SUBMITTED') return true;
+            if (isUpdatedNotif && (s.badgeLabel === 'COUNTERMEASURE SUBMITTED' || s.badgeLabel === 'ACTION SUBMITTED')) return true;
             if (isConfirmedNotif && s.badgeLabel === 'REPORT LOGGED') return true;
             if (isReassignedNotif && s.badgeLabel === 'REASSIGNED') return true;
             if (s.type === n.type && s.title === n.title) return true;
@@ -471,6 +477,11 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         });
 
         if (isDuplicate) return;
+
+        let notifTitle = n.title;
+        if (isReassignedNotif && notifTitle && notifTitle.includes('Assigned') && !notifTitle.includes('Reassigned')) {
+          notifTitle = notifTitle.replace(/\bAssigned\b/g, 'Reassigned');
+        }
 
         streamList.push({
           id: notifIdStr,
@@ -481,26 +492,26 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
             ? 'CASE CLOSED'
             : isPendingSignoff
             ? 'PENDING SIGN-OFF'
-            : isUpdatedNotif
-            ? 'COUNTERMEASURE SUBMITTED'
-            : isConfirmedNotif
-            ? 'REPORT LOGGED'
             : isReassignedNotif
             ? 'REASSIGNED'
+            : isUpdatedNotif
+            ? 'ACTION SUBMITTED'
+            : isConfirmedNotif
+            ? 'REPORT LOGGED'
             : n.badgeLabel || 'ACTION REQUIRED',
           accentColor: isClosedNotif
             ? 'emerald'
             : isPendingSignoff
             ? 'amber'
+            : isReassignedNotif
+            ? 'purple'
             : isUpdatedNotif
             ? 'indigo'
             : isConfirmedNotif
             ? 'blue'
-            : isReassignedNotif
-            ? 'purple'
             : n.accentColor || 'amber',
           department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : 'PRODUCTION'),
-          title: n.title,
+          title: notifTitle,
           message: n.message,
           timeDisplay: formatStreamDate(n.date || n.time || n.created_at),
           subCategory: 'PROCESS AUDIT OBSERVATION',
@@ -508,6 +519,8 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
             ? 'CASE_CLOSED'
             : isPendingSignoff
             ? 'ACTION_REQUIRED'
+            : isReassignedNotif
+            ? 'REASSIGNED'
             : isUpdatedNotif
             ? 'OPERATIONAL_UPDATE'
             : isConfirmedNotif

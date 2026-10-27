@@ -41,6 +41,15 @@ const ensureNotificationTable = async () => {
           ) AS sub
         )
     `).catch(() => {});
+
+    // Auto-fix existing reassignment notifications that were saved as 'assignment_required' or had 'Assigned' in title
+    await pool.query(`
+      UPDATE process_audit_notifications 
+      SET type = 'pa_reassigned', 
+          title = REPLACE(title, 'Assigned', 'Reassigned')
+      WHERE (message LIKE '%has been reassigned%' OR message LIKE '%reassigned to you%')
+        AND (title LIKE '%Assigned%' AND title NOT LIKE '%Reassigned%')
+    `).catch(() => {});
   } catch (err) {
     console.warn('[process_audit_notifications] table ensure warning:', err.message);
   }
@@ -213,7 +222,11 @@ export const getNotifications = async (req, res) => {
       const isClosed = ['case_closed', 'closed', 'request_closed'].includes(n.type) || (n.title && n.title.toLowerCase().includes('closed'));
       const isUpdated = ['countermeasure_updated', 'countermeasure_saved'].includes(n.type);
       const isPendingSignoff = ['closer_completed_pending_review', 'closer_completed_pending_admin_signoff', 'pending_requester_signoff'].includes(n.type) || (n.title && n.title.toLowerCase().includes('sign-off pending'));
-      const isReassigned = n.type === 'reassigned' || n.type === 'pa_reassigned';
+      const isReassigned =
+        n.type === 'reassigned' ||
+        n.type === 'pa_reassigned' ||
+        (n.title && n.title.toLowerCase().includes('reassign')) ||
+        (n.message && n.message.toLowerCase().includes('reassign'));
       const isApproval = n.type === 'assignment_required' || n.type === 'approval_required' || (n.title && n.title.toLowerCase().includes('action required'));
 
       let badgeLabel = 'ACTION REQUIRED';
@@ -226,6 +239,11 @@ export const getNotifications = async (req, res) => {
         accentColor = 'amber';
         footerFlag = 'ACTION_REQUIRED';
         dept = 'QUALITY SIGN-OFF';
+      } else if (isReassigned) {
+        badgeLabel = 'REASSIGNED';
+        accentColor = 'purple';
+        footerFlag = 'REASSIGNED';
+        dept = n.department || 'PRODUCTION';
       } else if (isConfirmed) {
         badgeLabel = 'REPORT LOGGED';
         accentColor = 'blue';
@@ -241,16 +259,16 @@ export const getNotifications = async (req, res) => {
         accentColor = 'indigo';
         footerFlag = 'OPERATIONAL_UPDATE';
         dept = 'PRODUCTION';
-      } else if (isReassigned) {
-        badgeLabel = 'REASSIGNED';
-        accentColor = 'purple';
-        footerFlag = 'OPERATIONAL_UPDATE';
-        dept = 'QUALITY AUDIT';
       } else if (isApproval) {
         badgeLabel = 'ACTION REQUIRED';
         accentColor = 'amber';
         footerFlag = 'ACTION_REQUIRED';
         dept = 'PRODUCTION';
+      }
+
+      let notifTitle = n.title;
+      if (isReassigned && notifTitle && notifTitle.includes('Assigned') && !notifTitle.includes('Reassigned')) {
+        notifTitle = notifTitle.replace(/\bAssigned\b/g, 'Reassigned');
       }
 
       return {
@@ -264,7 +282,7 @@ export const getNotifications = async (req, res) => {
         badgeLabel,
         accentColor,
         department: dept,
-        title: n.title,
+        title: notifTitle,
         message: n.message,
         date: d.toLocaleDateString('en-GB', {
           day: '2-digit',

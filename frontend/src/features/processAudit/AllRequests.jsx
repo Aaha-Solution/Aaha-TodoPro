@@ -822,7 +822,7 @@ const AllRequests = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[1250px]">
             <thead>
-              {/* Top Phase Header Row (Matching IHLR Analysis Report) */}
+              {/* Top Phase Header Row (Matching Analysis Report) */}
               <tr className="text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-200">
                 <th colSpan={10} className="py-2.5 px-4 bg-amber-100 text-amber-900 border-r border-amber-200">
                   REQUESTOR (Audit Observation &amp; Defect Details)

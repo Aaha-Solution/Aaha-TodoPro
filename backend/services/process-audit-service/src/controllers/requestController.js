@@ -731,7 +731,7 @@ export const reassignRequest = async (req, res) => {
         `UPDATE process_audit_notifications 
          SET is_read = 1 
          WHERE (request_id = ? OR issue_no = ?) 
-           AND type IN ('assignment_required', 'approval_required', 'assigned_to_pa')`,
+           AND type IN ('assignment_required', 'approval_required', 'assigned_to_pa', 'pa_reassigned', 'reassigned')`,
         [updated.id, issueNo]
       ).catch(() => {});
 
@@ -778,14 +778,14 @@ export const reassignRequest = async (req, res) => {
         await pool.query(
           `INSERT INTO process_audit_notifications 
            (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
-           VALUES (?, ?, ?, ?, ?, 'assignment_required', ?, ?, '/process-audit/approvals', 0)`,
+           VALUES (?, ?, ?, ?, ?, 'pa_reassigned', ?, ?, '/process-audit/approvals', 0)`,
           [
             u.id || null,
             u.name,
             u.email,
             updated.id || id,
             issueNo,
-            `Action Required: Process Audit #${issueNo} Assigned`,
+            `Action Required: Process Audit #${issueNo} Reassigned`,
             `Process Audit report #${issueNo} (${updated.model || 'Process'}) has been reassigned to you for ${new_department} by ${reassignedByName}.${reasonText} Please inspect and submit root cause actions.`
           ]
         ).catch((e) => console.warn('[PA Reassign Notif Error]:', e.message));
