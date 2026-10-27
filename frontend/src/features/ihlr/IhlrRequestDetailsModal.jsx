@@ -1739,168 +1739,233 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     )}
                   </div>
 
-                  {/* REMARKS * [ADMIN] (Matching Image 2) */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
+                  {/* REMARKS */}
+                  {isClosed ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                          <span>REMARKS</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                            ADMIN
+                          </span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 flex items-center gap-1">
+                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>FINALIZED</span>
+                          </span>
+                        </label>
+                      </div>
+                      <div className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 leading-relaxed whitespace-pre-wrap">
+                        {req.remarks || adminRemarks || (reassignList?.[reassignList.length - 1]?.remarks) || (
+                          <span className="text-slate-400 italic">No admin remarks recorded.</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Comprehensive Quality Admin verification remarks and final closure statement.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                          <span>REMARKS</span>
+                          <span className="text-rose-500 font-bold">*</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                            ADMIN
+                          </span>
+                        </label>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {Math.max(0, 1000 - (adminRemarks?.length || 0))} chars left
+                        </span>
+                      </div>
+
+                      <textarea
+                        rows={3}
+                        disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isClosed}
+                        placeholder={
+                          isCloserDataToBeUpdated && !isReassignOpen
+                            ? (adminRemarks || req.remarks || (reassignList?.[reassignList.length - 1]?.remarks) ? '' : 'Awaiting closer Temporary Action & Target Date...')
+                            : 'Enter admin review and validation remarks...'
+                        }
+                        value={adminRemarks || req.remarks || (reassignList?.[reassignList.length - 1]?.remarks) || ''}
+                        onChange={(e) => {
+                          setAdminRemarks(e.target.value);
+                          if (e.target.value.trim()) {
+                            setAdminErrors(prev => ({ ...prev, remarks: '' }));
+                          }
+                        }}
+                        className={`w-full px-3.5 py-2.5 border rounded-xl text-xs outline-none transition font-medium leading-relaxed resize-none ${
+                          !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isClosed
+                            ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
+                            : adminErrors.remarks
+                            ? 'border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
+                            : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
+                        }`}
+                      />
+
+                      {adminErrors.remarks ? (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-0.5">
+                          * {adminErrors.remarks}
+                        </p>
+                      ) : isCloserDataToBeUpdated && !isReassignOpen ? (
+                        <p className="text-[11px] text-amber-700 font-semibold mt-0.5">
+                          Closer Temporary Action &amp; Target Date required first.
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Comprehensive Quality Admin verification remarks and final closure statement.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* REVIEWED BY */}
+                  {isClosed ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                          <span>REVIEWED BY</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                            ADMIN
+                          </span>
+                        </label>
+                      </div>
+                      <div className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 flex items-center gap-2">
+                        <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{req.reviewed_by || adminReviewedBy || 'QAD Admin'}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Admin / Quality Engineer who verified and closed this incident.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                          <span>REVIEWED BY</span>
+                          <span className="text-slate-400 font-normal text-[10px]">(optional)</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                            ADMIN
+                          </span>
+                        </label>
+                        <span className="text-[10px] text-slate-400">
+                          Defaults to: <strong className="text-slate-700">{user?.name || 'Admin'}</strong>
+                        </span>
+                      </div>
+
+                      <input
+                        type="text"
+                        disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isClosed}
+                        placeholder={`e.g. Leave empty to attach ${user?.name || 'Admin'}`}
+                        value={adminReviewedBy}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[0-9]/g, '');
+                          setAdminReviewedBy(val);
+                          if (/\d/.test(e.target.value)) {
+                            setAdminErrors(prev => ({ ...prev, reviewedBy: 'Reviewed By must contain text only, numbers are not allowed.' }));
+                          } else {
+                            setAdminErrors(prev => ({ ...prev, reviewedBy: '' }));
+                          }
+                        }}
+                        className={`w-full px-3.5 py-2 border rounded-xl text-xs font-semibold outline-none transition ${
+                          !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isClosed
+                            ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
+                            : adminErrors.reviewedBy
+                            ? 'border-rose-400 bg-rose-50/20'
+                            : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
+                        }`}
+                      />
+
+                      {adminErrors.reviewedBy ? (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-0.5">
+                          * {adminErrors.reviewedBy}
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Admin / Quality Engineer reviewing this incident (defaults to logged-in user).
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* STATUS */}
+                  {isClosed ? (
+                    <div className="space-y-1">
                       <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                        <span>REMARKS</span>
+                        <span>STATUS</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
+                          ADMIN
+                        </span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>CLOSED</span>
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">
+                        Status finalized to CLOSED.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                        <span>STATUS</span>
                         <span className="text-rose-500 font-bold">*</span>
                         <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
                           ADMIN
                         </span>
                       </label>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {Math.max(0, 1000 - (adminRemarks?.length || 0))} chars left
-                      </span>
-                    </div>
 
-                    <textarea
-                      rows={3}
-                      disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isClosed && !isAdmin)}
-                      placeholder={
-                        isCloserDataToBeUpdated && !isReassignOpen
-                          ? (adminRemarks || req.remarks || (reassignList?.[reassignList.length - 1]?.remarks) ? '' : 'Awaiting closer Temporary Action & Target Date...')
-                          : 'Enter admin review and validation remarks...'
-                      }
-                      value={adminRemarks || req.remarks || (reassignList?.[reassignList.length - 1]?.remarks) || ''}
-                      onChange={(e) => {
-                        setAdminRemarks(e.target.value);
-                        if (e.target.value.trim()) {
-                          setAdminErrors(prev => ({ ...prev, remarks: '' }));
-                        }
-                      }}
-                      className={`w-full px-3.5 py-2.5 border rounded-xl text-xs outline-none transition font-medium leading-relaxed resize-none ${
-                        !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isClosed && !isAdmin)
-                          ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
-                          : adminErrors.remarks
-                          ? 'border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
-                          : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
-                      }`}
-                    />
+                      <select
+                        disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isClosed}
+                        value={isReassignOpen ? 'OPEN' : adminStatus}
+                        onChange={(e) => {
+                          setAdminStatus(e.target.value);
+                          if (e.target.value) {
+                            setAdminErrors(prev => ({ ...prev, status: '' }));
+                          }
+                        }}
+                        className={`w-full px-3.5 py-2 border rounded-xl font-bold text-xs outline-none transition cursor-pointer ${
+                          !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isClosed
+                            ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
+                            : adminErrors.status
+                            ? 'border-rose-400 bg-rose-50/20'
+                            : 'bg-white border-slate-300 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                        }`}
+                      >
+                        {isReassignOpen ? (
+                          <option value="OPEN">PENDING (Awaiting Closer)</option>
+                        ) : (
+                          <>
+                            <option value="">Select Status...</option>
+                            <option value="CLOSED">CLOSED</option>
+                          </>
+                        )}
+                      </select>
 
-                    {adminErrors.remarks ? (
-                      <p className="text-[11px] text-rose-500 font-semibold mt-0.5">
-                        * {adminErrors.remarks}
-                      </p>
-                    ) : isCloserDataToBeUpdated && !isReassignOpen ? (
-                      <p className="text-[11px] text-amber-700 font-semibold mt-0.5">
-                        Closer Temporary Action &amp; Target Date required first.
-                      </p>
-                    ) : (
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        Comprehensive Quality Admin verification remarks and final closure statement.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* REVIEWED BY (optional) [ADMIN] (Matching Image 2) */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                        <span>REVIEWED BY</span>
-                        <span className="text-slate-400 font-normal text-[10px]">(optional)</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
-                          ADMIN
-                        </span>
-                      </label>
-                      <span className="text-[10px] text-slate-400">
-                        Defaults to: <strong className="text-slate-700">{user?.name || 'Admin'}</strong>
-                      </span>
-                    </div>
-
-                    <input
-                      type="text"
-                      disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isClosed && !isAdmin)}
-                      placeholder={`e.g. Leave empty to attach ${user?.name || 'Admin'}`}
-                      value={adminReviewedBy}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[0-9]/g, '');
-                        setAdminReviewedBy(val);
-                        if (/\d/.test(e.target.value)) {
-                          setAdminErrors(prev => ({ ...prev, reviewedBy: 'Reviewed By must contain text only, numbers are not allowed.' }));
-                        } else {
-                          setAdminErrors(prev => ({ ...prev, reviewedBy: '' }));
-                        }
-                      }}
-                      className={`w-full px-3.5 py-2 border rounded-xl text-xs font-semibold outline-none transition ${
-                        !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isClosed && !isAdmin)
-                          ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
-                          : adminErrors.reviewedBy
-                          ? 'border-rose-400 bg-rose-50/20'
-                          : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
-                      }`}
-                    />
-
-                    {adminErrors.reviewedBy ? (
-                      <p className="text-[11px] text-rose-500 font-semibold mt-0.5">
-                        * {adminErrors.reviewedBy}
-                      </p>
-                    ) : (
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        Admin / Quality Engineer reviewing this incident (defaults to logged-in user).
-                      </p>
-                    )}
-                  </div>
-
-                  {/* STATUS * [ADMIN] (Matching Image 2) */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                      <span>STATUS</span>
-                      <span className="text-rose-500 font-bold">*</span>
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-200">
-                        ADMIN
-                      </span>
-                    </label>
-
-                    <select
-                      disabled={!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isClosed && !isAdmin)}
-                      value={isReassignOpen ? 'OPEN' : adminStatus}
-                      onChange={(e) => {
-                        setAdminStatus(e.target.value);
-                        if (e.target.value) {
-                          setAdminErrors(prev => ({ ...prev, status: '' }));
-                        }
-                      }}
-                      className={`w-full px-3.5 py-2 border rounded-xl font-bold text-xs outline-none transition cursor-pointer ${
-                        !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || (isClosed && !isAdmin)
-                          ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
-                          : adminErrors.status
-                          ? 'border-rose-400 bg-rose-50/20'
-                          : 'bg-white border-slate-300 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                      }`}
-                    >
-                      {isReassignOpen ? (
-                        <option value="OPEN">PENDING (Awaiting Closer)</option>
+                      {adminErrors.status ? (
+                        <p className="text-[11px] text-rose-500 font-semibold mt-0.5">
+                          * {adminErrors.status}
+                        </p>
+                      ) : isCloserDataToBeUpdated && !isReassignOpen ? (
+                        <p className="text-[11px] text-amber-700 font-semibold mt-0.5">
+                          Status unlocks after closer submission.
+                        </p>
+                      ) : isReassignOpen ? (
+                        <p className="text-[10px] text-purple-700 font-semibold mt-0.5">
+                          Status locked to PENDING for new assignee.
+                        </p>
+                      ) : adminStatus === 'CLOSED' ? (
+                        <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">
+                          Status will be finalized to CLOSED.
+                        </p>
                       ) : (
-                        <>
-                          <option value="">Select Status...</option>
-                          <option value="CLOSED">CLOSED</option>
-                        </>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Select CLOSED to finalize admin sign-off.
+                        </p>
                       )}
-                    </select>
-
-                    {adminErrors.status ? (
-                      <p className="text-[11px] text-rose-500 font-semibold mt-0.5">
-                        * {adminErrors.status}
-                      </p>
-                    ) : isCloserDataToBeUpdated && !isReassignOpen ? (
-                      <p className="text-[11px] text-amber-700 font-semibold mt-0.5">
-                        Status unlocks after closer submission.
-                      </p>
-                    ) : isReassignOpen ? (
-                      <p className="text-[10px] text-purple-700 font-semibold mt-0.5">
-                        Status locked to PENDING for new assignee.
-                      </p>
-                    ) : adminStatus === 'CLOSED' ? (
-                      <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">
-                        Status will be finalized to CLOSED.
-                      </p>
-                    ) : (
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        Select CLOSED to finalize admin sign-off.
-                      </p>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* Sign-Off Action Button (Matching Image 2) */}
                   <div className="pt-2">
