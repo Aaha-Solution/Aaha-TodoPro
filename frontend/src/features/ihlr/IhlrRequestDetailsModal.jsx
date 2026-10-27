@@ -463,6 +463,28 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
   const isCloserDataToBeUpdated = Boolean(req && (isSelectedOpen || !hasCloserSubmitted));
 
+  const closerSubmitter = (() => {
+    // 1. Logged person who filled all closer fields (closer_updated_by)
+    const closerUser = req?.closer_updated_by || request?.closer_updated_by;
+    if (closerUser && typeof closerUser === 'string' && closerUser.trim()) {
+      return closerUser.trim();
+    }
+    // 2. Fallback to assigned responsible person if closer has submitted
+    if (hasCloserSubmitted) {
+      const respP = req?.resp_person || request?.resp_person;
+      if (respP && typeof respP === 'string' && respP.trim()) {
+        return respP.trim();
+      }
+      return 'Assigned Closer';
+    }
+    // 3. Fallback when closer has not submitted yet
+    const pendingP = req?.resp_person || request?.resp_person;
+    if (pendingP && typeof pendingP === 'string' && pendingP.trim()) {
+      return `${pendingP.trim()} (Pending)`;
+    }
+    return 'Pending Closer';
+  })();
+
   const handleSaveAdminSignOff = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!req) return;
@@ -1056,6 +1078,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         ],
         body: [
           [
+            { content: 'Closer Filled By:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: targetReq.closer_updated_by || closerSubmitter || '—' }
+          ],
+          [
             { content: 'Temporary Action Taken:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             { content: tempActionVal }
           ],
@@ -1433,16 +1459,14 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         <span>3. Closer Action</span>
                       </div>
                       <div className="text-slate-200 font-semibold truncate text-[11px]">
-                        {hasCloserSubmitted ? (req.temporary_closed_by || req.permanent_closed_by || req.closer_updated_by || 'Submitted') : 'Pending Submission'}
+                        {hasCloserSubmitted ? (closerSubmitter || 'Submitted') : 'Pending Submission'}
                       </div>
                       <div className="text-[10px] text-slate-400 font-mono">
-                        {req.temporary_closed_by
-                          ? `Closed by: ${req.temporary_closed_by}`
-                          : req.permanent_closed_by
-                            ? `Closed by: ${req.permanent_closed_by}`
-                            : req.closer_updated_by
-                              ? `Filled by: ${req.closer_updated_by}`
-                              : (formatDate(req.temporary_target_date || req.permanent_target_date) ? `Target: ${formatDate(req.temporary_target_date || req.permanent_target_date)}` : 'Awaiting Closer')}
+                        {(req.closer_updated_by || request?.closer_updated_by)
+                          ? `Filled by: ${req.closer_updated_by || request?.closer_updated_by}`
+                          : req.resp_person
+                            ? `Assigned: ${req.resp_person}`
+                            : (formatDate(req.temporary_target_date || req.permanent_target_date) ? `Target: ${formatDate(req.temporary_target_date || req.permanent_target_date)}` : 'Awaiting Closer')}
                       </div>
                     </div>
 
@@ -1507,7 +1531,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <div className="leading-tight">
                         <span className="font-bold">Ready for Review: </span>
                         <span className="text-blue-800">
-                          Closer containment countermeasures submitted by <strong className="text-blue-950">{req.temporary_closed_by || req.permanent_closed_by || req.closer_updated_by || req.resp_person || 'Closer'}</strong>.
+                          Closer containment countermeasures submitted by <strong className="text-blue-950">{closerSubmitter}</strong>.
                         </span>
                       </div>
                     </div>
@@ -1652,17 +1676,17 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     </div>
                     <div className="p-2.5 bg-white rounded-xl border border-emerald-200/80 bg-emerald-50/20">
                       <span className="block text-[10px] font-bold uppercase text-emerald-600">Closer Filled By</span>
-                      <span className="font-bold text-emerald-800 block mt-0.5 truncate" title={req.temporary_closed_by || req.permanent_closed_by || req.closer_updated_by || '—'}>
-                        {req.temporary_closed_by || req.permanent_closed_by || req.closer_updated_by || '—'}
+                      <span className="font-bold text-emerald-800 block mt-0.5 truncate" title={closerSubmitter}>
+                        {closerSubmitter}
                       </span>
                     </div>
                     <div className="p-2.5 bg-white rounded-xl border border-slate-100">
                       <span className="block text-[10px] font-bold uppercase text-slate-400">Temp Closed By</span>
-                      <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.temporary_closed_by || req.closer_updated_by || '—'}</span>
+                      <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.temporary_closed_by || '—'}</span>
                     </div>
                     <div className="p-2.5 bg-white rounded-xl border border-slate-100">
                       <span className="block text-[10px] font-bold uppercase text-slate-400">Perm Closed By</span>
-                      <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.permanent_closed_by || req.closer_updated_by || '—'}</span>
+                      <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.permanent_closed_by || '—'}</span>
                     </div>
                   </div>
                 </div>
@@ -1706,7 +1730,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <div>
                       <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-600">Closer Filled By</span>
                       <span className="font-bold text-emerald-800">
-                        {request.temporary_closed_by || request.permanent_closed_by || request.closer_updated_by || request.reviewed_by || loggedInUserName || request.resp_person || 'Pending Closer'}
+                        {closerSubmitter}
                       </span>
                     </div>
                     {hasReassignments && (
@@ -1819,7 +1843,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       TEMPORARY CLOSED BY
                     </span>
                     <span className="font-bold text-slate-900 block text-xs">
-                      {request.temporary_closed_by || request.closer_updated_by || '—'}
+                      {request.temporary_closed_by || req.temporary_closed_by || '—'}
                     </span>
                   </div>
                 </div>
@@ -1884,7 +1908,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         PERMANENT CLOSED BY
                       </span>
                       <span className="font-bold text-slate-900 block text-xs">
-                        {request.permanent_closed_by || request.closer_updated_by || '—'}
+                        {request.permanent_closed_by || req.permanent_closed_by || '—'}
                       </span>
                     </div>
                   </div>

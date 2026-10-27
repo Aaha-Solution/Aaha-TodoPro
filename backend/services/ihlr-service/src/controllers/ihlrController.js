@@ -948,13 +948,14 @@ export const updateIhlrRequest = async (req, res) => {
       }
     }
 
-    // Specifically identify the person who updated the closer fields (prioritize explicit temporary/permanent closed by name entered by user)
-    const closerDisplayName = (safeUpdates.temporary_closed_by && String(safeUpdates.temporary_closed_by).trim()) ||
-      (safeUpdates.permanent_closed_by && String(safeUpdates.permanent_closed_by).trim()) ||
-      (req.body?.closer_updated_by && String(req.body.closer_updated_by).trim()) ||
-      (req.user?.name && String(req.user.name).trim()) ||
+    // Specifically identify the logged-in person who updated/submitted the closer fields
+    const closerDisplayName = (req.user?.name && String(req.user.name).trim()) ||
       (req.body?.user?.name && String(req.body.user.name).trim()) ||
+      (req.body?.closer_updated_by && String(req.body.closer_updated_by).trim()) ||
       (req.body?.user_name && String(req.body.user_name).trim()) ||
+      (safeUpdates.closer_updated_by && String(safeUpdates.closer_updated_by).trim()) ||
+      (safeUpdates.temporary_closed_by && String(safeUpdates.temporary_closed_by).trim()) ||
+      (safeUpdates.permanent_closed_by && String(safeUpdates.permanent_closed_by).trim()) ||
       '';
 
     const isCloserFieldBeingUpdated = Boolean(
