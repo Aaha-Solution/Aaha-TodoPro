@@ -202,7 +202,7 @@ const IhlrAllRequests = () => {
         requests,
         fileName: `IHLR_Analysis_Report_${today}.pdf`,
         title: 'IHLR Analysis Log & Rejection Reports',
-        filterText: `Dept: ${selectedDepartment} | Shift: ${selectedShift} | 4M: ${selected4M} | Status: ${selectedStatus} | Range: ${startDate || 'All'} to ${endDate || 'All'}`
+        filterText: `Dept: ${selectedDepartment} | Shift: ${selectedShift} | 4M: ${selected4M} | Status: ${selectedStatus} | Range: ${startDate ? formatDateDDMMYYYY(startDate) : 'All'} to ${endDate ? formatDateDDMMYYYY(endDate) : 'All'}`
       });
       setShowExportModal(false);
     } catch (err) {
