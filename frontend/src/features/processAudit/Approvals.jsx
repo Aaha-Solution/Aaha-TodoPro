@@ -817,9 +817,6 @@ const ProcessAuditApprovals = () => {
       setEvidenceError(false);
     }
     setAnnotatingItem(null);
-    const annotMsg = `Annotated drawing "${annotatedFile.name}" updated! Remember to click "Save Closer Changes" or "Submit Closer Log" to save.`;
-    setSuccessMessage(annotMsg);
-    modalSuccess(annotMsg);
   };
 
   // 1. Submit Closer Updates (5-Why causes, Temporary Action & Evidence, Permanent Action & Evidence)

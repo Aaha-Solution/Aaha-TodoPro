@@ -622,10 +622,6 @@ const IhlrApprovals = () => {
       setCloserEvidenceError(false);
     }
     setAnnotatingItem(null);
-    const shortName = annotatedFile?.name && annotatedFile.name.length > 28
-      ? `${annotatedFile.name.slice(0, 24)}...png`
-      : (annotatedFile?.name || 'drawing');
-    modalSuccess(`Annotated drawing "${shortName}" updated! Remember to click "Submit Closer Log" to save.`);
   };
 
   // 1. Submit Closer Updates (5-Why causes, Action, Evidence, Target Date)
