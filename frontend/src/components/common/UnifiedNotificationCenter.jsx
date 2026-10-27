@@ -60,10 +60,8 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
     loadFeed();
     const handleRefresh = () => loadFeed();
     window.addEventListener('refreshNotifications', handleRefresh);
-    window.addEventListener('focus', handleRefresh);
     return () => {
       window.removeEventListener('refreshNotifications', handleRefresh);
-      window.removeEventListener('focus', handleRefresh);
     };
   }, [user?.name, user?.id, user?.role, tabMode]);
 

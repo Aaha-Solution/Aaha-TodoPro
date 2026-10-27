@@ -41,13 +41,9 @@ const Notification = () => {
     const handleRefresh = () => fetchLiveNotifications();
 
     window.addEventListener('refreshNotifications', handleRefresh);
-    window.addEventListener('focus', handleRefresh);
-    const interval = setInterval(handleRefresh, 10000);
 
     return () => {
       window.removeEventListener('refreshNotifications', handleRefresh);
-      window.removeEventListener('focus', handleRefresh);
-      clearInterval(interval);
     };
   }, [user?.name, user?.id, user?.role, tabMode]);
 

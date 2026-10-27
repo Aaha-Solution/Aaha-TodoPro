@@ -533,14 +533,10 @@ const IhlrApprovals = () => {
 
     // 1. WebSocket & live events (triggers only when changes occur in database)
     window.addEventListener('ihlrLiveUpdate', handleLiveUpdate);
-    window.addEventListener('websocketNotification', handleLiveUpdate);
-    window.addEventListener('refreshNotifications', handleLiveUpdate);
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       window.removeEventListener('ihlrLiveUpdate', handleLiveUpdate);
-      window.removeEventListener('websocketNotification', handleLiveUpdate);
-      window.removeEventListener('refreshNotifications', handleLiveUpdate);
     };
   }, [user?.name, user?.email, user?.role, user?.department, isAdmin]);
 
