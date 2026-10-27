@@ -1565,15 +1565,7 @@ const ProcessAuditApprovals = () => {
               <span>Clear Filters</span>
             </button>
           )}
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200 shadow-2xs transition active:scale-95 cursor-pointer"
-            title="Refresh queue and reset filters"
-          >
-            <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`} />
-            <span>Refresh</span>
-          </button>
+         
         </div>
       </div>
 
