@@ -326,6 +326,9 @@ export const updateRequestStatus = async (req, res) => {
       permanent_target_date: body.permanent_target_date || null,
       temporary_closed_by: body.temporary_closed_by || null,
       permanent_closed_by: body.permanent_closed_by || null,
+      closer_updated_by: req.user?.name || body.closer_updated_by || body.closerUpdatedBy || null,
+      closer_updated_by_id: req.user?.id || body.closer_updated_by_id || body.closerUpdatedById || null,
+      closer_updated_by_email: req.user?.email || body.closer_updated_by_email || body.closerUpdatedByEmail || null
     };
 
     // Retrieve previous state to detect transitions

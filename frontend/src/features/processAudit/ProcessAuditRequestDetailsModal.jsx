@@ -791,6 +791,34 @@ const ProcessAuditRequestDetailsModal = ({
 
   const isCloserDataToBeUpdated = Boolean(req && (isSelectedPending && !hasCloserSubmitted));
 
+  const closerSubmitter = (() => {
+    // 1. Logged-in user who submitted/updated closer action
+    const closerUser = req?.closer_updated_by;
+    if (closerUser && typeof closerUser === 'string' && !closerUser.toUpperCase().includes('CLOSED BY') && closerUser !== 'Assigned Executor') {
+      return closerUser.trim();
+    }
+    // 2. Logged-in user captured in approved_by upon closer submission
+    const approvedUser = req?.approved_by;
+    if (approvedUser && typeof approvedUser === 'string' && !approvedUser.toUpperCase().includes('CLOSED BY') && approvedUser !== 'Assigned Executor') {
+      return approvedUser.trim();
+    }
+    // 3. Logged-in user who closed the request if closed
+    const closedUser = req?.closed_by;
+    if (closedUser && typeof closedUser === 'string' && !closedUser.toUpperCase().includes('CLOSED BY') && closedUser !== 'Assigned Executor') {
+      return closedUser.trim();
+    }
+    // 4. Action taken by field
+    const val = req?.action_taken_by || req?.temporary_closed_by;
+    if (val && typeof val === 'string' && !val.toUpperCase().includes('CLOSED BY') && val !== 'Assigned Executor') {
+      return val.trim();
+    }
+    // 5. Fallback to assigned executor
+    if (req?.executor && typeof req.executor === 'string' && !req.executor.toUpperCase().includes('CLOSED BY')) {
+      return req.executor.trim();
+    }
+    return null;
+  })();
+
   return createPortal(
     <div
       className="fixed inset-0 !m-0 !mt-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
@@ -1034,12 +1062,12 @@ const ProcessAuditRequestDetailsModal = ({
                       )}
                       <span>3. Closer Action</span>
                     </div>
-                    <div className="text-slate-200 font-semibold truncate text-[11px]">
-                      {hasCloserSubmitted ? (req.action_taken_by || req.temporary_closed_by || req.permanent_closed_by || 'Submitted') : 'Pending Submission'}
+                    <div className="text-slate-200 font-semibold truncate text-[11px]" title={hasCloserSubmitted ? (closerSubmitter || 'Submitted') : 'Pending Submission'}>
+                      {hasCloserSubmitted ? (closerSubmitter || 'Submitted') : 'Pending Submission'}
                     </div>
-                    <div className="text-[10px] text-slate-400 font-mono">
-                      {req.action_taken_by
-                        ? `By: ${req.action_taken_by}`
+                    <div className="text-[10px] text-slate-400 font-mono truncate">
+                      {hasCloserSubmitted
+                        ? (isReqClosed ? 'Status: Closed' : 'Status: Awaiting Review')
                         : (targetDate ? `Target: ${targetDate}` : 'Awaiting Closer')}
                     </div>
                   </div>
@@ -1636,38 +1664,6 @@ const ProcessAuditRequestDetailsModal = ({
                   </div>
                 )}
               </div>
-
-              {/* 4. Process Audit Trail Summary */}
-              <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-3">
-                <div className="flex items-center gap-2 text-slate-700 text-xs font-bold uppercase tracking-wider">
-                  <History className="w-4 h-4 text-slate-500" />
-                  <span>Audit Trail Summary</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
-                    <span className="block text-[10px] font-bold uppercase text-slate-400">Created By</span>
-                    <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.created_by || 'Admin'}</span>
-                  </div>
-                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
-                    <span className="block text-[10px] font-bold uppercase text-slate-400">Assigned Closer</span>
-                    <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.executor || '—'}</span>
-                  </div>
-                  <div className="p-2.5 bg-white rounded-xl border border-emerald-200/80 bg-emerald-50/20">
-                    <span className="block text-[10px] font-bold uppercase text-emerald-600">Action Taken By</span>
-                    <span className="font-bold text-emerald-800 block mt-0.5 truncate">
-                      {req.action_taken_by || req.temporary_closed_by || req.permanent_closed_by || '—'}
-                    </span>
-                  </div>
-                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
-                    <span className="block text-[10px] font-bold uppercase text-slate-400">Target Date</span>
-                    <span className="font-semibold text-slate-800 block mt-0.5 truncate">{targetDate || '—'}</span>
-                  </div>
-                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
-                    <span className="block text-[10px] font-bold uppercase text-slate-400"> Sign-off</span>
-                    <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.reviewed_by || req.approved_by || '—'}</span>
-                  </div>
-                </div>
-              </div>
             </div>
           ) : activeTab === 'closer' ? (
             /* TAB 2: CLOSER DETAILS */
@@ -1814,16 +1810,11 @@ const ProcessAuditRequestDetailsModal = ({
 
                 <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                   <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    TEMPORARY CLOSED BY
+                    ACTION TAKEN BY
                   </span>
                   <span className="font-bold text-slate-900 block text-xs">
-                    {req.closer_updated_by || req.temporary_closed_by || req.action_taken_by || '—'}
+                    {closerSubmitter || req.executor || '—'}
                   </span>
-                  {req.closer_updated_by && req.executor && req.executor.includes(',') && (
-                    <span className="text-[9px] text-emerald-700 font-semibold block">
-                      (Updated by: {req.closer_updated_by})
-                    </span>
-                  )}
                 </div>
 
       

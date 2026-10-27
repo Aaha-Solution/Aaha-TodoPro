@@ -120,6 +120,18 @@ const ensureTable = async () => {
     if (!colNames.includes('reviewed_by_email')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN reviewed_by_email VARCHAR(150) NULL`).catch(() => {});
     }
+    if (!colNames.includes('closer_updated_by')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN closer_updated_by VARCHAR(100) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('closer_updated_by_id')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN closer_updated_by_id INT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('closer_updated_by_email')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN closer_updated_by_email VARCHAR(150) NULL`).catch(() => {});
+    }
+    if (!colNames.includes('closer_updated_at')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN closer_updated_at TIMESTAMP NULL`).catch(() => {});
+    }
 
     // Drop any existing defaults on MySQL columns
     await pool.query(`ALTER TABLE process_audit_requests MODIFY issue_type VARCHAR(50) NULL`).catch(() => {});
@@ -385,8 +397,11 @@ export const ProcessAuditRequest = {
       { name: 'temporary_closed_by', type: 'VARCHAR(100) NULL' },
       { name: 'permanent_closed_by', type: 'VARCHAR(100) NULL' },
       { name: 'reviewed_by', type: 'VARCHAR(100) NULL' },
-      { name: 'reviewed_by_id', type: 'INT NULL' },
-      { name: 'reviewed_by_email', type: 'VARCHAR(150) NULL' }
+      { name: 'reviewed_by_email', type: 'VARCHAR(150) NULL' },
+      { name: 'closer_updated_by', type: 'VARCHAR(100) NULL' },
+      { name: 'closer_updated_by_id', type: 'INT NULL' },
+      { name: 'closer_updated_by_email', type: 'VARCHAR(150) NULL' },
+      { name: 'closer_updated_at', type: 'TIMESTAMP NULL' }
     ];
     for (const c of neededCols) {
       if (!colNames.includes(c.name)) {
@@ -456,7 +471,8 @@ export const ProcessAuditRequest = {
       'rejection_reason', 'reassignment_history',
       'prod_why_why', 'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date',
       'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date',
-      'temporary_closed_by', 'permanent_closed_by'
+      'temporary_closed_by', 'permanent_closed_by',
+      'closer_updated_by', 'closer_updated_by_id', 'closer_updated_by_email', 'closer_updated_at'
     ];
 
     for (const field of allowedFields) {
@@ -617,6 +633,9 @@ export const ProcessAuditRequest = {
     let permanentEvidenceAttachment = null;
     let permanentTargetDate = null;
     let permanentClosedBy = null;
+    let closerUpdatedBy = null;
+    let closerUpdatedById = null;
+    let closerUpdatedByEmail = null;
 
     if (typeof details === 'string') {
       rejectionReason = details;
@@ -641,6 +660,9 @@ export const ProcessAuditRequest = {
       permanentEvidenceAttachment = details.permanent_evidence_attachment !== undefined ? details.permanent_evidence_attachment : null;
       permanentTargetDate = details.permanent_target_date !== undefined ? details.permanent_target_date : null;
       permanentClosedBy = details.permanent_closed_by !== undefined ? details.permanent_closed_by : null;
+      closerUpdatedBy = details.closer_updated_by !== undefined ? details.closer_updated_by : null;
+      closerUpdatedById = details.closer_updated_by_id !== undefined ? details.closer_updated_by_id : null;
+      closerUpdatedByEmail = details.closer_updated_by_email !== undefined ? details.closer_updated_by_email : null;
     }
 
     const updates = ['status = ?'];
@@ -726,6 +748,19 @@ export const ProcessAuditRequest = {
     if (reviewedByEmail !== null) {
       updates.push('reviewed_by_email = ?');
       params.push(reviewedByEmail);
+    }
+    if (closerUpdatedBy !== null) {
+      updates.push('closer_updated_by = ?');
+      params.push(closerUpdatedBy);
+      updates.push('closer_updated_at = NOW()');
+    }
+    if (closerUpdatedById !== null) {
+      updates.push('closer_updated_by_id = ?');
+      params.push(closerUpdatedById);
+    }
+    if (closerUpdatedByEmail !== null) {
+      updates.push('closer_updated_by_email = ?');
+      params.push(closerUpdatedByEmail);
     }
 
     const isClosed = status.toLowerCase().includes('close');
