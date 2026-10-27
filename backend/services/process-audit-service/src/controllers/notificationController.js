@@ -29,6 +29,18 @@ const ensureNotificationTable = async () => {
     if (!cols || cols.length === 0) {
       await pool.query(`ALTER TABLE process_audit_notifications ADD COLUMN user_email VARCHAR(150) NULL`).catch(() => {});
     }
+
+    // Clean up duplicate fallback notifications where assignment_required already exists for the request
+    await pool.query(`
+      DELETE FROM process_audit_notifications 
+      WHERE type = 'approval_required' 
+        AND title LIKE 'New Request Assigned:%'
+        AND request_id IN (
+          SELECT req_id FROM (
+            SELECT DISTINCT request_id AS req_id FROM process_audit_notifications WHERE type = 'assignment_required'
+          ) AS sub
+        )
+    `).catch(() => {});
   } catch (err) {
     console.warn('[process_audit_notifications] table ensure warning:', err.message);
   }
@@ -47,7 +59,7 @@ export const getNotifications = async (req, res) => {
     const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
     const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'QAD' || userName.toLowerCase().includes('admin');
 
-    // Auto-sync any unnotified assigned pending requests from process_audit_requests
+    // Auto-sync fallback: only insert if NO notification of any type exists for this request
     await pool.query(`
       INSERT INTO process_audit_notifications (user_name, user_id, user_email, request_id, issue_no, type, title, message, link)
       SELECT 
@@ -67,7 +79,7 @@ export const getNotifications = async (req, res) => {
         AND r.status NOT IN ('Approved', 'Rejected', 'Closed')
         AND NOT EXISTS (
           SELECT 1 FROM process_audit_notifications n 
-          WHERE n.request_id = r.id AND LOWER(TRIM(n.user_name)) = LOWER(TRIM(r.executor))
+          WHERE n.request_id = r.id
         )
     `).catch(() => {});
 

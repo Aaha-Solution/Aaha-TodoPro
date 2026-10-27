@@ -154,6 +154,11 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           ['countermeasure_updated', 'countermeasure_saved'].includes(n.type) ||
           n.badgeLabel === 'COUNTERMEASURE SUBMITTED';
         const isConfirmedNotif = n.type === 'submission_confirmed';
+        const isAssignmentNotif =
+          n.type === 'assignment_required' ||
+          n.type === 'approval_required' ||
+          (n.title && n.title.toLowerCase().includes('action required')) ||
+          (n.title && n.title.toLowerCase().includes('new request assigned'));
 
         const notifIdStr = `notif-${n.id}`;
         const reqNoKey = n.reqNo || (n.requestId ? (String(n.requestId).startsWith('#') ? n.requestId : `#${n.requestId}`) : '');
@@ -182,6 +187,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
         const isDuplicate = streamList.some((s) => {
           if (s.id === notifIdStr) return true;
           if (reqNoKey && s.reqNo === reqNoKey) {
+            if (isAssignmentNotif && (s.type === 'assignment_required' || s.type === 'approval_required' || s.badgeLabel === 'ACTION REQUIRED')) return true;
             if (isClosedNotif && s.badgeLabel === 'CASE CLOSED') return true;
             if (isPendingSignoff && s.badgeLabel === 'PENDING SIGN-OFF') return true;
             if (isUpdatedNotif && s.badgeLabel === 'COUNTERMEASURE SUBMITTED') return true;
@@ -410,6 +416,11 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           n.badgeLabel === 'COUNTERMEASURE SUBMITTED';
         const isConfirmedNotif = n.type === 'submission_confirmed' || n.type === 'request_created';
         const isReassignedNotif = n.type === 'reassigned' || n.type === 'pa_reassigned';
+        const isAssignmentNotif =
+          n.type === 'assignment_required' ||
+          n.type === 'approval_required' ||
+          (n.title && n.title.toLowerCase().includes('action required')) ||
+          (n.title && n.title.toLowerCase().includes('new request assigned'));
 
         const notifIdStr = `pa-notif-${n.id}`;
         const rawReq = n.requestId || n.issue_no || '';
@@ -434,6 +445,7 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         const isDuplicate = streamList.some((s) => {
           if (s.id === notifIdStr) return true;
           if (reqNoKey && s.reqNo === reqNoKey) {
+            if (isAssignmentNotif && (s.type === 'assignment_required' || s.type === 'approval_required' || s.badgeLabel === 'ACTION REQUIRED')) return true;
             if (isClosedNotif && s.badgeLabel === 'CASE CLOSED') return true;
             if (isPendingSignoff && s.badgeLabel === 'PENDING SIGN-OFF') return true;
             if (isUpdatedNotif && s.badgeLabel === 'COUNTERMEASURE SUBMITTED') return true;

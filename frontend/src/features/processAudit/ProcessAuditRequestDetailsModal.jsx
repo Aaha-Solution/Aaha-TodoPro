@@ -1720,7 +1720,7 @@ const ProcessAuditRequestDetailsModal = ({
                   <div>
                     <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-600">Closer Filled By</span>
                     <span className="font-bold text-emerald-800">
-                      {req.closer_updated_by || req.temporary_closed_by || req.action_taken_by || req.permanent_closed_by || (hasCloserSubmitted ? 'Submitted' : 'Pending Closer')}
+                      {req.reviewed_by || req.approved_by  || (hasCloserSubmitted ? 'Submitted' : 'Pending Closer')}
                     </span>
                   </div>
                   {hasReassignments && (
@@ -1841,23 +1841,9 @@ const ProcessAuditRequestDetailsModal = ({
                   )}
                 </div>
 
-                <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    REMARKS
-                  </span>
-                  <div className="text-slate-800 leading-relaxed font-medium">
-                    {req.creator_remark || req.remarks || <span className="text-slate-400 italic">No remarks provided.</span>}
-                  </div>
-                </div>
+      
 
-                <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                  <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    REVIEWED BY
-                  </span>
-                  <span className="font-bold text-slate-900 block text-xs">
-                    {req.reviewed_by || req.approved_by || '—'}
-                  </span>
-                </div>
+               
               </div>
 
               {/* Permanent Countermeasures Section */}
