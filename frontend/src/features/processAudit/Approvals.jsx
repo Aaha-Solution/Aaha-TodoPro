@@ -892,12 +892,12 @@ const ProcessAuditApprovals = () => {
       setCloserTargetDateError(false);
     }
 
-    // 4. Action Taken By is mandatory (text-only)
+    // 4. Temporary Closed By is mandatory (text-only)
     if (!closerTemporaryClosedBy || !closerTemporaryClosedBy.trim()) {
-      setCloserTemporaryClosedByError('Action Taken By is required. Please enter person name.');
+      setCloserTemporaryClosedByError('Temporary Closed By is required. Please enter person name.');
       hasCloserErrors = true;
     } else if (/\d/.test(closerTemporaryClosedBy)) {
-      setCloserTemporaryClosedByError('Action Taken By must contain text only, numbers are not allowed');
+      setCloserTemporaryClosedByError('Temporary Closed By must contain text only, numbers are not allowed');
       hasCloserErrors = true;
     } else {
       setCloserTemporaryClosedByError(false);
@@ -948,7 +948,7 @@ const ProcessAuditApprovals = () => {
       if (!closerAction || !closerAction.trim()) missing.push('Temporary Action');
       if (!hasTempEvidence) missing.push('Temporary Evidence Attachment');
       if (!closerTargetDate || !closerTargetDate.trim() || closerTargetDate < todayStr) missing.push('Temporary Target Date');
-      if (!closerTemporaryClosedBy || !closerTemporaryClosedBy.trim() || /\d/.test(closerTemporaryClosedBy)) missing.push('Action Taken By');
+      if (!closerTemporaryClosedBy || !closerTemporaryClosedBy.trim() || /\d/.test(closerTemporaryClosedBy)) missing.push('Temporary Closed By');
       if (!closerPermanentFix || !closerPermanentFix.trim()) missing.push('Permanent Action');
       if (!hasPermEvidence) missing.push('Permanent Evidence Attachment');
       if (!closerPermanentTargetDate || !closerPermanentTargetDate.trim() || (closerTargetDate && closerPermanentTargetDate < closerTargetDate)) missing.push('Permanent Target Date');
@@ -1870,11 +1870,11 @@ const ProcessAuditApprovals = () => {
               )}
             </div>
 
-            {/* Action Taken By */}
+            {/* Temporary Closed By */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>ACTION TAKEN BY</span>
+                  <span>TEMPORARY CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
                   {selectedRequest && canUpdateCloserFields && (
                     <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
@@ -1908,7 +1908,7 @@ const ProcessAuditApprovals = () => {
                   if (/\d/.test(raw)) {
                     setCloserTemporaryClosedByError('Only text / letters allowed, numbers are not allowed');
                   } else if (!cleaned.trim()) {
-                    setCloserTemporaryClosedByError('Action Taken By is required. Please enter person name.');
+                    setCloserTemporaryClosedByError('Temporary Closed By is required. Please enter person name.');
                   } else {
                     setCloserTemporaryClosedByError(false);
                   }

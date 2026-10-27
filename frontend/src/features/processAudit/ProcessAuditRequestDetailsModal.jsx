@@ -1810,7 +1810,7 @@ const ProcessAuditRequestDetailsModal = ({
 
                 <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                   <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    ACTION TAKEN BY
+                    TEMPORARY CLOSED BY
                   </span>
                   <span className="font-bold text-slate-900 block text-xs">
                     {closerSubmitter || req.executor || '—'}
