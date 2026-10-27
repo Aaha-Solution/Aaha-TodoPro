@@ -1152,16 +1152,6 @@ const ProcessAuditApprovals = () => {
           user_department: userDept || 'QAD'
         });
 
-        await processAuditService.updateRequestStatus(reqId, 'Pending', {
-          creator_remark: closerRemarks.trim(),
-          remark: closerRemarks.trim(),
-          remarks: closerRemarks.trim(),
-          reviewed_by: effectiveReviewer,
-          reviewed_by_id: reviewerId,
-          reviewed_by_email: reviewerEmail,
-          closed_by: null
-        });
-
         const msg = `Request #${displayId} status updated & reassigned to ${reassignedPerson} (${reassignedDept}) successfully!`;
         setSuccessMessage(msg);
         modalSuccess(msg);

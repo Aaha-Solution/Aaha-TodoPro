@@ -505,9 +505,22 @@ export const updateRequestStatus = async (req, res) => {
             console.warn('[Process Audit Mailer] Sync case closed email dispatch warning:', mailSyncErr.message);
           }
 
-        } else if (body.is_reassign || body.isReassign || details?.is_reassign) {
-          // Reassignment in progress; do not trigger closer submission notifications or clear new assignment notifications
-        } else {
+        } else if (
+          body.is_reassign || body.isReassign || details?.is_reassign ||
+          (String(status).toLowerCase() === 'pending' &&
+           !body.temporary_action && !body.permanent_fix && !body.prod_why_why &&
+           !details.temporary_action && !details.permanent_fix && !details.prod_why_why &&
+           !details.corrective_action)
+        ) {
+          // Reassignment or status transition without closer countermeasure submission; do not trigger closer submission notifications
+        } else if (
+          body.temporary_action || body.permanent_fix || body.prod_why_why ||
+          details.temporary_action || details.permanent_fix || details.prod_why_why ||
+          details.corrective_action ||
+          String(status).toLowerCase().includes('progress') ||
+          String(status).toLowerCase().includes('approval') ||
+          String(status).toLowerCase().includes('review')
+        ) {
           // SCENARIO 3: CLOSER DETAILS SUBMITTED (Countermeasures & 5-Why)
           // Mark the executor's previous pending assignment/approval notification as read
           await pool.query(
