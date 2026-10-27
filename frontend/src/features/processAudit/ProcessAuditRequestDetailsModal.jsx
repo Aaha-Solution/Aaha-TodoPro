@@ -1799,7 +1799,6 @@ const ProcessAuditRequestDetailsModal = ({
                     <Paperclip className="w-4 h-4" />
                     <span>Temporary Evidence Attachments</span>
                   </div>
-                  <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
                 </div>
 
                 {temporaryEvidenceAttachments && temporaryEvidenceAttachments.length > 0 ? (
@@ -1887,7 +1886,6 @@ const ProcessAuditRequestDetailsModal = ({
                       <Paperclip className="w-4 h-4" />
                       <span>Permanent Evidence Attachments</span>
                     </div>
-                    <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
                   </div>
 
                   {permanentEvidenceAttachments && permanentEvidenceAttachments.length > 0 ? (

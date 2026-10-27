@@ -54,9 +54,11 @@ import { resolveAttachmentUrl, triggerDirectDownload } from '../../components/co
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { storage } from '../../utils/storage';
 import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
+import { useModal } from '../../context/ModalContext';
 
 const ProcessAuditApprovals = () => {
   const { user } = useAuth();
+  const { success: modalSuccess, error: modalError, warning: modalWarning } = useModal();
   const savedUser = storage.getUser();
   const currentUser = user || savedUser;
 
@@ -823,7 +825,9 @@ const ProcessAuditApprovals = () => {
       setEvidenceError(false);
     }
     setAnnotatingItem(null);
-    setSuccessMessage(`Annotated drawing "${annotatedFile.name}" updated! Remember to click "Save Closer Changes" or "Submit Closer Log" to save.`);
+    const annotMsg = `Annotated drawing "${annotatedFile.name}" updated! Remember to click "Save Closer Changes" or "Submit Closer Log" to save.`;
+    setSuccessMessage(annotMsg);
+    modalSuccess(annotMsg);
   };
 
   // 1. Submit Closer Updates (5-Why causes, Temporary Action & Evidence, Permanent Action & Evidence)
@@ -832,17 +836,23 @@ const ProcessAuditApprovals = () => {
     if (!selectedRequest) return;
 
     if (isSelectedClosed) {
-      setErrorMessage('This request is closed and cannot be edited.');
+      const msg = 'This request is closed and cannot be edited.';
+      setErrorMessage(msg);
+      modalWarning(msg);
       return;
     }
 
     if (isLockedForCloserUser) {
-      setErrorMessage('Closer details have already been submitted once for this request. Only Quality Admin has permission to make multiple updates.');
+      const msg = 'Closer details have already been submitted once for this request. Only Quality Admin has permission to make multiple updates.';
+      setErrorMessage(msg);
+      modalWarning(msg);
       return;
     }
 
     if (!canUpdateCloserFields && !isAdmin) {
-      setErrorMessage('You do not have permission to update fields on this request.');
+      const msg = 'You do not have permission to update fields on this request.';
+      setErrorMessage(msg);
+      modalError(msg);
       return;
     }
 
@@ -939,7 +949,22 @@ const ProcessAuditApprovals = () => {
     }
 
     if (hasCloserErrors) {
-      setErrorMessage('Please fill in all mandatory closer fields before submitting.');
+      const missing = [];
+      if (whyErrors.w1 || whyErrors.w2 || whyErrors.w3) missing.push('5-Why Occurrence Causes (W1-W3)');
+      if (!closerAction || !closerAction.trim()) missing.push('Temporary Action');
+      if (!hasTempEvidence) missing.push('Temporary Evidence Attachment');
+      if (!closerTargetDate || !closerTargetDate.trim() || (isAdmin && closerTargetDate > todayStr)) missing.push('Temporary Target Date');
+      if (!closerTemporaryClosedBy || !closerTemporaryClosedBy.trim() || /\d/.test(closerTemporaryClosedBy)) missing.push('Temporary Closed By');
+      if (!closerPermanentFix || !closerPermanentFix.trim()) missing.push('Permanent Action');
+      if (!hasPermEvidence) missing.push('Permanent Evidence Attachment');
+      if (!closerPermanentTargetDate || !closerPermanentTargetDate.trim() || (closerTargetDate && closerPermanentTargetDate < closerTargetDate)) missing.push('Permanent Target Date');
+      if (!closerPermanentClosedBy || !closerPermanentClosedBy.trim() || /\d/.test(closerPermanentClosedBy)) missing.push('Permanent Closed By');
+
+      const validationMsg = missing.length > 0
+        ? `Please fill in all mandatory closer fields: ${missing.join(', ')}`
+        : 'Please fill in all mandatory closer fields before submitting.';
+      setErrorMessage(validationMsg);
+      modalError(validationMsg);
       return;
     }
 
@@ -997,6 +1022,8 @@ const ProcessAuditApprovals = () => {
         : `Closer details submitted successfully for ${displayId}! Quality Admin will review and sign off status.`;
 
       setSuccessMessage(msg);
+      modalSuccess(msg);
+      window.dispatchEvent(new Event('refreshNotifications'));
       setNewEvidenceFiles([]);
       setNewPermanentEvidenceFiles([]);
       setExistingEvidence(combinedEvidence);
@@ -1010,10 +1037,12 @@ const ProcessAuditApprovals = () => {
 
       setTimeout(() => {
         setSuccessMessage('');
-      }, 4000);
+      }, 5000);
     } catch (err) {
       console.error('Failed to update closer fields:', err);
-      setErrorMessage(err.response?.data?.message || err.message || 'Failed to update closer log');
+      const errMsg = err.response?.data?.message || err.message || 'Failed to update closer log';
+      setErrorMessage(errMsg);
+      modalError(errMsg);
     } finally {
       setIsSavingCloser(false);
     }
@@ -1025,39 +1054,50 @@ const ProcessAuditApprovals = () => {
     if (!selectedRequest) return;
 
     if (isSelectedClosed) {
-      setErrorMessage('This request is closed and cannot be edited.');
+      const msg = 'This request is closed and cannot be edited.';
+      setErrorMessage(msg);
+      modalWarning(msg);
       return;
     }
 
     if (adminEditCloser) {
-      setErrorMessage('Admin Sign-Off is disabled while editing closer fields. Please save or cancel closer log updates first.');
+      const msg = 'Admin Sign-Off is disabled while editing closer fields. Please save or cancel closer log updates first.';
+      setErrorMessage(msg);
+      modalWarning(msg);
       return;
     }
 
     if (!isAdmin) {
-      setErrorMessage('Only Quality Admin has permission to update Admin Review and sign off status.');
+      const msg = 'Only Quality Admin has permission to update Admin Review and sign off status.';
+      setErrorMessage(msg);
+      modalError(msg);
       return;
     }
 
     if (!isReassignOpen && isCloserDataToBeUpdated) {
-      setErrorMessage('Corrective Action & Target Date must be completed before Admin Sign-Off.');
+      const msg = 'Corrective Action & Target Date must be completed before Admin Sign-Off.';
+      setErrorMessage(msg);
+      modalWarning(msg);
       return;
     }
 
     if (!closerRemarks || !closerRemarks.trim()) {
       setRemarksError(true);
+      modalError('Admin Review Remarks are required before sign-off or reassignment.');
       return;
     }
     setRemarksError(false);
 
     if (reviewedBy && /\d/.test(reviewedBy)) {
       setReviewedByError('Reviewed By must contain text only, numbers are not allowed');
+      modalError('Reviewed By must contain text only, numbers are not allowed');
       return;
     }
     setReviewedByError(false);
 
     if (!isReassignOpen && !closerStatus) {
       setStatusError(true);
+      modalError('Please select status to finalize admin sign-off.');
       return;
     }
     setStatusError(false);
@@ -1076,7 +1116,10 @@ const ProcessAuditApprovals = () => {
       } else {
         setReassignPersonError(false);
       }
-      if (reassignHasErr) return;
+      if (reassignHasErr) {
+        modalError('Please select both department and person for reassignment.');
+        return;
+      }
     }
 
     setIsSavingAdmin(true);
@@ -1133,6 +1176,8 @@ const ProcessAuditApprovals = () => {
 
         const msg = `Request #${displayId} status updated & reassigned to ${reassignedPerson} (${reassignedDept}) successfully!`;
         setSuccessMessage(msg);
+        modalSuccess(msg);
+        window.dispatchEvent(new Event('refreshNotifications'));
         setIsReassignOpen(false);
         setIsReassignUserDropdownOpen(false);
         setReassignUserSearch('');
@@ -1172,6 +1217,8 @@ const ProcessAuditApprovals = () => {
         const updated = await processAuditService.updateRequestStatus(reqId, targetStatus, payload);
         const msg = `Admin review remarks & status sign-off (${targetStatus}) updated successfully for ${displayId}!`;
         setSuccessMessage(msg);
+        modalSuccess(msg);
+        window.dispatchEvent(new Event('refreshNotifications'));
 
         if (targetStatus === 'Closed') {
           const merged = { ...selectedRequest, ...payload, ...updated, status: 'Closed', reviewed_by: effectiveReviewer, reviewed_by_id: reviewerId, reviewed_by_email: reviewerEmail };
@@ -1187,10 +1234,12 @@ const ProcessAuditApprovals = () => {
 
       setTimeout(() => {
         setSuccessMessage('');
-      }, 4000);
+      }, 5000);
     } catch (err) {
       console.error('Failed to update admin fields:', err);
-      setErrorMessage(err.response?.data?.message || err.message || 'Failed to update admin review & status');
+      const errMsg = err.response?.data?.message || err.message || 'Failed to update admin review & status';
+      setErrorMessage(errMsg);
+      modalError(errMsg);
     } finally {
       setIsSavingAdmin(false);
     }
@@ -1639,7 +1688,7 @@ const ProcessAuditApprovals = () => {
                               ? `Enter ${label} cause...${isMandatory ? ' (Mandatory)' : ''}`
                               : isAdmin
                               ? `Click Edit Closer Fields below to edit ${label}...`
-                              : 'Read-only (Closer only)'
+                              : `Enter ${label} cause...`
                           }
                           className={`w-full px-3 py-1.5 rounded-lg text-slate-800 outline-none transition disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed ${
                             hasError
@@ -1665,16 +1714,10 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY ACTION</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
               </div>
@@ -1695,7 +1738,7 @@ const ProcessAuditApprovals = () => {
                     ? 'Describe temporary actions taken / countermeasures...'
                     : isAdmin
                     ? 'Click Edit Closer Fields below to edit...'
-                    : 'Read-only (Closer only)'
+                    : 'Describe temporary actions taken / countermeasures...'
                 }
                 className={`w-full px-3.5 py-2 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
                   closerActionError
@@ -1716,19 +1759,12 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY EVIDENCE ATTACHMENT</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
-                <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
               </div>
 
               {/* Styled File Input Button */}
@@ -1794,16 +1830,10 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
               </div>
@@ -1846,16 +1876,10 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
               </div>
@@ -1867,7 +1891,7 @@ const ProcessAuditApprovals = () => {
                     ? 'Click a row on the right to select'
                     : canUpdateCloserFields
                     ? 'Enter person name...'
-                    : 'Read-only (Closer only)'
+                    : 'Enter person name...'
                 }
                 value={closerTemporaryClosedBy || ''}
                 onKeyDown={(e) => {
@@ -1921,16 +1945,10 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT ACTION</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
               </div>
@@ -1951,7 +1969,7 @@ const ProcessAuditApprovals = () => {
                     ? 'Describe permanent corrective action / long-term countermeasure...'
                     : isAdmin
                     ? 'Click Edit Closer Fields below to edit...'
-                    : 'Read-only (Closer only)'
+                    : 'Describe permanent corrective action / long-term countermeasure...'
                 }
                 className={`w-full px-3.5 py-2 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
                   closerPermanentFixError
@@ -1972,19 +1990,12 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT EVIDENCE ATTACHMENT</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
-                <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
               </div>
 
               <div className={`flex items-center gap-2 p-1 rounded-xl transition ${
@@ -2049,16 +2060,10 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
                 {closerTargetDate && (
@@ -2101,16 +2106,10 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
+                  {selectedRequest && canUpdateCloserFields && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                      {isAdmin ? 'Admin Edit' : 'Closer'}
+                    </span>
                   )}
                 </label>
               </div>
@@ -2122,7 +2121,7 @@ const ProcessAuditApprovals = () => {
                     ? 'Click a row on the right to select'
                     : canUpdateCloserFields
                     ? 'Enter person name...'
-                    : 'Read-only (Closer only)'
+                    : 'Enter person name...'
                 }
                 value={closerPermanentClosedBy || ''}
                 onKeyDown={(e) => {
@@ -2165,6 +2164,20 @@ const ProcessAuditApprovals = () => {
 
             {/* Dedicated Closer Submit Button */}
             <div className="pt-1">
+              {/* In-place Closer Feedback Banner */}
+              {errorMessage && (
+                <div className="p-3 mb-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+              {successMessage && (
+                <div className="p-3 mb-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 animate-in fade-in">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{successMessage}</span>
+                </div>
+              )}
+
               {!selectedRequest ? (
                 <button
                   type="button"
@@ -2811,6 +2824,18 @@ const ProcessAuditApprovals = () => {
 
                 {/* Dedicated Admin Actions Submit Button */}
                 <div className="pt-1">
+                  {errorMessage && (
+                    <div className="p-3 mb-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 animate-in fade-in">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>{errorMessage}</span>
+                    </div>
+                  )}
+                  {successMessage && (
+                    <div className="p-3 mb-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 animate-in fade-in">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{successMessage}</span>
+                    </div>
+                  )}
                   {!selectedRequest ? (
                     <button
                       type="button"
