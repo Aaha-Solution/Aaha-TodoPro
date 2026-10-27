@@ -982,7 +982,7 @@ const ProcessAuditRequestDetailsModal = ({
                     ) : (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-white/10 text-slate-300 border border-white/15">
                         <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Original Assignment</span>
+                        <span> Assignment</span>
                       </span>
                     )}
                   </div>
