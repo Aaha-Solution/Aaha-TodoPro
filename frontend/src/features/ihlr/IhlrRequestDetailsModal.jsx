@@ -1812,11 +1812,6 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <span className="font-bold text-slate-900 block text-xs">
                       {request.temporary_closed_by || request.closer_updated_by || '—'}
                     </span>
-                    {request.closer_updated_by && request.temporary_closed_by && request.closer_updated_by !== request.temporary_closed_by && (
-                      <span className="text-[9px] text-emerald-700 font-semibold block">
-                        (Logged submitter: {request.closer_updated_by})
-                      </span>
-                    )}
                   </div>
                 </div>
 
@@ -1882,11 +1877,6 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <span className="font-bold text-slate-900 block text-xs">
                         {request.permanent_closed_by || request.closer_updated_by || '—'}
                       </span>
-                      {request.closer_updated_by && request.permanent_closed_by && request.closer_updated_by !== request.permanent_closed_by && (
-                        <span className="text-[9px] text-emerald-700 font-semibold block">
-                          (Logged submitter: {request.closer_updated_by})
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
