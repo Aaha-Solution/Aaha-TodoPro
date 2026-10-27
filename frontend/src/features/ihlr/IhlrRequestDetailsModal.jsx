@@ -68,6 +68,15 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   const isQad = userDept === 'QAD';
   const isAdmin = userRole === 'ADMIN' || isQad;
 
+  const loggedInUserName = user?.name || (() => {
+    try {
+      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
+      return u ? JSON.parse(u)?.name : '';
+    } catch {
+      return '';
+    }
+  })() || '';
+
   const [localRequest, setLocalRequest] = useState(request);
   const [activeTab, setActiveTab] = useState('requester'); // 'requester' | 'closer' | 'sign_tracks'
   const [previewAttachment, setPreviewAttachment] = useState(null);
@@ -1697,7 +1706,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <div>
                       <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-600">Closer Filled By</span>
                       <span className="font-bold text-emerald-800">
-                        {request.temporary_closed_by || request.permanent_closed_by || request.closer_updated_by || (hasCloserSubmitted ? 'Submitted' : 'Pending Closer')}
+                        {request.temporary_closed_by || request.permanent_closed_by || request.closer_updated_by || request.reviewed_by || loggedInUserName || request.resp_person || 'Pending Closer'}
                       </span>
                     </div>
                     {hasReassignments && (
