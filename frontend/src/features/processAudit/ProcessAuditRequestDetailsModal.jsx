@@ -1817,7 +1817,7 @@ const ProcessAuditRequestDetailsModal = ({
                     TEMPORARY CLOSED BY
                   </span>
                   <span className="font-bold text-slate-900 block text-xs">
-                    {closerSubmitter || req.executor || '—'}
+                    {req.temporary_closed_by || req.action_taken_by || '—'}
                   </span>
                 </div>
 

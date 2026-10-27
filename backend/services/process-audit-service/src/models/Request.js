@@ -811,7 +811,7 @@ export const ProcessAuditRequest = {
 
     const isClosed = status.toLowerCase().includes('close');
     if (isClosed) {
-      const closedBy = details.closed_by || details.closedBy || actionTakenBy || 'Request Creator';
+      const closedBy = details.permanent_closed_by || details.closed_by || details.closedBy || actionTakenBy || 'Request Creator';
       const closedById = details.closed_by_id || details.closedById || null;
       updates.push('closed_by = ?');
       params.push(closedBy);

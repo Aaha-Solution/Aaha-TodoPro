@@ -439,8 +439,8 @@ export const exportProcessAuditToExcel = async ({
       (r.target_date ? formatDateDDMMYYYY(r.target_date) : '—');
     const permTargetDate = r.permanent_target_date ? formatDateDDMMYYYY(r.permanent_target_date) : '—';
 
-    const tempClosedBy = r.temporary_closed_by || r.closer_updated_by || r.action_taken_by || r.executor || '—';
-    const permClosedBy = r.permanent_closed_by || r.closer_updated_by || r.approved_by || '—';
+    const tempClosedBy = r.temporary_closed_by || r.action_taken_by || '—';
+    const permClosedBy = r.permanent_closed_by || r.closed_by || '—';
 
     const { reassignedStatus, reassignmentDetails } = formatReassignmentHistory(r.reassignment_history);
     const displayStatus = getProcessAuditDisplayStatus(r);
@@ -784,11 +784,11 @@ export const exportProcessAuditToPdf = async ({
     const tempActionVal = r.temporary_action || r.action || '—';
     const tempTargetDateVal = (r.temporary_target_date ? formatDateDDMMYYYY(r.temporary_target_date) : '') ||
       (r.target_date ? formatDateDDMMYYYY(r.target_date) : '—');
-    const tempClosedByVal = r.temporary_closed_by || r.closer_updated_by || r.action_taken_by || r.executor || '—';
+    const tempClosedByVal = r.temporary_closed_by || r.action_taken_by || '—';
 
     const permActionVal = r.permanent_fix || r.corrective_action || '—';
     const permTargetDateVal = r.permanent_target_date ? formatDateDDMMYYYY(r.permanent_target_date) : '—';
-    const permClosedByVal = r.permanent_closed_by || r.closer_updated_by || r.approved_by || '—';
+    const permClosedByVal = r.permanent_closed_by || r.closed_by || '—';
 
     const closedByVal = isClosedStatus
       ? (r.reviewed_by || r.approved_by || r.closed_by || 'Quality Auditor')

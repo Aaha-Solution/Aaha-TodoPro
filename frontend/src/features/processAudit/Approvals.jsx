@@ -703,13 +703,10 @@ const ProcessAuditApprovals = () => {
     setCloserPermanentFixError(false);
     setCloserPermanentTargetDate(parseDateToYYYYMMDD(req.permanent_target_date));
     setCloserPermanentTargetDateError(false);
-    const existingCloser = req.closer_updated_by || req.temporary_closed_by || req.action_taken_by;
-    setCloserTemporaryClosedBy(
-      existingCloser && !existingCloser.toUpperCase().includes('CLOSED BY')
-        ? existingCloser
-        : (currentUser?.name || '')
-    );
-    setCloserPermanentClosedBy(req.permanent_closed_by || req.closed_by || currentUser?.name || '');
+    setCloserTemporaryClosedBy(req.temporary_closed_by || '');
+    setCloserTemporaryClosedByError(false);
+    setCloserPermanentClosedBy(req.permanent_closed_by || '');
+    setCloserPermanentClosedByError(false);
 
     setCloserRemarks(req.creator_remark || '');
     setRemarksError(false);
@@ -892,12 +889,9 @@ const ProcessAuditApprovals = () => {
       setCloserTargetDateError(false);
     }
 
-    // 4. Temporary Closed By is mandatory (text-only)
+    // 4. Temporary Closed By is mandatory (manual entry)
     if (!closerTemporaryClosedBy || !closerTemporaryClosedBy.trim()) {
       setCloserTemporaryClosedByError('Temporary Closed By is required. Please enter person name.');
-      hasCloserErrors = true;
-    } else if (/\d/.test(closerTemporaryClosedBy)) {
-      setCloserTemporaryClosedByError('Temporary Closed By must contain text only, numbers are not allowed');
       hasCloserErrors = true;
     } else {
       setCloserTemporaryClosedByError(false);
@@ -931,12 +925,9 @@ const ProcessAuditApprovals = () => {
       setCloserPermanentTargetDateError(false);
     }
 
-    // 8. Permanent Closed By is mandatory (text-only)
+    // 8. Permanent Closed By is mandatory (manual entry)
     if (!closerPermanentClosedBy || !closerPermanentClosedBy.trim()) {
       setCloserPermanentClosedByError('Permanent Closed By is required. Please enter person name.');
-      hasCloserErrors = true;
-    } else if (/\d/.test(closerPermanentClosedBy)) {
-      setCloserPermanentClosedByError('Permanent Closed By must contain text only, numbers are not allowed');
       hasCloserErrors = true;
     } else {
       setCloserPermanentClosedByError(false);
@@ -948,11 +939,11 @@ const ProcessAuditApprovals = () => {
       if (!closerAction || !closerAction.trim()) missing.push('Temporary Action');
       if (!hasTempEvidence) missing.push('Temporary Evidence Attachment');
       if (!closerTargetDate || !closerTargetDate.trim() || closerTargetDate < todayStr) missing.push('Temporary Target Date');
-      if (!closerTemporaryClosedBy || !closerTemporaryClosedBy.trim() || /\d/.test(closerTemporaryClosedBy)) missing.push('Temporary Closed By');
+      if (!closerTemporaryClosedBy || !closerTemporaryClosedBy.trim()) missing.push('Temporary Closed By');
       if (!closerPermanentFix || !closerPermanentFix.trim()) missing.push('Permanent Action');
       if (!hasPermEvidence) missing.push('Permanent Evidence Attachment');
       if (!closerPermanentTargetDate || !closerPermanentTargetDate.trim() || (closerTargetDate && closerPermanentTargetDate < closerTargetDate)) missing.push('Permanent Target Date');
-      if (!closerPermanentClosedBy || !closerPermanentClosedBy.trim() || /\d/.test(closerPermanentClosedBy)) missing.push('Permanent Closed By');
+      if (!closerPermanentClosedBy || !closerPermanentClosedBy.trim()) missing.push('Permanent Closed By');
 
       const validationMsg = missing.length > 0
         ? `Please fill in all mandatory closer fields: ${missing.join(', ')}`
@@ -993,16 +984,16 @@ const ProcessAuditApprovals = () => {
         temporary_action: closerAction.trim(),
         temporary_evidence_attachment: combinedEvidence,
         temporary_target_date: closerTargetDate || null,
-        temporary_closed_by: closerTemporaryClosedBy.trim() || currentUser?.name || currentUser?.email || 'Assigned Executor',
+        temporary_closed_by: closerTemporaryClosedBy.trim(),
         permanent_fix: closerPermanentFix.trim(),
         permanent_evidence_attachment: combinedPermEvidence,
         permanent_target_date: closerPermanentTargetDate || null,
-        permanent_closed_by: closerPermanentClosedBy.trim() || currentUser?.name || currentUser?.email || 'Assigned Executor',
+        permanent_closed_by: closerPermanentClosedBy.trim(),
         corrective_action: closerPermanentFix.trim() || closerAction.trim(),
         standardization_details: standardizationDetails.trim(),
         action_attachments: combinedEvidence,
         target_date: closerPermanentTargetDate || closerTargetDate || null,
-        action_taken_by: closerTemporaryClosedBy.trim() || currentUser?.name || currentUser?.email || 'Assigned Executor',
+        action_taken_by: closerTemporaryClosedBy.trim() || closerPermanentClosedBy.trim() || null,
         approved_by: currentUser?.name || currentUser?.email || 'Assigned Executor',
         approved_by_id: currentUser?.id || null,
         approved_by_email: currentUser?.email || null,
@@ -1889,25 +1880,14 @@ const ProcessAuditApprovals = () => {
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
-                    : canUpdateCloserFields
-                    ? 'Enter person name...'
-                    : 'Enter person name...'
+                    : 'Enter person name (manual entry)...'
                 }
                 value={closerTemporaryClosedBy || ''}
-                onKeyDown={(e) => {
-                  if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                    e.preventDefault();
-                    setCloserTemporaryClosedByError('Only text / letters allowed, numbers are not allowed');
-                  }
-                }}
                 onChange={(e) => {
                   if (!canUpdateCloserFields) return;
-                  const raw = e.target.value;
-                  const cleaned = raw.replace(/[0-9]/g, '');
-                  setCloserTemporaryClosedBy(cleaned);
-                  if (/\d/.test(raw)) {
-                    setCloserTemporaryClosedByError('Only text / letters allowed, numbers are not allowed');
-                  } else if (!cleaned.trim()) {
+                  const val = e.target.value;
+                  setCloserTemporaryClosedBy(val);
+                  if (!val.trim()) {
                     setCloserTemporaryClosedByError('Temporary Closed By is required. Please enter person name.');
                   } else {
                     setCloserTemporaryClosedByError(false);
@@ -2119,25 +2099,14 @@ const ProcessAuditApprovals = () => {
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
-                    : canUpdateCloserFields
-                    ? 'Enter person name...'
-                    : 'Enter person name...'
+                    : 'Enter person name (manual entry)...'
                 }
                 value={closerPermanentClosedBy || ''}
-                onKeyDown={(e) => {
-                  if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                    e.preventDefault();
-                    setCloserPermanentClosedByError('Only text / letters allowed, numbers are not allowed');
-                  }
-                }}
                 onChange={(e) => {
                   if (!canUpdateCloserFields) return;
-                  const raw = e.target.value;
-                  const cleaned = raw.replace(/[0-9]/g, '');
-                  setCloserPermanentClosedBy(cleaned);
-                  if (/\d/.test(raw)) {
-                    setCloserPermanentClosedByError('Only text / letters allowed, numbers are not allowed');
-                  } else if (!cleaned.trim()) {
+                  const val = e.target.value;
+                  setCloserPermanentClosedBy(val);
+                  if (!val.trim()) {
                     setCloserPermanentClosedByError('Permanent Closed By is required. Please enter person name.');
                   } else {
                     setCloserPermanentClosedByError(false);
@@ -2157,7 +2126,7 @@ const ProcessAuditApprovals = () => {
                 </p>
               ) : (
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  Person confirming permanent countermeasure closure.
+                  Person confirming permanent countermeasure closure (manual entry).
                 </p>
               )}
             </div>
