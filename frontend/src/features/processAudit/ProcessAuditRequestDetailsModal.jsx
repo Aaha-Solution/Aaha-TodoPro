@@ -37,7 +37,7 @@ import AttachmentChipList from '../../components/common/AttachmentChipList';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import { parseAttachments, resolveAttachmentUrl } from '../../components/common/attachmentUtils';
-import { exportProcessAuditToExcel, exportProcessAuditToPdf, formatReassignmentHistory } from './processAuditExportUtils';
+import { exportProcessAuditToExcel, exportProcessAuditToPdf, formatReassignmentHistory, resolveAuditorEmail } from './processAuditExportUtils';
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
 import { useAuth } from '../../hooks/useAuth';
@@ -657,12 +657,12 @@ const ProcessAuditRequestDetailsModal = ({
 
       await exportProcessAuditToExcel({
         requests: [targetReq],
-        fileName: `ProcessAudit_Report_${safeReqNo}_${today}.xlsx`,
-        sheetName: 'Process Audit Log'
+        fileName: `ProcessAudit_Inspection_Report_${safeReqNo}_${today}.xlsx`,
+        sheetName: 'Inspection Report'
       });
 
       setShowExportModal(false);
-      modalSuccess(`Exported report #${reqNo} to Excel successfully.`);
+      modalSuccess(`Exported inspection report #${reqNo} to Excel with all details.`);
     } catch (err) {
       console.error('Failed to export to Excel:', err);
       modalError('Failed to export to Excel: ' + err.message);
@@ -678,12 +678,12 @@ const ProcessAuditRequestDetailsModal = ({
 
       await exportProcessAuditToPdf({
         requests: [targetReq],
-        fileName: `ProcessAudit_Report_${safeReqNo}_${today}.pdf`,
-        title: `Process Audit Observation Report #${reqNo}`
+        fileName: `ProcessAudit_Inspection_Report_${safeReqNo}_${today}.pdf`,
+        title: `Process Audit Inspection Report #${reqNo}`
       });
 
       setShowExportModal(false);
-      modalSuccess(`Exported report #${reqNo} to PDF successfully.`);
+      modalSuccess(`Exported inspection report #${reqNo} to PDF with all details & embedded images.`);
     } catch (err) {
       console.error('Failed to export to PDF:', err);
       modalError('Failed to export to PDF: ' + err.message);
@@ -1027,6 +1027,11 @@ const ProcessAuditRequestDetailsModal = ({
                     <div className="text-slate-200 font-semibold truncate text-[11px]">
                       {req.created_by || 'Requester'}
                     </div>
+                    {resolveAuditorEmail(req) !== '—' && (
+                      <div className="text-[10px] text-emerald-300/80 truncate font-mono">
+                        {resolveAuditorEmail(req)}
+                      </div>
+                    )}
                     <div className="text-[10px] text-slate-400 font-mono">
                       {escDate || '—'} ({req.shift || 'Shift 1'})
                     </div>
@@ -2512,6 +2517,11 @@ const ProcessAuditRequestDetailsModal = ({
                     <strong className="text-blue-700 block mt-0.5 font-semibold">
                       {req.created_by || 'Quality Auditor'}
                     </strong>
+                    {resolveAuditorEmail(req) !== '—' && (
+                      <span className="text-[11px] text-slate-500 font-medium block truncate">
+                        {resolveAuditorEmail(req)}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

@@ -35,13 +35,16 @@ import { DEPARTMENTS } from '../../utils/constants';
 import DateInput from '../../components/common/DateInput';
 import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
 import { storage } from '../../utils/storage';
+import { useModal } from '../../context/ModalContext';
 import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
-import { getProcessAuditDisplayStatus } from './processAuditExportUtils';
+import ExportSelectionModal from '../../components/common/ExportSelectionModal';
+import { exportProcessAuditToExcel, exportProcessAuditToPdf, getProcessAuditDisplayStatus } from './processAuditExportUtils';
 import ProcessAuditBarChart from './ProcessAuditBarChart';
 
 const ProcessAuditDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { warning: modalWarning, error: modalError } = useModal();
   const savedUser = storage.getUser();
   const currentUser = user || savedUser;
 
@@ -378,6 +381,95 @@ const ProcessAuditDashboard = () => {
     });
   }, [baseFilteredRequests, selectedStatus]);
 
+  // Export State & Handlers (Matching IHLR Dashboard)
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  const fetchDashboardExportData = async () => {
+    if (filteredRequests && filteredRequests.length > 0) {
+      return filteredRequests;
+    }
+    const filters = { scope: 'dashboard', all: true };
+    if (selectedDept && selectedDept !== 'All') {
+      filters.department = selectedDept;
+      filters.filter_dept = selectedDept;
+    }
+    if (startDate) {
+      filters.startDate = startDate;
+    }
+    if (endDate) {
+      filters.endDate = endDate;
+    }
+    try {
+      const data = await processAuditService.getRequests(filters);
+      if (Array.isArray(data) && data.length > 0) {
+        return data;
+      }
+    } catch (err) {
+      console.warn('Failed to fetch filtered requests for export, falling back to loaded dashboard requests:', err);
+    }
+    return requests || [];
+  };
+
+  const handleOpenExportModal = () => {
+    if (filteredRequests.length === 0 && requests.length === 0) {
+      modalWarning('No data available to export. Please adjust your filters or create an issue.', 'No Data Available');
+      return;
+    }
+    setShowExportModal(true);
+  };
+
+  // Export to Excel (.xlsx) using common Process Audit export utility
+  const handleExportExcel = async () => {
+    try {
+      setExportLoading(true);
+      const dataToExport = await fetchDashboardExportData();
+      if (!dataToExport || dataToExport.length === 0) {
+        modalWarning('No data available to export. Cannot download an empty file.', 'No Data Available');
+        setShowExportModal(false);
+        return;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      await exportProcessAuditToExcel({
+        requests: dataToExport,
+        fileName: `ProcessAudit_Dashboard_Report_${today}.xlsx`,
+        sheetName: 'Audit Dashboard'
+      });
+      setShowExportModal(false);
+    } catch (err) {
+      console.error('Failed to export to Excel:', err);
+      modalError('Failed to export to Excel: ' + err.message);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // Export to PDF (.pdf) using common Process Audit export utility
+  const handleExportPdf = async () => {
+    try {
+      setExportLoading(true);
+      const dataToExport = await fetchDashboardExportData();
+      if (!dataToExport || dataToExport.length === 0) {
+        modalWarning('No data available to export. Cannot download an empty file.', 'No Data Available');
+        setShowExportModal(false);
+        return;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      await exportProcessAuditToPdf({
+        requests: dataToExport,
+        fileName: `ProcessAudit_Dashboard_Report_${today}.pdf`,
+        title: 'Process Audit Dashboard Summary & Observation Reports',
+        filterText: `Dept: ${selectedDept} | Status: ${selectedStatus} | Range: ${startDate ? formatDateDDMMYYYY(startDate) : 'All'} to ${endDate ? formatDateDDMMYYYY(endDate) : 'All'}`
+      });
+      setShowExportModal(false);
+    } catch (err) {
+      console.error('Failed to export to PDF:', err);
+      modalError('Failed to export to PDF: ' + err.message);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const kpis = [
     {
       title: 'Total Issues',
@@ -532,8 +624,18 @@ const ProcessAuditDashboard = () => {
           </p>
         </div>
 
-        {canCreate && (
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleOpenExportModal}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 hover:border-slate-300 rounded-xl text-xs font-bold shadow-2xs hover:shadow-xs transition transform active:scale-95 cursor-pointer"
+            id="dashboard-export-btn"
+            title="Export filtered Process Audit reports to Excel or PDF"
+          >
+            <Download className="w-4 h-4 text-blue-600" />
+            <span>Export View</span>
+          </button>
+
+          {canCreate && (
             <button
               onClick={() => navigate('/process-audit/create-request')}
               className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
@@ -541,8 +643,8 @@ const ProcessAuditDashboard = () => {
               <Plus className="w-4 h-4" />
               <span>Create Process Issue</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Ultra-Modern Filter Toolbar */}
@@ -993,7 +1095,7 @@ const ProcessAuditDashboard = () => {
         request={selectedRequest}
         onClose={() => setSelectedRequest(null)}
         onUpdated={() => {
-          loadData();
+          loadDashboardData();
         }}
       />
 
@@ -1002,6 +1104,19 @@ const ProcessAuditDashboard = () => {
         isOpen={Boolean(previewAttachment)}
         attachment={previewAttachment}
         onClose={() => setPreviewAttachment(null)}
+      />
+
+      {/* Export Format Selection Modal */}
+      <ExportSelectionModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        title="Export Analysis Report"
+        subtitle="Choose download format for current dashboard view"
+        recordCount={filteredRequests.length || requests.length}
+        excelDescription="Full structured workbook with separate columns for 5-Why root-causes, temporary & permanent actions, reassignment tracking, and target dates."
+        pdfDescription="Official landscape document formatted with India Nippon Electricals Limited branding, tables, and page numbers."
       />
     </div>
   );

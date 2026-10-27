@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  Eye, 
-  X, 
-  Folder, 
-  FileText, 
-  Paperclip, 
-  Download, 
-  CheckCircle2, 
-  Clock, 
+import {
+  Eye,
+  X,
+  Folder,
+  FileText,
+  Paperclip,
+  Download,
+  CheckCircle2,
+  Clock,
   AlertCircle,
   ShieldCheck,
   ShieldAlert,
@@ -213,7 +213,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     if (isOpen) {
       ihlrService.getUsers().then(users => {
         if (Array.isArray(users)) setDbUsers(users);
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [isOpen]);
 
@@ -496,8 +496,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
       const effectiveRemarks = isReassignOpen
         ? ((reassignRemarks && reassignRemarks.trim()) ||
-           (adminRemarks && adminRemarks.trim()) ||
-           `Reassigned to ${reassignedPerson} (${reassignedDept}) for analysis by ${effectiveReviewer}.`)
+          (adminRemarks && adminRemarks.trim()) ||
+          `Reassigned to ${reassignedPerson} (${reassignedDept}) for analysis by ${effectiveReviewer}.`)
         : adminRemarks.trim();
 
       const payload = {
@@ -870,8 +870,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 textColor: isClosedStatus
                   ? [22, 101, 52]
                   : (displayStatus === 'AWAITING REVIEW' || displayStatus === 'APPROVAL PENDING')
-                  ? [180, 83, 9]
-                  : [225, 29, 72]
+                    ? [180, 83, 9]
+                    : [225, 29, 72]
               }
             }
           ],
@@ -912,7 +912,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             targetReq.created_by_email || '—'
           ],
           [
-            { content: 'Report Created At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Issue Created At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             targetReq.created_at ? formatDate(targetReq.created_at) : '—',
             { content: 'Last Updated At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             targetReq.updated_at ? formatDate(targetReq.updated_at) : (targetReq.created_at ? formatDate(targetReq.created_at) : '—')
@@ -1180,12 +1180,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
   return createPortal(
     <>
-      <div 
+      <div
         className="fixed inset-0 !m-0 !mt-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150"
         style={{ zIndex: 99990 }}
         onClick={onClose}
       >
-        <div 
+        <div
           className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
@@ -1266,11 +1266,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             <button
               type="button"
               onClick={() => setActiveTab('requester')}
-              className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
-                activeTab === 'requester'
+              className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'requester'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
+                }`}
             >
               <Folder className="w-4 h-4" />
               <span>Requester Details</span>
@@ -1283,13 +1282,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 }
                 setActiveTab('closer');
               }}
-              className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
-                activeTab === 'closer'
+              className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'closer'
                   ? isClosed
                     ? 'border-emerald-600 text-emerald-700'
                     : 'border-amber-600 text-amber-700'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
+                }`}
             >
               <CheckCircle2 className={`w-4 h-4 ${isClosed ? 'text-emerald-600' : 'text-amber-600'}`} />
               <span>Closer Details</span>
@@ -1315,11 +1313,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 }
                 setActiveTab('sign_tracks');
               }}
-              className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${
-                activeTab === 'sign_tracks'
+              className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'sign_tracks'
                   ? 'border-indigo-600 text-indigo-700'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
+                }`}
             >
               <ShieldCheck className={`w-4 h-4 ${isClosed ? 'text-emerald-600' : 'text-indigo-600'}`} />
               <span>Sign Fields &amp; Tracks</span>
@@ -1413,14 +1410,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     </div>
 
                     {/* Step 3: Containment / Closer Action */}
-                    <div className={`p-2.5 rounded-xl border space-y-1 ${
-                      hasCloserSubmitted
+                    <div className={`p-2.5 rounded-xl border space-y-1 ${hasCloserSubmitted
                         ? 'bg-white/5 border-white/10'
                         : 'bg-amber-500/10 border-amber-400/30'
-                    }`}>
-                      <div className={`flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-wider ${
-                        hasCloserSubmitted ? 'text-teal-400' : 'text-amber-300'
                       }`}>
+                      <div className={`flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-wider ${hasCloserSubmitted ? 'text-teal-400' : 'text-amber-300'
+                        }`}>
                         {hasCloserSubmitted ? (
                           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                         ) : (
@@ -1435,20 +1430,18 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         {req.closer_updated_by
                           ? `Filled by: ${req.closer_updated_by}`
                           : req.temporary_closed_by
-                          ? `By: ${req.temporary_closed_by}`
-                          : (formatDate(req.temporary_target_date || req.permanent_target_date) ? `Target: ${formatDate(req.temporary_target_date || req.permanent_target_date)}` : 'Awaiting Closer')}
+                            ? `By: ${req.temporary_closed_by}`
+                            : (formatDate(req.temporary_target_date || req.permanent_target_date) ? `Target: ${formatDate(req.temporary_target_date || req.permanent_target_date)}` : 'Awaiting Closer')}
                       </div>
                     </div>
 
                     {/* Step 4: Admin Sign-Off */}
-                    <div className={`p-2.5 rounded-xl border space-y-1 ${
-                      isClosed
+                    <div className={`p-2.5 rounded-xl border space-y-1 ${isClosed
                         ? 'bg-emerald-500/15 border-emerald-400/30'
                         : 'bg-white/5 border-white/10'
-                    }`}>
-                      <div className={`flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-wider ${
-                        isClosed ? 'text-emerald-400' : 'text-slate-400'
                       }`}>
+                      <div className={`flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-wider ${isClosed ? 'text-emerald-400' : 'text-slate-400'
+                        }`}>
                         {isClosed ? (
                           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                         ) : (
@@ -1521,9 +1514,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   {/* Reassign Closer Block (Matching Image 2) */}
                   <div className="space-y-2">
                     {!isReassignOpen ? (
-                      <div className={`flex items-center justify-between p-3 rounded-xl border transition ${
-                        isClosed ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-slate-50 border-slate-200/90'
-                      }`}>
+                      <div className={`flex items-center justify-between p-3 rounded-xl border transition ${isClosed ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-slate-50 border-slate-200/90'
+                        }`}>
                         <div className="flex items-center gap-2.5">
                           <UserCheck className="w-4 h-4 text-blue-600 shrink-0" />
                           <div className="text-left">
@@ -1600,11 +1592,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                                   setAdminErrors(prev => ({ ...prev, reassignDept: '' }));
                                 }
                               }}
-                              className={`w-full px-2.5 py-2 bg-white border rounded-xl font-semibold text-slate-800 text-xs outline-none cursor-pointer ${
-                                adminErrors.reassignDept
+                              className={`w-full px-2.5 py-2 bg-white border rounded-xl font-semibold text-slate-800 text-xs outline-none cursor-pointer ${adminErrors.reassignDept
                                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                                   : 'border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                              }`}
+                                }`}
                             >
                               <option value="">Select Department</option>
                               {departmentList.map((dept) => (
@@ -1644,13 +1635,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                                   setIsReassignUserDropdownOpen(prev => !prev);
                                 }
                               }}
-                              className={`min-h-[38px] p-1.5 px-2.5 bg-white border rounded-xl flex items-center justify-between gap-2 cursor-pointer transition ${
-                                !reassignedDept
+                              className={`min-h-[38px] p-1.5 px-2.5 bg-white border rounded-xl flex items-center justify-between gap-2 cursor-pointer transition ${!reassignedDept
                                   ? 'bg-slate-100/70 border-slate-200 cursor-not-allowed select-none'
                                   : adminErrors.reassignPerson
-                                  ? 'border-rose-400 bg-rose-50/20'
-                                  : 'border-slate-300 focus-within:ring-2 focus-within:ring-blue-500/20'
-                              }`}
+                                    ? 'border-rose-400 bg-rose-50/20'
+                                    : 'border-slate-300 focus-within:ring-2 focus-within:ring-blue-500/20'
+                                }`}
                             >
                               <div className="flex items-center gap-1.5 flex-wrap flex-1">
                                 {!reassignedDept ? (
@@ -1707,9 +1697,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                                             e.stopPropagation();
                                             handleToggleReassignUser(u.name);
                                           }}
-                                          className={`p-2 rounded-lg text-xs flex items-center justify-between cursor-pointer transition ${
-                                            isSel ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                                          }`}
+                                          className={`p-2 rounded-lg text-xs flex items-center justify-between cursor-pointer transition ${isSel ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                                            }`}
                                         >
                                           <span>{u.name}</span>
                                           {isSel && <Check className="w-3.5 h-3.5 text-blue-600" />}
@@ -1793,13 +1782,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                             setAdminErrors(prev => ({ ...prev, remarks: '' }));
                           }
                         }}
-                        className={`w-full px-3.5 py-2.5 border rounded-xl text-xs outline-none transition font-medium leading-relaxed resize-none ${
-                          !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isClosed
+                        className={`w-full px-3.5 py-2.5 border rounded-xl text-xs outline-none transition font-medium leading-relaxed resize-none ${!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isClosed
                             ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                             : adminErrors.remarks
-                            ? 'border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
-                            : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
-                        }`}
+                              ? 'border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
+                              : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
+                          }`}
                       />
 
                       {adminErrors.remarks ? (
@@ -1866,13 +1854,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                             setAdminErrors(prev => ({ ...prev, reviewedBy: '' }));
                           }
                         }}
-                        className={`w-full px-3.5 py-2 border rounded-xl text-xs font-semibold outline-none transition ${
-                          !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isClosed
+                        className={`w-full px-3.5 py-2 border rounded-xl text-xs font-semibold outline-none transition ${!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isClosed
                             ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                             : adminErrors.reviewedBy
-                            ? 'border-rose-400 bg-rose-50/20'
-                            : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
-                        }`}
+                              ? 'border-rose-400 bg-rose-50/20'
+                              : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
+                          }`}
                       />
 
                       {adminErrors.reviewedBy ? (
@@ -1925,13 +1912,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                             setAdminErrors(prev => ({ ...prev, status: '' }));
                           }
                         }}
-                        className={`w-full px-3.5 py-2 border rounded-xl font-bold text-xs outline-none transition cursor-pointer ${
-                          !isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isClosed
+                        className={`w-full px-3.5 py-2 border rounded-xl font-bold text-xs outline-none transition cursor-pointer ${!isAdmin || (isCloserDataToBeUpdated && !isReassignOpen) || isClosed
                             ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                             : adminErrors.status
-                            ? 'border-rose-400 bg-rose-50/20'
-                            : 'bg-white border-slate-300 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                        }`}
+                              ? 'border-rose-400 bg-rose-50/20'
+                              : 'bg-white border-slate-300 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                          }`}
                       >
                         {isReassignOpen ? (
                           <option value="OPEN">PENDING (Awaiting Closer)</option>
@@ -2037,11 +2023,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <ArrowRightLeft className="w-4 h-4 text-purple-600" />
                       <span>REASSIGNMENT TRACKING HISTORY ({reassignCount})</span>
                     </div>
-                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border font-mono ${
-                      hasReassignments
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border font-mono ${hasReassignments
                         ? 'bg-purple-100 text-purple-800 border-purple-300'
                         : 'bg-slate-100 text-slate-600 border-slate-200'
-                    }`}>
+                      }`}>
                       Reassigned: {hasReassignments ? 'Yes' : 'No'}
                     </span>
                   </div>
@@ -2403,11 +2388,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 )}
 
                 {/* 7. Closer Status & Sign-off Details */}
-                <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
-                  isClosed
+                <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${isClosed
                     ? 'bg-emerald-50/70 border-emerald-200/90'
                     : 'bg-amber-50/70 border-amber-200/90'
-                }`}>
+                  }`}>
                   <div className="flex items-center gap-2">
                     {isClosed ? (
                       <>
@@ -2470,11 +2454,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                             setEditErrors(prev => ({ ...prev, batch_date: '' }));
                           }
                         }}
-                        className={`w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 outline-none transition ${
-                          editErrors.batch_date
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 outline-none transition ${editErrors.batch_date
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                             : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
-                        }`}
+                          }`}
                       />
                       {editErrors.batch_date && (
                         <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -2495,11 +2478,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                             setEditErrors(prev => ({ ...prev, shift: '' }));
                           }
                         }}
-                        className={`w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 outline-none transition ${
-                          editErrors.shift
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 outline-none transition ${editErrors.shift
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                             : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
-                        }`}
+                          }`}
                       >
                         <option value="Shift 1">Shift 1 (06:30 AM - 03:00 PM)</option>
                         <option value="Shift 2">Shift 2 (03:00 PM - 11:30 PM)</option>
@@ -2534,11 +2516,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                             setEditErrors(prev => ({ ...prev, four_m: '' }));
                           }
                         }}
-                        className={`w-full px-3 py-2 rounded-xl text-xs font-bold outline-none transition ${
-                          editErrors.four_m
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-bold outline-none transition ${editErrors.four_m
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-rose-800'
                             : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-amber-800'
-                        }`}
+                          }`}
                       >
                         <option value="MAN">MAN</option>
                         <option value="MACHINE">MACHINE</option>
@@ -2565,11 +2546,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                             setEditErrors(prev => ({ ...prev, resp: '' }));
                           }
                         }}
-                        className={`w-full px-3 py-2 rounded-xl text-xs font-bold text-slate-900 outline-none transition ${
-                          editErrors.resp
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-bold text-slate-900 outline-none transition ${editErrors.resp
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                             : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
-                        }`}
+                          }`}
                       >
                         <option value="PRODUCTION">PRODUCTION</option>
                         <option value="QUALITY">QUALITY</option>
@@ -2592,11 +2572,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </label>
                       <div
                         onClick={() => setIsUserDropdownOpen(prev => !prev)}
-                        className={`w-full min-h-[38px] px-3 py-1.5 rounded-xl text-xs cursor-pointer flex items-center justify-between gap-2 transition ${
-                          editErrors.resp_person
+                        className={`w-full min-h-[38px] px-3 py-1.5 rounded-xl text-xs cursor-pointer flex items-center justify-between gap-2 transition ${editErrors.resp_person
                             ? 'border border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20'
                             : 'bg-white border border-slate-300 hover:border-slate-400 focus:ring-2 focus:ring-blue-500/20'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-1.5 flex-wrap min-w-0 py-0.5">
                           {getSelectedUsers().length > 0 ? (
@@ -2657,9 +2636,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                                   <div
                                     key={u.id || u.name}
                                     onClick={() => handleToggleUser(u.name)}
-                                    className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition select-none ${
-                                      isChecked ? 'bg-blue-50 text-blue-900 font-semibold' : 'hover:bg-slate-50 text-slate-700'
-                                    }`}
+                                    className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition select-none ${isChecked ? 'bg-blue-50 text-blue-900 font-semibold' : 'hover:bg-slate-50 text-slate-700'
+                                      }`}
                                   >
                                     <div className="flex items-center gap-2">
                                       <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isChecked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300'}`}>
@@ -2705,11 +2683,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                           }
                         }}
                         placeholder="Model name / Part description"
-                        className={`w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition ${
-                          editErrors.model
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition ${editErrors.model
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                             : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
-                        }`}
+                          }`}
                       />
                       {editErrors.model && (
                         <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -2732,11 +2709,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                             setEditErrors(prev => ({ ...prev, actual_qty: '' }));
                           }
                         }}
-                        className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold text-slate-900 outline-none transition ${
-                          editErrors.actual_qty
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold text-slate-900 outline-none transition ${editErrors.actual_qty
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                             : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
-                        }`}
+                          }`}
                       />
                       {editErrors.actual_qty && (
                         <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -2759,11 +2735,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                           }
                         }}
                         placeholder="e.g. Line 2 Assembly"
-                        className={`w-full px-3 py-2 rounded-xl text-xs text-slate-900 outline-none transition ${
-                          editErrors.problem_detected_at
+                        className={`w-full px-3 py-2 rounded-xl text-xs text-slate-900 outline-none transition ${editErrors.problem_detected_at
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                             : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
-                        }`}
+                          }`}
                       />
                       {editErrors.problem_detected_at && (
                         <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -2784,11 +2759,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                             setEditErrors(prev => ({ ...prev, received_from: '' }));
                           }
                         }}
-                        className={`w-full px-3 py-2 rounded-xl text-xs text-slate-900 outline-none transition cursor-pointer font-medium ${
-                          editErrors.received_from
+                        className={`w-full px-3 py-2 rounded-xl text-xs text-slate-900 outline-none transition cursor-pointer font-medium ${editErrors.received_from
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                             : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
-                        }`}
+                          }`}
                       >
                         <option value="">Select</option>
                         {IHLR_RECEIVED_FROM_OPTIONS.map((opt) => (
@@ -2831,11 +2805,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                           }
                         }}
                         placeholder="e.g. GURU"
-                        className={`w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition ${
-                          editErrors.analysis_done_by
+                        className={`w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition ${editErrors.analysis_done_by
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                             : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
-                        }`}
+                          }`}
                       />
                       {editErrors.analysis_done_by && (
                         <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -2882,11 +2855,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         }
                       }}
                       placeholder="Describe the defect phenomenon in detail..."
-                      className={`w-full p-3 rounded-2xl text-xs text-slate-900 outline-none transition leading-relaxed ${
-                        editErrors.problem
+                      className={`w-full p-3 rounded-2xl text-xs text-slate-900 outline-none transition leading-relaxed ${editErrors.problem
                           ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                           : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
-                      }`}
+                        }`}
                     />
                     {editErrors.problem && (
                       <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -2973,11 +2945,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   )}
 
                   {/* File Upload Trigger */}
-                  <label className={`flex items-center justify-center gap-2.5 p-4 rounded-2xl border-2 border-dashed transition cursor-pointer text-xs font-semibold ${
-                    editErrors.attachments
+                  <label className={`flex items-center justify-center gap-2.5 p-4 rounded-2xl border-2 border-dashed transition cursor-pointer text-xs font-semibold ${editErrors.attachments
                       ? 'border-rose-400 bg-rose-50/30 hover:border-rose-500 text-rose-700'
                       : 'border-slate-300 hover:border-blue-500 bg-slate-50/60 hover:bg-blue-50/40 text-slate-700'
-                  }`}>
+                    }`}>
                     <UploadCloud className={`w-4 h-4 ${editErrors.attachments ? 'text-rose-500' : 'text-blue-600'}`} />
                     <span>Upload Additional Evidence (Images, PDF, Excel, Word, PPT)</span>
                     <input
@@ -3023,13 +2994,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         return (
                           <div key={idx} className="space-y-1">
                             <div className="flex items-center gap-2.5">
-                              <span className={`px-2.5 py-1.5 rounded-lg font-mono font-black text-[11px] border shrink-0 transition ${
-                                isMandatory
+                              <span className={`px-2.5 py-1.5 rounded-lg font-mono font-black text-[11px] border shrink-0 transition ${isMandatory
                                   ? hasError
                                     ? 'bg-rose-50 border-rose-300 text-rose-700'
                                     : 'bg-amber-100 text-amber-800 border-amber-200'
                                   : 'bg-amber-100 text-amber-800 border-amber-200'
-                              }`}>
+                                }`}>
                                 {wLabel}:{isMandatory && <span className="text-rose-500 ml-0.5 font-bold">*</span>}
                               </span>
                               <input
@@ -3044,11 +3014,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                                   }
                                 }}
                                 placeholder={`QA Root Cause Level ${idx + 1}...${isMandatory ? ' (Mandatory)' : ''}`}
-                                className={`flex-1 px-3 py-1.5 rounded-xl text-xs text-slate-800 outline-none transition ${
-                                  hasError
+                                className={`flex-1 px-3 py-1.5 rounded-xl text-xs text-slate-800 outline-none transition ${hasError
                                     ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                                     : 'bg-white border border-amber-200/80 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
-                                }`}
+                                  }`}
                               />
                             </div>
                             {hasError && (

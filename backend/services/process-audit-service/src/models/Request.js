@@ -39,12 +39,15 @@ const ensureTable = async () => {
       }
     }
 
-    // Ensure created_by and created_by_id columns exist in MySQL without default value
+    // Ensure created_by, created_by_id, and created_by_email columns exist in MySQL without default value
     if (!colNames.includes('created_by')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN created_by VARCHAR(100) NULL`).catch(() => {});
     }
     if (!colNames.includes('created_by_id')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN created_by_id INT NULL`).catch(() => {});
+    }
+    if (!colNames.includes('created_by_email')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN created_by_email VARCHAR(150) NULL`).catch(() => {});
     }
 
     // Ensure executor resolution columns exist in MySQL
@@ -175,6 +178,7 @@ const ensureTable = async () => {
         closed_at TIMESTAMP NULL,
         created_by VARCHAR(100),
         created_by_id INT NULL,
+        created_by_email VARCHAR(150) NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
@@ -185,6 +189,33 @@ const ensureTable = async () => {
       JOIN users u ON r.created_by_id = u.id
       SET r.created_by = COALESCE(u.name, u.email)
       WHERE r.created_by IS NULL OR TRIM(r.created_by) = ''
+    `).catch(() => {});
+
+    // Ensure existing rows without created_by_email get populated from users table
+    await pool.query(`
+      UPDATE process_audit_requests
+      SET created_by_email = created_by
+      WHERE (created_by_email IS NULL OR TRIM(created_by_email) = '')
+        AND created_by LIKE '%@%'
+    `).catch(() => {});
+
+    await pool.query(`
+      UPDATE process_audit_requests r
+      JOIN users u ON (r.created_by_id = u.id OR (r.created_by IS NOT NULL AND LOWER(TRIM(r.created_by)) = LOWER(TRIM(u.name))))
+      SET r.created_by_email = u.email
+      WHERE (r.created_by_email IS NULL OR TRIM(r.created_by_email) = '') AND u.email IS NOT NULL AND TRIM(u.email) != ''
+    `).catch(() => {});
+
+    await pool.query(`
+      UPDATE process_audit_requests r
+      JOIN (
+        SELECT email FROM users 
+        WHERE (UPPER(TRIM(department)) = 'QAD' OR UPPER(TRIM(role)) = 'ADMIN') 
+          AND email IS NOT NULL AND TRIM(email) != '' 
+        ORDER BY id ASC LIMIT 1
+      ) u
+      SET r.created_by_email = u.email
+      WHERE (r.created_by_email IS NULL OR TRIM(r.created_by_email) = '')
     `).catch(() => {});
 
     // Clean up corrupted creator_remark where it was erroneously copied from comments or populated before closure/reopening
@@ -211,9 +242,13 @@ export const ProcessAuditRequest = {
   findAll: async (filters = {}) => {
     if (!pool) throw new Error('Database connection pool is not available');
     let query = `
-      SELECT r.*, COALESCE(NULLIF(TRIM(r.created_by), ''), u.name, u.email) AS created_by
+      SELECT r.*, 
+        COALESCE(NULLIF(TRIM(r.created_by), ''), u.name, u.email) AS created_by,
+        COALESCE(NULLIF(TRIM(r.created_by_email), ''), u.email, (
+          SELECT email FROM users WHERE (UPPER(TRIM(department)) = 'QAD' OR UPPER(TRIM(role)) = 'ADMIN') AND email IS NOT NULL AND TRIM(email) != '' LIMIT 1
+        )) AS created_by_email
       FROM process_audit_requests r
-      LEFT JOIN users u ON r.created_by_id = u.id
+      LEFT JOIN users u ON (r.created_by_id = u.id OR (r.created_by IS NOT NULL AND LOWER(TRIM(r.created_by)) = LOWER(TRIM(u.name))))
     `;
     const conditions = [];
     const params = [];
@@ -288,7 +323,16 @@ export const ProcessAuditRequest = {
   findById: async (id) => {
     if (!pool) return null;
     const numericId = parseInt(String(id).replace(/\D/g, ''), 10) || id;
-    const [rows] = await pool.query('SELECT * FROM process_audit_requests WHERE id = ? OR issue_no = ?', [numericId, String(id)]);
+    const [rows] = await pool.query(`
+      SELECT r.*, 
+        COALESCE(NULLIF(TRIM(r.created_by), ''), u.name, u.email) AS created_by,
+        COALESCE(NULLIF(TRIM(r.created_by_email), ''), u.email, (
+          SELECT email FROM users WHERE (UPPER(TRIM(department)) = 'QAD' OR UPPER(TRIM(role)) = 'ADMIN') AND email IS NOT NULL AND TRIM(email) != '' LIMIT 1
+        )) AS created_by_email
+      FROM process_audit_requests r
+      LEFT JOIN users u ON (r.created_by_id = u.id OR (r.created_by IS NOT NULL AND LOWER(TRIM(r.created_by)) = LOWER(TRIM(u.name))))
+      WHERE r.id = ? OR r.issue_no = ?
+    `, [numericId, String(id)]);
     return rows[0] || null;
   },
 
@@ -309,6 +353,7 @@ export const ProcessAuditRequest = {
     const status = data.status || 'Pending';
     const created_by = data.created_by || data.createdBy || data.creator_name || data.creator || null;
     const created_by_id = data.created_by_id || data.createdById || data.userId || null;
+    const created_by_email = data.created_by_email || data.creator_email || data.email || null;
 
     // issue_no can be passed from frontend or match the auto-increment id
     let issue_no = data.issue_no || data.requestId || '';
@@ -316,8 +361,8 @@ export const ProcessAuditRequest = {
     // Notice: id is omitted from the INSERT query so MySQL's AUTO_INCREMENT automatically assigns 1, 2, 3...
     const query = `
       INSERT INTO process_audit_requests 
-      (issue_no, escalation_date, product, model, process_operation, shift, issue_type, priority, issue_observation, attachments, department, executor, comments, status, created_by, created_by_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (issue_no, escalation_date, product, model, process_operation, shift, issue_type, priority, issue_observation, attachments, department, executor, comments, status, created_by, created_by_id, created_by_email)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const [result] = await pool.query(query, [
@@ -336,7 +381,8 @@ export const ProcessAuditRequest = {
       comments,
       status,
       created_by,
-      created_by_id
+      created_by_id,
+      created_by_email
     ]);
 
     const insertedId = result.insertId;
@@ -464,7 +510,7 @@ export const ProcessAuditRequest = {
     const allowedFields = [
       'issue_no', 'escalation_date', 'product', 'model', 'process_operation',
       'shift', 'issue_type', 'priority', 'issue_observation', 'attachments',
-      'department', 'executor', 'comments', 'status', 'created_by', 'created_by_id',
+      'department', 'executor', 'comments', 'status', 'created_by', 'created_by_id', 'created_by_email',
       'root_cause', 'corrective_action', 'action_attachments', 'standardization_details',
       'target_date', 'action_taken_by', 'approved_by', 'approved_by_id',
       'approved_by_email', 'creator_remark', 'reviewed_by', 'reviewed_by_id', 'reviewed_by_email', 'closed_by', 'closed_by_id',
