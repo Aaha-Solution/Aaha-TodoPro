@@ -87,13 +87,37 @@ const ProcessAuditApprovals = () => {
   const [searchParams] = useSearchParams();
   const queryRequestId = searchParams.get('requestId') || searchParams.get('id');
 
+  // Detect if the current page load is a browser reload / refresh
+  const isReload = (() => {
+    try {
+      const navEntries = performance.getEntriesByType('navigation');
+      if (navEntries.length > 0) return navEntries[0].type === 'reload';
+      return performance.navigation.type === 1;
+    } catch {
+      return false;
+    }
+  })();
+
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState(() => location.state?.search || '');
+  const [search, setSearch] = useState(() => (isReload ? '' : (location.state?.search || '')));
 
   useEffect(() => {
+    if (isReload) {
+      setSearch('');
+      setSelectedStatus('All');
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (_) {}
+      return;
+    }
+
     if (location.state?.search) {
       setSearch(location.state.search);
+      // Clean up location.state from history so subsequent browser refresh does not re-apply stale search
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (_) {}
     }
   }, [location.state]);
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -533,7 +557,7 @@ const ProcessAuditApprovals = () => {
     setReassignUserSearch('');
   };
 
-  const loadRequests = async () => {
+  const loadRequests = async (isManualRefresh = false) => {
     setLoading(true);
     try {
       const params = {};
@@ -546,6 +570,14 @@ const ProcessAuditApprovals = () => {
       const data = await processAuditService.getRequests(params);
       const list = Array.isArray(data) ? data : [];
       setRequests(list);
+
+      // On manual refresh or browser reload, don't force deep-link highlight filter
+      if (isManualRefresh || isReload) {
+        if (list.length > 0) {
+          populateForm(list[0]);
+        }
+        return;
+      }
 
       // Deep linking, notification highlight, or re-selecting active request
       const targetReqNo = location.state?.highlightReq || location.state?.search || queryRequestId;
@@ -572,6 +604,20 @@ const ProcessAuditApprovals = () => {
       setLoading(false);
     }
   };
+
+  const handleRefresh = async () => {
+    setSearch('');
+    setSelectedStatus('All');
+    setCurrentPage(1);
+
+    try {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (_) {}
+
+    await loadRequests(true);
+  };
+
+  const hasActiveFilters = Boolean(search.trim() || selectedStatus !== 'All');
 
   useEffect(() => {
     loadRequests();
@@ -1493,6 +1539,29 @@ const ProcessAuditApprovals = () => {
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Update root causes, corrective actions, standardization details, evidence attachments, and sign off audit closures.
           </p>
+        </div>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition active:scale-95 cursor-pointer shadow-2xs"
+              title="Clear all active filters"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Clear Filters</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200 shadow-2xs transition active:scale-95 cursor-pointer"
+            title="Refresh queue and reset filters"
+          >
+            <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+            <span>Refresh</span>
+          </button>
         </div>
       </div>
 
@@ -2867,8 +2936,21 @@ const ProcessAuditApprovals = () => {
                   setSearch(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium transition"
+                className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium transition"
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             <div className="w-full sm:w-48">
@@ -2889,6 +2971,28 @@ const ProcessAuditApprovals = () => {
                 <option value="Rejected">Rejected</option>
               </select>
             </div>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleRefresh}
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold border border-rose-200 transition active:scale-95 cursor-pointer shrink-0 shadow-2xs"
+                title="Reset all active filters"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition active:scale-95 cursor-pointer shrink-0 shadow-2xs"
+              title="Refresh queue and reset filters"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+              <span>Refresh</span>
+            </button>
 
             <button
               onClick={() => setShowExportModal(true)}
@@ -2941,6 +3045,16 @@ const ProcessAuditApprovals = () => {
                       <td colSpan={8} className="py-12 text-center text-slate-400">
                         <ClipboardCheck className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                         <p className="font-semibold text-slate-600">No requests found matching criteria</p>
+                        {hasActiveFilters && (
+                          <button
+                            type="button"
+                            onClick={handleRefresh}
+                            className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition cursor-pointer shadow-2xs"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Reset Filters &amp; Show All</span>
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ) : (
