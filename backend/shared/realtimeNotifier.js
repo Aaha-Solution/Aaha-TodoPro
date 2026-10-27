@@ -6,7 +6,7 @@
 export const broadcastEvent = async (event, data = {}, room = null) => {
   if (!event) return;
   try {
-    const gatewayUrl = (process.env.GATEWAY_URL || 'http://localhost:5000').replace(/\/+$/, '');
+    const gatewayUrl = (process.env.GATEWAY_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
     const response = await fetch(`${gatewayUrl}/api/internal/broadcast`, {
       method: 'POST',
       headers: {
