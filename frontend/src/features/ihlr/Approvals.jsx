@@ -57,6 +57,26 @@ const IhlrApprovals = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(() => location.state?.search || '');
+
+  const handleSearchChange = (val) => {
+    setSearch(val);
+    try {
+      const curState = window.history.state;
+      if (curState && typeof curState === 'object') {
+        const nextState = {
+          ...curState,
+          usr: {
+            ...(curState.usr || {}),
+            search: val ? val : '',
+            highlightReq: val ? (curState.usr?.highlightReq || '') : ''
+          }
+        };
+        window.history.replaceState(nextState, document.title, window.location.pathname);
+      } else {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (_) {}
+  };
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [activeModalRequest, setActiveModalRequest] = useState(null);
   const [modalInitialEdit, setModalInitialEdit] = useState(false);
@@ -2551,9 +2571,19 @@ const IhlrApprovals = () => {
                 type="text"
                 placeholder="Search by req no, problem, or remarks..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium transition"
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium transition"
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => handleSearchChange('')}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             <div className="w-full sm:w-44">
