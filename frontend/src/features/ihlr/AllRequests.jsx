@@ -542,7 +542,7 @@ const IhlrAllRequests = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1100px]">
+          <table className="w-full text-left border-collapse min-w-[1850px]">
             <thead>
               {/* Top Phase Header Row */}
               <tr className="text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-200">
@@ -558,22 +558,22 @@ const IhlrAllRequests = () => {
               </tr>
               {/* Detailed Column Header Row */}
               <tr className="bg-[#f8fafc] border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                <th className="py-3 px-3 text-center w-12 whitespace-nowrap align-middle">SL NO</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap align-middle">REQ NO</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap align-middle">DATE / SHIFT</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap align-middle">PROBLEM</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap align-middle">MODEL</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap align-middle">DETECTED AT</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap align-middle">RECEIVED FROM</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap align-middle">ANALYSIS BY</th>
-                <th className="py-3 px-2 text-center whitespace-nowrap align-middle">DEFECT</th>
-                <th className="py-3 px-2 text-center whitespace-nowrap align-middle">4M / RESP</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap align-middle">OCCURRENCE CAUSE</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap align-middle">ACTION TAKEN</th>
-                <th className="py-3 px-3 text-center whitespace-nowrap align-middle">TARGET DATE</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap align-middle">REMARKS</th>
-                <th className="py-3 px-3 text-center whitespace-nowrap align-middle">STATUS</th>
-                <th className="py-3 px-3 text-right whitespace-nowrap align-middle">ACTIONS</th>
+                <th className="py-3.5 px-3 text-center w-14 whitespace-nowrap align-middle">SL NO</th>
+                <th className="py-3.5 px-3.5 text-left whitespace-nowrap align-middle">REQ NO</th>
+                <th className="py-3.5 px-3.5 text-left whitespace-nowrap align-middle">INCIDENT DATE / SHIFT</th>
+                <th className="py-3.5 px-4 text-left whitespace-nowrap min-w-[220px] align-middle">PROBLEM / DEFECT DESCRIPTION</th>
+                <th className="py-3.5 px-3.5 text-left whitespace-nowrap align-middle">MODEL NAME / PART</th>
+                <th className="py-3.5 px-3.5 text-left whitespace-nowrap align-middle">PROBLEM DETECTED AT</th>
+                <th className="py-3.5 px-3.5 text-left whitespace-nowrap align-middle">RECEIVED FROM (LINE/CELL)</th>
+                <th className="py-3.5 px-3.5 text-left whitespace-nowrap align-middle">ANALYSIS DONE BY</th>
+                <th className="py-3.5 px-2.5 text-center whitespace-nowrap align-middle">DEFECT EVIDENCE</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap align-middle">4M CATEGORY / RESPONSIBILITY</th>
+                <th className="py-3.5 px-4 text-left whitespace-nowrap min-w-[200px] align-middle">OCCURRENCE CAUSE (5-WHY)</th>
+                <th className="py-3.5 px-4 text-left whitespace-nowrap min-w-[200px] align-middle">TEMPORARY ACTION TAKEN</th>
+                <th className="py-3.5 px-3 text-center whitespace-nowrap align-middle">TARGET DATE</th>
+                <th className="py-3.5 px-3.5 text-left whitespace-nowrap align-middle">ADMIN REMARKS</th>
+                <th className="py-3.5 px-3 text-center whitespace-nowrap align-middle">STATUS</th>
+                <th className="py-3.5 px-3 text-right whitespace-nowrap align-middle">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
@@ -598,12 +598,12 @@ const IhlrAllRequests = () => {
                     </td>
 
                     {/* Req NO */}
-                    <td className="py-3.5 px-3 font-mono font-bold text-blue-600 whitespace-nowrap align-middle">
+                    <td className="py-3.5 px-3.5 font-mono font-bold text-blue-600 whitespace-nowrap align-middle">
                       {String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`}
                     </td>
 
-                    {/* Date / Shift */}
-                    <td className="py-3.5 px-3 whitespace-nowrap align-middle">
+                    {/* Incident Date / Shift */}
+                    <td className="py-3.5 px-3.5 whitespace-nowrap align-middle">
                       <div className="font-semibold text-slate-900">
                         {formatDateDDMMYYYY(r.batch_date)}
                       </div>
@@ -631,38 +631,38 @@ const IhlrAllRequests = () => {
                       </div>
                     </td>
 
-                    {/* Problem */}
-                    <td className="py-3.5 px-3 font-semibold text-slate-900 max-w-[160px] truncate align-middle" title={r.problem}>
+                    {/* Problem / Defect Description */}
+                    <td className="py-3.5 px-4 font-semibold text-slate-900 min-w-[200px] align-middle">
                       {r.problem}
                     </td>
 
-                    {/* Model */}
-                    <td className="py-3.5 px-3 font-bold text-blue-700 whitespace-nowrap align-middle">
+                    {/* Model Name / Part */}
+                    <td className="py-3.5 px-3.5 font-bold text-blue-700 whitespace-nowrap align-middle">
                       {r.model}
                     </td>
 
-                    {/* Detected At */}
-                    <td className="py-3.5 px-3 text-slate-700 whitespace-nowrap align-middle">
+                    {/* Problem Detected At */}
+                    <td className="py-3.5 px-3.5 text-slate-700 whitespace-nowrap align-middle">
                       {r.problem_detected_at}
                     </td>
 
-                    {/* Received From */}
-                    <td className="py-3.5 px-3 font-mono text-slate-600 whitespace-nowrap align-middle">
+                    {/* Received From (Line/Cell) */}
+                    <td className="py-3.5 px-3.5 font-mono text-slate-600 whitespace-nowrap align-middle">
                       {r.received_from}
                     </td>
 
-                    {/* Analysis By & Created By */}
-                    <td className="py-3.5 px-3 font-medium text-slate-800 whitespace-nowrap align-middle">
+                    {/* Analysis Done By & Created By */}
+                    <td className="py-3.5 px-3.5 font-medium text-slate-800 whitespace-nowrap align-middle">
                       <div>{r.analysis_done_by}</div>
                       {r.created_by && (
-                        <div className="text-[10px] text-slate-400 font-normal mt-0.5 truncate max-w-[110px]" title={`Created by ${r.created_by}`}>
+                        <div className="text-[10px] text-slate-400 font-normal mt-0.5 truncate max-w-[120px]" title={`Created by ${r.created_by}`}>
                           by {r.created_by}
                         </div>
                       )}
                     </td>
 
-                    {/* Defect Thumbnail */}
-                    <td className="py-3.5 px-2 text-center align-middle">
+                    {/* Defect Attachment Thumbnail */}
+                    <td className="py-3.5 px-2.5 text-center align-middle">
                       <div className="flex items-center justify-center">
                         <IhlrAttachmentThumbnail
                           rawAttachment={r.defect_image}
@@ -670,8 +670,8 @@ const IhlrAllRequests = () => {
                       </div>
                     </td>
 
-                    {/* 4M / Resp */}
-                    <td className="py-3.5 px-2 text-center whitespace-nowrap align-middle">
+                    {/* 4M Category / Responsibility */}
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap align-middle">
                       <div className="flex flex-col items-center justify-center">
                         <div className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold font-mono bg-amber-50 text-amber-800 border border-amber-200 mb-0.5">
                           {r.four_m || 'MAN'}
@@ -683,7 +683,7 @@ const IhlrAllRequests = () => {
                           const isReassigned = Boolean(formatReassignmentHistory(r.reassignment_history)?.hasReassignments);
                           return (
                             <div 
-                              className={`text-[9px] font-semibold truncate max-w-[110px] mx-auto text-center ${isReassigned ? 'text-purple-700' : 'text-blue-600'}`} 
+                              className={`text-[9px] font-semibold truncate max-w-[120px] mx-auto text-center ${isReassigned ? 'text-purple-700' : 'text-blue-600'}`} 
                               title={`${isReassigned ? 'Reassigned' : 'Assigned'}: ${r.resp_person}`}
                             >
                               {isReassigned ? `Reassigned: ${r.resp_person}` : r.resp_person}
@@ -691,20 +691,20 @@ const IhlrAllRequests = () => {
                           );
                         })()}
                         {(r.closer_updated_by || r.temporary_closed_by) && (
-                          <div className="text-[9px] text-emerald-700 font-bold truncate max-w-[110px] mx-auto text-center" title={`Closer Updated by: ${r.closer_updated_by || r.temporary_closed_by}`}>
+                          <div className="text-[9px] text-emerald-700 font-bold truncate max-w-[120px] mx-auto text-center" title={`Closer Updated by: ${r.closer_updated_by || r.temporary_closed_by}`}>
                             ✓ {r.closer_updated_by || r.temporary_closed_by}
                           </div>
                         )}
                       </div>
                     </td>
 
-                    {/* Occurrence Cause */}
-                    <td className="py-3.5 px-3 text-slate-600 max-w-[150px] truncate align-middle" title={Array.isArray(r.prod_why_why) ? (r.prod_why_why[0] || '') : (r.prod_why_why || r.occurrence_cause || '')}>
+                    {/* Occurrence Cause (First Why) */}
+                    <td className="py-3.5 px-4 text-slate-600 max-w-[200px] truncate align-middle" title={Array.isArray(r.prod_why_why) ? (r.prod_why_why[0] || '') : (r.prod_why_why || r.occurrence_cause || '')}>
                       {(Array.isArray(r.prod_why_why) ? r.prod_why_why[0] : (r.prod_why_why || r.occurrence_cause)) || '—'}
                     </td>
 
                     {/* Action Taken */}
-                    <td className="py-3.5 px-3 text-slate-800 font-medium max-w-[150px] truncate align-middle" title={r.temporary_action || r.permanent_fix || r.action || ''}>
+                    <td className="py-3.5 px-4 text-slate-800 font-medium max-w-[200px] truncate align-middle" title={r.temporary_action || r.permanent_fix || r.action || ''}>
                       {r.temporary_action || r.permanent_fix || r.action || '—'}
                     </td>
 
@@ -715,8 +715,8 @@ const IhlrAllRequests = () => {
                         : '—'}
                     </td>
 
-                    {/* Remarks */}
-                    <td className="py-3.5 px-3 text-slate-600 max-w-[140px] truncate align-middle" title={r.remarks || ''}>
+                    {/* Admin Remarks */}
+                    <td className="py-3.5 px-3.5 text-slate-600 max-w-[180px] truncate align-middle" title={r.remarks || ''}>
                       {r.remarks || '—'}
                     </td>
 
