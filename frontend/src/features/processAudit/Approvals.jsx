@@ -887,12 +887,12 @@ const ProcessAuditApprovals = () => {
       setEvidenceError(false);
     }
 
-    // 3. Temporary Target Date is mandatory (Admin cannot select future dates; Users have no date restriction)
+    // 3. Temporary Target Date is mandatory (must be present or future: today or later)
     if (!closerTargetDate || !closerTargetDate.trim()) {
       setCloserTargetDateError('Temporary Target Date is required.');
       hasCloserErrors = true;
-    } else if (isAdmin && closerTargetDate > todayStr) {
-      setCloserTargetDateError('Temporary Target Date cannot be a future date for Admin. Please select today or a past date.');
+    } else if (closerTargetDate < todayStr) {
+      setCloserTargetDateError('Temporary Target Date must be today or a future date.');
       hasCloserErrors = true;
     } else {
       setCloserTargetDateError(false);
@@ -953,7 +953,7 @@ const ProcessAuditApprovals = () => {
       if (whyErrors.w1 || whyErrors.w2 || whyErrors.w3) missing.push('5-Why Occurrence Causes (W1-W3)');
       if (!closerAction || !closerAction.trim()) missing.push('Temporary Action');
       if (!hasTempEvidence) missing.push('Temporary Evidence Attachment');
-      if (!closerTargetDate || !closerTargetDate.trim() || (isAdmin && closerTargetDate > todayStr)) missing.push('Temporary Target Date');
+      if (!closerTargetDate || !closerTargetDate.trim() || closerTargetDate < todayStr) missing.push('Temporary Target Date');
       if (!closerTemporaryClosedBy || !closerTemporaryClosedBy.trim() || /\d/.test(closerTemporaryClosedBy)) missing.push('Temporary Closed By');
       if (!closerPermanentFix || !closerPermanentFix.trim()) missing.push('Permanent Action');
       if (!hasPermEvidence) missing.push('Permanent Evidence Attachment');
@@ -1836,18 +1836,21 @@ const ProcessAuditApprovals = () => {
                     </span>
                   )}
                 </label>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  Min: <strong className="text-slate-600 font-semibold">{formatDateDDMMYYYY(todayStr)}</strong>
+                </span>
               </div>
               <DateInput
                 disabled={!canUpdateCloserFields}
-                max={isAdmin ? todayStr : undefined}
+                min={todayStr}
                 value={closerTargetDate}
                 onChange={(e) => {
                   const val = e.target.value;
                   setCloserTargetDate(val);
                   if (!val || !val.trim()) {
                     setCloserTargetDateError('Temporary Target Date is required.');
-                  } else if (isAdmin && val > todayStr) {
-                    setCloserTargetDateError('Temporary Target Date cannot be a future date for Admin. Please select today or a past date.');
+                  } else if (val < todayStr) {
+                    setCloserTargetDateError('Temporary Target Date must be today or a future date.');
                   } else {
                     setCloserTargetDateError(false);
                   }
