@@ -196,44 +196,48 @@ export const exportIhlrToExcel = async ({
     throw new Error('No data available to export.');
   }
 
-  // Parse defect files for each request once
+  // Parse defect files, temporary evidence files, and permanent evidence files
   const reqParsedDefectFiles = reqList.map((r) => parseAttachments(r.defect_image));
+  const reqParsedTempFiles = reqList.map((r) => parseAttachments(r.temporary_evidence_attachment || r.evidence_attachment));
+  const reqParsedPermFiles = reqList.map((r) => parseAttachments(r.permanent_evidence_attachment));
 
-  // Determine maximum number of defect evidence attachments across all exported requests
-  const maxDefectCount = Math.max(
-    1,
-    ...reqParsedDefectFiles.map((files) => files.length)
-  );
+  // Determine maximum counts for each evidence category across all exported requests
+  const maxDefectCount = Math.max(1, ...reqParsedDefectFiles.map((files) => files.length));
+  const maxTempCount = Math.max(1, ...reqParsedTempFiles.map((files) => files.length));
+  const maxPermCount = Math.max(1, ...reqParsedPermFiles.map((files) => files.length));
 
-  // Preload evidence data & image thumbnails for ALL attachments across all rows
-  const rowEvidenceData = await Promise.all(
-    reqList.map(async (r, rIdx) => {
-      const defectFiles = reqParsedDefectFiles[rIdx];
-      const fileDataList = await Promise.all(
-        defectFiles.map(async (file) => {
-          const isImg = isImageAttachment(file);
-          if (isImg) {
-            const imgData = await fetchAttachmentImageBase64(file, 'ihlr');
-            if (imgData && imgData.base64) {
-              return {
-                isImage: true,
-                imgData,
-                name: file.name || file.filename || 'Evidence Image',
-                file
-              };
-            }
+  // Helper to load file metadata and image base64
+  const loadFilesData = async (files) => {
+    return await Promise.all(
+      files.map(async (file) => {
+        const isImg = isImageAttachment(file);
+        if (isImg) {
+          const imgData = await fetchAttachmentImageBase64(file, 'ihlr');
+          if (imgData && imgData.base64) {
+            return {
+              isImage: true,
+              imgData,
+              name: file.name || file.filename || 'Evidence Image',
+              file
+            };
           }
-          return {
-            isImage: false,
-            imgData: null,
-            name: file.name || file.filename || (typeof file === 'string' ? file : 'Attachment'),
-            file
-          };
-        })
-      );
-      return fileDataList;
-    })
-  );
+        }
+        return {
+          isImage: false,
+          imgData: null,
+          name: file.name || file.filename || (typeof file === 'string' ? file : 'Attachment'),
+          file
+        };
+      })
+    );
+  };
+
+  // Preload evidence data & image thumbnails for ALL attachments across all rows (Defect, Temporary, Permanent)
+  const [rowDefectData, rowTempData, rowPermData] = await Promise.all([
+    Promise.all(reqParsedDefectFiles.map(loadFilesData)),
+    Promise.all(reqParsedTempFiles.map(loadFilesData)),
+    Promise.all(reqParsedPermFiles.map(loadFilesData))
+  ]);
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'India Nippon Electricals Limited';
@@ -244,18 +248,42 @@ export const exportIhlrToExcel = async ({
   });
 
   // Dynamic headers for defect evidence (DEFECT EVIDENCE 1, DEFECT EVIDENCE 2, ...)
-  const evidenceHeaders = Array.from({ length: maxDefectCount }, (_, i) => `DEFECT EVIDENCE ${i + 1}`);
+  const defectEvidenceHeaders = Array.from(
+    { length: maxDefectCount },
+    (_, i) => (maxDefectCount > 1 ? `DEFECT EVIDENCE ${i + 1}` : 'DEFECT EVIDENCE 1')
+  );
 
-  // Calculate dynamic section column boundaries
-  // Requestor starts at 1:
-  // 13 fixed columns (SL NO through USER NAME) + maxDefectCount evidence columns + 7 trailing columns (QA WHY 1..5, RAISED BY, CREATED AT)
+  // Dynamic headers for closer temporary evidence (TEMPORARY EVIDENCE 1, TEMPORARY EVIDENCE 2, ...)
+  const tempEvidenceHeaders = Array.from(
+    { length: maxTempCount },
+    (_, i) => (maxTempCount > 1 ? `TEMPORARY EVIDENCE ${i + 1}` : 'TEMPORARY EVIDENCE 1')
+  );
+
+  // Dynamic headers for closer permanent evidence (PERMANENT EVIDENCE 1, PERMANENT EVIDENCE 2, ...)
+  const permEvidenceHeaders = Array.from(
+    { length: maxPermCount },
+    (_, i) => (maxPermCount > 1 ? `PERMANENT EVIDENCE ${i + 1}` : 'PERMANENT EVIDENCE 1')
+  );
+
+  // Calculate dynamic section column boundaries:
+  // 1. Requestor: 13 fixed columns (SL NO through USER NAME) + maxDefectCount + 7 fixed columns (QA WHY 1..5, RAISED BY, CREATED AT)
   const requestorEndCol = 20 + maxDefectCount;
+
+  // 2. Closer: 8 fixed columns (PROD WHY 1..5, TEMP ACTION, TEMP TARGET DATE, TEM CLOSED BY)
+  //            + maxTempCount (TEMPORARY EVIDENCE 1..N)
+  //            + 3 fixed columns (PERMANENT ACTION, PERMANENT TARGET DATE, PERM CLOSED BY)
+  //            + maxPermCount (PERMANENT EVIDENCE 1..N)
   const closerStartCol = requestorEndCol + 1;
-  const closerEndCol = closerStartCol + 13 - 1; // 13 columns for Closer
+  const closerColCount = 11 + maxTempCount + maxPermCount;
+  const closerEndCol = closerStartCol + closerColCount - 1;
+
+  // 3. Reassignment Tracking: 2 columns (REASSIGNED STATUS, REASSIGNMENT DETAILS)
   const reassignStartCol = closerEndCol + 1;
-  const reassignEndCol = reassignStartCol + 2 - 1; // 2 columns for Reassignment Tracking
+  const reassignEndCol = reassignStartCol + 2 - 1;
+
+  // 4. Remarks, Review & Status: 3 columns (REMARKS, REVIEWED BY, STATUS)
   const statusStartCol = reassignEndCol + 1;
-  const statusEndCol = statusStartCol + 3 - 1; // 3 columns for Remarks, Review & Status
+  const statusEndCol = statusStartCol + 3 - 1;
 
   // Dynamic column widths configuration
   const colWidths = [
@@ -273,7 +301,7 @@ export const exportIhlrToExcel = async ({
     16, // 11: 4M CATEGORY
     18, // 12: RESPONSIBILITY (RESP)
     22, // 13: USER NAME (BASED ON DEP)
-    // 14 .. 13 + maxDefectCount: Dynamic DEFECT EVIDENCE columns (Width 22 fits 85px thumbnails)
+    // Dynamic Defect Evidence columns
     ...Array(maxDefectCount).fill(22),
     // Remaining Requestor (QA 5-Why & metadata)
     20, // QA WHY 1
@@ -283,7 +311,7 @@ export const exportIhlrToExcel = async ({
     20, // QA WHY 5
     18, // RAISED BY
     14, // CREATED AT
-    // Closer (Temporary & Permanent Actions)
+    // Closer before Temp Evidence
     20, // PROD WHY 1
     20, // PROD WHY 2
     20, // PROD WHY 3
@@ -292,11 +320,14 @@ export const exportIhlrToExcel = async ({
     30, // TEMPORARY ACTION
     16, // TEMPORARY TARGET DATE
     18, // TEM CLOSED BY
-    26, // TEMPORARY EVIDENCE
+    // Dynamic Temporary Evidence columns
+    ...Array(maxTempCount).fill(22),
+    // Closer between Temp and Perm Evidence
     30, // PERMANENT ACTION
     16, // PERMANENT TARGET DATE
     18, // PERM CLOSED BY
-    26, // PERMANENT EVIDENCE
+    // Dynamic Permanent Evidence columns
+    ...Array(maxPermCount).fill(22),
     // Reassignment Tracking
     16, // REASSIGNED STATUS
     38, // REASSIGNMENT DETAILS
@@ -361,15 +392,20 @@ export const exportIhlrToExcel = async ({
     'PROBLEM / DEFECT DESCRIPTION', 'PROBLEM DETECTED AT', 'RECEIVED FROM (LINE/CELL)',
     'ANALYSIS DONE BY', 'ACTUAL REJECTED QTY', '4M CATEGORY',
     'RESPONSIBILITY (RESP)', 'USER NAME (BASED ON DEP)',
-    // Dynamic Evidence columns (DEFECT EVIDENCE 1, DEFECT EVIDENCE 2, ...)
-    ...evidenceHeaders,
+    // Dynamic Defect Evidence columns (DEFECT EVIDENCE 1, DEFECT EVIDENCE 2, ...)
+    ...defectEvidenceHeaders,
     // 7 trailing Requestor columns
     'QA WHY 1', 'QA WHY 2', 'QA WHY 3', 'QA WHY 4', 'QA WHY 5',
     'RAISED BY', 'CREATED AT',
-    // 13 Closer columns
+    // Closer before Temp Evidence
     'PROD WHY 1', 'PROD WHY 2', 'PROD WHY 3', 'PROD WHY 4', 'PROD WHY 5',
-    'TEMPORARY ACTION', 'TEMPORARY TARGET DATE', 'TEM CLOSED BY', 'TEMPORARY EVIDENCE',
-    'PERMANENT ACTION', 'PERMANENT TARGET DATE', 'PERM CLOSED BY', 'PERMANENT EVIDENCE',
+    'TEMPORARY ACTION', 'TEMPORARY TARGET DATE', 'TEM CLOSED BY',
+    // Dynamic Temporary Evidence columns (TEMPORARY EVIDENCE 1, TEMPORARY EVIDENCE 2, ...)
+    ...tempEvidenceHeaders,
+    // Closer between Temp and Perm Evidence
+    'PERMANENT ACTION', 'PERMANENT TARGET DATE', 'PERM CLOSED BY',
+    // Dynamic Permanent Evidence columns (PERMANENT EVIDENCE 1, PERMANENT EVIDENCE 2, ...)
+    ...permEvidenceHeaders,
     // 2 Reassignment Tracking columns
     'REASSIGNED STATUS', 'REASSIGNMENT DETAILS',
     // 3 Remarks, Reviewed By & Status columns
@@ -414,29 +450,56 @@ export const exportIhlrToExcel = async ({
     right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
   };
 
-  const shift = maxDefectCount - 1;
+  // Calculate 1-indexed column locations
+  const defectColStart = 14;
+  const createdAtCol = 20 + maxDefectCount;
+
+  const prodWhysStartCol = createdAtCol + 1;
+  const tempActionCol = prodWhysStartCol + 5;
+  const tempTargetDateCol = prodWhysStartCol + 6;
+  const tempClosedByCol = prodWhysStartCol + 7;
+  const tempColStart = prodWhysStartCol + 8;
+
+  const permActionCol = tempColStart + maxTempCount;
+  const permTargetDateCol = permActionCol + 1;
+  const permClosedByCol = permActionCol + 2;
+  const permColStart = permActionCol + 3;
+
+  const reassignStatusCol = permColStart + maxPermCount;
+  const reassignDetailsCol = reassignStatusCol + 1;
+
+  const remarksCol = reassignDetailsCol + 1;
+  const reviewedByCol = remarksCol + 1;
+  const statusCol = remarksCol + 2;
 
   reqList.forEach((r, idx) => {
-    const fileDataList = rowEvidenceData[idx] || [];
-    const evidenceFiles = parseAttachments(r.temporary_evidence_attachment || r.evidence_attachment);
-    const permanentEvidenceFiles = parseAttachments(r.permanent_evidence_attachment);
+    const defectList = rowDefectData[idx] || [];
+    const tempList = rowTempData[idx] || [];
+    const permList = rowPermData[idx] || [];
     const rowNum = idx + 3;
 
     const { reassignedStatus, reassignmentDetails, hasReassignments, count } = formatReassignmentHistory(r.reassignment_history);
 
     // Build values for dynamic evidence columns
-    const evidenceValues = [];
-    for (let e = 0; e < maxDefectCount; e++) {
-      const fileItem = fileDataList[e];
-      if (!fileItem) {
-        evidenceValues.push('—');
-      } else if (fileItem.isImage && fileItem.imgData?.base64) {
-        // Thumbnail image will be embedded over this cell
-        evidenceValues.push('');
-      } else {
-        evidenceValues.push(fileItem.name || 'Attachment');
+    const buildEvidenceValues = (fileList, maxCount) => {
+      const values = [];
+      for (let e = 0; e < maxCount; e++) {
+        const fileItem = fileList[e];
+        if (!fileItem) {
+          values.push('—');
+        } else if (fileItem.isImage && fileItem.imgData?.base64) {
+          // Thumbnail image will be embedded over this cell
+          values.push('');
+        } else {
+          values.push(fileItem.name || 'Attachment');
+        }
       }
-    }
+      return values;
+    };
+
+    const defectValues = buildEvidenceValues(defectList, maxDefectCount);
+    const tempValues = buildEvidenceValues(tempList, maxTempCount);
+    const permValues = buildEvidenceValues(permList, maxPermCount);
 
     const rowData = [
       // 1-13 Requestor (Strictly in CreateRequest form order!)
@@ -454,8 +517,8 @@ export const exportIhlrToExcel = async ({
       r.resp || '—',
       r.resp_person || '—',
 
-      // 14 .. 13 + maxDefectCount: Dynamic Defect Evidence values
-      ...evidenceValues,
+      // Defect Evidence values
+      ...defectValues,
 
       // Trailing Requestor columns
       r.why_why?.[0] || r.qa_why_why?.[0] || '—',
@@ -466,7 +529,7 @@ export const exportIhlrToExcel = async ({
       r.created_by || '—',
       r.created_at ? formatDateDDMMYYYY(r.created_at) : '—',
 
-      // Closer columns
+      // Closer before Temp Evidence
       r.prod_why_why?.[0] || '—',
       r.prod_why_why?.[1] || '—',
       r.prod_why_why?.[2] || '—',
@@ -475,11 +538,17 @@ export const exportIhlrToExcel = async ({
       r.temporary_action || r.action || '—',
       (r.temporary_target_date || r.target_date) ? formatDateDDMMYYYY(r.temporary_target_date || r.target_date) : '—',
       r.temporary_closed_by || r.closer_updated_by || '—',
-      evidenceFiles.map((a) => a.name).join(', ') || 'None',
+
+      // Temporary Evidence values
+      ...tempValues,
+
+      // Closer between Temp and Perm Evidence
       r.permanent_fix || '—',
       r.permanent_target_date ? formatDateDDMMYYYY(r.permanent_target_date) : '—',
       r.permanent_closed_by || r.closer_updated_by || '—',
-      permanentEvidenceFiles.map((a) => a.name).join(', ') || 'None',
+
+      // Permanent Evidence values
+      ...permValues,
 
       // Reassignment Tracking
       reassignedStatus,
@@ -494,7 +563,12 @@ export const exportIhlrToExcel = async ({
     const displayStatus = getIhlrDisplayStatus(r.status, r);
     const row = worksheet.addRow(rowData);
 
-    const hasAnyImage = fileDataList.some((f) => f.isImage && f.imgData?.base64);
+    const hasAnyImage = [
+      ...defectList,
+      ...tempList,
+      ...permList
+    ].some((f) => f.isImage && f.imgData?.base64);
+
     row.height = hasAnyImage ? 56 : (hasReassignments && count > 1 ? Math.max(36, count * 18) : 24);
 
     row.eachCell((cell) => {
@@ -511,38 +585,44 @@ export const exportIhlrToExcel = async ({
     row.getCell(10).alignment = { vertical: 'middle', horizontal: 'center' }; // ACTUAL REJECTED QTY
     row.getCell(11).alignment = { vertical: 'middle', horizontal: 'center' }; // 4M CATEGORY
 
-    // Center align and configure each DEFECT EVIDENCE column
-    for (let e = 0; e < maxDefectCount; e++) {
-      const evCol = 14 + e;
-      const evCell = row.getCell(evCol);
-      evCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    // Helper to configure alignment and download hyperlinks for evidence columns
+    const configureEvidenceCells = (colStart, maxCount, fileList) => {
+      for (let e = 0; e < maxCount; e++) {
+        const evCol = colStart + e;
+        const evCell = row.getCell(evCol);
+        evCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
 
-      const fileItem = fileDataList[e];
-      if (fileItem && !fileItem.isImage && fileItem.name) {
-        const fileUrl = resolveAttachmentUrl(fileItem.file, 'ihlr');
-        if (fileUrl) {
-          evCell.value = {
-            text: fileItem.name,
-            hyperlink: fileUrl,
-            tooltip: `Click to download ${fileItem.name}`
-          };
-          evCell.font = { name: 'Arial', size: 9, color: { argb: 'FF2563EB' }, underline: true };
+        const fileItem = fileList[e];
+        if (fileItem && !fileItem.isImage && fileItem.name) {
+          const fileUrl = resolveAttachmentUrl(fileItem.file, 'ihlr');
+          if (fileUrl) {
+            evCell.value = {
+              text: fileItem.name,
+              hyperlink: fileUrl,
+              tooltip: `Click to download ${fileItem.name}`
+            };
+            evCell.font = { name: 'Arial', size: 9, color: { argb: 'FF2563EB' }, underline: true };
+          }
         }
       }
-    }
+    };
 
-    // Center align trailing columns with dynamic shift
-    row.getCell(21 + shift).alignment = { vertical: 'middle', horizontal: 'center' }; // CREATED AT
-    row.getCell(28 + shift).alignment = { vertical: 'middle', horizontal: 'center' }; // TEMPORARY TARGET DATE
-    row.getCell(29 + shift).alignment = { vertical: 'middle', horizontal: 'center' }; // TEM CLOSED BY
-    row.getCell(32 + shift).alignment = { vertical: 'middle', horizontal: 'center' }; // PERMANENT TARGET DATE
-    row.getCell(33 + shift).alignment = { vertical: 'middle', horizontal: 'center' }; // PERM CLOSED BY
-    row.getCell(35 + shift).alignment = { vertical: 'middle', horizontal: 'center' }; // REASSIGNED STATUS
-    row.getCell(38 + shift).alignment = { vertical: 'middle', horizontal: 'center' }; // REVIEWED BY
-    row.getCell(39 + shift).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
+    configureEvidenceCells(defectColStart, maxDefectCount, defectList);
+    configureEvidenceCells(tempColStart, maxTempCount, tempList);
+    configureEvidenceCells(permColStart, maxPermCount, permList);
+
+    // Center align trailing columns
+    row.getCell(createdAtCol).alignment = { vertical: 'middle', horizontal: 'center' }; // CREATED AT
+    row.getCell(tempTargetDateCol).alignment = { vertical: 'middle', horizontal: 'center' }; // TEMPORARY TARGET DATE
+    row.getCell(tempClosedByCol).alignment = { vertical: 'middle', horizontal: 'center' }; // TEM CLOSED BY
+    row.getCell(permTargetDateCol).alignment = { vertical: 'middle', horizontal: 'center' }; // PERMANENT TARGET DATE
+    row.getCell(permClosedByCol).alignment = { vertical: 'middle', horizontal: 'center' }; // PERM CLOSED BY
+    row.getCell(reassignStatusCol).alignment = { vertical: 'middle', horizontal: 'center' }; // REASSIGNED STATUS
+    row.getCell(reviewedByCol).alignment = { vertical: 'middle', horizontal: 'center' }; // REVIEWED BY
+    row.getCell(statusCol).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
 
     // Apply UI-matched status styling in Excel
-    const statusCell = row.getCell(39 + shift);
+    const statusCell = row.getCell(statusCol);
     if (displayStatus === 'CLOSED') {
       statusCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF15803D' } }; // emerald-700
       statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }; // emerald-100
@@ -554,24 +634,31 @@ export const exportIhlrToExcel = async ({
       statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE4E6' } }; // rose-100
     }
 
-    // Embed image thumbnail into each corresponding DEFECT EVIDENCE column (0-indexed col 13 + fileIdx)
-    fileDataList.forEach((fileItem, fileIdx) => {
-      if (fileItem.isImage && fileItem.imgData?.base64) {
-        try {
-          const imgId = workbook.addImage({
-            base64: fileItem.imgData.base64,
-            extension: fileItem.imgData.extension === 'png' ? 'png' : 'jpeg'
-          });
-          worksheet.addImage(imgId, {
-            tl: { col: 13 + fileIdx + 0.12, row: rowNum - 0.88 },
-            ext: { width: 85, height: 48 },
-            editAs: 'oneCell'
-          });
-        } catch (e) {
-          console.warn(`Could not add image for evidence ${fileIdx + 1} to Excel:`, e);
+    // Embed image thumbnails into cells for each evidence group
+    const embedEvidenceImages = (colStart, fileList) => {
+      fileList.forEach((fileItem, fileIdx) => {
+        if (fileItem.isImage && fileItem.imgData?.base64) {
+          try {
+            const imgId = workbook.addImage({
+              base64: fileItem.imgData.base64,
+              extension: fileItem.imgData.extension === 'png' ? 'png' : 'jpeg'
+            });
+            const colZeroIndexed = (colStart - 1) + fileIdx;
+            worksheet.addImage(imgId, {
+              tl: { col: colZeroIndexed + 0.12, row: rowNum - 0.88 },
+              ext: { width: 85, height: 48 },
+              editAs: 'oneCell'
+            });
+          } catch (e) {
+            console.warn(`Could not add image at col ${colStart + fileIdx} to Excel:`, e);
+          }
         }
-      }
-    });
+      });
+    };
+
+    embedEvidenceImages(defectColStart, defectList);
+    embedEvidenceImages(tempColStart, tempList);
+    embedEvidenceImages(permColStart, permList);
   });
 
   const today = new Date().toISOString().slice(0, 10);
