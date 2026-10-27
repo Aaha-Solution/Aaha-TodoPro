@@ -3087,17 +3087,7 @@ const ProcessAuditApprovals = () => {
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveModalRequest(r);
-                                  setModalTab('sign_tracks');
-                                }}
-                                className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
-                                title="Sign Fields & Tracks"
-                              >
-                                <ShieldCheck className="w-4 h-4" />
-                              </button>
+                             
                             </div>
                           </td>
                         </tr>
