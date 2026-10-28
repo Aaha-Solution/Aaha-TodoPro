@@ -1713,11 +1713,6 @@ const ProcessAuditApprovals = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
                     <span>Occurrence Cause (Production Team - 5 Why)</span>
-                    {selectedRequest && canUpdateCloserFields && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin && !isCloser ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    )}
                   </span>
                 </div>
               </div>
@@ -1772,11 +1767,6 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY ACTION</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && canUpdateCloserFields && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                      {isAdmin ? 'Admin Edit' : 'Closer'}
-                    </span>
-                  )}
                 </label>
               </div>
               <textarea
@@ -1817,11 +1807,6 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY EVIDENCE ATTACHMENT</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && canUpdateCloserFields && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                      {isAdmin ? 'Admin Edit' : 'Closer'}
-                    </span>
-                  )}
                 </label>
               </div>
 
@@ -1888,11 +1873,6 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && canUpdateCloserFields && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                      {isAdmin ? 'Admin Edit' : 'Closer'}
-                    </span>
-                  )}
                 </label>
               
               </div>
@@ -1935,11 +1915,6 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && canUpdateCloserFields && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                      {isAdmin ? 'Admin Edit' : 'Closer'}
-                    </span>
-                  )}
                 </label>
               </div>
               <input
@@ -1993,11 +1968,6 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT ACTION</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && canUpdateCloserFields && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                      {isAdmin ? 'Admin Edit' : 'Closer'}
-                    </span>
-                  )}
                 </label>
               </div>
               <textarea
@@ -2038,11 +2008,6 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT EVIDENCE ATTACHMENT</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && canUpdateCloserFields && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                      {isAdmin ? 'Admin Edit' : 'Closer'}
-                    </span>
-                  )}
                 </label>
               </div>
 
@@ -2108,11 +2073,6 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && canUpdateCloserFields && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                      {isAdmin ? 'Admin Edit' : 'Closer'}
-                    </span>
-                  )}
                 </label>
                 {closerTargetDate && (
                   <span className="text-[10px] text-slate-400 font-normal">
@@ -2154,11 +2114,6 @@ const ProcessAuditApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && canUpdateCloserFields && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                      {isAdmin ? 'Admin Edit' : 'Closer'}
-                    </span>
-                  )}
                 </label>
               </div>
               <input
