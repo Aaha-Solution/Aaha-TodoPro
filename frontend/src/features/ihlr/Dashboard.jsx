@@ -818,7 +818,10 @@ const IhlrDashboard = () => {
         isOpen={Boolean(selectedRequest)}
         request={selectedRequest}
         onClose={() => setSelectedRequest(null)}
-        onUpdated={() => {
+        onUpdated={(updatedReq) => {
+          if (updatedReq && selectedRequest) {
+            setSelectedRequest(updatedReq);
+          }
           loadData();
         }}
       />

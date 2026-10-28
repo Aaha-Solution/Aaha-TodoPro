@@ -2867,9 +2867,11 @@ const IhlrApprovals = () => {
               }
               return prev.map((r) => (r.id === updatedReq.id ? { ...r, ...updatedReq } : r));
             });
+            if (activeModalRequest) {
+              setActiveModalRequest(updatedReq);
+            }
           }
           fetchRequests({ silent: true });
-          setActiveModalRequest(null);
           setModalInitialEdit(false);
         }}
       />

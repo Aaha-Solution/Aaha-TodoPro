@@ -1106,8 +1106,12 @@ const AllRequests = () => {
           setActiveModalRequest(null);
           setModalInitialEdit(false);
         }}
-        onUpdated={() => {
+        onUpdated={(updatedReq) => {
+          if (updatedReq && activeModalRequest) {
+            setActiveModalRequest(updatedReq);
+          }
           fetchRequests();
+          setModalInitialEdit(false);
         }}
       />
 

@@ -1221,7 +1221,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       <div
         className="fixed inset-0 !m-0 !mt-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150"
         style={{ zIndex: 99990 }}
-        onClick={onClose}
+        onClick={() => {
+          if (!isEditMode) {
+            onClose();
+          }
+        }}
       >
         <div
           className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
