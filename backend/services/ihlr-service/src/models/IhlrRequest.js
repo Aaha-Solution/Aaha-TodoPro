@@ -39,6 +39,9 @@ const ensureColumns = async () => {
     if (!colNames.includes('closer_updated_at')) {
       await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_at TIMESTAMP NULL AFTER closer_updated_by_email').catch(() => {});
     }
+    if (!colNames.includes('notify_emails')) {
+      await pool.query('ALTER TABLE ihlr_requests ADD COLUMN notify_emails VARCHAR(500) NULL AFTER resp_person_email').catch(() => {});
+    }
     // Ensure no duplicate req_no exist (resolve duplicate req_no by re-assigning CONCAT('IHLR-', id))
     await pool.query(`
       UPDATE ihlr_requests r1
@@ -145,7 +148,8 @@ export const IhlrRequest = {
           created_by = '',
           created_by_id = null,
           created_by_email = '',
-          resp_person_email = ''
+          resp_person_email = '',
+          notify_emails = ''
         } = data;
 
         if (!req_no) {
@@ -169,8 +173,8 @@ export const IhlrRequest = {
             actual_qty, four_m, resp, resp_person, prod_why_why,
             temporary_action, temporary_evidence_attachment, temporary_target_date,
             permanent_fix, permanent_evidence_attachment, permanent_target_date, remarks, status,
-            created_by, created_by_id, created_by_email, resp_person_email
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            created_by, created_by_id, created_by_email, resp_person_email, notify_emails
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             req_no,
             batch_date || new Date().toISOString().split('T')[0],
@@ -198,7 +202,8 @@ export const IhlrRequest = {
             created_by || null,
             created_by_id || null,
             created_by_email || null,
-            resp_person_email || null
+            resp_person_email || null,
+            notify_emails || null
           ]
         );
 
@@ -258,7 +263,7 @@ export const IhlrRequest = {
         const allowed = [
           'req_no', 'batch_date', 'shift', 'problem', 'model', 
           'problem_detected_at', 'received_from', 'analysis_done_by', 
-          'defect_image', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email',
+          'defect_image', 'actual_qty', 'four_m', 'resp', 'resp_person', 'resp_person_email', 'notify_emails',
           'temporary_action', 'temporary_evidence_attachment', 'temporary_target_date', 'temporary_closed_by',
           'permanent_fix', 'permanent_evidence_attachment', 'permanent_target_date', 'permanent_closed_by',
           'remarks', 'status',

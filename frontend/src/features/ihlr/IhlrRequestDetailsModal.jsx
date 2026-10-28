@@ -28,7 +28,8 @@ import {
   ArrowRightLeft,
   Lock,
   Loader2,
-  History
+  History,
+  Mail
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -2678,6 +2679,25 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         </span>
                       )}
                     </div>
+
+                    {req.notify_emails && (
+                      <div className="col-span-2">
+                        <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          NOTIFY / CC EMAILS
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {req.notify_emails.split(',').map((s) => s.trim()).filter(Boolean).map((email) => (
+                            <span
+                              key={email}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-semibold border border-indigo-200"
+                            >
+                              <Mail className="w-3 h-3 text-indigo-500" />
+                              <span>{email}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Show Reassigned Status field strictly in case of reassign status */}
                     {hasReassignments && (
