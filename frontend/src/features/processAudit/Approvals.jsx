@@ -94,22 +94,42 @@ const ProcessAuditApprovals = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(() => {
-    const init = location.state?.search && !location.state?.highlightReq ? location.state.search : '';
+    const init = location.state?.search || location.state?.highlightReq || '';
     return init ? String(init).replace(/^#/, '').trim() : '';
   });
   const [selectedStatus, setSelectedStatus] = useState('All');
+
+  const handleSearchChange = (val) => {
+    setSearch(val);
+    setCurrentPage(1);
+    try {
+      const curState = window.history.state;
+      if (curState && typeof curState === 'object') {
+        const nextState = {
+          ...curState,
+          usr: {
+            ...(curState.usr || {}),
+            search: val ? val : '',
+            highlightReq: val ? (curState.usr?.highlightReq || '') : ''
+          }
+        };
+        window.history.replaceState(nextState, document.title, window.location.pathname);
+      } else {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (_) {}
+  };
 
   useEffect(() => {
     const target = location.state?.highlightReq || location.state?.search || queryRequestId;
     if (target) {
       const cleanTarget = String(target).replace(/^#/, '').trim();
       pendingTargetReqRef.current = cleanTarget;
-      if (location.state?.search && !location.state?.highlightReq) {
-        setSearch(cleanTarget);
-      }
+      setSearch(cleanTarget);
       setSelectedStatus('All');
+      setCurrentPage(1);
     }
-  }, [location.state, queryRequestId, location.key]);
+  }, [location.state?.highlightReq, location.state?.search, queryRequestId, location.key]);
   const [activeModalRequest, setActiveModalRequest] = useState(null);
   const [modalTab, setModalTab] = useState('requester');
   const [selectedPreviewAttachment, setSelectedPreviewAttachment] = useState(null);
@@ -605,9 +625,6 @@ const ProcessAuditApprovals = () => {
           setCurrentPage(targetPage);
         }
         pendingTargetReqRef.current = null;
-        try {
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } catch (_) {}
       } else if (currentSel) {
         const fresh = list.find((r) => r.id === currentSel.id || r.issue_no === currentSel.issue_no);
         if (fresh) populateForm(fresh);
@@ -624,15 +641,11 @@ const ProcessAuditApprovals = () => {
   };
 
   const handleRefresh = async () => {
-    setSearch('');
+    handleSearchChange('');
     setSelectedStatus('All');
     setCurrentPage(1);
     pendingTargetReqRef.current = null;
     populateForm(null);
-
-    try {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } catch (_) {}
 
     await loadRequests(true);
   };
@@ -1297,10 +1310,16 @@ const ProcessAuditApprovals = () => {
     const obs = String(r.issue_observation || r.problem || '').toLowerCase();
     const remarks = String(r.creator_remark || r.remarks || '').toLowerCase();
     const q = search.trim().toLowerCase();
+    const cleanQ = q.replace(/^#/, '').trim();
+    const cleanIssueNo = String(r.issue_no || '').toLowerCase().replace(/^#/, '').trim();
+    const altPaId = r.id ? `pa-${r.id}` : '';
 
     const matchesSearch =
       !q ||
       reqId.includes(q) ||
+      reqId.includes(cleanQ) ||
+      cleanIssueNo.includes(cleanQ) ||
+      (r.id && (String(r.id) === cleanQ || altPaId === cleanQ)) ||
       stage.includes(q) ||
       line.includes(q) ||
       executor.includes(q) ||
@@ -1560,20 +1579,7 @@ const ProcessAuditApprovals = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition active:scale-95 cursor-pointer shadow-2xs"
-              title="Clear all active filters"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Clear Filters</span>
-            </button>
-          )}
-         
-        </div>
+       
       </div>
 
       {/* Main Two-Column Split Layout */}
@@ -2896,19 +2902,13 @@ const ProcessAuditApprovals = () => {
                 type="text"
                 placeholder="Search by req no, problem, or remarks..."
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium transition"
               />
               {search && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearch('');
-                    setCurrentPage(1);
-                  }}
+                  onClick={() => handleSearchChange('')}
                   className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition cursor-pointer"
                   title="Clear search"
                 >
@@ -2931,18 +2931,6 @@ const ProcessAuditApprovals = () => {
                 <option value="Awaiting Review">Awaiting Review</option>
               </select>
             </div>
-
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={handleRefresh}
-                className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold border border-rose-200 transition active:scale-95 cursor-pointer shrink-0 shadow-2xs"
-                title="Reset all active filters"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset</span>
-              </button>
-            )}
 
             <button
               type="button"
