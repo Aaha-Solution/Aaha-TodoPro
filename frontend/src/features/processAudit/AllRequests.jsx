@@ -82,17 +82,17 @@ const AllRequests = () => {
   const defaultEndDate = `${currentYear}-12-31`;
 
   const [search, setSearch] = useState(() => {
-    const init = location.state?.search || location.state?.highlightReq || queryRequestId || '';
+    const init = location.state?.search || queryRequestId || '';
     return init ? String(init).replace(/^#/, '').trim() : '';
   });
 
   useEffect(() => {
-    const target = location.state?.highlightReq || location.state?.search || queryRequestId;
+    const target = location.state?.search || queryRequestId;
     if (target) {
       setSearch(String(target).replace(/^#/, '').trim());
       setShowFilters(true);
     }
-  }, [location.state, queryRequestId, location.key]);
+  }, [location.state?.search, queryRequestId, location.key]);
   const [selectedShift, setSelectedShift] = useState('All Shifts');
   const [selectedStage, setSelectedStage] = useState('All Stages');
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments');
