@@ -81,37 +81,18 @@ const AllRequests = () => {
   const defaultStartDate = `${currentYear}-01-01`;
   const defaultEndDate = `${currentYear}-12-31`;
 
-  // Detect if current page load is a browser reload / refresh
-  const isReload = (() => {
-    try {
-      const navEntries = performance.getEntriesByType('navigation');
-      if (navEntries.length > 0) return navEntries[0].type === 'reload';
-      return performance.navigation.type === 1;
-    } catch {
-      return false;
-    }
-  })();
-
-  const [search, setSearch] = useState(() => (isReload ? '' : (location.state?.search || '')));
+  const [search, setSearch] = useState(() => {
+    const init = location.state?.search || location.state?.highlightReq || queryRequestId || '';
+    return init ? String(init).replace(/^#/, '').trim() : '';
+  });
 
   useEffect(() => {
-    if (isReload) {
-      setSearch('');
-      try {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } catch (_) {}
-      return;
-    }
-
-    if (location.state?.search) {
-      setSearch(location.state.search);
+    const target = location.state?.highlightReq || location.state?.search || queryRequestId;
+    if (target) {
+      setSearch(String(target).replace(/^#/, '').trim());
       setShowFilters(true);
-      // Clean up location.state immediately so subsequent browser refresh does not re-apply stale search
-      try {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } catch (_) {}
     }
-  }, [location.state]);
+  }, [location.state, queryRequestId, location.key]);
   const [selectedShift, setSelectedShift] = useState('All Shifts');
   const [selectedStage, setSelectedStage] = useState('All Stages');
   const [selectedDepartment, setSelectedDepartment] = useState('All Departments');
@@ -398,17 +379,27 @@ const AllRequests = () => {
 
   // Deep-linking from notification or URL query (?requestId=14)
   useEffect(() => {
-    if (queryRequestId && requests.length > 0) {
-      const match = requests.find(
-        (r) =>
-          String(r.id) === String(queryRequestId) ||
-          String(r.issue_no || '').toLowerCase() === String(queryRequestId).toLowerCase()
-      );
+    const target = location.state?.highlightReq || location.state?.search || queryRequestId;
+    if (target && requests.length > 0) {
+      const cleanTarget = String(target).trim().toLowerCase().replace(/^#/, '');
+      const match = requests.find((r) => {
+        const cleanReq = String(r.issue_no || '').trim().toLowerCase().replace(/^#/, '');
+        return (
+          cleanReq === cleanTarget ||
+          cleanReq === `pa-${cleanTarget}` ||
+          cleanTarget === `pa-${cleanReq}` ||
+          String(r.id) === cleanTarget ||
+          String(r.id) === cleanTarget.replace(/^pa-/, '')
+        );
+      });
       if (match) {
         setActiveModalRequest(match);
+        try {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (_) {}
       }
     }
-  }, [queryRequestId, requests]);
+  }, [location.state, queryRequestId, requests, location.key]);
 
   const canUserAccessRequest = (req, user, isAdmin) => {
     if (isAdmin) return true;

@@ -87,40 +87,28 @@ const ProcessAuditApprovals = () => {
   const [searchParams] = useSearchParams();
   const queryRequestId = searchParams.get('requestId') || searchParams.get('id');
 
-  // Detect if the current page load is a browser reload / refresh
-  const isReload = (() => {
-    try {
-      const navEntries = performance.getEntriesByType('navigation');
-      if (navEntries.length > 0) return navEntries[0].type === 'reload';
-      return performance.navigation.type === 1;
-    } catch {
-      return false;
-    }
-  })();
+  // Track pending target request from navigation (e.g. from Notifications Centre or URL query)
+  const initialTarget = location.state?.highlightReq || location.state?.search || queryRequestId || '';
+  const pendingTargetReqRef = useRef(initialTarget ? String(initialTarget).replace(/^#/, '').trim() : '');
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState(() => (isReload ? '' : (location.state?.search || '')));
+  const [search, setSearch] = useState(() => {
+    const init = location.state?.search || location.state?.highlightReq || queryRequestId || '';
+    return init ? String(init).replace(/^#/, '').trim() : '';
+  });
+  const [selectedStatus, setSelectedStatus] = useState('All');
 
   useEffect(() => {
-    if (isReload) {
-      setSearch('');
+    const target = location.state?.highlightReq || location.state?.search || queryRequestId;
+    if (target) {
+      const cleanTarget = String(target).replace(/^#/, '').trim();
+      pendingTargetReqRef.current = cleanTarget;
+      setSearch(cleanTarget);
       setSelectedStatus('All');
-      try {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } catch (_) {}
-      return;
+      setCurrentPage(1);
     }
-
-    if (location.state?.search) {
-      setSearch(location.state.search);
-      // Clean up location.state from history so subsequent browser refresh does not re-apply stale search
-      try {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } catch (_) {}
-    }
-  }, [location.state]);
-  const [selectedStatus, setSelectedStatus] = useState('All');
+  }, [location.state, queryRequestId, location.key]);
   const [activeModalRequest, setActiveModalRequest] = useState(null);
   const [modalTab, setModalTab] = useState('requester');
   const [selectedPreviewAttachment, setSelectedPreviewAttachment] = useState(null);
@@ -580,33 +568,40 @@ const ProcessAuditApprovals = () => {
       });
       setRequests(list);
 
-      // On manual refresh or browser reload, don't force deep-link highlight filter
-      if (isManualRefresh || isReload) {
-        const currentSel = selectedRequestRef.current;
-        if (currentSel) {
-          const fresh = list.find((r) => r.id === currentSel.id || r.issue_no === currentSel.issue_no);
-          if (fresh) populateForm(fresh);
-          else populateForm(null);
-        } else {
-          populateForm(null);
-        }
+      if (isManualRefresh) {
+        populateForm(null);
         return;
       }
 
       // Deep linking or notification highlight only when explicitly targeted
-      const targetReqNo = location.state?.highlightReq || queryRequestId;
+      const targetReqNo =
+        pendingTargetReqRef.current ||
+        location.state?.highlightReq ||
+        location.state?.search ||
+        queryRequestId;
+
       let matchedTarget = null;
       if (targetReqNo) {
         const cleanTarget = String(targetReqNo).trim().toLowerCase().replace(/^#/, '');
         matchedTarget = list.find((r) => {
           const cleanReq = String(r.issue_no || '').trim().toLowerCase().replace(/^#/, '');
-          return cleanReq === cleanTarget || cleanReq === `pa-${cleanTarget}` || String(r.id) === cleanTarget;
+          return (
+            cleanReq === cleanTarget ||
+            cleanReq === `pa-${cleanTarget}` ||
+            cleanTarget === `pa-${cleanReq}` ||
+            String(r.id) === cleanTarget ||
+            String(r.id) === cleanTarget.replace(/^pa-/, '')
+          );
         });
       }
 
       const currentSel = selectedRequestRef.current;
       if (matchedTarget) {
         populateForm(matchedTarget);
+        pendingTargetReqRef.current = null;
+        try {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (_) {}
       } else if (currentSel) {
         const fresh = list.find((r) => r.id === currentSel.id || r.issue_no === currentSel.issue_no);
         if (fresh) populateForm(fresh);
@@ -626,6 +621,7 @@ const ProcessAuditApprovals = () => {
     setSearch('');
     setSelectedStatus('All');
     setCurrentPage(1);
+    pendingTargetReqRef.current = null;
     populateForm(null);
 
     try {
@@ -654,7 +650,7 @@ const ProcessAuditApprovals = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       window.removeEventListener('processAuditLiveUpdate', handleLiveUpdate);
     };
-  }, [user?.name, user?.role]);
+  }, [user?.name, user?.role, location.key, queryRequestId]);
 
   const handleWhyChange = (index, val) => {
     setCloserWhyWhy((prev) => {

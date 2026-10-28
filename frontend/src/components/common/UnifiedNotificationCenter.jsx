@@ -98,7 +98,8 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
   // Handle Card Click: Mark as read if unread and intelligently navigate to Approvals or All Requests
   const handleCardClick = async (item) => {
     const targetReqNo = item.reqNo;
-    const cleanReqNo = item.reqNo ? item.reqNo.replace(/^#/, '').trim() : '';
+    const rawNo = item.reqNo || (item.rawId ? (isIhlr ? `IHLR-${item.rawId}` : `PA-${item.rawId}`) : '');
+    const cleanReqNo = rawNo ? String(rawNo).replace(/^#/, '').trim() : '';
 
     // Identify unread item for this card specifically
     const itemsToMarkRead = notifications.filter(
@@ -180,6 +181,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
         state: {
           search: cleanReqNo,
           highlightReq: cleanReqNo,
+          requestId: item.rawId,
         },
       });
     } else {
@@ -195,6 +197,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
         state: {
           search: cleanReqNo,
           highlightReq: cleanReqNo,
+          requestId: item.rawId,
         },
       });
     }
