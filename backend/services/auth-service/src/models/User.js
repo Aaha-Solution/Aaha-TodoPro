@@ -103,12 +103,16 @@ export const User = {
     if (!pool) throw new Error('Database connection pool is not available');
     const { employeeId, name, email, password = 'PlantUser@123', role = 'USER', department = 'PRODUCTION', status = 'ACTIVE' } = userData;
     const normalizedRole = (role && role.toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
-    const hashedPassword = bcrypt.hashSync(password, 10);
+    const cleanPass = String(password || 'PlantUser@123').trim();
+    const hashedPassword = bcrypt.hashSync(cleanPass, 10);
     const empId = employeeId && String(employeeId).trim() ? String(employeeId).trim() : null;
+    const cleanName = String(name || '').trim();
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanDept = String(department || 'PRODUCTION').trim().toUpperCase();
 
     const [result] = await pool.query(
       'INSERT INTO users (employee_id, name, email, password, role, department, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [empId, name, email, hashedPassword, normalizedRole, department, status.toUpperCase()]
+      [empId, cleanName, cleanEmail, hashedPassword, normalizedRole, cleanDept, status.toUpperCase()]
     );
 
     if (!empId) {
@@ -126,9 +130,11 @@ export const User = {
     if (!pool) throw new Error('Database connection pool is not available');
     const { employeeId, name, role, department, status, password } = updates;
     const normalizedRole = (role && role.toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
+    const cleanName = name ? String(name).trim() : name;
+    const cleanDept = department ? String(department).trim().toUpperCase() : department;
     
     let query = 'UPDATE users SET name = ?, role = ?, department = ?, status = ?';
-    let params = [name, normalizedRole, department, status ? status.toUpperCase() : 'ACTIVE'];
+    let params = [cleanName, normalizedRole, cleanDept, status ? status.toUpperCase() : 'ACTIVE'];
 
     if (employeeId !== undefined && employeeId !== null && String(employeeId).trim() !== '') {
       query += ', employee_id = ?';

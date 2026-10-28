@@ -50,34 +50,38 @@ export const checkEmployeeIdExists = async (req, res) => {
 export const createUser = async (req, res) => {
   try {
     const { name, email, password, role, department, status, systems, employeeId } = req.body;
-    if (!name || !email) {
+    const cleanName = String(name || '').trim();
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanPass = password ? String(password).trim() : 'PlantUser@123';
+    const cleanEmpId = employeeId && String(employeeId).trim() ? String(employeeId).trim() : null;
+
+    if (!cleanName || !cleanEmail) {
       return errorResponse(res, 'Name and Email are required', 400);
     }
 
-    if (employeeId && String(employeeId).trim()) {
-      const trimmedEmpId = String(employeeId).trim();
-      const existingEmp = await User.findByEmployeeId(trimmedEmpId);
+    if (cleanEmpId) {
+      const existingEmp = await User.findByEmployeeId(cleanEmpId);
       if (existingEmp) {
-        return errorResponse(res, `Employee ID "${trimmedEmpId}" already exists in database (assigned to ${existingEmp.name})`, 400);
+        return errorResponse(res, `Employee ID "${cleanEmpId}" already exists in database (assigned to ${existingEmp.name})`, 400);
       }
     }
 
-    const existingEmail = await User.findByEmail(email.trim());
+    const existingEmail = await User.findByEmail(cleanEmail);
     if (existingEmail) {
-      return errorResponse(res, `Email "${email.trim()}" is already registered in database`, 400);
+      return errorResponse(res, `Email "${cleanEmail}" is already registered in database`, 400);
     }
 
     const normalizedRole = (role && role.toUpperCase() === 'ADMIN') ? 'ADMIN' : 'USER';
 
     const newUser = await User.create({
-      name,
-      email,
-      password: password || 'PlantUser@123',
+      name: cleanName,
+      email: cleanEmail,
+      password: cleanPass,
       role: normalizedRole,
-      department: department || 'PRODUCTION',
+      department: department ? String(department).trim().toUpperCase() : 'PRODUCTION',
       status: status ? status.toUpperCase() : 'ACTIVE',
       systems: systems || ['processAudit'],
-      employeeId
+      employeeId: cleanEmpId
     });
 
     return successResponse(res, newUser, 'User created successfully', 201);

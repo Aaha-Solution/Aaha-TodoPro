@@ -370,7 +370,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       newErrors.problem_detected_at = 'Problem Detected At is required';
     }
     if (!editFormData.received_from || !editFormData.received_from.trim()) {
-      newErrors.received_from = 'Received From (Line/Cell) is required';
+      newErrors.received_from = 'Received From (Line/D3) is required';
     }
     if (!editFormData.analysis_done_by || !editFormData.analysis_done_by.trim()) {
       newErrors.analysis_done_by = 'Analysis Done By is required';
@@ -924,7 +924,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
           [
             { content: 'Problem Detected At:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             targetReq.problem_detected_at || '—',
-            { content: 'Received From (Line/Cell):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+            { content: 'Received From (Line/D3):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
             targetReq.received_from || '—'
           ],
           [
@@ -2324,7 +2324,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        RECEIVED FROM (LINE/CELL) <span className="text-rose-500">*</span>
+                        RECEIVED FROM (LINE/D3) <span className="text-rose-500">*</span>
                       </label>
                       <select
                         value={editFormData.received_from}
@@ -2758,7 +2758,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                     <div>
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        RECEIVED FROM (LINE/CELL)
+                        RECEIVED FROM (LINE/D3)
                       </span>
                       <span className="font-medium text-slate-800 font-mono">
                         {req.received_from || 'Assembly Line'}

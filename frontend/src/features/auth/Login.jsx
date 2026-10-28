@@ -32,17 +32,24 @@ export const Login = () => {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    if (!email) {
+    const cleanEmail = (email || '').trim();
+    const cleanPassword = (password || '').trim();
+
+    // Update state to display trimmed values
+    if (cleanEmail !== email) setEmail(cleanEmail);
+    if (cleanPassword !== password) setPassword(cleanPassword);
+
+    if (!cleanEmail) {
       setErrorMsg('Please enter your email address.');
       return;
     }
-    if (!password) {
+    if (!cleanPassword) {
       setErrorMsg('Please enter your password.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(cleanEmail)) {
       setErrorMsg('Please enter a valid email address.');
       return;
     }
@@ -50,12 +57,12 @@ export const Login = () => {
     setIsLoading(true);
 
     try {
-      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedEmail = cleanEmail.toLowerCase();
 
       // Authenticate against backend
       const res = await authService.login({
         email: normalizedEmail,
-        password
+        password: cleanPassword
       });
 
       const user = res.data?.user || res.user;
@@ -70,7 +77,7 @@ export const Login = () => {
       localStorage.removeItem('todo_user');
 
       if (rememberMe) {
-        localStorage.setItem('todo_remembered_email', email);
+        localStorage.setItem('todo_remembered_email', cleanEmail);
         localStorage.setItem('todo_remember_me', 'true');
       } else {
         localStorage.removeItem('todo_remembered_email');
@@ -170,6 +177,14 @@ export const Login = () => {
                     placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onBlur={(e) => setEmail(e.target.value.trim())}
+                    onPaste={(e) => {
+                      const text = e.clipboardData.getData('text');
+                      if (text) {
+                        e.preventDefault();
+                        setEmail(text.trim());
+                      }
+                    }}
                     disabled={isLoading}
                   />
                   <Mail className="absolute left-[16px] text-slate-400 focus-within:text-violet-600 pointer-events-none" size={18} />
@@ -189,6 +204,14 @@ export const Login = () => {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onBlur={(e) => setPassword(e.target.value.trim())}
+                    onPaste={(e) => {
+                      const text = e.clipboardData.getData('text');
+                      if (text) {
+                        e.preventDefault();
+                        setPassword(text.trim());
+                      }
+                    }}
                     disabled={isLoading}
                   />
                   <Lock className="absolute left-[16px] text-slate-400 pointer-events-none" size={18} />

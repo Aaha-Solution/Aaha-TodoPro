@@ -237,11 +237,17 @@ const UserManagement = () => {
       return;
     }
 
-    const trimmedEmpId = formData.employeeId.trim();
+    const trimmedEmpId = (formData.employeeId || '').trim();
+    const trimmedName = (formData.name || '').trim();
+    const trimmedEmail = (formData.email || '').trim().toLowerCase();
+    const trimmedPass = (formData.password || '').trim();
 
     try {
       const created = await userService.createUser({
         ...formData,
+        name: trimmedName,
+        email: trimmedEmail,
+        password: trimmedPass,
         employeeId: trimmedEmpId
       });
       const freshData = await userService.getUsers();
@@ -321,10 +327,11 @@ const UserManagement = () => {
     }
 
     const trimmedEmpId = (editingUser.employeeId || '').trim();
+    const trimmedName = (editingUser.name || '').trim();
 
     try {
       const payload = {
-        name: editingUser.name,
+        name: trimmedName,
         employeeId: trimmedEmpId,
         role: editingUser.role,
         department: editingUser.department,

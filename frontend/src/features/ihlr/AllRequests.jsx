@@ -609,7 +609,7 @@ const IhlrAllRequests = () => {
                 </th>
                 <th className="py-2.5 px-2 text-left align-middle whitespace-nowrap">
                   <span className="block">RECEIVED FROM</span>
-                  <span className="block text-slate-400 font-medium">(LINE/CELL)</span>
+                  <span className="block text-slate-400 font-medium">(LINE/D3)</span>
                 </th>
                 <th className="py-2.5 px-2 text-left align-middle whitespace-nowrap">
                   <span className="block">ANALYSIS</span>
@@ -702,7 +702,7 @@ const IhlrAllRequests = () => {
                       <div className="truncate max-w-[85px]">{r.problem_detected_at}</div>
                     </td>
 
-                    {/* Received From (Line/Cell) */}
+                    {/* Received From (Line/D3) */}
                     <td className="py-2.5 px-2 font-mono text-slate-600 whitespace-nowrap text-xs align-middle" title={r.received_from}>
                       <div className="truncate max-w-[85px]">{r.received_from}</div>
                     </td>

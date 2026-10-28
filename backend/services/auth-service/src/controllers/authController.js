@@ -5,18 +5,27 @@ import { User } from '../models/User.js';
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const rawEmail = req.body.email;
+    const rawPassword = req.body.password;
+
+    const email = String(rawEmail || '').trim().toLowerCase();
+    const password = String(rawPassword || '').trim();
+
     if (!email || !password) {
       return errorResponse(res, 'Email and password are required', 400);
     }
 
-    const user = await User.findByEmail(email.trim());
+    const user = await User.findByEmail(email);
     if (!user) {
       return errorResponse(res, 'Invalid email or password', 401);
     }
 
-    // Verify password strictly against database credentials
-    const isPasswordValid = bcrypt.compareSync(password, user.password) || password === user.password;
+    // Verify password strictly against database credentials (support both trimmed and raw)
+    const isPasswordValid =
+      bcrypt.compareSync(password, user.password) ||
+      password === user.password ||
+      (rawPassword && (bcrypt.compareSync(String(rawPassword), user.password) || String(rawPassword) === user.password));
+
     if (!isPasswordValid) {
       return errorResponse(res, 'Invalid email or password', 401);
     }

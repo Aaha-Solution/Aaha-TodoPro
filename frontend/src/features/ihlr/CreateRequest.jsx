@@ -572,7 +572,7 @@ const IhlrCreateRequest = () => {
       newErrors.problem_detected_at = 'Problem Detected At is required';
     }
     if (!formData.received_from || !formData.received_from.trim()) {
-      newErrors.received_from = 'Received From (Line/Cell) is required';
+      newErrors.received_from = 'Received From (Line/D3) is required';
     }
     if (!formData.analysis_done_by || !formData.analysis_done_by.trim()) {
       newErrors.analysis_done_by = 'Analysis Done By is required';
@@ -694,16 +694,21 @@ const IhlrCreateRequest = () => {
 
       const createdRes = await ihlrService.createRequest({
         ...formData,
+        problem: (formData.problem || '').trim(),
+        model: (formData.model || '').trim(),
+        problem_detected_at: (formData.problem_detected_at || '').trim(),
+        received_from: (formData.received_from || '').trim(),
+        analysis_done_by: (formData.analysis_done_by || '').trim(),
         batch_date: formData.batch_date || new Date().toISOString().split('T')[0],
         actual_qty: formData.actual_qty ? Number(formData.actual_qty) : 1,
-        qa_why_why: qaWhyWhy,
+        qa_why_why: Array.isArray(qaWhyWhy) ? qaWhyWhy.map((w) => (w || '').trim()) : qaWhyWhy,
         defect_image: finalAttachments.length > 0 ? JSON.stringify(finalAttachments) : '',
         attachments: finalAttachments,
-        created_by: creatorName,
+        created_by: String(creatorName || '').trim(),
         created_by_id: creatorId,
-        created_by_email: creatorEmail,
+        created_by_email: String(creatorEmail || '').trim(),
         resp_person_email: combinedAssignedEmails || '',
-        notify_emails: formData.notify_emails || '',
+        notify_emails: (formData.notify_emails || '').trim(),
       });
       const draftKey = getDraftKey();
       try {
@@ -1030,7 +1035,7 @@ const IhlrCreateRequest = () => {
             {/* Received From */}
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
-                <span>Received From (Line/Cell)</span>
+                <span>Received From (Line/D3)</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <select

@@ -295,7 +295,7 @@ export const exportIhlrToExcel = async ({
     20, // 5: MODEL NAME / PART
     32, // 6: PROBLEM / DEFECT DESCRIPTION
     20, // 7: PROBLEM DETECTED AT
-    22, // 8: RECEIVED FROM (LINE/CELL)
+    22, // 8: RECEIVED FROM (LINE/D3)
     18, // 9: ANALYSIS DONE BY
     16, // 10: ACTUAL REJECTED QTY
     16, // 11: 4M CATEGORY
@@ -389,7 +389,7 @@ export const exportIhlrToExcel = async ({
   const subHeaders = [
     // 1-13 Requestor (Strictly in CreateRequest form order!)
     'SL NO', 'REQ NO', 'INCIDENT DATE', 'SHIFT', 'MODEL NAME / PART',
-    'PROBLEM / DEFECT DESCRIPTION', 'PROBLEM DETECTED AT', 'RECEIVED FROM (LINE/CELL)',
+    'PROBLEM / DEFECT DESCRIPTION', 'PROBLEM DETECTED AT', 'RECEIVED FROM (LINE/D3)',
     'ANALYSIS DONE BY', 'ACTUAL REJECTED QTY', '4M CATEGORY',
     'RESPONSIBILITY (RESP)', 'USER NAME (BASED ON DEP)',
     // Dynamic Defect Evidence columns (DEFECT EVIDENCE 1, DEFECT EVIDENCE 2, ...)
@@ -793,7 +793,7 @@ export const exportIhlrToPdf = async ({
       'PROBLEM / DEFECT DESCRIPTION',
       'MODEL NAME / PART (QTY)',
       'PROBLEM DETECTED AT',
-      'RECEIVED FROM (LINE/CELL)',
+      'RECEIVED FROM (LINE/D3)',
       'ANALYSIS DONE BY',
       'DEFECT EVIDENCE',
       '4M CATEGORY / RESPONSIBILITY',
