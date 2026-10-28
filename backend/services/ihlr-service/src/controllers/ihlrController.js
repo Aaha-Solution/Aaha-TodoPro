@@ -756,38 +756,6 @@ export const createIhlrRequest = async (req, res) => {
               ]
             ).catch((err) => console.warn('[IHLR Notifications] Error inserting CC in-app notification:', err.message));
           }
-
-          sendEmail({
-            to: notifyEmail,
-            recipientName: notifyUser?.name || 'Team Member',
-            recipientRole: 'CC_NOTIFY',
-            subject: `[IHLR Notification] Defect Request #${reqNo} Logged (${created.resp || 'Production'}) - Pending`,
-            text: `IHLR defect report #${reqNo} (${created.model} - "${created.problem}") has been logged into the portal.`,
-            html: generateEmailTemplate({
-              headerTitle: `IHLR Defect Report Notification: #${reqNo}`,
-              headerSubtitle: `You have been CC'd on an In-House Line Rejection report.`,
-              recipientName: notifyUser?.name || 'Team Member',
-              greetingMessage: `An IHLR defect observation report for <strong>${created.model}</strong> has been logged by <strong>${created.created_by || creatorUser.name}</strong> and assigned to <strong>${assignedNamesDisplay}</strong> (${created.resp || 'Production'}).`,
-              tableData: [
-                { label: 'Request Number', value: reqNo },
-                { label: 'Created By', value: created.created_by || creatorUser.name },
-                { label: 'CC Recipient(s)', value: notifyEmailsList.join(', ') || 'None' },
-                { label: 'Defect / Problem', value: created.problem },
-                { label: 'Model', value: created.model },
-                { label: 'Target Dept', value: created.resp },
-                { label: 'Assigned Person', value: assignedNamesDisplay },
-                { label: 'Status', value: 'Pending' },
-              ],
-              actionButtonText: 'View IHLR Requests',
-              actionButtonUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/ihlr/all-requests`,
-              badgeColor: '#f59e0b',
-              badgeText: 'CC NOTIFICATION'
-            }),
-            moduleType: 'IHLR',
-            requestId: created.id,
-            referenceNo: reqNo,
-            cc: notifyEmailsList.filter((e) => e.toLowerCase() !== notifyEmail.toLowerCase())
-          }).catch((err) => console.warn('[IHLR Mailer] CC email dispatch notice:', err.message));
         }
       } catch (notifErr) {
         console.warn('[IHLR Notifications] Error inserting multi-user in-app notifications:', notifErr.message);
@@ -803,7 +771,7 @@ export const createIhlrRequest = async (req, res) => {
             request: created,
             creatorUser,
             assignedUser: userItem,
-            ccList: notifyEmailsList,
+            ccList: isFirst ? notifyEmailsList : [],
             skipCreator: !isFirst
           }).catch((mailErr) => console.warn('[IHLR Mailer] Non-blocking email dispatch warning:', mailErr.message));
           isFirst = false;

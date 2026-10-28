@@ -524,7 +524,6 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       moduleType: 'IHLR',
       requestId: request.id,
       referenceNo: reqNo,
-      cc: allCcEmails,
     });
   }
 
