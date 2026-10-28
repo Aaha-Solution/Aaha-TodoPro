@@ -3014,9 +3014,9 @@ const ProcessAuditApprovals = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
-                  {/* Top Phase Header Row matching IHLR */}
+                  {/* Top Phase Header Row */}
                   <tr className="text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-200">
-                    <th colSpan={4} className="py-2 px-3 bg-amber-100 text-amber-900 border-r border-amber-200">
+                    <th colSpan={5} className="py-2 px-3 bg-amber-100 text-amber-900 border-r border-amber-200">
                       AUDIT REQUEST (Observation &amp; Parameters)
                     </th>
                     <th colSpan={1} className="py-2 px-3 bg-orange-100 text-orange-900 border-r border-orange-200">
@@ -3032,6 +3032,7 @@ const ProcessAuditApprovals = () => {
                     <th className="py-3 px-3">REQUESTED DATE</th>
                     <th className="py-3 px-4">PROBLEM &amp; MODEL</th>
                     <th className="py-3 px-3">EVIDENCE</th>
+                    <th className="py-3 px-3">ACTION &amp; EVIDENCE</th>
                     <th className="py-3 px-3 text-center">STATUS</th>
                     <th className="py-3 px-3">REMARKS</th>
                     <th className="py-3 px-3 text-center w-14">ACTIONS</th>
@@ -3040,14 +3041,14 @@ const ProcessAuditApprovals = () => {
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {loading ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                      <td colSpan={9} className="py-12 text-center text-slate-400">
                         <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
                         <span>Loading approval queue...</span>
                       </td>
                     </tr>
                   ) : paginatedRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                      <td colSpan={9} className="py-12 text-center text-slate-400">
                         <ClipboardCheck className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                         <p className="font-semibold text-slate-600">No requests found matching criteria</p>
                         {hasActiveFilters && (
@@ -3078,7 +3079,12 @@ const ProcessAuditApprovals = () => {
                       const isPending = !isSignedOff && !isClosed && !isOpen && !isRejected;
 
                       const remarksText = r.creator_remark || r.remarks || '—';
-                      const attachmentsRaw = r.action_attachments || r.attachments || r.evidence_attachment;
+                      // Audit Request Observation Evidence (uploaded during request creation)
+                      const auditEvidence = r.attachments || r.defect_image || null;
+                      // Closer Action & Evidence (filled by closer / executor)
+                      const closerActionText = r.corrective_action || r.permanent_fix || r.temporary_action || r.root_cause || '';
+                      const closerEvidence = r.action_attachments || r.permanent_evidence_attachment || r.temporary_evidence_attachment || null;
+                      const closerFilledBy = r.closer_updated_by || r.temporary_closed_by || r.permanent_closed_by || '';
 
                       return (
                         <tr
@@ -3121,11 +3127,38 @@ const ProcessAuditApprovals = () => {
                               {modelText}
                             </div>
                           </td>
+                          {/* Column 5: AUDIT REQUEST EVIDENCE */}
                           <td className="py-3.5 px-3 cursor-default" onClick={(e) => e.stopPropagation()}>
                             <AttachmentThumbnail
-                              rawAttachment={attachmentsRaw}
+                              rawAttachment={auditEvidence}
                             />
                           </td>
+                          {/* Column 6: CLOSER ACTION & EVIDENCE */}
+                          <td className="py-3.5 px-3 cursor-default" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex flex-col gap-1 max-w-[160px]">
+                              {closerActionText ? (
+                                <div className="text-[11px] font-medium text-slate-800 line-clamp-2" title={closerActionText}>
+                                  {closerActionText}
+                                </div>
+                              ) : (
+                                <span className="inline-block text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 w-fit">
+                                  Pending Action
+                                </span>
+                              )}
+                              {closerFilledBy && (
+                                <div className="text-[10px] text-emerald-700 truncate" title={`Filled by: ${closerFilledBy}`}>
+                                  <span className="font-medium text-emerald-600">By: </span>
+                                  <span className="font-bold">{closerFilledBy}</span>
+                                </div>
+                              )}
+                              {closerEvidence && (
+                                <div className="mt-0.5">
+                                  <AttachmentThumbnail rawAttachment={closerEvidence} />
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          {/* Column 7: STATUS */}
                           <td className="py-3.5 px-3 text-center whitespace-nowrap">
                             {isClosed ? (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -3149,9 +3182,11 @@ const ProcessAuditApprovals = () => {
                               </span>
                             )}
                           </td>
+                          {/* Column 8: REMARKS */}
                           <td className="py-3.5 px-3 text-slate-600 truncate max-w-[150px]" title={remarksText}>
                             {remarksText}
                           </td>
+                          {/* Column 9: ACTIONS */}
                           <td className="py-3.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-center gap-1.5">
                               <button
