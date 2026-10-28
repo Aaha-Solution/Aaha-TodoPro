@@ -154,14 +154,6 @@ export async function sendEmail({
       .forEach((email) => ccSet.add(email));
   }
 
-  // Whenever a mail is triggered, also ensure the configured trigger email receives the notification
-  if (!skipCc && DEFAULT_TRIGGER_EMAIL) {
-    const defaultLower = DEFAULT_TRIGGER_EMAIL.trim().toLowerCase();
-    if (cleanTo.toLowerCase() !== defaultLower) {
-      ccSet.add(defaultLower);
-    }
-  }
-
   // Do not include cleanTo in its own CC list
   ccSet.delete(cleanTo.toLowerCase());
 
@@ -454,6 +446,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
 
   const creatorEmail = creatorUser?.email || request.created_by_email || '';
   const creatorName = creatorUser?.name || request.created_by || request.analysis_done_by || 'Quality Engineer';
+  const creatorDept = (creatorUser?.department || request.creator_department || request.created_by_dept || 'QAD').trim();
   const hasEnteredCreatedBy = Boolean(request.created_by && String(request.created_by).trim());
   const createdByDisplay = hasEnteredCreatedBy
     ? String(request.created_by).trim()
@@ -473,12 +466,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
     .map((s) => String(s || '').trim().toLowerCase())
     .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
 
-  const ccSet = new Set(notifyList);
-  const defaultTrigger = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim().toLowerCase();
-  if (defaultTrigger) {
-    ccSet.add(defaultTrigger);
-  }
-  const allCcEmails = Array.from(ccSet);
+  const allCcEmails = Array.from(new Set(notifyList));
   const ccDisplayStr = allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None';
 
   const tableSummary = [
@@ -534,7 +522,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       headerTitle: `Action Required: IHLR Incident #${reqNo}`,
       headerSubtitle: `An in-house line rejection has been assigned to you for investigation and corrective action.`,
       recipientName: assignedName,
-      greetingMessage: `<strong>${createdByDisplay}</strong> from Incoming Quality has logged an in-house line rejection and designated you as the responsible owner for containment and 5-Why analysis.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
+      greetingMessage: `<strong>${createdByDisplay}</strong> from ${creatorDept} has logged an in-house line rejection and designated you as the responsible owner for containment and 5-Why analysis.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
       tableData: tableSummary,
       actionButtonText: 'Open Report & Submit Countermeasure',
       actionButtonUrl: approvalsUrl,
@@ -590,12 +578,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
     .map((s) => String(s || '').trim().toLowerCase())
     .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
 
-  const ccSet = new Set(notifyList);
-  const defaultTrigger = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim().toLowerCase();
-  if (defaultTrigger) {
-    ccSet.add(defaultTrigger);
-  }
-  const allCcEmails = Array.from(ccSet);
+  const allCcEmails = Array.from(new Set(notifyList));
   const ccDisplayStr = allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None';
 
   const tableSummary = [
@@ -764,12 +747,7 @@ export async function sendProcessAuditRequestEmails({ request, creatorUser, assi
     .map((s) => String(s || '').trim().toLowerCase())
     .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
 
-  const ccSet = new Set(notifyList);
-  const defaultTrigger = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim().toLowerCase();
-  if (defaultTrigger) {
-    ccSet.add(defaultTrigger);
-  }
-  const allCcEmails = Array.from(ccSet);
+  const allCcEmails = Array.from(new Set(notifyList));
   const ccDisplayStr = allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None';
 
   const tableSummary = [
@@ -891,12 +869,7 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
     .map((s) => String(s || '').trim().toLowerCase())
     .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
 
-  const ccSet = new Set(notifyList);
-  const defaultTrigger = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim().toLowerCase();
-  if (defaultTrigger) {
-    ccSet.add(defaultTrigger);
-  }
-  const allCcEmails = Array.from(ccSet);
+  const allCcEmails = Array.from(new Set(notifyList));
   const ccDisplayStr = allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None';
 
   const tableSummary = [
