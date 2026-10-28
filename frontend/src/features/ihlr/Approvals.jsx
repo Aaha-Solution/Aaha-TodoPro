@@ -1367,7 +1367,7 @@ const IhlrApprovals = () => {
                       </div>
                       {hasError && (
                         <p className="text-[11px] text-rose-500 font-semibold pl-10 flex items-center gap-1">
-                          <span>* Why ${idx + 1} (${label}) is mandatory. Please enter occurrence cause.</span>
+                          <span>* Why {idx + 1} ({label}) is mandatory. Please enter occurrence cause.</span>
                         </p>
                       )}
                     </div>
