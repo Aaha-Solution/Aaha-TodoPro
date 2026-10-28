@@ -32,7 +32,7 @@ import AttachmentChipList from '../../components/common/AttachmentChipList';
 import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
 import { useAuth } from '../../hooks/useAuth';
-import { formatDateDDMMYYYY } from '../../utils/dateUtils';
+import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
 import { isIhlrRequestVisibleToUser } from '../../utils/ihlrAuthUtils';
 import { formatIhlrShiftDisplay } from '../../utils/constants';
 
@@ -116,6 +116,9 @@ const IhlrApprovals = () => {
 
   const isSelectedClosed = String(selectedRequest?.status || '').toUpperCase() === 'CLOSED';
   const isSelectedOpen = String(selectedRequest?.status || '').toUpperCase() === 'OPEN';
+  const incidentDateStr = selectedRequest?.batch_date
+    ? parseDateToYYYYMMDD(selectedRequest.batch_date)
+    : '';
 
   // Check if closer details have already been submitted once
   // When status is 'OPEN' (new request or reassigned), closer can view/edit values and submit once.
@@ -716,9 +719,12 @@ const IhlrApprovals = () => {
       return `${y}-${m}-${day}`;
     })();
 
-    // 3. Temporary Target Date is mandatory (allows past, present, and future dates)
+    // 3. Temporary Target Date is mandatory (cannot be before incident date)
     if (!closerTargetDate || !closerTargetDate.trim()) {
       setCloserTargetDateError('Temporary Target Date is required.');
+      hasCloserErrors = true;
+    } else if (incidentDateStr && closerTargetDate < incidentDateStr) {
+      setCloserTargetDateError(`Temporary Target Date cannot be before Incident Date (${formatDateDDMMYYYY(incidentDateStr)}).`);
       hasCloserErrors = true;
     } else {
       setCloserTargetDateError(false);
@@ -752,12 +758,15 @@ const IhlrApprovals = () => {
       setCloserPermanentEvidenceError(false);
     }
 
-    // 7. Permanent Target Date is mandatory (allows past, present, and future dates >= Temporary Target Date)
+    // 7. Permanent Target Date is mandatory (cannot be before incident date or temporary target date)
     if (!closerPermanentTargetDate || !closerPermanentTargetDate.trim()) {
       setCloserPermanentTargetDateError('Permanent Target Date is required.');
       hasCloserErrors = true;
     } else if (closerTargetDate && closerPermanentTargetDate < closerTargetDate) {
       setCloserPermanentTargetDateError(`Permanent Target Date cannot be before Temporary Target Date (${formatDateDDMMYYYY(closerTargetDate)}).`);
+      hasCloserErrors = true;
+    } else if (incidentDateStr && closerPermanentTargetDate < incidentDateStr) {
+      setCloserPermanentTargetDateError(`Permanent Target Date cannot be before Incident Date (${formatDateDDMMYYYY(incidentDateStr)}).`);
       hasCloserErrors = true;
     } else {
       setCloserPermanentTargetDateError(false);
@@ -1515,18 +1524,23 @@ const IhlrApprovals = () => {
               </div>
               <DateInput
                 disabled={!canUpdateCloserFields}
+                min={incidentDateStr || undefined}
                 value={closerTargetDate}
                 onChange={(e) => {
                   const val = e.target.value;
                   setCloserTargetDate(val);
                   if (!val || !val.trim()) {
                     setCloserTargetDateError('Temporary Target Date is required.');
+                  } else if (incidentDateStr && val < incidentDateStr) {
+                    setCloserTargetDateError(`Temporary Target Date cannot be before Incident Date (${formatDateDDMMYYYY(incidentDateStr)}).`);
                   } else {
                     setCloserTargetDateError(false);
                   }
 
                   if (val && closerPermanentTargetDate && closerPermanentTargetDate < val) {
                     setCloserPermanentTargetDateError(`Permanent Target Date cannot be before Temporary Target Date (${formatDateDDMMYYYY(val)}).`);
+                  } else if (closerPermanentTargetDate && incidentDateStr && closerPermanentTargetDate < incidentDateStr) {
+                    setCloserPermanentTargetDateError(`Permanent Target Date cannot be before Incident Date (${formatDateDDMMYYYY(incidentDateStr)}).`);
                   } else if (closerPermanentTargetDate) {
                     setCloserPermanentTargetDateError(false);
                   }
@@ -1766,7 +1780,7 @@ const IhlrApprovals = () => {
               </div>
               <DateInput
                 disabled={!canUpdateCloserFields}
-                min={closerTargetDate || undefined}
+                min={closerTargetDate || incidentDateStr || undefined}
                 value={closerPermanentTargetDate}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -1775,6 +1789,8 @@ const IhlrApprovals = () => {
                     setCloserPermanentTargetDateError('Permanent Target Date is required.');
                   } else if (closerTargetDate && val < closerTargetDate) {
                     setCloserPermanentTargetDateError(`Permanent Target Date cannot be before Temporary Target Date (${formatDateDDMMYYYY(closerTargetDate)}).`);
+                  } else if (incidentDateStr && val < incidentDateStr) {
+                    setCloserPermanentTargetDateError(`Permanent Target Date cannot be before Incident Date (${formatDateDDMMYYYY(incidentDateStr)}).`);
                   } else {
                     setCloserPermanentTargetDateError(false);
                   }

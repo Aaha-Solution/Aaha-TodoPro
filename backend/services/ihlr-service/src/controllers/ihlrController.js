@@ -906,9 +906,15 @@ export const updateIhlrRequest = async (req, res) => {
         safeUpdates.temporary_evidence_attachment = '[]';
       }
     }
+    const incidentDateStr = parseToDateStr(existing.batch_date);
+
     if (safeUpdates.temporary_target_date !== undefined) {
       const trimmed = typeof safeUpdates.temporary_target_date === 'string' ? safeUpdates.temporary_target_date.trim() : '';
       if (trimmed) {
+        const tempDateOnly = trimmed.split('T')[0];
+        if (incidentDateStr && tempDateOnly < incidentDateStr) {
+          return errorResponse(res, `Temporary Target Date cannot be before Incident Date (${incidentDateStr}).`, 400);
+        }
         safeUpdates.temporary_target_date = trimmed;
       } else {
         safeUpdates.temporary_target_date = null;
@@ -919,6 +925,9 @@ export const updateIhlrRequest = async (req, res) => {
       const trimmed = typeof safeUpdates.permanent_target_date === 'string' ? safeUpdates.permanent_target_date.trim() : '';
       if (trimmed) {
         const permDateOnly = trimmed.split('T')[0];
+        if (incidentDateStr && permDateOnly < incidentDateStr) {
+          return errorResponse(res, `Permanent Target Date cannot be before Incident Date (${incidentDateStr}).`, 400);
+        }
         const effectiveTempDate = safeUpdates.temporary_target_date !== undefined
           ? (safeUpdates.temporary_target_date ? String(safeUpdates.temporary_target_date).split('T')[0] : null)
           : (existing.temporary_target_date ? String(existing.temporary_target_date).split('T')[0] : null);
