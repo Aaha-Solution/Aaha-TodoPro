@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
@@ -17,7 +17,14 @@ import {
 
 export const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuthContext();
+  const { login, isAuthenticated } = useAuthContext();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/system-selection', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   const [email, setEmail] = useState(() => localStorage.getItem('todo_remembered_email') || 'admin@gmail.com');
   const [password, setPassword] = useState('admin@123');
   const [showPassword, setShowPassword] = useState(false);
@@ -88,7 +95,7 @@ export const Login = () => {
       setIsLoading(false);
 
       setTimeout(() => {
-        navigate('/system-selection');
+        navigate('/system-selection', { replace: true });
       }, 400);
 
     } catch (err) {

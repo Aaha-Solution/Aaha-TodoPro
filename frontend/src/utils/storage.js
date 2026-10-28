@@ -80,12 +80,7 @@ export const storage = {
 
   clear: () => {
     try {
-      sessionStorage.removeItem(TOKEN_KEY);
-      sessionStorage.removeItem('4m_todo_token');
-      sessionStorage.removeItem('4m_cms_token');
-      sessionStorage.removeItem(USER_KEY);
-      sessionStorage.removeItem('4m_cms_user');
-      sessionStorage.removeItem('4m_selected_system');
+      sessionStorage.clear();
 
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem('4m_todo_token');

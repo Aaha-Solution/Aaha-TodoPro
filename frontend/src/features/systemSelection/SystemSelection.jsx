@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileCheck2, 
@@ -33,9 +33,50 @@ const SystemSelection = () => {
 
     if (isConfirmed) {
       logout();
-      navigate('/login');
+      navigate('/login', { replace: true });
     }
   };
+
+  // Intercept browser back arrow navigation to prevent silent navigation and trigger logout alert
+  useEffect(() => {
+    // Push state so clicking browser back arrow fires popstate while remaining on /system-selection
+    window.history.pushState({ page: 'system-selection' }, '', window.location.href);
+
+    let isPrompting = false;
+
+    const handlePopState = async () => {
+      // Re-push state so URL stays /system-selection while prompt is active
+      window.history.pushState({ page: 'system-selection' }, '', window.location.href);
+
+      if (isPrompting) return;
+      isPrompting = true;
+
+      try {
+        const isConfirmed = await confirm({
+          title: 'Confirm Logout',
+          message: 'Are you sure you want to log out of your session?',
+          confirmText: 'Logout',
+          cancelText: 'Cancel',
+          isDestructive: true,
+          type: 'warning',
+        });
+
+        if (isConfirmed) {
+          logout();
+          navigate('/login', { replace: true });
+        }
+      } catch (err) {
+        console.error('Logout error:', err);
+      } finally {
+        isPrompting = false;
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [confirm, logout, navigate]);
 
   const modules = [
     {

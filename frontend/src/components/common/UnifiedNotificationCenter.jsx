@@ -195,6 +195,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
       }
       navigate(targetPath, {
         state: {
+          search: cleanReqNo,
           highlightReq: cleanReqNo,
           requestId: item.rawId,
         },
@@ -232,11 +233,10 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
             <span
-              className={`font-bold uppercase tracking-wider font-mono px-2 py-0.5 rounded text-[10px] ${
-                isIhlr
-                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                  : 'bg-blue-50 text-blue-700 border border-blue-200'
-              }`}
+              className={`font-bold uppercase tracking-wider font-mono px-2 py-0.5 rounded text-[10px] ${isIhlr
+                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                : 'bg-blue-50 text-blue-700 border border-blue-200'
+                }`}
             >
               {isIhlr ? 'IN-HOUSE LINE REJECTION' : 'PROCESS AUDIT OBSERVATION'}
             </span>
@@ -291,11 +291,10 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
             type="button"
             disabled={unreadCount === 0}
             onClick={handleMarkAllRead}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition shadow-2xs ${
-              unreadCount === 0
-                ? 'bg-slate-100/70 border-slate-200 text-slate-400 cursor-not-allowed opacity-60 select-none'
-                : 'border-slate-200/90 bg-white hover:bg-slate-50 text-slate-800 hover:border-slate-300 cursor-pointer'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition shadow-2xs ${unreadCount === 0
+              ? 'bg-slate-100/70 border-slate-200 text-slate-400 cursor-not-allowed opacity-60 select-none'
+              : 'border-slate-200/90 bg-white hover:bg-slate-50 text-slate-800 hover:border-slate-300 cursor-pointer'
+              }`}
             title={unreadCount === 0 ? 'No unread notifications to mark as read' : 'Mark all notifications as read'}
           >
             <CheckCheck className={`w-4 h-4 ${unreadCount === 0 ? 'text-slate-400' : 'text-slate-600'}`} />
@@ -309,17 +308,15 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
         <button
           type="button"
           onClick={() => setActiveFilterTab('ALL')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-            activeFilterTab === 'ALL'
-              ? 'bg-[#2563eb] text-white shadow-xs'
-              : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
-          }`}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${activeFilterTab === 'ALL'
+            ? 'bg-[#2563eb] text-white shadow-xs'
+            : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
+            }`}
         >
           <span>All Alerts</span>
           <span
-            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-              activeFilterTab === 'ALL' ? 'bg-white/20 text-white font-bold' : 'bg-slate-100 text-slate-700 font-bold'
-            }`}
+            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${activeFilterTab === 'ALL' ? 'bg-white/20 text-white font-bold' : 'bg-slate-100 text-slate-700 font-bold'
+              }`}
           >
             {totalCount}
           </span>
@@ -328,17 +325,15 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
         <button
           type="button"
           onClick={() => setActiveFilterTab('UNREAD')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-            activeFilterTab === 'UNREAD'
-              ? 'bg-[#2563eb] text-white shadow-xs'
-              : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
-          }`}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${activeFilterTab === 'UNREAD'
+            ? 'bg-[#2563eb] text-white shadow-xs'
+            : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
+            }`}
         >
           <span>Unread</span>
           <span
-            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-              unreadCount > 0 ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-500'
-            }`}
+            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${unreadCount > 0 ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-500'
+              }`}
           >
             {unreadCount}
           </span>
@@ -373,17 +368,17 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
               {activeFilterTab === 'UNREAD'
                 ? 'All caught up! No unread notifications'
                 : notifications.length === 0
-                ? 'No notifications found in database'
-                : 'No alerts matching your criteria'}
+                  ? 'No notifications found in database'
+                  : 'No alerts matching your criteria'}
             </p>
             <p className="text-slate-400 text-[11px]">
               {activeFilterTab === 'UNREAD'
                 ? 'All incident and defect reports have been reviewed.'
                 : notifications.length === 0
-                ? isIhlr
-                  ? 'When line rejection reports or containment actions are recorded, they will appear here in real time.'
-                  : 'When audit observations or sign-off requests are assigned, they will appear here in real time.'
-                : 'Try clearing search or resetting the filter options.'}
+                  ? isIhlr
+                    ? 'When line rejection reports or containment actions are recorded, they will appear here in real time.'
+                    : 'When audit observations or sign-off requests are assigned, they will appear here in real time.'
+                  : 'Try clearing search or resetting the filter options.'}
             </p>
           </div>
         ) : (
@@ -393,49 +388,49 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
               item.accentColor === 'emerald'
                 ? 'border-l-emerald-500'
                 : item.accentColor === 'amber'
-                ? 'border-l-amber-500'
-                : item.accentColor === 'rose'
-                ? 'border-l-rose-500'
-                : item.accentColor === 'purple'
-                ? 'border-l-purple-500'
-                : 'border-l-blue-600';
+                  ? 'border-l-amber-500'
+                  : item.accentColor === 'rose'
+                    ? 'border-l-rose-500'
+                    : item.accentColor === 'purple'
+                      ? 'border-l-purple-500'
+                      : 'border-l-blue-600';
 
             // Top pill badge style
             const badgeBg =
               item.accentColor === 'emerald'
                 ? 'bg-emerald-600'
                 : item.accentColor === 'amber'
-                ? 'bg-amber-600'
-                : item.accentColor === 'rose'
-                ? 'bg-rose-600'
-                : item.accentColor === 'purple'
-                ? 'bg-purple-600'
-                : 'bg-blue-600';
+                  ? 'bg-amber-600'
+                  : item.accentColor === 'rose'
+                    ? 'bg-rose-600'
+                    : item.accentColor === 'purple'
+                      ? 'bg-purple-600'
+                      : 'bg-blue-600';
 
             // Left icon container
             const iconBg =
               item.accentColor === 'emerald'
                 ? 'bg-emerald-50 text-emerald-600'
                 : item.accentColor === 'amber'
-                ? 'bg-amber-50 text-amber-600'
-                : item.accentColor === 'rose'
-                ? 'bg-rose-50 text-rose-600'
-                : item.accentColor === 'purple'
-                ? 'bg-purple-50 text-purple-600'
-                : 'bg-blue-50 text-blue-600';
+                  ? 'bg-amber-50 text-amber-600'
+                  : item.accentColor === 'rose'
+                    ? 'bg-rose-50 text-rose-600'
+                    : item.accentColor === 'purple'
+                      ? 'bg-purple-50 text-purple-600'
+                      : 'bg-blue-50 text-blue-600';
 
             const IconComponent =
               item.accentColor === 'emerald'
                 ? Activity
                 : item.accentColor === 'amber'
-                ? ClipboardCheck
-                : item.accentColor === 'rose'
-                ? AlertCircle
-                : item.accentColor === 'purple'
-                ? ArrowRightLeft
-                : item.badgeLabel === 'CC NOTIFICATION' || item.type === 'cc_notification'
-                ? Mail
-                : Layers;
+                  ? ClipboardCheck
+                  : item.accentColor === 'rose'
+                    ? AlertCircle
+                    : item.accentColor === 'purple'
+                      ? ArrowRightLeft
+                      : item.badgeLabel === 'CC NOTIFICATION' || item.type === 'cc_notification'
+                        ? Mail
+                        : Layers;
 
             const defaultLink = isIhlr ? '/ihlr/all-requests' : '/process-audit/approvals';
 
@@ -443,11 +438,10 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
               <div
                 key={item.id}
                 onClick={() => handleCardClick(item)}
-                className={`rounded-2xl p-5 border transition-all duration-150 cursor-pointer flex flex-col gap-3.5 border-l-4 ${borderAccent} ${
-                  !item.read
-                    ? 'bg-white border-blue-200/90 ring-2 ring-blue-500/20 shadow-xs hover:shadow-md hover:border-blue-300'
-                    : 'bg-white/95 border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300 opacity-95'
-                }`}
+                className={`rounded-2xl p-5 border transition-all duration-150 cursor-pointer flex flex-col gap-3.5 border-l-4 ${borderAccent} ${!item.read
+                  ? 'bg-white border-blue-200/90 ring-2 ring-blue-500/20 shadow-xs hover:shadow-md hover:border-blue-300'
+                  : 'bg-white/95 border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300 opacity-95'
+                  }`}
               >
                 {/* Top Row: Icon + Badge + ReqNo + Dept + Title + Timestamp & Subcategory */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -552,11 +546,10 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                         e.stopPropagation();
                         toggleRead(item.id);
                       }}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-wider transition-all duration-150 cursor-pointer shadow-2xs select-none ${
-                        !item.read
-                          ? 'bg-slate-100 hover:bg-slate-200 border-2 border-slate-900 text-black font-black hover:shadow-xs active:scale-95'
-                          : 'bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-400 hover:text-slate-600 font-bold active:scale-95'
-                      }`}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-wider transition-all duration-150 cursor-pointer shadow-2xs select-none ${!item.read
+                        ? 'bg-slate-100 hover:bg-slate-200 border-2 border-slate-900 text-black font-black hover:shadow-xs active:scale-95'
+                        : 'bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-400 hover:text-slate-600 font-bold active:scale-95'
+                        }`}
                       title={item.read ? 'Mark as Unread' : 'Mark as Read'}
                     >
                       {!item.read ? (
