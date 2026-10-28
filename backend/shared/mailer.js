@@ -446,10 +446,11 @@ export function generateEmailTemplate({
 /**
  * Send dual emails (to raised person & selected person) for IHLR requests
  */
-export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser, ccList = [] }) {
+export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser, ccList = [], skipCreator = false }) {
   const reqNo = request.req_no || `IHLR-${request.id || '1'}`;
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const myRequestsUrl = `${baseUrl}/ihlr/my-requests`;
+  const approvalsUrl = `${baseUrl}/ihlr/approvals`;
 
   const creatorEmail = creatorUser?.email || request.created_by_email || '';
   const creatorName = creatorUser?.name || request.created_by || request.analysis_done_by || 'Quality Engineer';
@@ -498,7 +499,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
   const results = {};
 
   // 1. EMAIL TO RAISED PERSON (CREATOR)
-  if (creatorEmail) {
+  if (creatorEmail && !skipCreator) {
     const creatorSubject = `[IHLR Confirmation] Defect Request #${reqNo} Successfully Submitted (Pending)`;
     const creatorHtml = generateEmailTemplate({
       headerTitle: `IHLR Defect Report Logged: #${reqNo}`,
@@ -537,7 +538,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       greetingMessage: `<strong>${createdByDisplay}</strong> from Incoming Quality has logged an in-house line rejection and designated you as the responsible owner for containment and 5-Why analysis.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
       tableData: tableSummary,
       actionButtonText: 'Open Report & Submit Countermeasure',
-      actionButtonUrl: myRequestsUrl,
+      actionButtonUrl: approvalsUrl,
       footerNote: 'Immediate action required: please inspect the defective batch and record corrective containment measures in the portal.',
       badgeColor: '#f59e0b',
       badgeText: 'PENDING ACTION',

@@ -589,7 +589,11 @@ export const createIhlrRequest = async (req, res) => {
           ).catch(() => [[]]);
         }
         if (aRows && aRows.length > 0) {
-          assignedUsersList.push(aRows[0]);
+          const matchedUser = aRows[0];
+          if (!matchedUser.email && data.resp_person_email) {
+            matchedUser.email = data.resp_person_email;
+          }
+          assignedUsersList.push(matchedUser);
         } else {
           assignedUsersList.push({
             id: null,
@@ -619,6 +623,11 @@ export const createIhlrRequest = async (req, res) => {
     data.created_by_email = creatorUser.email || data.created_by_email;
     data.resp_person_email = combinedAssignedEmails || assignedUser.email;
     data.notify_emails = String(data.notify_emails || data.cc_emails || '').trim();
+
+    const notifyEmailsList = data.notify_emails
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
 
     let created = await IhlrRequest.create(data);
     if (!created) {
@@ -720,10 +729,6 @@ export const createIhlrRequest = async (req, res) => {
         }
 
         // Notification C: For Each CC / Notify Email (if any)
-        const notifyEmailsList = String(data.notify_emails || '')
-          .split(',')
-          .map((s) => s.trim().toLowerCase())
-          .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
 
         for (const notifyEmail of notifyEmailsList) {
           let notifyUser = null;
@@ -791,13 +796,25 @@ export const createIhlrRequest = async (req, res) => {
 
     // 4. Trigger Emails to Raised Person AND All Selected Persons
     try {
-      for (const userItem of assignedUsersList) {
+      if (assignedUsersList && assignedUsersList.length > 0) {
+        let isFirst = true;
+        for (const userItem of assignedUsersList) {
+          sendIhlrRequestEmails({
+            request: created,
+            creatorUser,
+            assignedUser: userItem,
+            ccList: notifyEmailsList,
+            skipCreator: !isFirst
+          }).catch((mailErr) => console.warn('[IHLR Mailer] Non-blocking email dispatch warning:', mailErr.message));
+          isFirst = false;
+        }
+      } else {
         sendIhlrRequestEmails({
           request: created,
           creatorUser,
-          assignedUser: userItem,
+          assignedUser: null,
           ccList: notifyEmailsList
-        }).catch(mailErr => console.warn('[IHLR Mailer] Non-blocking email dispatch warning:', mailErr.message));
+        }).catch((mailErr) => console.warn('[IHLR Mailer] Non-blocking email dispatch warning:', mailErr.message));
       }
     } catch (mailSyncErr) {
       console.warn('[IHLR Mailer] Sync email dispatch warning:', mailSyncErr.message);
