@@ -1808,7 +1808,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
                       <Paperclip className="w-4 h-4" />
-                      <span>Temporary Evidence Attachment(s)</span>
+                      <span>Temporary Evidence Attachment(s) ({evidenceAttachments.length})</span>
                     </div>
                     <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
                   </div>
@@ -1873,7 +1873,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
                         <Paperclip className="w-4 h-4" />
-                        <span>Permanent Evidence Attachment(s)</span>
+                        <span>Permanent Evidence Attachment(s) ({permanentEvidenceAttachments.length})</span>
                       </div>
                       <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
                     </div>
@@ -2446,7 +2446,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
                       <Paperclip className="w-4 h-4" />
-                      <span>3. DEFECT EVIDENCE &amp; ATTACHMENTS</span>
+                      <span>3. DEFECT EVIDENCE &amp; ATTACHMENTS ({editAttachments.length + newFiles.length})</span>
                       <span className="text-rose-500 font-bold">*</span>
                     </div>
                     <span className="text-[11px] text-slate-500 font-medium">
@@ -2948,10 +2948,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             ) : (
               <>
                 <div>
-                  {isClosed && activeTab === 'closer' ? (
-                    evidenceAttachments.length > 0 && (
+                  {activeTab === 'closer' ? (
+                    (evidenceAttachments.length > 0 || permanentEvidenceAttachments.length > 0) && (
                       <span className="text-xs text-slate-400 font-medium">
-                        {evidenceAttachments.length} closer evidence attachment{evidenceAttachments.length > 1 ? 's' : ''} available
+                        {evidenceAttachments.length + permanentEvidenceAttachments.length} closer evidence attachment{evidenceAttachments.length + permanentEvidenceAttachments.length > 1 ? 's' : ''} available
                       </span>
                     )
                   ) : activeTab === 'sign_tracks' ? (
