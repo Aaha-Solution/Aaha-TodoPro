@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useScrollLock } from '../../hooks/useScrollLock';
 import { 
   CheckCircle2, 
   AlertTriangle, 
@@ -24,6 +25,7 @@ const GlobalModal = ({
   onConfirm,
   onCancel,
 }) => {
+  useScrollLock(isOpen);
   const confirmBtnRef = useRef(null);
 
   useEffect(() => {
@@ -97,12 +99,12 @@ const GlobalModal = ({
 
   return createPortal(
     <div 
-      className="fixed inset-0 !m-0 !mt-0 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+      className="fixed inset-0 !m-0 !mt-0 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200 overscroll-contain"
       style={{ zIndex: 999999 }}
       onClick={onCancel}
     >
       <div 
-        className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 p-6 space-y-5 animate-in zoom-in-95 duration-200 relative overflow-hidden"
+        className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 p-6 space-y-5 animate-in zoom-in-95 duration-200 relative overflow-hidden overscroll-contain"
         style={{ zIndex: 1000000 }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"

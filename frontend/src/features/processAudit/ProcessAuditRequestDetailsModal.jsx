@@ -41,6 +41,7 @@ import { exportProcessAuditToExcel, exportProcessAuditToPdf, formatReassignmentH
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
 import { useAuth } from '../../hooks/useAuth';
+import { useScrollLock } from '../../hooks/useScrollLock';
 import { processAuditService } from '../../services/processAuditService';
 
 /**
@@ -85,6 +86,7 @@ const ProcessAuditRequestDetailsModal = ({
   onUpdated
 }) => {
   const { error: modalError, success: modalSuccess } = useModal();
+  useScrollLock(isOpen);
   const { user } = useAuth();
 
   const userDept = (user?.department || (() => {
@@ -824,12 +826,12 @@ const ProcessAuditRequestDetailsModal = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 !m-0 !mt-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 !m-0 !mt-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150 overscroll-contain"
       style={{ zIndex: 99990 }}
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
+        className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200 overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header (Matching IHLR exact styling) */}
@@ -979,7 +981,7 @@ const ProcessAuditRequestDetailsModal = ({
         </div>
 
         {/* Modal Body: Scrollable Tab Content */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+        <div className="p-6 overflow-y-auto overscroll-contain space-y-6 flex-1 bg-white">
           {activeTab === 'sign_tracks' ? (
             /* TAB 3: SIGN FIELDS & TRACKS */
             <div className="space-y-6 animate-in fade-in duration-150">

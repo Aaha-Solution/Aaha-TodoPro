@@ -37,6 +37,7 @@ import DateInput from '../../components/common/DateInput';
 import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
 import { storage } from '../../utils/storage';
 import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 const AllRequests = () => {
   const navigate = useNavigate();
@@ -172,6 +173,7 @@ const AllRequests = () => {
   const [loadingDeptUsers, setLoadingDeptUsers] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [reassigningRequest, setReassigningRequest] = useState(null);
+  useScrollLock(Boolean(showReassignModal && reassigningRequest));
   const [reassignDept, setReassignDept] = useState('');
   const [reassignExecutor, setReassignExecutor] = useState('');
   const [reassignReason, setReassignReason] = useState('');
@@ -1128,11 +1130,11 @@ const AllRequests = () => {
       {/* Reassign Department & Executor Modal */}
       {showReassignModal && reassigningRequest && createPortal(
         <div 
-          className="fixed inset-0 !m-0 !mt-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
+          className="fixed inset-0 !m-0 !mt-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overscroll-contain"
           style={{ zIndex: 10001 }}
         >
           <div 
-            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200/80 space-y-5 animate-in zoom-in-95 relative"
+            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200/80 space-y-5 animate-in zoom-in-95 relative overscroll-contain"
             style={{ zIndex: 10002 }}
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">

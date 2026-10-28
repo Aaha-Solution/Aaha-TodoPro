@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Loader2
 } from 'lucide-react';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 // Dynamic loader for PDF.js to render PDF blueprints & technical drawings onto the canvas
 const loadPdfJs = () => {
@@ -67,6 +68,7 @@ const loadPdfJs = () => {
  * - onSave: (annotatedFile: File, newPreviewUrl: string) => void
  */
 const ImageAnnotationModal = ({ isOpen, imageAttachment, onClose, onSave }) => {
+  useScrollLock(Boolean(isOpen && imageAttachment));
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const originalImageRef = useRef(null);
@@ -440,8 +442,8 @@ const ImageAnnotationModal = ({ isOpen, imageAttachment, onClose, onSave }) => {
   if (!isOpen || !imageAttachment) return null;
 
   return createPortal(
-    <div className="fixed inset-0 !m-0 !mt-0 z-[99999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 select-none animate-in fade-in duration-150">
-      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-5xl h-[92vh] max-h-[920px] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 !m-0 !mt-0 z-[99999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 select-none animate-in fade-in duration-150 overscroll-contain">
+      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-5xl h-[92vh] max-h-[920px] flex flex-col shadow-2xl overflow-hidden overscroll-contain">
         
         {/* Top Header (White Theme) */}
         <div className="px-5 py-3.5 border-b border-slate-200 bg-white flex items-center justify-between gap-3 shrink-0">

@@ -9,6 +9,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useModal } from '../../context/ModalContext';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 /**
  * Universal Export Selection Modal (Excel .xlsx vs PDF .pdf)
@@ -24,6 +25,7 @@ const ExportSelectionModal = ({
   onExportExcel,
   onExportPdf
 }) => {
+  useScrollLock(isOpen);
   const [format, setFormat] = useState('excel'); // 'excel' | 'pdf'
   const { warning: modalWarning } = useModal();
 
@@ -45,12 +47,12 @@ const ExportSelectionModal = ({
 
   return createPortal(
     <div 
-      className="fixed inset-0 !m-0 !mt-0 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 !m-0 !mt-0 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overscroll-contain"
       style={{ zIndex: 99999 }}
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 p-6 space-y-5 animate-in zoom-in-95 duration-200 relative"
+        className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 p-6 space-y-5 animate-in zoom-in-95 duration-200 relative overscroll-contain"
         style={{ zIndex: 100000 }}
         onClick={(e) => e.stopPropagation()}
       >
