@@ -1894,9 +1894,7 @@ const ProcessAuditApprovals = () => {
                     </span>
                   )}
                 </label>
-                <span className="text-[10px] text-slate-400 font-normal">
-                  Min: <strong className="text-slate-600 font-semibold">{formatDateDDMMYYYY(todayStr)}</strong>
-                </span>
+              
               </div>
               <DateInput
                 disabled={!canUpdateCloserFields}
