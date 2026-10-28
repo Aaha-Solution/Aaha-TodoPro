@@ -762,9 +762,11 @@ export const createIhlrRequest = async (req, res) => {
               headerTitle: `IHLR Defect Report Notification: #${reqNo}`,
               headerSubtitle: `You have been CC'd on an In-House Line Rejection report.`,
               recipientName: notifyUser?.name || 'Team Member',
-              greetingMessage: `An IHLR defect observation report for <strong>${created.model}</strong> has been logged by <strong>${creatorUser.name}</strong> and assigned to <strong>${assignedNamesDisplay}</strong> (${created.resp || 'Production'}).`,
+              greetingMessage: `An IHLR defect observation report for <strong>${created.model}</strong> has been logged by <strong>${creatorUser.name}</strong>${creatorUser.email ? ` (${creatorUser.email})` : ''} and assigned to <strong>${assignedNamesDisplay}</strong> (${created.resp || 'Production'}).`,
               tableData: [
                 { label: 'Request Number', value: reqNo },
+                { label: 'Created By', value: `${creatorUser.name}${creatorUser.email ? ` (${creatorUser.email})` : ''}` },
+                { label: 'CC Recipient(s)', value: notifyEmailsList.join(', ') || 'None' },
                 { label: 'Defect / Problem', value: created.problem },
                 { label: 'Model', value: created.model },
                 { label: 'Target Dept', value: created.resp },
@@ -778,7 +780,8 @@ export const createIhlrRequest = async (req, res) => {
             }),
             moduleType: 'IHLR',
             requestId: created.id,
-            referenceNo: reqNo
+            referenceNo: reqNo,
+            cc: notifyEmailsList.filter((e) => e.toLowerCase() !== notifyEmail.toLowerCase())
           }).catch((err) => console.warn('[IHLR Mailer] CC email dispatch notice:', err.message));
         }
       } catch (notifErr) {
@@ -792,7 +795,8 @@ export const createIhlrRequest = async (req, res) => {
         sendIhlrRequestEmails({
           request: created,
           creatorUser,
-          assignedUser: userItem
+          assignedUser: userItem,
+          ccList: notifyEmailsList
         }).catch(mailErr => console.warn('[IHLR Mailer] Non-blocking email dispatch warning:', mailErr.message));
       }
     } catch (mailSyncErr) {

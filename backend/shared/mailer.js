@@ -127,6 +127,7 @@ export async function sendEmail({
   referenceNo = '',
   skipCc = false,
   attachments = [],
+  cc = '',
 }) {
   // Restrict email notifications strictly to focused module (Default: ALL)
   const focusModule = (process.env.EMAIL_FOCUS_MODULE || 'ALL').toUpperCase();
@@ -143,12 +144,31 @@ export async function sendEmail({
   const DEFAULT_TRIGGER_EMAIL = process.env.SMTP_USER || process.env.EMAIL_USER || '';
   const cleanTo = (to && to.trim()) ? to.trim() : DEFAULT_TRIGGER_EMAIL;
 
-  // Whenever a mail is triggered, also ensure the configured trigger email receives the notification
-  const ccRecipient = (!skipCc && DEFAULT_TRIGGER_EMAIL && cleanTo.toLowerCase() !== DEFAULT_TRIGGER_EMAIL.toLowerCase())
-    ? DEFAULT_TRIGGER_EMAIL
-    : undefined;
+  // Collect all CC recipients (combining explicit cc and DEFAULT_TRIGGER_EMAIL)
+  const ccSet = new Set();
+  if (cc) {
+    const rawList = Array.isArray(cc) ? cc : String(cc).split(',');
+    rawList
+      .map((s) => String(s || '').trim().toLowerCase())
+      .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))
+      .forEach((email) => ccSet.add(email));
+  }
 
-  console.log(`\n======================================================`);
+  // Whenever a mail is triggered, also ensure the configured trigger email receives the notification
+  if (!skipCc && DEFAULT_TRIGGER_EMAIL) {
+    const defaultLower = DEFAULT_TRIGGER_EMAIL.trim().toLowerCase();
+    if (cleanTo.toLowerCase() !== defaultLower) {
+      ccSet.add(defaultLower);
+    }
+  }
+
+  // Do not include cleanTo in its own CC list
+  ccSet.delete(cleanTo.toLowerCase());
+
+  const ccRecipientList = Array.from(ccSet);
+  const ccRecipient = ccRecipientList.length > 0 ? ccRecipientList.join(', ') : undefined;
+
+  console.log(`\r\n======================================================`);
   console.log(`📧 [EMAIL NOTIFICATION TRIGGERED]`);
   console.log(`   Module    : ${moduleType}`);
   console.log(`   Reference : ${referenceNo || 'N/A'}`);
@@ -158,7 +178,7 @@ export async function sendEmail({
     console.log(`   Also CC   : ${ccRecipient} (User Email Trigger)`);
   }
   console.log(`   Subject   : ${subject}`);
-  console.log(`======================================================\n`);
+  console.log(`======================================================\r\n`);
 
   const transporter = getTransporter();
   let defaultPortalName = 'INEL Quality Portal';
@@ -426,13 +446,13 @@ export function generateEmailTemplate({
 /**
  * Send dual emails (to raised person & selected person) for IHLR requests
  */
-export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser }) {
+export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser, ccList = [] }) {
   const reqNo = request.req_no || `IHLR-${request.id || '1'}`;
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const myRequestsUrl = `${baseUrl}/ihlr/my-requests`;
 
-  const creatorEmail = creatorUser?.email || request.created_by_email || process.env.SMTP_USER || '';
-  const creatorName = creatorUser?.name || request.analysis_done_by || request.created_by || 'Quality Engineer';
+  const creatorEmail = creatorUser?.email || request.created_by_email || '';
+  const creatorName = creatorUser?.name || request.created_by || request.analysis_done_by || 'Quality Engineer';
 
   const assignedEmail = assignedUser?.email || request.resp_person_email || process.env.SMTP_USER || '';
   const assignedName = assignedUser?.name || request.resp_person || 'Responsible Officer';
@@ -440,8 +460,26 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
 
   const mailStatus = formatIhlrMailStatus(request); // Returns 'Pending'
 
+  // Build complete CC list from request.notify_emails, ccList, and default trigger email
+  const notifyList = [
+    ...(Array.isArray(ccList) ? ccList : String(ccList || '').split(',')),
+    ...String(request.notify_emails || '').split(',')
+  ]
+    .map((s) => String(s || '').trim().toLowerCase())
+    .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
+
+  const ccSet = new Set(notifyList);
+  const defaultTrigger = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim().toLowerCase();
+  if (defaultTrigger) {
+    ccSet.add(defaultTrigger);
+  }
+  const allCcEmails = Array.from(ccSet);
+  const ccDisplayStr = allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None';
+
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
+    { label: 'Created By', value: `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}` },
+    { label: 'CC Recipient(s)', value: ccDisplayStr },
     { label: 'Defect / Problem', value: request.problem },
     { label: 'Model', value: request.model },
     { label: 'Detected At', value: request.problem_detected_at || 'Cell Inspection' },
@@ -481,6 +519,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       moduleType: 'IHLR',
       requestId: request.id,
       referenceNo: reqNo,
+      cc: allCcEmails,
     });
   }
 
@@ -491,7 +530,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       headerTitle: `Action Required: IHLR Incident #${reqNo}`,
       headerSubtitle: `An in-house line rejection has been assigned to you for investigation and corrective action.`,
       recipientName: assignedName,
-      greetingMessage: `<strong>${creatorName}</strong> from Incoming Quality has logged an in-house line rejection and designated you as the responsible owner for containment and 5-Why analysis.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
+      greetingMessage: `<strong>${creatorName}</strong>${creatorEmail ? ` (${creatorEmail})` : ''} from Incoming Quality has logged an in-house line rejection and designated you as the responsible owner for containment and 5-Why analysis.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
       tableData: tableSummary,
       actionButtonText: 'Open Report & Submit Countermeasure',
       actionButtonUrl: myRequestsUrl,
@@ -510,6 +549,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       moduleType: 'IHLR',
       requestId: request.id,
       referenceNo: reqNo,
+      cc: allCcEmails,
     });
   }
 
@@ -536,8 +576,24 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
   const mailStatus = isClosed ? 'Closed' : 'Awaiting Review';
   const closerWhy1 = Array.isArray(request.prod_why_why) ? (request.prod_why_why[0] || '—') : (typeof request.prod_why_why === 'string' ? JSON.parse(request.prod_why_why || '[]')[0] || '—' : '—');
 
+  const notifyList = [
+    ...String(request.notify_emails || '').split(',')
+  ]
+    .map((s) => String(s || '').trim().toLowerCase())
+    .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
+
+  const ccSet = new Set(notifyList);
+  const defaultTrigger = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim().toLowerCase();
+  if (defaultTrigger) {
+    ccSet.add(defaultTrigger);
+  }
+  const allCcEmails = Array.from(ccSet);
+  const ccDisplayStr = allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None';
+
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
+    { label: 'Created By (Requester)', value: `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}` },
+    { label: 'CC Recipient(s)', value: ccDisplayStr },
     { label: 'Defect / Model', value: `${request.problem || '—'} (${request.model || '—'})` },
     { label: 'Responsible Dept', value: assignedDept },
     { label: 'Responsible Closer', value: assignedName },
@@ -690,8 +746,24 @@ export async function sendProcessAuditRequestEmails({ request, creatorUser, assi
   const assignedName = assignedUser?.name || request.executor || 'Assigned Executor';
   const assignedDept = request.department || assignedUser?.department || 'Production';
 
+  const notifyList = [
+    ...String(request.notify_emails || request.cc_emails || '').split(',')
+  ]
+    .map((s) => String(s || '').trim().toLowerCase())
+    .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
+
+  const ccSet = new Set(notifyList);
+  const defaultTrigger = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim().toLowerCase();
+  if (defaultTrigger) {
+    ccSet.add(defaultTrigger);
+  }
+  const allCcEmails = Array.from(ccSet);
+  const ccDisplayStr = allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None';
+
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
+    { label: 'Audited / Created By', value: `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}` },
+    { label: 'CC Recipient(s)', value: ccDisplayStr },
     { label: 'Product / Model', value: `${request.product || '—'} (${request.model || '—'})` },
     { label: 'Process / Operation', value: request.process_operation || '—' },
     { label: 'Shift / Escalation Date', value: `Shift ${request.shift || 'I'} • ${request.escalation_date || 'Today'}` },
@@ -699,7 +771,6 @@ export async function sendProcessAuditRequestEmails({ request, creatorUser, assi
     { label: 'Target Dept', value: assignedDept },
     { label: 'Assigned Executor', value: assignedName },
     { label: 'Audit Observation', value: request.issue_observation || request.problem || '—' },
-    { label: 'Audited By', value: creatorName },
     { label: 'Status', value: 'Pending' }
   ];
 
@@ -798,8 +869,24 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
     closerWhy1 = request.root_cause;
   }
 
+  const notifyList = [
+    ...String(request.notify_emails || request.cc_emails || '').split(',')
+  ]
+    .map((s) => String(s || '').trim().toLowerCase())
+    .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
+
+  const ccSet = new Set(notifyList);
+  const defaultTrigger = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim().toLowerCase();
+  if (defaultTrigger) {
+    ccSet.add(defaultTrigger);
+  }
+  const allCcEmails = Array.from(ccSet);
+  const ccDisplayStr = allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None';
+
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
+    { label: 'Created By (Auditor)', value: `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}` },
+    { label: 'CC Recipient(s)', value: ccDisplayStr },
     { label: 'Product / Model', value: `${request.product || '—'} (${request.model || '—'})` },
     { label: 'Responsible Dept', value: assignedDept },
     { label: 'Responsible Executor', value: assignedName },
@@ -1021,12 +1108,12 @@ export async function sendTestEmail({ to, subject, logToConsole = true } = {}) {
   const timestamp = new Date().toLocaleString();
 
   if (logToConsole) {
-    console.log('\n============================================================');
+    console.log('\r\n============================================================');
     console.log('📤 [MAILER TEST] Sending diagnostic test email...');
     console.log(`   Recipient : ${target || '(Not Specified - check SMTP_USER in .env)'}`);
     console.log(`   Subject   : ${testSubject}`);
     console.log(`   Timestamp : ${timestamp}`);
-    console.log('============================================================\n');
+    console.log('============================================================\r\n');
   }
 
   const html = generateEmailTemplate({

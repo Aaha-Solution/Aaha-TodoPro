@@ -99,6 +99,7 @@ const IhlrCreateRequest = () => {
   const defaultFormData = {
     req_no: 'IHLR-1',
     created_by: '',
+    created_by_email: '',
     batch_date: getTodayDateInput(),
     shift: '',
     problem: '',
@@ -651,7 +652,9 @@ const IhlrCreateRequest = () => {
       const creatorName = (formData.created_by && formData.created_by.trim())
         ? formData.created_by.trim()
         : loggedInPersonName;
-      const creatorEmail = user?.email || '';
+      const creatorEmail = (formData.created_by_email && formData.created_by_email.trim())
+        ? formData.created_by_email.trim()
+        : (user?.email || '');
       const creatorId = user?.id || null;
 
       const selectedNames = getSelectedUsers();
@@ -872,6 +875,26 @@ const IhlrCreateRequest = () => {
                   <span>* {errors.created_by}</span>
                 </p>
               )}
+            </div>
+
+            {/* Requester Email */}
+            <div>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center justify-between">
+                <span className="flex items-center">
+                  <span>Requester Email</span>
+                  <span className="text-slate-400 font-normal lowercase ml-1.5 text-[10px]">(optional)</span>
+                </span>
+                <span className="text-[10px] text-slate-400 font-normal truncate max-w-[200px]" title={`Defaults to: ${user?.email || 'quality@inel.co.in'}`}>
+                  Defaults to: <strong className="text-slate-600 font-semibold">{user?.email || 'quality@inel.co.in'}</strong>
+                </span>
+              </label>
+              <input
+                type="email"
+                placeholder={`e.g. Leave empty to attach ${user?.email || 'your email'}`}
+                value={formData.created_by_email || ''}
+                onChange={(e) => setFormData({ ...formData, created_by_email: e.target.value })}
+                className="w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
             </div>
 
             {/* Incident Date */}

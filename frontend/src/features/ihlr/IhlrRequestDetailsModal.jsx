@@ -174,6 +174,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       received_from: targetReq.received_from || '',
       analysis_done_by: targetReq.analysis_done_by || '',
       created_by: targetReq.created_by || user?.name || user?.email || 'Admin',
+      created_by_email: targetReq.created_by_email || user?.email || '',
       problem: targetReq.problem || '',
       occurrence_cause: targetReq.occurrence_cause || targetReq.detailed_observation || ''
     });
@@ -418,6 +419,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         received_from: editFormData.received_from?.trim() || '',
         analysis_done_by: editFormData.analysis_done_by?.trim() || '',
         created_by: editFormData.created_by?.trim() || req.created_by || user?.name || user?.email || 'Admin',
+        created_by_email: editFormData.created_by_email?.trim() || req.created_by_email || user?.email || '',
         problem: editFormData.problem.trim(),
         occurrence_cause: editFormData.occurrence_cause?.trim() || '',
         defect_image: finalAttachments.length > 0 ? JSON.stringify(finalAttachments) : '',
@@ -2404,6 +2406,21 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        REQUESTER EMAIL
+                      </label>
+                      <input
+                        type="email"
+                        value={editFormData.created_by_email || ''}
+                        onChange={(e) => {
+                          setEditFormData(prev => ({ ...prev, created_by_email: e.target.value }));
+                        }}
+                        placeholder="e.g. requester@inel.co.in"
+                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -2763,6 +2780,15 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </span>
                       <span className="font-bold text-slate-900 block">
                         {req.created_by || 'Admin'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        REQUESTER EMAIL
+                      </span>
+                      <span className="font-bold text-slate-900 block truncate font-mono text-[11px]">
+                        {req.created_by_email || '—'}
                       </span>
                     </div>
                   </div>
