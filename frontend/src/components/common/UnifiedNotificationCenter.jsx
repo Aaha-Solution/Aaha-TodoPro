@@ -434,6 +434,8 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                 ? AlertCircle
                 : item.accentColor === 'purple'
                 ? ArrowRightLeft
+                : item.badgeLabel === 'CC NOTIFICATION' || item.type === 'cc_notification'
+                ? Mail
                 : Layers;
 
             const defaultLink = isIhlr ? '/ihlr/all-requests' : '/process-audit/approvals';
@@ -525,6 +527,11 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                       <span className="inline-flex items-center gap-1.5 text-amber-600 font-bold">
                         <AlertCircle className="w-3.5 h-3.5" />
                         Action Required
+                      </span>
+                    ) : item.badgeLabel === 'CC NOTIFICATION' || item.type === 'cc_notification' ? (
+                      <span className="inline-flex items-center gap-1.5 text-blue-600 font-bold">
+                        <Mail className="w-3.5 h-3.5 text-blue-500" />
+                        CC Notification
                       </span>
                     ) : item.footerFlag === 'SYSTEM_LOGS' ? (
                       <span className="inline-flex items-center gap-1.5 text-blue-600">

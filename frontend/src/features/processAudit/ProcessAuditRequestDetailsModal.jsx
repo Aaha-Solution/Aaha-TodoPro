@@ -31,7 +31,8 @@ import {
   ArrowRight,
   ArrowRightLeft,
   Loader2,
-  Lock
+  Lock,
+  Mail
 } from 'lucide-react';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
@@ -138,6 +139,7 @@ const ProcessAuditRequestDetailsModal = ({
     priority: 'Medium',
     department: '',
     executor: '',
+    notify_emails: '',
     issue_observation: '',
     comments: '',
     // Closer fields (editable by admin)
@@ -206,6 +208,7 @@ const ProcessAuditRequestDetailsModal = ({
       priority: targetReq.priority || 'Medium',
       department: targetReq.department || '',
       executor: targetReq.executor || '',
+      notify_emails: targetReq.notify_emails || '',
       issue_observation: targetReq.issue_observation || targetReq.problem || '',
       comments: targetReq.comments || '',
       root_cause: targetReq.root_cause || '',
@@ -2528,6 +2531,26 @@ const ProcessAuditRequestDetailsModal = ({
                       </span>
                     )}
                   </div>
+
+                  {req.notify_emails && (
+                    <div className="col-span-full pt-2.5 mt-1 border-t border-slate-100">
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-blue-600" />
+                        <span>NOTIFY / CC EMAILS</span>
+                      </span>
+                      <div className="flex flex-wrap gap-1.5 mt-0.5">
+                        {req.notify_emails.split(',').map((s) => s.trim()).filter(Boolean).map((email) => (
+                          <span
+                            key={email}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-semibold border border-blue-200"
+                          >
+                            <Mail className="w-3 h-3 text-blue-500 shrink-0" />
+                            <span>{email}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

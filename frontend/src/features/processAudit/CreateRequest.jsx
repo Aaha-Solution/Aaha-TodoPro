@@ -23,6 +23,7 @@ import {
   Search,
   Users,
   PenTool,
+  Mail,
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
@@ -82,6 +83,7 @@ const CreateRequest = () => {
     issueObservation: '',
     department: '',
     executor: '',
+    notify_emails: '',
     comments: '',
   };
 
@@ -110,6 +112,7 @@ const CreateRequest = () => {
         ...defaultFormData,
         ...saved.formData,
         date: (saved.formData.date && saved.formData.date <= todayStr) ? saved.formData.date : todayStr,
+        notify_emails: saved.formData.notify_emails || '',
       };
     }
     return defaultFormData;
@@ -137,6 +140,7 @@ const CreateRequest = () => {
         d.priority ||
         d.issueObservation ||
         d.department ||
+        d.notify_emails ||
         d.comments ||
         (Array.isArray(saved?.selectedExecutors) && saved.selectedExecutors.length > 0)
       );
@@ -156,6 +160,7 @@ const CreateRequest = () => {
       formData.priority ||
       formData.issueObservation ||
       formData.department ||
+      formData.notify_emails ||
       formData.comments ||
       (selectedExecutors && selectedExecutors.length > 0)
     );
@@ -187,6 +192,7 @@ const CreateRequest = () => {
     setFormData((prev) => ({
       ...defaultFormData,
       requestId: prev.requestId || 'PA-1',
+      notify_emails: '',
     }));
     setSelectedExecutors([]);
     setAttachments([]);
@@ -216,6 +222,77 @@ const CreateRequest = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Notify / CC Emails state & handlers (All users across all departments)
+  const [isNotifyEmailDropdownOpen, setIsNotifyEmailDropdownOpen] = useState(false);
+  const [notifyEmailSearchTerm, setNotifyEmailSearchTerm] = useState('');
+  const notifyEmailDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notifyEmailDropdownRef.current && !notifyEmailDropdownRef.current.contains(e.target)) {
+        setIsNotifyEmailDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getAllAvailableUsersWithEmail = () => {
+    if (!Array.isArray(dbUsers)) return [];
+    const map = new Map();
+    dbUsers.forEach((u) => {
+      if (!u) return;
+      if (u.is_active === false || u.is_active === 0 || u.is_active === '0') return;
+      const s = String(u.status || 'ACTIVE').trim().toUpperCase();
+      if (s === 'INACTIVE') return;
+      const email = (u.email || '').trim().toLowerCase();
+      if (!email) return;
+      if (!map.has(email)) {
+        map.set(email, {
+          id: u.id,
+          name: u.name || email,
+          email: u.email.trim(),
+          department: (u.department || u.dept || '').trim().toUpperCase(),
+          role: (u.role || '').trim().toUpperCase(),
+        });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  const getSelectedNotifyEmails = () => {
+    if (!formData.notify_emails) return [];
+    return formData.notify_emails
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+  };
+
+  const handleToggleNotifyEmail = (email) => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) return;
+    const current = getSelectedNotifyEmails();
+    let updated;
+    if (current.includes(cleanEmail)) {
+      updated = current.filter((e) => e !== cleanEmail);
+    } else {
+      updated = [...current, cleanEmail];
+    }
+    setFormData((prev) => ({ ...prev, notify_emails: updated.join(', ') }));
+  };
+
+  const handleRemoveNotifyEmail = (email, e) => {
+    if (e) e.stopPropagation();
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const current = getSelectedNotifyEmails();
+    const updated = current.filter((e) => e !== cleanEmail);
+    setFormData((prev) => ({ ...prev, notify_emails: updated.join(', ') }));
+  };
+
+  const handleClearAllNotifyEmails = () => {
+    setFormData((prev) => ({ ...prev, notify_emails: '' }));
+  };
 
   // Fetch all users from DB on mount
   useEffect(() => {
@@ -635,6 +712,7 @@ const CreateRequest = () => {
         }
         return '';
       })(),
+      notify_emails: formData.notify_emails || '',
       comments: formData.comments,
       attachments: finalAttachments,
       created_by: creatorName,
@@ -1550,6 +1628,191 @@ const CreateRequest = () => {
               </span>
             )}
           </span>
+
+          {/* Optional Notify / CC Emails across all departments - Multi-Select with Search */}
+          <div className="relative mt-5 pt-5 border-t border-slate-100" ref={notifyEmailDropdownRef}>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-blue-600" />
+                <span>Notify / CC Emails (All Users)</span>
+                <span className="text-[10px] font-semibold text-slate-400 lowercase italic tracking-normal">(optional)</span>
+              </label>
+              {getSelectedNotifyEmails().length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAllNotifyEmails}
+                  className="text-rose-600 hover:text-rose-700 font-semibold text-[10px] hover:underline cursor-pointer"
+                >
+                  Clear All ({getSelectedNotifyEmails().length})
+                </button>
+              )}
+            </div>
+
+            {/* Multi-Select Trigger Box */}
+            <div
+              onClick={() => setIsNotifyEmailDropdownOpen((prev) => !prev)}
+              className={`w-full min-h-[42px] px-3.5 py-2 border rounded-xl text-xs font-medium transition flex items-center justify-between gap-2 cursor-pointer ${
+                isNotifyEmailDropdownOpen
+                  ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 shadow-xs'
+                  : 'bg-white border-slate-200 hover:border-slate-300 text-slate-800 shadow-2xs'
+              }`}
+            >
+              <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0 py-0.5">
+                {getSelectedNotifyEmails().length === 0 ? (
+                  <span className="text-slate-400 font-normal">
+                    Select optional user email(s) across all departments to notify / CC...
+                  </span>
+                ) : (
+                  getSelectedNotifyEmails().map((email) => {
+                    const matched = getAllAvailableUsersWithEmail().find(
+                      (u) => u.email.toLowerCase() === email
+                    );
+                    const displayName = matched?.name ? `${matched.name} (${email})` : email;
+                    return (
+                      <span
+                        key={email}
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-semibold"
+                        title={displayName}
+                      >
+                        <Mail className="w-3 h-3 text-blue-500 shrink-0" />
+                        <span className="truncate max-w-[200px]">
+                          {matched?.name ? `${matched.name} (${email})` : email}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemoveNotifyEmail(email, e)}
+                          className="p-0.5 hover:bg-blue-200/60 rounded text-blue-600 hover:text-blue-900 transition cursor-pointer"
+                          title={`Remove ${email}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0 text-slate-400">
+                {getSelectedNotifyEmails().length > 0 && (
+                  <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-md text-[10px] font-bold">
+                    {getSelectedNotifyEmails().length}
+                  </span>
+                )}
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform duration-200 ${
+                    isNotifyEmailDropdownOpen ? 'rotate-180 text-blue-600' : ''
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Dropdown Menu */}
+            {isNotifyEmailDropdownOpen && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                {/* Search box inside dropdown */}
+                <div className="p-2 border-b border-slate-100 bg-slate-50/70">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={notifyEmailSearchTerm}
+                      onChange={(e) => setNotifyEmailSearchTerm(e.target.value)}
+                      placeholder="Search user by email, name, or department..."
+                      className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </div>
+
+                <div className="max-h-60 overflow-y-auto p-1.5 divide-y divide-slate-50">
+                  {getAllAvailableUsersWithEmail()
+                    .filter((u) => {
+                      const q = notifyEmailSearchTerm.trim().toLowerCase();
+                      if (!q) return true;
+                      return (
+                        (u.name || '').toLowerCase().includes(q) ||
+                        (u.email || '').toLowerCase().includes(q) ||
+                        (u.department || '').toLowerCase().includes(q)
+                      );
+                    })
+                    .map((u) => {
+                      const emailLower = u.email.toLowerCase();
+                      const isChecked = getSelectedNotifyEmails().includes(emailLower);
+                      return (
+                        <div
+                          key={u.id || u.email}
+                          onClick={() => handleToggleNotifyEmail(emailLower)}
+                          className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition select-none ${
+                            isChecked
+                              ? 'bg-blue-50/80 text-blue-900 font-semibold'
+                              : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            <div
+                              className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${
+                                isChecked
+                                  ? 'bg-blue-600 border-blue-600 text-white'
+                                  : 'border-slate-300 bg-white'
+                              }`}
+                            >
+                              {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-medium text-slate-800 flex items-center gap-1.5 truncate">
+                                <span>{u.name}</span>
+                                {u.department && (
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 font-normal">
+                                    {u.department}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-blue-600 font-mono truncate">
+                                {u.email}
+                              </div>
+                            </div>
+                          </div>
+                          {isChecked && (
+                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider shrink-0">
+                              Selected
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                  {/* Empty state if search has no results */}
+                  {getAllAvailableUsersWithEmail().filter((u) => {
+                    const q = notifyEmailSearchTerm.trim().toLowerCase();
+                    if (!q) return true;
+                    return (
+                      (u.name || '').toLowerCase().includes(q) ||
+                      (u.email || '').toLowerCase().includes(q) ||
+                      (u.department || '').toLowerCase().includes(q)
+                    );
+                  }).length === 0 && (
+                    <div className="p-4 text-center text-xs text-slate-400">
+                      No user emails found matching "{notifyEmailSearchTerm}"
+                    </div>
+                  )}
+                </div>
+
+                {/* Dropdown footer */}
+                <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-slate-500">
+                    {getSelectedNotifyEmails().length} of {getAllAvailableUsersWithEmail().length} emails selected
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsNotifyEmailDropdownOpen(false)}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
 

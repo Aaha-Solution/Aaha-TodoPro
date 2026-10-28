@@ -196,6 +196,7 @@ export const createRequest = async (req, res) => {
     requestData.created_by_id = creatorUser.id || requestData.created_by_id;
     requestData.created_by_email = creatorUser.email || requestData.created_by_email;
     requestData.executor_email = combinedAssignedEmails || assignedUser.email;
+    requestData.notify_emails = String(requestData.notify_emails || requestData.cc_emails || '').trim();
 
     const created = await ProcessAuditRequest.create(requestData);
     const issueNo = created.issue_no || (created.id ? `PA-${created.id}` : 'PA-1');
@@ -236,6 +237,73 @@ export const createRequest = async (req, res) => {
               `Process Audit report #${issueNo} (${created.model || 'Process'} - "${created.issue_observation || created.problem || 'Observation'}") has been assigned to you by ${creatorUser.name}. Please inspect and submit root cause action.`
             ]
           ).catch((e) => console.warn('[PA Notification B Error]:', e.message));
+        }
+
+        // Notification C: For Each CC / Notify Email (if any)
+        const notifyEmailsList = String(requestData.notify_emails || '')
+          .split(',')
+          .map((s) => s.trim().toLowerCase())
+          .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
+
+        for (const notifyEmail of notifyEmailsList) {
+          let notifyUser = null;
+          if (pool) {
+            const [uRows] = await pool.query(
+              'SELECT id, name, email, department FROM users WHERE LOWER(TRIM(email)) = ? LIMIT 1',
+              [notifyEmail]
+            ).catch(() => [[]]);
+            if (uRows && uRows.length > 0) notifyUser = uRows[0];
+          }
+
+          if (pool && notifyUser) {
+            await pool.query(
+              `INSERT INTO process_audit_notifications 
+               (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, 'cc_notification', ?, ?, '/process-audit/all-requests', 0)`,
+              [
+                notifyUser.id,
+                notifyUser.name,
+                notifyUser.email,
+                created.id,
+                issueNo,
+                `CC Notification: Process Audit #${issueNo}`,
+                `You have been CC'd on Process Audit finding #${issueNo} for "${created.model || created.product || 'Process Audit'}" logged by ${creatorUser.name}.`
+              ]
+            ).catch((err) => console.warn('[PA Notifications] Error inserting CC in-app notification:', err.message));
+          }
+
+          sendEmail({
+            to: notifyEmail,
+            recipientName: notifyUser?.name || 'Team Member',
+            recipientRole: 'CC_NOTIFY',
+            subject: `[Process Audit Notification] Finding #${issueNo} Logged (${created.department || 'Production'}) - Pending`,
+            text: `Process Audit finding #${issueNo} (${created.model || created.product || 'Audit'} - "${created.issue_observation || created.problem || 'Finding'}") has been logged into the portal.`,
+            html: generateEmailTemplate({
+              headerTitle: `Process Audit Report Notification: #${issueNo}`,
+              headerSubtitle: `You have been CC'd on a Process Audit observation report.`,
+              recipientName: notifyUser?.name || 'Team Member',
+              greetingMessage: `A Process Audit observation report for <strong>${created.model || created.product || 'Audit'}</strong> has been logged by <strong>${creatorUser.name}</strong> and assigned to <strong>${assignedNamesDisplay}</strong> (${created.department || 'Production'}).`,
+              tableData: [
+                { label: 'Request Number', value: issueNo },
+                { label: 'Observation / Finding', value: created.issue_observation || created.problem || '-' },
+                { label: 'Product / Model', value: `${created.product || '-'} (${created.model || '-'})` },
+                { label: 'Process / Operation', value: created.process_operation || '-' },
+                { label: 'Shift / Escalation Date', value: `Shift ${created.shift || 'I'} • ${created.escalation_date || 'Today'}` },
+                { label: 'Target Dept', value: created.department || 'Production' },
+                { label: 'Assigned Executor', value: assignedNamesDisplay },
+                { label: 'Audited By', value: creatorUser.name },
+                { label: 'Status', value: 'Pending' }
+              ],
+              actionButtonText: 'View Process Audit Details',
+              actionButtonUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/process-audit/all-requests`,
+              footerNote: 'You have received this notification because your email was included in the Notify / CC recipient list.',
+              badgeColor: '#f59e0b',
+              badgeText: 'PENDING ACTION'
+            }),
+            moduleType: 'PROCESS_AUDIT',
+            requestId: created.id,
+            referenceNo: issueNo
+          }).catch((mailErr) => console.warn('[PA Mailer] CC Email warning:', mailErr.message));
         }
       } catch (notifErr) {
         console.warn('[Process Audit Notifications] Error inserting multi-user in-app notifications:', notifErr.message);

@@ -143,7 +143,8 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           (n.type === 'submission_confirmed' ||
             n.type === 'request_created' ||
             n.type === 'assignment_required' ||
-            n.type === 'countermeasure_saved') &&
+            n.type === 'countermeasure_saved' ||
+            n.type === 'cc_notification') &&
           !isDirectMatch
         ) {
           return;
@@ -166,6 +167,9 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           n.type === 'approval_required' ||
           (n.title && n.title.toLowerCase().includes('action required')) ||
           (n.title && n.title.toLowerCase().includes('new request assigned'));
+        const isCcNotif =
+          n.type === 'cc_notification' ||
+          (n.title && n.title.toLowerCase().includes('cc notification'));
 
         const notifIdStr = `notif-${n.id}`;
         const reqNoKey = n.reqNo || (n.requestId ? (String(n.requestId).startsWith('#') ? n.requestId : `#${n.requestId}`) : '');
@@ -199,6 +203,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
             if (isPendingSignoff && s.badgeLabel === 'PENDING SIGN-OFF') return true;
             if (isUpdatedNotif && s.badgeLabel === 'COUNTERMEASURE SUBMITTED') return true;
             if (isConfirmedNotif && s.badgeLabel === 'REPORT LOGGED') return true;
+            if (isCcNotif && s.badgeLabel === 'CC NOTIFICATION') return true;
             if (s.type === n.type && s.title === n.title) return true;
           }
           return false;
@@ -219,6 +224,8 @@ export const fetchIhlrNotificationsFeed = async (user) => {
             ? 'COUNTERMEASURE SUBMITTED'
             : isConfirmedNotif
             ? 'REPORT LOGGED'
+            : isCcNotif
+            ? 'CC NOTIFICATION'
             : n.badgeLabel || 'ACTION REQUIRED',
           accentColor: isClosedNotif
             ? 'emerald'
@@ -228,8 +235,10 @@ export const fetchIhlrNotificationsFeed = async (user) => {
             ? 'indigo'
             : isConfirmedNotif
             ? 'blue'
+            : isCcNotif
+            ? 'blue'
             : n.accentColor || 'amber',
-          department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : 'PRODUCTION'),
+          department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : isCcNotif ? 'INFORMATION' : 'PRODUCTION'),
           title: n.title,
           message: n.message,
           timeDisplay: formatStreamDate(n.date),
@@ -242,10 +251,12 @@ export const fetchIhlrNotificationsFeed = async (user) => {
             ? 'OPERATIONAL_UPDATE'
             : isConfirmedNotif
             ? 'SYSTEM_LOGS'
+            : isCcNotif
+            ? 'SYSTEM_LOGS'
             : n.footerFlag || 'ACTION_REQUIRED',
           read: isItemRead,
-          type: n.type || (isClosedNotif ? 'closed' : 'info'),
-          link: n.link || '/ihlr/approvals',
+          type: n.type || (isClosedNotif ? 'closed' : isCcNotif ? 'info' : 'info'),
+          link: n.link || (isCcNotif ? '/ihlr/all-requests' : '/ihlr/approvals'),
         });
       });
     }
@@ -411,7 +422,8 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           (n.type === 'submission_confirmed' ||
             n.type === 'request_created' ||
             n.type === 'assignment_required' ||
-            n.type === 'countermeasure_saved') &&
+            n.type === 'countermeasure_saved' ||
+            n.type === 'cc_notification') &&
           !isDirectMatch
         ) {
           return;
@@ -470,6 +482,7 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
             if (isPendingSignoff && s.badgeLabel === 'PENDING SIGN-OFF') return true;
             if (isUpdatedNotif && (s.badgeLabel === 'COUNTERMEASURE SUBMITTED' || s.badgeLabel === 'ACTION SUBMITTED')) return true;
             if (isConfirmedNotif && s.badgeLabel === 'REPORT LOGGED') return true;
+            if (isCcNotif && s.badgeLabel === 'CC NOTIFICATION') return true;
             if (isReassignedNotif && s.badgeLabel === 'REASSIGNED') return true;
             if (s.type === n.type && s.title === n.title) return true;
           }
@@ -498,6 +511,8 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
             ? 'ACTION SUBMITTED'
             : isConfirmedNotif
             ? 'REPORT LOGGED'
+            : isCcNotif
+            ? 'CC NOTIFICATION'
             : n.badgeLabel || 'ACTION REQUIRED',
           accentColor: isClosedNotif
             ? 'emerald'
@@ -509,8 +524,10 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
             ? 'indigo'
             : isConfirmedNotif
             ? 'blue'
+            : isCcNotif
+            ? 'blue'
             : n.accentColor || 'amber',
-          department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : 'PRODUCTION'),
+          department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : isCcNotif ? 'INFORMATION' : 'PRODUCTION'),
           title: notifTitle,
           message: n.message,
           timeDisplay: formatStreamDate(n.date || n.time || n.created_at),
@@ -525,10 +542,12 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
             ? 'OPERATIONAL_UPDATE'
             : isConfirmedNotif
             ? 'SYSTEM_LOGS'
+            : isCcNotif
+            ? 'SYSTEM_LOGS'
             : n.footerFlag || 'ACTION_REQUIRED',
           read: isItemRead,
-          type: n.type || (isClosedNotif ? 'closed' : 'info'),
-          link: n.link || (isClosedNotif ? '/process-audit/all-requests' : '/process-audit/approvals'),
+          type: n.type || (isClosedNotif ? 'closed' : isCcNotif ? 'info' : 'info'),
+          link: n.link || (isClosedNotif || isCcNotif ? '/process-audit/all-requests' : '/process-audit/approvals'),
         });
       });
     }
@@ -537,12 +556,15 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
       requests.forEach((r, idx) => {
         const uName = (resolvedUser?.name || '').trim().toLowerCase();
         const uId = String(resolvedUser?.id || '');
+        const uEmail = (resolvedUser?.email || '').trim().toLowerCase();
         const execNames = (r.executor || '').toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
         const rCreatedBy = (r.created_by || '').trim().toLowerCase();
+        const ccEmails = (r.notify_emails || '').toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
         const isExec = uName && execNames.includes(uName);
         const isCreator = (uName && rCreatedBy === uName) || (uId && String(r.created_by_id) === uId);
+        const isCcUser = uEmail && ccEmails.includes(uEmail);
 
-        if (!isAdmin && !isExec && !isCreator) return;
+        if (!isAdmin && !isExec && !isCreator && !isCcUser) return;
 
         const reqNo = r.issue_no ? (String(r.issue_no).startsWith('#') ? r.issue_no : `#${r.issue_no}`) : `#PA-${r.id || idx + 1}`;
         if (streamList.some((s) => s.reqNo === reqNo)) return;
