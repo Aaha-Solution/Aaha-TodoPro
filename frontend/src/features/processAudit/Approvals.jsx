@@ -94,7 +94,7 @@ const ProcessAuditApprovals = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(() => {
-    const init = location.state?.search || location.state?.highlightReq || queryRequestId || '';
+    const init = location.state?.search && !location.state?.highlightReq ? location.state.search : '';
     return init ? String(init).replace(/^#/, '').trim() : '';
   });
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -104,9 +104,10 @@ const ProcessAuditApprovals = () => {
     if (target) {
       const cleanTarget = String(target).replace(/^#/, '').trim();
       pendingTargetReqRef.current = cleanTarget;
-      setSearch(cleanTarget);
+      if (location.state?.search && !location.state?.highlightReq) {
+        setSearch(cleanTarget);
+      }
       setSelectedStatus('All');
-      setCurrentPage(1);
     }
   }, [location.state, queryRequestId, location.key]);
   const [activeModalRequest, setActiveModalRequest] = useState(null);
@@ -598,6 +599,11 @@ const ProcessAuditApprovals = () => {
       const currentSel = selectedRequestRef.current;
       if (matchedTarget) {
         populateForm(matchedTarget);
+        const targetIdx = list.findIndex((r) => r.id === matchedTarget.id || r.issue_no === matchedTarget.issue_no);
+        if (targetIdx !== -1) {
+          const targetPage = Math.floor(targetIdx / rowsPerPage) + 1;
+          setCurrentPage(targetPage);
+        }
         pendingTargetReqRef.current = null;
         try {
           window.history.replaceState({}, document.title, window.location.pathname);

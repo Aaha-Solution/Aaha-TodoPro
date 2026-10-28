@@ -195,7 +195,6 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
       }
       navigate(targetPath, {
         state: {
-          search: cleanReqNo,
           highlightReq: cleanReqNo,
           requestId: item.rawId,
         },
