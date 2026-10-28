@@ -575,7 +575,7 @@ const IhlrAllRequests = () => {
             <thead>
               {/* Top Phase Header Row */}
               <tr className="text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-200">
-                <th colSpan={10} className="py-2 px-3 bg-amber-100 text-amber-900 border-r border-amber-200">
+                <th colSpan={8} className="py-2 px-3 bg-amber-100 text-amber-900 border-r border-amber-200">
                   REQUESTOR (Defect Investigation &amp; QA 5-Why)
                 </th>
                 <th colSpan={3} className="py-2 px-3 bg-orange-100 text-orange-900 border-r border-orange-200">
@@ -596,16 +596,12 @@ const IhlrAllRequests = () => {
                   <span className="block text-slate-400 font-medium">NO</span>
                 </th>
                 <th className="py-2.5 px-2 text-left align-middle whitespace-nowrap">
-                  <span className="block">INCIDENT DATE</span>
-                  <span className="block text-slate-400 font-medium">/ SHIFT</span>
+                  <span className="block">INCIDENT</span>
+                  <span className="block text-slate-400 font-medium">DATE</span>
                 </th>
-                <th className="py-2.5 px-2.5 text-left align-middle min-w-[120px]">
-                  <span className="block">PROBLEM / DEFECT</span>
-                  <span className="block text-slate-400 font-medium">DESCRIPTION</span>
-                </th>
-                <th className="py-2.5 px-2 text-left align-middle whitespace-nowrap">
-                  <span className="block">MODEL NAME</span>
-                  <span className="block text-slate-400 font-medium">/ PART</span>
+                <th className="py-2.5 px-2 text-center align-middle whitespace-nowrap">
+                  <span className="block">SHIFT</span>
+                  <span className="invisible block">.</span>
                 </th>
                 <th className="py-2.5 px-2 text-left align-middle whitespace-nowrap">
                   <span className="block">PROBLEM</span>
@@ -623,15 +619,11 @@ const IhlrAllRequests = () => {
                   <span className="block">DEFECT</span>
                   <span className="block text-slate-400 font-medium">EVIDENCE</span>
                 </th>
-                <th className="py-2.5 px-2 text-center align-middle whitespace-nowrap">
-                  <span className="block">4M CATEGORY</span>
-                  <span className="block text-slate-400 font-medium">/ RESPONSIBILITY</span>
-                </th>
-                <th className="py-2.5 px-2 text-left align-middle min-w-[110px]">
+                <th className="py-2.5 px-2 text-left min-w-[110px]">
                   <span className="block">OCCURRENCE CAUSE</span>
                   <span className="block text-slate-400 font-medium">(5-WHY)</span>
                 </th>
-                <th className="py-2.5 px-2 text-left align-middle min-w-[110px]">
+                <th className="py-2.5 px-2 text-left min-w-[110px]">
                   <span className="block">TEMPORARY</span>
                   <span className="block text-slate-400 font-medium">ACTION TAKEN</span>
                 </th>
@@ -639,7 +631,7 @@ const IhlrAllRequests = () => {
                   <span className="block">TARGET</span>
                   <span className="block text-slate-400 font-medium">DATE</span>
                 </th>
-                <th className="py-2.5 px-2 text-left align-middle min-w-[90px]">
+                <th className="py-2.5 px-2 text-left min-w-[90px]">
                   <span className="block">ADMIN</span>
                   <span className="block text-slate-400 font-medium">REMARKS</span>
                 </th>
@@ -656,7 +648,7 @@ const IhlrAllRequests = () => {
             <tbody className="divide-y divide-slate-100 text-xs">
               {paginatedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={16} className="py-12 text-center text-slate-400">
+                  <td colSpan={14} className="py-12 text-center text-slate-400">
                     <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600">
                       No IHLR Reports match your filter
@@ -679,7 +671,7 @@ const IhlrAllRequests = () => {
                       {String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`}
                     </td>
 
-                    {/* Incident Date / Shift */}
+                    {/* Incident Date */}
                     <td className="py-2.5 px-2 whitespace-nowrap align-middle">
                       <div className="font-semibold text-slate-900 leading-tight">
                         {formatDateDDMMYYYY(r.batch_date)}
@@ -696,28 +688,13 @@ const IhlrAllRequests = () => {
                           </span>
                         </div>
                       )}
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-[10px] font-bold text-slate-600 font-mono">
-                          {formatIhlrShiftDisplay(r.shift)}
-                        </span>
-                        {getIhlrShiftDetails(r.shift)?.timing && (
-                          <span className="text-[9px] px-1 py-0.2 rounded bg-slate-100 text-slate-500 font-mono border border-slate-200">
-                            {getIhlrShiftDetails(r.shift).timing}
-                          </span>
-                        )}
-                      </div>
                     </td>
 
-                    {/* Problem / Defect Description */}
-                    <td className="py-2.5 px-2.5 font-semibold text-slate-900 text-xs leading-snug align-middle" title={r.problem}>
-                      <div className="line-clamp-2 max-w-[150px]">
-                        {r.problem}
-                      </div>
-                    </td>
-
-                    {/* Model Name / Part */}
-                    <td className="py-2.5 px-2 font-bold text-blue-700 whitespace-nowrap text-xs align-middle" title={r.model}>
-                      <div className="truncate max-w-[85px]">{r.model}</div>
+                    {/* Shift */}
+                    <td className="py-2.5 px-2 text-center whitespace-nowrap align-middle">
+                      <span className="text-[10px] font-bold text-slate-700 font-mono" title={getIhlrShiftDetails(r.shift)?.timing || ''}>
+                        {formatIhlrShiftDisplay(r.shift)}
+                      </span>
                     </td>
 
                     {/* Problem Detected At */}
@@ -746,34 +723,6 @@ const IhlrAllRequests = () => {
                         <IhlrAttachmentThumbnail
                           rawAttachment={r.defect_image}
                         />
-                      </div>
-                    </td>
-
-                    {/* 4M Category / Responsibility */}
-                    <td className="py-2.5 px-2 text-center whitespace-nowrap align-middle">
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold font-mono bg-amber-50 text-amber-800 border border-amber-200 mb-0.5">
-                          {r.four_m || 'MAN'}
-                        </div>
-                        <div className="text-[9px] font-bold text-slate-600 font-mono leading-none">
-                          {r.resp || '-'}
-                        </div>
-                        {r.resp_person && (() => {
-                          const isReassigned = Boolean(formatReassignmentHistory(r.reassignment_history)?.hasReassignments);
-                          return (
-                            <div 
-                              className={`text-[9px] font-semibold truncate max-w-[100px] mx-auto text-center mt-0.5 ${isReassigned ? 'text-purple-700' : 'text-blue-600'}`} 
-                              title={`${isReassigned ? 'Reassigned' : 'Assigned'}: ${r.resp_person}`}
-                            >
-                              {isReassigned ? `Reassigned: ${r.resp_person}` : r.resp_person}
-                            </div>
-                          );
-                        })()}
-                        {(r.closer_updated_by || r.temporary_closed_by || r.permanent_closed_by) && (
-                          <div className="text-[9px] text-emerald-700 font-bold truncate max-w-[100px] mx-auto text-center" title={`Closer filled by: ${r.closer_updated_by || r.temporary_closed_by || r.permanent_closed_by}`}>
-                            ✓ {r.closer_updated_by || r.temporary_closed_by || r.permanent_closed_by}
-                          </div>
-                        )}
                       </div>
                     </td>
 
