@@ -1,12 +1,42 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import pool from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+export function getLogoPath() {
+  const candidatePaths = [
+    path.resolve(__dirname, 'assets/logo.png'),
+    path.resolve(__dirname, '../assets/logo.png'),
+    path.resolve(__dirname, '../../frontend/public/images/logo.png'),
+    path.resolve(__dirname, '../../frontend/src/assets/images/Nippon Logo.png'),
+    path.resolve(__dirname, '../../frontend/src/assets/Nippon Logo.png'),
+  ];
+  for (const p of candidatePaths) {
+    if (fs.existsSync(p)) {
+      return p;
+    }
+  }
+  return null;
+}
+
+export function getLogoBase64() {
+  const p = getLogoPath();
+  if (p && fs.existsSync(p)) {
+    try {
+      const buf = fs.readFileSync(p);
+      return `data:image/png;base64,${buf.toString('base64')}`;
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
 
 /**
  * Shared Mailer Service for India Nippon Electricals Limited Portal
@@ -96,6 +126,7 @@ export async function sendEmail({
   requestId = null,
   referenceNo = '',
   skipCc = false,
+  attachments = [],
 }) {
   // Restrict email notifications strictly to focused module (Default: ALL)
   const focusModule = (process.env.EMAIL_FOCUS_MODULE || 'ALL').toUpperCase();
@@ -136,6 +167,20 @@ export async function sendEmail({
 
   const senderFrom = process.env.SMTP_FROM || (DEFAULT_TRIGGER_EMAIL ? `"${defaultPortalName}" <${DEFAULT_TRIGGER_EMAIL}>` : `"${defaultPortalName}"`);
 
+  // Automatically attach INEL logo if referenced in HTML
+  const finalAttachments = Array.isArray(attachments) ? [...attachments] : [];
+  if (html && html.includes('cid:inel-logo') && !finalAttachments.some((a) => a.cid === 'inel-logo')) {
+    const logoPath = getLogoPath();
+    if (logoPath) {
+      finalAttachments.push({
+        filename: 'inel-logo.png',
+        path: logoPath,
+        cid: 'inel-logo',
+        contentDisposition: 'inline'
+      });
+    }
+  }
+
   if (transporter) {
     try {
       const mailOptions = {
@@ -144,6 +189,7 @@ export async function sendEmail({
         subject,
         text,
         html,
+        attachments: finalAttachments,
       };
       if (ccRecipient) {
         mailOptions.cc = ccRecipient;
@@ -161,7 +207,7 @@ export async function sendEmail({
         recipientEmail: cleanTo,
         subject,
         bodyText: text,
-        bodyHtml: html,
+        bodyHtml: (html && html.includes('cid:inel-logo')) ? html.replace(/src=["']cid:inel-logo["']/g, `src="${getLogoBase64() || 'cid:inel-logo'}"`) : html,
         deliveryStatus: 'DELIVERED',
         smtpResponse: info.response || info.messageId,
       });
@@ -181,7 +227,7 @@ export async function sendEmail({
         recipientEmail: cleanTo,
         subject,
         bodyText: text,
-        bodyHtml: html,
+        bodyHtml: (html && html.includes('cid:inel-logo')) ? html.replace(/src=["']cid:inel-logo["']/g, `src="${getLogoBase64() || 'cid:inel-logo'}"`) : html,
         deliveryStatus: 'FAILED',
         errorMessage: sendErr.message,
       });
@@ -200,7 +246,7 @@ export async function sendEmail({
       recipientEmail: cleanTo,
       subject,
       bodyText: text,
-      bodyHtml: html,
+      bodyHtml: (html && html.includes('cid:inel-logo')) ? html.replace(/src=["']cid:inel-logo["']/g, `src="${getLogoBase64() || 'cid:inel-logo'}"`) : html,
       deliveryStatus: 'DISPATCHED_SIMULATED',
       smtpResponse: 'Simulated dispatch (configure SMTP in .env for live inbox delivery)',
     });
@@ -261,7 +307,9 @@ export function generateEmailTemplate({
   footerNote,
   badgeColor = '#2563eb',
   badgeText = 'NOTIFICATION',
+  logoUrl,
 }) {
+  const resolvedLogo = logoUrl || 'cid:inel-logo';
   const tableRows = tableData
     .map(
       (item) => `
@@ -289,19 +337,30 @@ export function generateEmailTemplate({
     
     <!-- Top Brand Header -->
     <tr>
-      <td style="background: #0f172a; padding: 24px 32px;">
+      <td style="background: #0f172a; padding: 20px 28px;">
         <table width="100%" border="0" cellspacing="0" cellpadding="0">
           <tr>
-            <td>
-              <div style="font-size: 18px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">
-                INDIA NIPPON ELECTRICALS LIMITED
-              </div>
-              <div style="font-size: 12px; color: #94a3b8; margin-top: 4px; font-weight: 500;">
-                Enterprise Quality Management &amp; Audit System
-              </div>
+            <td style="vertical-align: middle;">
+              <table border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="vertical-align: middle; padding-right: 14px; width: 44px;">
+                    <div style="background: #ffffff; border-radius: 10px; padding: 5px; display: inline-block; box-shadow: 0 2px 6px rgba(0,0,0,0.25); line-height: 0; text-align: center;">
+                      <img src="${resolvedLogo}" alt="INEL Logo" width="34" height="34" style="display: block; width: 34px; height: 34px; object-fit: contain; margin: 0 auto; border: 0;" />
+                    </div>
+                  </td>
+                  <td style="vertical-align: middle;">
+                    <div style="font-size: 16px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px; line-height: 1.25;">
+                      INDIA NIPPON ELECTRICALS LIMITED
+                    </div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 3px; font-weight: 500; letter-spacing: 0.2px;">
+                      Enterprise Quality Management &amp; Audit System
+                    </div>
+                  </td>
+                </tr>
+              </table>
             </td>
-            <td align="right">
-              <span style="background: ${badgeColor}; color: #ffffff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px;">
+            <td align="right" style="vertical-align: middle;">
+              <span style="background: ${badgeColor}; color: #ffffff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; display: inline-block;">
                 ${badgeText}
               </span>
             </td>

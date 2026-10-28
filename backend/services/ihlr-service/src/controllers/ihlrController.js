@@ -1904,13 +1904,27 @@ export const getIhlrEmailLogs = async (req, res) => {
 export const testIhlrEmail = async (req, res) => {
   try {
     const to = req.body?.to || process.env.SMTP_USER || '';
+    const recipientName = req.body?.name || 'Portal Tester';
+    const html = generateEmailTemplate({
+      headerTitle: 'INEL IHLR Portal Diagnostic',
+      headerSubtitle: 'Outbound SMTP Verification Test',
+      recipientName,
+      greetingMessage: 'This is an automated test notification dispatched from the INEL IHLR Quality Management Portal to verify outbound email delivery and template formatting.',
+      tableData: [
+        { label: 'SMTP Host', value: process.env.SMTP_HOST || 'localhost' },
+        { label: 'Sender Account', value: process.env.SMTP_USER || 'Environment Config' },
+        { label: 'Dispatched At', value: new Date().toLocaleString() }
+      ],
+      badgeColor: '#10b981',
+      badgeText: 'TEST EMAIL'
+    });
     const result = await sendEmail({
       to,
-      recipientName: req.body?.name || 'Portal Tester',
+      recipientName,
       recipientRole: 'TESTER',
       subject: '[INEL IHLR Portal] Test Email Notification',
       text: 'This is a test notification from INEL IHLR Quality Management Portal using configured SMTP credentials.',
-      html: `<p>This is a test notification from <strong>INEL IHLR Quality Management Portal</strong> using configured SMTP credentials (<code>${process.env.SMTP_USER || 'Environment Config'}</code>).</p>`,
+      html,
       moduleType: 'IHLR',
       referenceNo: 'TEST-001'
     });
