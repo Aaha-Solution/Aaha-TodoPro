@@ -374,6 +374,15 @@ const UserManagement = () => {
   };
 
   const handleDelete = async (userId, userName) => {
+    const isSelf =
+      (currentAuthUser?.id && String(currentAuthUser.id) === String(userId)) ||
+      (currentAuthUser?.email && users.find((u) => String(u.id) === String(userId))?.email?.toLowerCase() === currentAuthUser.email.toLowerCase());
+
+    if (isSelf) {
+      modalError('You cannot delete your own logged-in user account.');
+      return;
+    }
+
     const isConfirmed = await modalConfirm(`Are you sure you want to delete user "${userName}" from the database?`);
     if (isConfirmed) {
       try {
@@ -819,7 +828,9 @@ const UserManagement = () => {
                   </tr>
                 ) : (
                   filteredUsers.map((u, index) => {
-                    const isCurrent = currentAuthUser?.email?.toLowerCase() === u.email?.toLowerCase();
+                    const isCurrent =
+                      (currentAuthUser?.id && String(currentAuthUser.id) === String(u.id)) ||
+                      (currentAuthUser?.email && u.email && currentAuthUser.email.toLowerCase() === u.email.toLowerCase());
 
                     return (
                       <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
@@ -887,8 +898,15 @@ const UserManagement = () => {
                         {/* Status Toggle */}
                         <td className="py-4 px-4">
                           <button
-                            onClick={() => handleToggleStatus(u)}
-                            className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition cursor-pointer ${
+                            onClick={() => {
+                              if (isCurrent) {
+                                modalError('You cannot deactivate your own logged-in user account.');
+                                return;
+                              }
+                              handleToggleStatus(u);
+                            }}
+                            disabled={isCurrent}
+                            className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition ${isCurrent ? 'cursor-default opacity-85' : 'cursor-pointer'} ${
                               u.status === 'Active' || u.status === 'ACTIVE'
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                 : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
@@ -912,14 +930,16 @@ const UserManagement = () => {
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
 
-                            {/* Delete User */}
-                            <button
-                              onClick={() => handleDelete(u.id, u.name)}
-                              className="p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-lg transition shadow-2xs cursor-pointer"
-                              title="Delete user"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {/* Delete User - Hidden for Current Logged-In User */}
+                            {!isCurrent && (
+                              <button
+                                onClick={() => handleDelete(u.id, u.name)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-lg transition shadow-2xs cursor-pointer"
+                                title="Delete user"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

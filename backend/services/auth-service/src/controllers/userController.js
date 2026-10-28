@@ -146,6 +146,17 @@ export const updateUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const currentUserId = req.user?.id || req.headers['x-user-id'];
+    const currentUserEmail = req.user?.email || req.headers['x-user-email'];
+    if (currentUserId && String(currentUserId) === String(id)) {
+      return errorResponse(res, 'You cannot delete your own logged-in user account', 400);
+    }
+    if (currentUserEmail) {
+      const userToDelete = await User.findById(id);
+      if (userToDelete && userToDelete.email?.toLowerCase() === currentUserEmail.toLowerCase()) {
+        return errorResponse(res, 'You cannot delete your own logged-in user account', 400);
+      }
+    }
     await User.delete(id);
     return successResponse(res, { id }, 'User deleted successfully');
   } catch (error) {

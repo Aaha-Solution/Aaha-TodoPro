@@ -453,6 +453,10 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
 
   const creatorEmail = creatorUser?.email || request.created_by_email || '';
   const creatorName = creatorUser?.name || request.created_by || request.analysis_done_by || 'Quality Engineer';
+  const hasEnteredCreatedBy = Boolean(request.created_by && String(request.created_by).trim());
+  const createdByDisplay = hasEnteredCreatedBy
+    ? String(request.created_by).trim()
+    : (creatorName ? `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}` : (creatorEmail || 'Quality Engineer'));
 
   const assignedEmail = assignedUser?.email || request.resp_person_email || process.env.SMTP_USER || '';
   const assignedName = assignedUser?.name || request.resp_person || 'Responsible Officer';
@@ -478,7 +482,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
 
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
-    { label: 'Created By', value: `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}` },
+    { label: 'Created By', value: createdByDisplay },
     { label: 'CC Recipient(s)', value: ccDisplayStr },
     { label: 'Defect / Problem', value: request.problem },
     { label: 'Model', value: request.model },
@@ -530,7 +534,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       headerTitle: `Action Required: IHLR Incident #${reqNo}`,
       headerSubtitle: `An in-house line rejection has been assigned to you for investigation and corrective action.`,
       recipientName: assignedName,
-      greetingMessage: `<strong>${creatorName}</strong>${creatorEmail ? ` (${creatorEmail})` : ''} from Incoming Quality has logged an in-house line rejection and designated you as the responsible owner for containment and 5-Why analysis.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
+      greetingMessage: `<strong>${createdByDisplay}</strong> from Incoming Quality has logged an in-house line rejection and designated you as the responsible owner for containment and 5-Why analysis.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
       tableData: tableSummary,
       actionButtonText: 'Open Report & Submit Countermeasure',
       actionButtonUrl: myRequestsUrl,
@@ -544,7 +548,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       recipientName: assignedName,
       recipientRole: 'SELECTED_PERSON',
       subject: assignedSubject,
-      text: `IHLR Request #${reqNo} (${request.model} - "${request.problem}") has been assigned to you by ${creatorName} (Status: Pending). Please log in to complete containment analysis.`,
+      text: `IHLR Request #${reqNo} (${request.model} - "${request.problem}") has been assigned to you by ${createdByDisplay} (Status: Pending). Please log in to complete containment analysis.`,
       html: assignedHtml,
       moduleType: 'IHLR',
       requestId: request.id,
@@ -567,6 +571,10 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
 
   const creatorEmail = creatorUser?.email || request.created_by_email || process.env.SMTP_USER || '';
   const creatorName = creatorUser?.name || request.analysis_done_by || request.created_by || 'Quality Engineer';
+  const hasEnteredCreatedBy = Boolean(request.created_by && String(request.created_by).trim());
+  const createdByDisplay = hasEnteredCreatedBy
+    ? String(request.created_by).trim()
+    : `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}`;
 
   const assignedEmail = assignedUser?.email || request.resp_person_email || process.env.SMTP_USER || '';
   const assignedName = assignedUser?.name || request.resp_person || 'Responsible Officer';
@@ -592,7 +600,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
 
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
-    { label: 'Created By (Requester)', value: `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}` },
+    { label: 'Created By (Requester)', value: createdByDisplay },
     { label: 'CC Recipient(s)', value: ccDisplayStr },
     { label: 'Defect / Model', value: `${request.problem || '—'} (${request.model || '—'})` },
     { label: 'Responsible Dept', value: assignedDept },
@@ -741,6 +749,10 @@ export async function sendProcessAuditRequestEmails({ request, creatorUser, assi
 
   const creatorEmail = creatorUser?.email || (!skipCreator ? (request.created_by_email || process.env.SMTP_USER || '') : '');
   const creatorName = creatorUser?.name || request.created_by || 'Quality Auditor';
+  const hasEnteredCreatedBy = Boolean(request.created_by && String(request.created_by).trim());
+  const createdByDisplay = hasEnteredCreatedBy
+    ? String(request.created_by).trim()
+    : `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}`;
 
   const assignedEmail = assignedUser?.email || request.executor_email || process.env.SMTP_USER || '';
   const assignedName = assignedUser?.name || request.executor || 'Assigned Executor';
@@ -762,7 +774,7 @@ export async function sendProcessAuditRequestEmails({ request, creatorUser, assi
 
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
-    { label: 'Audited / Created By', value: `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}` },
+    { label: 'Audited / Created By', value: createdByDisplay },
     { label: 'CC Recipient(s)', value: ccDisplayStr },
     { label: 'Product / Model', value: `${request.product || '—'} (${request.model || '—'})` },
     { label: 'Process / Operation', value: request.process_operation || '—' },
@@ -848,6 +860,10 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
 
   const creatorEmail = creatorUser?.email || request.created_by_email || process.env.SMTP_USER || '';
   const creatorName = creatorUser?.name || request.created_by || 'Quality Auditor';
+  const hasEnteredCreatedBy = Boolean(request.created_by && String(request.created_by).trim());
+  const createdByDisplay = hasEnteredCreatedBy
+    ? String(request.created_by).trim()
+    : `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}`;
 
   const assignedEmail = assignedUser?.email || request.executor_email || process.env.SMTP_USER || '';
   const assignedName = assignedUser?.name || request.executor || 'Assigned Lead';
@@ -885,7 +901,7 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
 
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
-    { label: 'Created By (Auditor)', value: `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}` },
+    { label: 'Created By (Auditor)', value: createdByDisplay },
     { label: 'CC Recipient(s)', value: ccDisplayStr },
     { label: 'Product / Model', value: `${request.product || '—'} (${request.model || '—'})` },
     { label: 'Responsible Dept', value: assignedDept },
