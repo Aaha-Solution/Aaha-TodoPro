@@ -3,10 +3,10 @@
 -- Microservices Database Schema & Seed Data
 -- ==============================================================================
 
-CREATE DATABASE IF NOT EXISTS inel_todo;
+CREATE DATABASE IF NOT EXISTS inel_todo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE inel_todo;
 
--- Clean reset of all existing tables
+-- Clean reset of all existing tables (in dependency order)
 DROP TABLE IF EXISTS email_logs;
 DROP TABLE IF EXISTS ihlr_notifications;
 DROP TABLE IF EXISTS process_audit_notifications;
@@ -36,7 +36,8 @@ CREATE TABLE users (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_user_employee_id (employee_id),
   INDEX idx_user_email (email),
-  INDEX idx_user_role (role)
+  INDEX idx_user_role (role),
+  INDEX idx_user_dept (department)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==============================================================================
@@ -67,7 +68,7 @@ CREATE TABLE process_audit_requests (
   action_taken_at TIMESTAMP NULL,
   approved_by VARCHAR(100) NULL,
   approved_by_id INT NULL,
-  approved_by_email VARCHAR(100) NULL,
+  approved_by_email VARCHAR(150) NULL,
   approved_at TIMESTAMP NULL,
   creator_remark TEXT NULL,
   reviewed_by VARCHAR(100) NULL,
@@ -87,13 +88,20 @@ CREATE TABLE process_audit_requests (
   permanent_evidence_attachment JSON NULL,
   permanent_target_date VARCHAR(50) NULL,
   permanent_closed_by VARCHAR(100) NULL,
+  closer_updated_by VARCHAR(100) NULL,
+  closer_updated_by_id INT NULL,
+  closer_updated_by_email VARCHAR(150) NULL,
+  closer_updated_at TIMESTAMP NULL,
   created_by VARCHAR(100) NULL,
   created_by_id INT NULL,
+  created_by_email VARCHAR(150) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_pa_issue_no (issue_no),
   INDEX idx_pa_status (status),
-  INDEX idx_pa_executor (executor)
+  INDEX idx_pa_dept (department),
+  INDEX idx_pa_executor (executor),
+  INDEX idx_pa_created_by (created_by)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==============================================================================
@@ -105,7 +113,7 @@ CREATE TABLE process_audit_approvals (
   issue_no VARCHAR(50) NOT NULL,
   approved_by VARCHAR(100) NOT NULL,
   approved_by_id INT NULL,
-  approved_by_email VARCHAR(100) NULL,
+  approved_by_email VARCHAR(150) NULL,
   approved_by_role VARCHAR(50) NULL,
   department VARCHAR(100) NULL,
   executor VARCHAR(100) NULL,
@@ -151,7 +159,9 @@ CREATE TABLE process_audit_notifications (
   is_read TINYINT(1) DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_pa_notif_user (user_name),
-  INDEX idx_pa_notif_req (request_id)
+  INDEX idx_pa_notif_email (user_email),
+  INDEX idx_pa_notif_req (request_id),
+  INDEX idx_pa_notif_read (is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==============================================================================
@@ -237,7 +247,6 @@ CREATE TABLE ihlr_notifications (
   INDEX idx_ihlr_notif_req (request_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
 -- ==============================================================================
 -- 8. COMMON APP BINARY ATTACHMENTS STORAGE (LONGBLOB)
 -- ==============================================================================
@@ -302,4 +311,3 @@ CREATE TABLE email_logs (
 INSERT INTO users (id, name, email, password, role, department, status) VALUES
 (1, 'Person', 'admin@gmail.com', '$2a$10$FPtxFd2HfqHQv3xiXzuj9.HmyZTpuaFZ5pmQJFleBmySa.Vdn2nxm', 'ADMIN', 'QAD', 'ACTIVE')
 ON DUPLICATE KEY UPDATE name = VALUES(name), role = VALUES(role), department = VALUES(department), password = VALUES(password);
-
