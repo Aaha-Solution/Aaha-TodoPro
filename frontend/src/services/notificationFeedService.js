@@ -453,6 +453,9 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           n.type === 'approval_required' ||
           (n.title && n.title.toLowerCase().includes('action required')) ||
           (n.title && n.title.toLowerCase().includes('new request assigned'));
+        const isCcNotif =
+          n.type === 'cc_notification' ||
+          (n.title && n.title.toLowerCase().includes('cc notification'));
 
         const notifIdStr = `pa-notif-${n.id}`;
         const rawReq = n.requestId || n.issue_no || '';
