@@ -646,15 +646,7 @@ const AllRequests = () => {
                 <span>Reset Filters</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-xl transition-all active:scale-95 cursor-pointer shadow-2xs"
-              title="Refresh requests and reset filters"
-            >
-              <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`} />
-              <span>Refresh</span>
-            </button>
+           
           </div>
         </div>
 
