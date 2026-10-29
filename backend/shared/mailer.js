@@ -438,7 +438,7 @@ export function generateEmailTemplate({
 /**
  * Send dual emails (to raised person & selected person) for IHLR requests
  */
-export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser, ccList = [], skipCreator = false }) {
+export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser, allAssignedNames = '', ccList = [], skipCreator = false }) {
   const reqNo = request.req_no || `IHLR-${request.id || '1'}`;
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const myRequestsUrl = `${baseUrl}/ihlr/my-requests`;
@@ -453,8 +453,17 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
     : (creatorName ? `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}` : (creatorEmail || 'Quality Engineer'));
 
   const assignedEmail = assignedUser?.email || request.resp_person_email || process.env.SMTP_USER || '';
-  const assignedName = assignedUser?.name || request.resp_person || 'Responsible Officer';
+  const assignedName = (request.resp_person && String(request.resp_person).trim())
+    ? String(request.resp_person).trim()
+    : (assignedUser?.name || 'Responsible Officer');
   const assignedDept = request.resp || assignedUser?.department || 'PRODUCTION';
+
+  // All assigned members display for creator and summary table (e.g. "Ramesh, srihari")
+  const allAssignedPersonsDisplay = (allAssignedNames && String(allAssignedNames).trim())
+    ? String(allAssignedNames).trim()
+    : (request.resp_person && String(request.resp_person).trim())
+      ? String(request.resp_person).trim()
+      : assignedName;
 
   const mailStatus = formatIhlrMailStatus(request); // Returns 'Pending'
 
@@ -480,7 +489,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
     { label: '4M Category', value: request.four_m || 'MAN' },
     { label: 'Actual Qty', value: String(request.actual_qty || 1) },
     { label: 'Target Dept', value: assignedDept },
-    { label: 'Assigned Person', value: assignedName },
+    { label: 'Assigned Person(s)', value: allAssignedPersonsDisplay },
     { label: 'Status', value: mailStatus },
   ];
 
@@ -493,7 +502,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       headerTitle: `IHLR Defect Report Logged: #${reqNo}`,
       headerSubtitle: `Your In-House Line Rejection analysis report has been recorded and dispatched for containment.`,
       recipientName: creatorName,
-      greetingMessage: `Your IHLR defect observation report for <strong>${request.model}</strong> has been logged into the database and assigned to <strong>${assignedName}</strong> (${assignedDept}) for 5-Why root cause countermeasure.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
+      greetingMessage: `Your IHLR defect observation report for <strong>${request.model}</strong> has been logged into the database and assigned to <strong>${allAssignedPersonsDisplay}</strong> (${assignedDept}) for 5-Why root cause countermeasure.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
       tableData: tableSummary,
       actionButtonText: 'View My IHLR Requests',
       actionButtonUrl: myRequestsUrl,
@@ -507,7 +516,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       recipientName: creatorName,
       recipientRole: 'RAISED_PERSON',
       subject: creatorSubject,
-      text: `Your IHLR defect request #${reqNo} (${request.model} - "${request.problem}") has been successfully logged (Status: Pending) and assigned to ${assignedName} (${assignedDept}).`,
+      text: `Your IHLR defect request #${reqNo} (${request.model} - "${request.problem}") has been successfully logged (Status: Pending) and assigned to ${allAssignedPersonsDisplay} (${assignedDept}).`,
       html: creatorHtml,
       moduleType: 'IHLR',
       requestId: request.id,
@@ -565,7 +574,9 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
     : `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}`;
 
   const assignedEmail = assignedUser?.email || request.resp_person_email || process.env.SMTP_USER || '';
-  const assignedName = assignedUser?.name || request.resp_person || 'Responsible Officer';
+  const assignedName = (request.resp_person && String(request.resp_person).trim())
+    ? String(request.resp_person).trim()
+    : (assignedUser?.name || 'Responsible Officer');
   const assignedDept = request.resp || assignedUser?.department || 'PRODUCTION';
 
   const isClosed = String(request.status).toUpperCase() === 'CLOSED' || String(request.status).toUpperCase() === 'APPROVED';

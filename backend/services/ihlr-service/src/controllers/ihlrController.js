@@ -764,6 +764,10 @@ export const createIhlrRequest = async (req, res) => {
 
     // 4. Trigger Emails to Raised Person AND All Selected Persons
     try {
+      const allAssignedNamesDisplay = (assignedUsersList && assignedUsersList.length > 0)
+        ? assignedUsersList.map((u) => u.name).filter(Boolean).join(', ')
+        : (created.resp_person || (assignedUser && assignedUser.name) || '');
+
       if (assignedUsersList && assignedUsersList.length > 0) {
         let isFirst = true;
         for (const userItem of assignedUsersList) {
@@ -771,6 +775,7 @@ export const createIhlrRequest = async (req, res) => {
             request: created,
             creatorUser,
             assignedUser: userItem,
+            allAssignedNames: allAssignedNamesDisplay,
             ccList: isFirst ? notifyEmailsList : [],
             skipCreator: !isFirst
           }).catch((mailErr) => console.warn('[IHLR Mailer] Non-blocking email dispatch warning:', mailErr.message));
@@ -781,6 +786,7 @@ export const createIhlrRequest = async (req, res) => {
           request: created,
           creatorUser,
           assignedUser: null,
+          allAssignedNames: allAssignedNamesDisplay,
           ccList: notifyEmailsList
         }).catch((mailErr) => console.warn('[IHLR Mailer] Non-blocking email dispatch warning:', mailErr.message));
       }
