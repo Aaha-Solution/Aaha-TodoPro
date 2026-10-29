@@ -815,7 +815,7 @@ const IhlrCreateRequest = () => {
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                1. Requestor &amp; Line Defect Details (Yellow Phase)
+                1. Requestor &amp; Line Defect Details
               </h2>
               <p className="text-xs text-slate-500">
                 Primary defect parameters, detection stage, and line responsibility.
