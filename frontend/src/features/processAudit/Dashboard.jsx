@@ -1,54 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
-  BarChart3,
-  Hourglass,
-  Clock,
-  CheckCircle2,
-  X,
-  Eye,
-  FileText,
-  RefreshCw,
   AlertCircle,
-  Paperclip,
-  Download,
-  FileSpreadsheet,
-  Presentation,
-  File as FileIcon,
-  Image as ImageIcon,
+  CheckCircle2,
+  Layers,
+  Eye,
   Filter,
   Calendar,
   Building2,
   RotateCcw,
-  ChevronDown,
+  X,
+  Clock,
   SlidersHorizontal,
-  Layers
+  ChevronDown,
+  Sparkles,
+  Download
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
-import { useAuth } from '../../hooks/useAuth';
 import AttachmentThumbnail from '../../components/common/AttachmentThumbnail';
 import AttachmentPreviewModal from '../../components/common/AttachmentPreviewModal';
-import { triggerDirectDownload, resolveAttachmentUrl } from '../../components/common/attachmentUtils';
-import { DEPARTMENTS } from '../../utils/constants';
-import DateInput from '../../components/common/DateInput';
-import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
-import { storage } from '../../utils/storage';
-import { useModal } from '../../context/ModalContext';
-import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
-import { exportProcessAuditToExcel, exportProcessAuditToPdf, getProcessAuditDisplayStatus } from './processAuditExportUtils';
 import ProcessAuditBarChart from './ProcessAuditBarChart';
+import { exportProcessAuditToExcel, exportProcessAuditToPdf, getProcessAuditDisplayStatus } from './processAuditExportUtils';
+import DateInput from '../../components/common/DateInput';
+import { useAuth } from '../../hooks/useAuth';
+import { useModal } from '../../context/ModalContext';
+import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
+import { DEPARTMENTS, formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
+import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
 
 const ProcessAuditDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { warning: modalWarning, error: modalError } = useModal();
-  const savedUser = storage.getUser();
-  const currentUser = user || savedUser;
 
-  const userDept = (currentUser?.department || (() => {
+  const userDept = (user?.department || (() => {
     try {
       const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
       return u ? JSON.parse(u)?.department : '';
@@ -57,15 +44,7 @@ const ProcessAuditDashboard = () => {
     }
   })() || '').trim().toUpperCase();
 
-  const userRole = (currentUser?.role || (() => {
-    try {
-      const u = sessionStorage.getItem('todo_user') || localStorage.getItem('todo_user');
-      return u ? JSON.parse(u)?.role : '';
-    } catch {
-      return '';
-    }
-  })() || '').trim().toUpperCase();
-
+  const userRole = (user?.role || '').trim().toUpperCase();
   const isQad = userDept === 'QAD';
   const isAdmin = userRole === 'ADMIN' || isQad;
   const isProduction = userDept === 'PRODUCTION';
@@ -99,7 +78,6 @@ const ProcessAuditDashboard = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const isDefaultRange = startDate === defaultStartDate && endDate === defaultEndDate;
-  const isDefaultYear = isDefaultRange;
   const isDefaultDept = selectedDept === 'All';
   const hasActiveFilters = !isDefaultDept || selectedStatus !== 'All' || !isDefaultRange;
 
@@ -169,142 +147,6 @@ const ProcessAuditDashboard = () => {
     };
   }, []);
 
-  const formatDate = (dateVal) => {
-    if (!dateVal) return '-';
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return String(dateVal);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
-
-  const formatDateTime = (dateVal) => {
-    if (!dateVal) return '-';
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return String(dateVal);
-    return d.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getStatusMeta = (status) => {
-    const s = (status || '').toLowerCase();
-    if (s.includes('close')) {
-      return {
-        statusColor: 'bg-red-50 text-red-700 border-red-200',
-        dotColor: 'bg-red-500',
-      };
-    }
-    if (s.includes('signed off') || s.includes('signed')) {
-      return {
-        statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
-        dotColor: 'bg-emerald-500',
-      };
-    }
-    if (s.includes('progress')) {
-      return {
-        statusColor: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
-        dotColor: 'bg-indigo-500',
-      };
-    }
-    if (s.includes('approved') && !s.includes('partially') && !s.includes('pending')) {
-      return {
-        statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
-        dotColor: 'bg-emerald-500',
-      };
-    }
-    if (s === 'open' || s.includes('open') || s.includes('reopen')) {
-      return {
-        statusColor: 'bg-sky-50 text-sky-700 border-sky-200/80',
-        dotColor: 'bg-sky-500',
-      };
-    }
-    if (s.includes('reject')) {
-      return {
-        statusColor: 'bg-rose-50 text-rose-700 border-rose-200/80',
-        dotColor: 'bg-rose-500',
-      };
-    }
-    if (s.includes('partially')) {
-      return {
-        statusColor: 'bg-teal-50 text-teal-700 border-teal-200/80',
-        dotColor: 'bg-teal-500',
-      };
-    }
-    if (s.includes('approval') || s.includes('progress') || s.includes('review')) {
-      return {
-        statusColor: 'bg-amber-50 text-amber-700 border-amber-200/80',
-        dotColor: 'bg-amber-500',
-      };
-    }
-    return {
-      statusColor: 'bg-rose-50 text-rose-700 border-rose-200/80',
-      dotColor: 'bg-rose-500',
-    };
-  };
-
-  const getStatusBadge = (status) => {
-    const meta = getStatusMeta(status);
-    return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${meta.statusColor}`}>
-        <span className={`w-1.5 h-1.5 rounded-full ${meta.dotColor}`} />
-        <span>{status}</span>
-      </span>
-    );
-  };
-
-
-  const getFullAttachmentUrl = (att) => resolveAttachmentUrl(att, 'process-audit');
-
-  const getFileMeta = (file) => {
-    const ext = ((file?.type || file?.name?.split('.').pop()) || '').toUpperCase();
-    const isImage = ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG', 'JFIF', 'BMP'].includes(ext);
-    const isPdf = ext === 'PDF';
-    const isExcel = ['XLS', 'XLSX', 'CSV', 'XLSM'].includes(ext);
-    const isPpt = ['PPT', 'PPTX', 'PPSX'].includes(ext);
-
-    if (isImage) {
-      return {
-        badgeBg: 'bg-blue-50 text-blue-600 border-blue-200',
-        icon: ImageIcon,
-        typeName: 'Image',
-        isImage: true,
-      };
-    }
-    if (isPdf) {
-      return {
-        badgeBg: 'bg-red-50 text-red-600 border-red-200',
-        icon: FileText,
-        typeName: 'PDF Document',
-        isPdf: true,
-      };
-    }
-    if (isExcel) {
-      return {
-        badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        icon: FileSpreadsheet,
-        typeName: 'Excel Spreadsheet',
-        isExcel: true,
-      };
-    }
-    if (isPpt) {
-      return {
-        badgeBg: 'bg-orange-50 text-orange-700 border-orange-200',
-        icon: Presentation,
-        typeName: 'PowerPoint Presentation',
-        isPpt: true,
-      };
-    }
-    return {
-      badgeBg: 'bg-slate-50 text-slate-700 border-slate-200',
-      icon: FileIcon,
-      typeName: 'Document',
-      isOther: true,
-    };
-  };
-
   const handleResetFilters = () => {
     setSelectedDept('All');
     setSelectedStatus('All');
@@ -313,7 +155,7 @@ const ProcessAuditDashboard = () => {
   };
 
   // Build department options from constants and loaded requests
-  const departmentOptions = React.useMemo(() => {
+  const departmentOptions = useMemo(() => {
     return Array.from(
       new Set([
         ...DEPARTMENTS,
@@ -322,8 +164,32 @@ const ProcessAuditDashboard = () => {
     ).sort();
   }, [requests]);
 
-  // Base requests filtered by department and timeline range (for KPI metrics calculation)
-  const baseFilteredRequests = React.useMemo(() => {
+  const isRequestClosed = (r) => {
+    return getProcessAuditDisplayStatus(r) === 'Closed';
+  };
+
+  const isRequestAwaitingReview = (r) => {
+    return getProcessAuditDisplayStatus(r) === 'Awaiting Review';
+  };
+
+  const isRequestPending = (r) => {
+    return getProcessAuditDisplayStatus(r) === 'Pending';
+  };
+
+  // Calculate carryover count: unclosed issues prior to defaultStartDate or prior year
+  const carryoverCount = useMemo(() => {
+    return requests.filter((r) => {
+      if (isRequestClosed(r)) return false;
+      const dateVal = r.escalation_date || r.created_at || r.createdAt;
+      if (!dateVal) return false;
+      const itemDateStr = parseDateToYYYYMMDD(dateVal);
+      if (!itemDateStr) return false;
+      return itemDateStr < defaultStartDate || new Date(dateVal).getFullYear() < currentYear;
+    }).length;
+  }, [requests, defaultStartDate, currentYear]);
+
+  // Base requests filtered by department and timeline range (for KPI metrics & bar chart)
+  const baseFilteredRequests = useMemo(() => {
     return requests.filter((r) => {
       // Department filter
       if (selectedDept !== 'All') {
@@ -345,50 +211,36 @@ const ProcessAuditDashboard = () => {
     });
   }, [requests, selectedDept, startDate, endDate]);
 
-  const isRequestClosed = (r) => {
-    const s = (r?.status || '').toLowerCase();
-    return s.includes('close');
-  };
-
-  const isRequestPending = (r) => {
-    if (isRequestClosed(r)) return false;
-    const s = (r?.status || '').toLowerCase();
-    if (s.includes('pending')) return true;
-    return !s.includes('review') && !s.includes('progress') && !s.includes('signed') && !s.includes('approval') && !s.includes('approved') && !s.includes('open') && !s.includes('reject');
-  };
-
-  const isRequestAwaitingReview = (r) => {
-    if (isRequestClosed(r) || isRequestPending(r)) return false;
-    const s = (r?.status || '').toLowerCase();
-    return (
-      s.includes('review') ||
-      s.includes('progress') ||
-      s.includes('signed') ||
-      s.includes('approval') ||
-      s.includes('approved')
-    );
-  };
-
   const total = baseFilteredRequests.length;
   const pendingExec = baseFilteredRequests.filter(isRequestPending).length;
   const inProgress = baseFilteredRequests.filter(isRequestAwaitingReview).length;
   const closed = baseFilteredRequests.filter(isRequestClosed).length;
 
   // Filter requests based on selected status (for display table and recent logs)
-  const filteredRequests = React.useMemo(() => {
-    if (selectedStatus === 'All') return baseFilteredRequests;
+  const filteredRequests = useMemo(() => {
+    let list = baseFilteredRequests;
+    if (selectedStatus !== 'All') {
+      list = baseFilteredRequests.filter((r) => {
+        if (selectedStatus === 'PENDING') {
+          return isRequestPending(r);
+        }
+        if (selectedStatus === 'IN_PROGRESS' || selectedStatus === 'AWAITING_REVIEW' || selectedStatus === 'Awaiting Review') {
+          return isRequestAwaitingReview(r);
+        }
+        if (selectedStatus === 'CLOSED') {
+          return isRequestClosed(r);
+        }
+        return true;
+      });
+    }
 
-    return baseFilteredRequests.filter((r) => {
-      if (selectedStatus === 'PENDING') {
-        return isRequestPending(r);
-      }
-      if (selectedStatus === 'IN_PROGRESS' || selectedStatus === 'AWAITING_REVIEW' || selectedStatus === 'Awaiting Review') {
-        return isRequestAwaitingReview(r);
-      }
-      if (selectedStatus === 'CLOSED') {
-        return isRequestClosed(r);
-      }
-      return true;
+    return [...list].sort((a, b) => {
+      const timeA = new Date(a.escalation_date || a.created_at || a.createdAt || 0).getTime();
+      const timeB = new Date(b.escalation_date || b.created_at || b.createdAt || 0).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      const idA = typeof a.id === 'number' ? a.id : parseInt(String(a.id || a.issue_no || '').replace(/\D/g, ''), 10) || 0;
+      const idB = typeof b.id === 'number' ? b.id : parseInt(String(b.id || b.issue_no || '').replace(/\D/g, ''), 10) || 0;
+      return idB - idA;
     });
   }, [baseFilteredRequests, selectedStatus]);
 
@@ -484,23 +336,27 @@ const ProcessAuditDashboard = () => {
   const kpis = [
     {
       title: 'Total Issues',
-      value: String(total),
-      subtitle: hasActiveFilters ? 'Filtered audit issues' : (isDefaultRange ? 'Default: Last 12 Months' : 'Recorded audit issues'),
+      value: total,
+      subtitle: carryoverCount > 0
+        ? `${carryoverCount} rolled over from previous year`
+        : hasActiveFilters ? 'Filtered audit issues' : (isDefaultRange ? 'Default: Last 12 Months' : 'Recorded audit issues'),
       icon: Layers,
       iconBg: 'bg-blue-50 text-blue-600',
-      subtitleColor: 'text-blue-600',
+      subtitleColor: carryoverCount > 0 ? 'text-amber-600' : 'text-blue-600',
     },
     {
       title: 'Pending',
-      value: String(pendingExec),
-      subtitle: hasActiveFilters ? 'Filtered pending' : 'Awaiting root cause closer actions',
+      value: pendingExec,
+      subtitle: carryoverCount > 0
+        ? `Includes ${carryoverCount} unclosed carryover`
+        : hasActiveFilters ? 'Filtered pending' : 'Awaiting root cause closer actions',
       icon: AlertCircle,
       iconBg: 'bg-rose-50 text-rose-600',
       subtitleColor: 'text-rose-600',
     },
     {
       title: 'Awaiting Review',
-      value: String(inProgress),
+      value: inProgress,
       subtitle: hasActiveFilters ? 'Filtered awaiting review' : 'Awaiting Admin Sign-off & Closure',
       icon: Clock,
       iconBg: 'bg-amber-50 text-amber-600',
@@ -508,7 +364,7 @@ const ProcessAuditDashboard = () => {
     },
     {
       title: 'Closed',
-      value: String(closed),
+      value: closed,
       subtitle: hasActiveFilters ? 'Filtered verified closures' : 'Verified by QAD',
       icon: CheckCircle2,
       iconBg: 'bg-emerald-50 text-emerald-600',
@@ -516,98 +372,32 @@ const ProcessAuditDashboard = () => {
     },
   ];
 
-  const getAttachmentsList = (attData) => {
-    if (!attData) return [];
-    let list = [];
-    if (Array.isArray(attData)) {
-      list = attData;
-    } else if (typeof attData === 'string') {
-      const trimmed = attData.trim();
-      if (!trimmed || trimmed === '[]' || trimmed === 'null' || trimmed === '""') {
-        return [];
-      }
-      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          list = Array.isArray(parsed) ? parsed : [parsed];
-        } catch {
-          list = [];
-        }
-      } else if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          list = [parsed];
-        } catch {
-          list = [];
-        }
-      } else {
-        list = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
-      }
-    } else if (typeof attData === 'object') {
-      list = [attData];
+  const getStatusBadge = (status, req) => {
+    const disp = getProcessAuditDisplayStatus(status, req);
+    if (disp === 'Closed') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          CLOSED
+        </span>
+      );
+    }
+    if (disp === 'Awaiting Review' || disp === 'Signed off') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+          <Clock className="w-3 h-3 text-amber-600" />
+          AWAITING REVIEW
+        </span>
+      );
     }
 
-    return list.map((item) => {
-      if (typeof item === 'number' || (typeof item === 'string' && /^\d+$/.test(item.trim()))) {
-        const id = String(item).trim();
-        return {
-          id,
-          name: `Attachment #${id}`,
-          url: `/api/process-audit/attachments/${id}`,
-          path: `/api/process-audit/attachments/${id}`,
-        };
-      }
-      if (typeof item === 'string') {
-        const trimmed = item.trim();
-        const rawName = trimmed.split('/').pop().split('\\').pop();
-        if (trimmed.startsWith('/api/process-audit/attachments/') || trimmed.startsWith('attachments/')) {
-          const id = trimmed.split('/').pop();
-          return {
-            id,
-            name: rawName || `Attachment #${id}`,
-            url: `/api/process-audit/attachments/${id}`,
-            path: `/api/process-audit/attachments/${id}`,
-          };
-        }
-        return {
-          name: rawName || 'Attachment',
-          path: trimmed.startsWith('uploads/') ? trimmed : `uploads/attachments/${trimmed}`,
-          url: trimmed.startsWith('/api/') ? trimmed : `/api/process-audit/${trimmed.startsWith('uploads/') ? trimmed : `uploads/attachments/${trimmed}`}`,
-        };
-      }
-      const itemUrl = item.url || (item.id ? `/api/process-audit/attachments/${item.id}` : (item.path ? (item.path.startsWith('/api/') ? item.path : `/api/process-audit/${item.path}`) : ''));
-      return {
-        ...item,
-        name: item.name || item.filename || (item.path ? item.path.split('/').pop().split('\\').pop() : 'Attachment'),
-        url: itemUrl,
-      };
-    });
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+        PENDING
+      </span>
+    );
   };
-
-  const modalAttachments = selectedRequest ? getAttachmentsList(selectedRequest.attachments) : [];
-
-  const matchExactToken = (fieldVal, userName) => {
-    if (!fieldVal || !userName) return false;
-    const f = fieldVal.trim().toLowerCase();
-    const u = userName.trim().toLowerCase();
-    if (f === u) return true;
-    const tokens = f.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(Boolean);
-    return tokens.includes(u);
-  };
-
-  // Sort and display the most recent filtered requests
-  const displayRequests = React.useMemo(() => {
-    return [...filteredRequests]
-      .sort((a, b) => {
-        const timeA = new Date(a.created_at || a.createdAt || a.escalation_date || 0).getTime();
-        const timeB = new Date(b.created_at || b.createdAt || b.escalation_date || 0).getTime();
-        if (timeB !== timeA) return timeB - timeA;
-        const idA = typeof a.id === 'number' ? a.id : parseInt(String(a.id || a.issue_no || '').replace(/\D/g, ''), 10) || 0;
-        const idB = typeof b.id === 'number' ? b.id : parseInt(String(b.id || b.issue_no || '').replace(/\D/g, ''), 10) || 0;
-        return idB - idA;
-      })
-      .slice(0, 15);
-  }, [filteredRequests]);
 
   return (
     <div className="space-y-6 w-full pb-12">
@@ -619,11 +409,15 @@ const ProcessAuditDashboard = () => {
             <span>/</span>
             <span>Overview Dashboard</span>
             <span>/</span>
-            <span className="font-bold text-slate-700">Data on Current Year ({currentYear})</span>
+            <span className="font-bold text-slate-700">
+              {isDefaultRange
+                ? 'Last 12 Months Data'
+                : `Timeline Data (${startDate ? formatDateDDMMYYYY(startDate) : 'Start'} → ${endDate ? formatDateDDMMYYYY(endDate) : 'End'})`}
+            </span>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Process Audit Dashboard
+              Process Audit Analysis Dashboard
             </h1>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
               <Building2 className="w-3.5 h-3.5 text-blue-500" />
@@ -677,7 +471,7 @@ const ProcessAuditDashboard = () => {
                   </h2>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
                     <Calendar className="w-3 h-3 text-blue-600" />
-                    <span>{isDefaultYear ? `Data on Current Year (${currentYear})` : hasActiveFilters ? 'Active Custom Filter' : 'All Data'}</span>
+                    <span>{isDefaultRange ? 'Last 12 Months Data' : hasActiveFilters ? 'Active Custom Filter' : 'All Data'}</span>
                   </span>
                   <button
                     type="button"
@@ -698,7 +492,7 @@ const ProcessAuditDashboard = () => {
                   </button>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Filter KPI metrics and recent audit observation logs
+                  Filter KPI metrics, trends, and recent audit observation logs
                 </p>
               </div>
             </div>
@@ -708,9 +502,16 @@ const ProcessAuditDashboard = () => {
               <div className="flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
                 {/* Department Dropdown */}
                 <div className="min-w-[190px] flex-1 sm:flex-initial">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Department</span>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Department</span>
+                    </span>
+                    {!isAdmin && userDept && (
+                      <span className="text-[9px] font-extrabold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                        My Dept
+                      </span>
+                    )}
                   </label>
                   <div className="relative">
                     <select
@@ -764,7 +565,7 @@ const ProcessAuditDashboard = () => {
                     )}
                   </label>
                   <div className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/70 focus-within:bg-white border border-slate-200/90 focus-within:border-blue-500 rounded-xl p-1 shadow-2xs focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
-                    <div className="w-[125px]">
+                    <div className="w-[135px]">
                       <DateInput
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
@@ -773,7 +574,7 @@ const ProcessAuditDashboard = () => {
                       />
                     </div>
                     <span className="text-slate-400 text-xs font-bold px-0.5 select-none">→</span>
-                    <div className="w-[125px]">
+                    <div className="w-[135px]">
                       <DateInput
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
@@ -802,13 +603,20 @@ const ProcessAuditDashboard = () => {
             )}
           </div>
 
-          {/* Active Badges Row (Only shown when custom filter applied) */}
-          {hasActiveFilters && (
+          {/* Active Badges Row (Only shown when custom filter applied or carryover present) */}
+          {(hasActiveFilters || ((carryoverCount || 0) > 0 && isDefaultRange)) && (
             <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 text-xs">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Active:</span>
 
-                {isAdmin && selectedDept !== 'All' && (
+                {(carryoverCount || 0) > 0 && isDefaultRange && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    <span><strong>{carryoverCount}</strong> unclosed from prior year rolled over</span>
+                  </span>
+                )}
+
+                {selectedDept !== 'All' && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
                     <span>Dept: <strong>{selectedDept}</strong></span>
                     <button
@@ -817,7 +625,7 @@ const ProcessAuditDashboard = () => {
                       className="hover:text-blue-900 cursor-pointer p-0.5 rounded hover:bg-blue-100/60 transition-colors"
                       title="Clear department filter"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-3 h-3" />
                     </button>
                   </span>
                 )}
@@ -833,7 +641,7 @@ const ProcessAuditDashboard = () => {
                       className="hover:text-emerald-900 cursor-pointer p-0.5 rounded hover:bg-emerald-100/60 transition-colors"
                       title="Clear status filter"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-3 h-3" />
                     </button>
                   </span>
                 )}
@@ -849,7 +657,7 @@ const ProcessAuditDashboard = () => {
                       className="hover:text-indigo-900 cursor-pointer p-0.5 rounded hover:bg-indigo-100/60 transition-colors"
                       title="Reset to default range"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-3 h-3" />
                     </button>
                   </span>
                 )}
@@ -901,19 +709,24 @@ const ProcessAuditDashboard = () => {
       <ProcessAuditBarChart
         stats={metrics}
         requests={baseFilteredRequests}
+        startDate={startDate}
+        endDate={endDate}
+        defaultStartDate={defaultStartDate}
+        defaultEndDate={defaultEndDate}
+        onDateRangeChange={(newStart, newEnd) => {
+          setStartDate(newStart);
+          setEndDate(newEnd);
+        }}
         onSelectDepartment={(dept) => {
-          if (isAdmin) {
-            setSelectedDept(dept);
-            setShowFilters(true);
-          }
+          setSelectedDept(dept);
+          setShowFilters(true);
         }}
         onSelectStatus={(status) => setSelectedStatus(status)}
         currentYear={currentYear}
       />
 
-      {/* Recent Production Requests Card */}
+      {/* Recent Process Audit Reports Table */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-        {/* Card Header */}
         <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
@@ -930,8 +743,8 @@ const ProcessAuditDashboard = () => {
                 : 'Live shopfloor audit observations with corrective actions & verification.'}
             </p>
           </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            {hasActiveFilters && (
+          {hasActiveFilters && (
+            <div className="flex items-center gap-2 self-start sm:self-auto">
               <button
                 onClick={handleResetFilters}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
@@ -939,72 +752,72 @@ const ProcessAuditDashboard = () => {
                 <RotateCcw className="w-3 h-3" />
                 <span>Clear Filters</span>
               </button>
-            )}
-            <button
-              onClick={() => navigate('/process-audit/all-requests')}
-              className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 shadow-2xs transition cursor-pointer"
-            >
-              View All Tracking
-            </button>
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Requests Table */}
         <div className="overflow-x-auto">
-          {loading ? (
-            <div className="py-16 text-center text-slate-400 text-xs">
-              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
-              Loading production requests from database...
-            </div>
-          ) : displayRequests.length === 0 ? (
-            hasActiveFilters ? (
-              <div className="py-12 text-center text-slate-400">
-                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                <p className="font-semibold text-slate-600">No Issues match the selected filter criteria</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Try adjusting or clearing the department or date filter criteria.</p>
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset All Filters</span>
-                </button>
-              </div>
-            ) : (
-              <div className="py-12 text-center text-slate-400">
-                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                <p className="font-semibold text-slate-600">No Issues recorded yet</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  {canCreate ? 'Click "Create Process Issue" to file your first audit observation.' : 'Audit observations will appear here once recorded.'}
-                </p>
-              </div>
-            )
-          ) : (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3.5 px-4 text-center w-14">SL NO</th>
-                  <th className="py-3.5 px-4">ISSUE NO</th>
-                  <th className="py-3.5 px-4">DATE / SHIFT</th>
-                  <th className="py-3.5 px-6">OBSERVATION &amp; MODEL</th>
-                  <th className="py-3.5 px-4">STAGE &amp; LINE</th>
-                  <th className="py-3.5 px-2 text-center w-14">EVIDENCE</th>
-                  <th className="py-3.5 px-4">DEPARTMENT</th>
-                  <th className="py-3.5 px-4">EXECUTOR</th>
-                  <th className="py-3.5 px-4">STATUS</th>
-                  <th className="py-3.5 px-6 text-right">ACTION</th>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <th className="py-3.5 px-4 text-center w-14">SL NO</th>
+                <th className="py-3.5 px-4">ISSUE NO</th>
+                <th className="py-3.5 px-4">DATE / SHIFT</th>
+                <th className="py-3.5 px-6">OBSERVATION &amp; MODEL</th>
+                <th className="py-3.5 px-4">STAGE &amp; LINE</th>
+                <th className="py-3.5 px-2 text-center w-14">EVIDENCE</th>
+                <th className="py-3.5 px-4 text-center">TYPE</th>
+                <th className="py-3.5 px-4">RESP</th>
+                <th className="py-3.5 px-4">STATUS</th>
+                <th className="py-3.5 px-6 text-right">ACTION</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {loading ? (
+                <tr>
+                  <td colSpan={10} className="py-12 text-center text-slate-400">
+                    <AlertCircle className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
+                    <p className="font-semibold text-slate-600">Loading audit observations...</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {displayRequests.slice(0, 5).map((req, index) => {
-                  const reqId = req.issue_no || (req.id ? `PA-${req.id}` : 'PA-1');
-                  const dateStr = formatDate(req.escalation_date || req.created_at);
-                  const prodStr = req.product || '-';
-                  const stageStr = req.model || req.stage || 'Standard';
-                  const lineStr = req.process_operation || req.line || '-';
-                  const deptStr = req.department || '-';
-                  const statusStr = getProcessAuditDisplayStatus(req);
+              ) : (filteredRequests || []).length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="py-12 text-center text-slate-400">
+                    <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <p className="font-semibold text-slate-600">
+                      {hasActiveFilters
+                        ? 'No Process Audit Issues match the selected filter criteria'
+                        : 'No Process Audit Reports recorded yet'}
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {hasActiveFilters
+                        ? 'Try adjusting or clearing the department or date filter criteria.'
+                        : canCreate
+                        ? 'Click "Create Process Issue" to file your first audit observation.'
+                        : 'Audit observations will appear here once recorded.'}
+                    </p>
+                    {hasActiveFilters && (
+                      <button
+                        type="button"
+                        onClick={handleResetFilters}
+                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Reset All Filters</span>
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ) : (
+                filteredRequests.slice(0, 5).map((req, index) => {
+                  const reqNo = req.issue_no || (req.id ? `PA-${req.id}` : '#PA-1');
+                  const dateVal = req.escalation_date || req.created_at;
+                  const dateStr = formatDateDDMMYYYY(dateVal);
+                  const isCarryover = Boolean(
+                    dateVal &&
+                    (parseDateToYYYYMMDD(dateVal) < defaultStartDate || new Date(dateVal).getFullYear() < currentYear) &&
+                    !isRequestClosed(req)
+                  );
 
                   return (
                     <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
@@ -1013,74 +826,87 @@ const ProcessAuditDashboard = () => {
                         {index + 1}
                       </td>
 
-                      {/* Issue NO */}
+                      {/* ISSUE NO */}
                       <td className="py-4 px-4 font-mono font-bold text-blue-600 whitespace-nowrap">
-                        {reqId}
+                        {reqNo}
                       </td>
 
-                      {/* Date / Shift */}
+                      {/* DATE / SHIFT */}
                       <td className="py-4 px-4 whitespace-nowrap">
                         <div className="font-semibold text-slate-900">{dateStr}</div>
+                        {isCarryover && (
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                              {new Date(dateVal).getFullYear()} Carryover
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="text-[10px] font-bold text-slate-600 font-mono">
-                            {req.shift || 'General'}
+                            {formatIhlrShiftDisplay(req.shift)}
                           </span>
+                          {getIhlrShiftDetails(req.shift)?.timing && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 font-mono border border-slate-200">
+                              {getIhlrShiftDetails(req.shift).timing}
+                            </span>
+                          )}
                         </div>
                       </td>
 
-                      {/* Problem & Model */}
+                      {/* OBSERVATION & MODEL */}
                       <td className="py-4 px-6">
-                        <div className="font-bold text-slate-900 truncate max-w-[200px]" title={req.issue_observation || prodStr}>
-                          {req.issue_observation || prodStr}
+                        <div className="font-bold text-slate-900 line-clamp-2 max-w-[220px]" title={req.issue_observation || req.problem || '-'}>
+                          {req.issue_observation || req.problem || '-'}
                         </div>
                         <div className="text-[11px] text-blue-600 font-medium">
-                          {stageStr} • {prodStr}
+                          {req.model || req.stage || 'Standard'} {req.product ? `• ${req.product}` : ''}
                         </div>
                       </td>
 
-                      {/* Stage & Line */}
+                      {/* STAGE & LINE */}
                       <td className="py-4 px-4">
-                        <div className="font-semibold text-slate-800">{lineStr}</div>
-                        <span className="text-[10px] text-slate-500 font-mono">{stageStr}</span>
+                        <div className="font-semibold text-slate-800">{req.process_operation || req.line || '-'}</div>
+                        <span className="text-[10px] text-slate-500 font-mono">{req.model || req.stage || 'Standard'}</span>
                       </td>
 
-                      {/* Defect Attachment Thumbnail */}
+                      {/* EVIDENCE */}
                       <td className="py-4 px-2 text-center">
                         <div className="flex items-center justify-center">
                           <AttachmentThumbnail
                             rawAttachment={req.action_attachments || req.attachments}
-                            onClick={(e) => {
-                              e?.stopPropagation?.();
-                              setSelectedRequest(req);
-                            }}
                           />
                         </div>
                       </td>
 
-                      {/* Department */}
-                      <td className="py-4 px-4 font-mono">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold">
-                          <Building2 className="w-3 h-3 text-slate-500" />
-                          {deptStr}
+                      {/* TYPE */}
+                      <td className="py-4 px-4 text-center">
+                        <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                          {req.issue_type || req.issueType || 'PROCESS'}
                         </span>
                       </td>
 
-                      {/* Executor */}
+                      {/* RESP */}
                       <td className="py-4 px-4 font-mono">
-                        <div className="font-bold text-slate-800 text-xs truncate max-w-[120px]" title={req.executor || 'Assigned Lead'}>
-                          {req.executor || 'Assigned Lead'}
-                        </div>
-                        <div className="text-[10px] text-slate-400 truncate max-w-[120px]" title={req.created_by}>
-                          by {req.created_by || '-'}
-                        </div>
+                        <div className="font-bold text-slate-800 text-xs">{req.department || req.resp || '-'}</div>
+                        {req.executor && (
+                          <div className="text-[10px] text-blue-600 font-semibold truncate max-w-[120px]" title={req.executor}>
+                            {req.executor}
+                          </div>
+                        )}
+                        {req.created_by && (
+                          <div className="text-[9px] text-slate-400 truncate max-w-[120px]" title={req.created_by}>
+                            by {req.created_by}
+                          </div>
+                        )}
                       </td>
 
-                      {/* Status */}
+                      {/* STATUS */}
                       <td className="py-4 px-4 whitespace-nowrap">
-                        {getStatusBadge(statusStr)}
+                        {getStatusBadge(req.status, req)}
                       </td>
 
-                      {/* View Action */}
+                      {/* ACTION */}
                       <td className="py-4 px-6 text-right whitespace-nowrap">
                         <button
                           onClick={() => setSelectedRequest(req)}
@@ -1093,10 +919,10 @@ const ProcessAuditDashboard = () => {
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          )}
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

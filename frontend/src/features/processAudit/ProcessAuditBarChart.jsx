@@ -1,16 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   BarChart3,
   TrendingUp,
   Calendar,
   Building2,
+  Layers,
   Clock,
   CheckCircle2,
   AlertCircle,
   Sparkles,
   Info,
-  ChevronRight
+  ChevronRight,
+  RotateCcw
 } from 'lucide-react';
+import DateInput from '../../components/common/DateInput';
+import { formatDateDDMMYYYY } from '../../utils/dateUtils';
+import { getProcessAuditDisplayStatus } from './processAuditExportUtils';
+import { formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
 
 const STATUS_COLORS = {
   open: {
@@ -42,25 +48,73 @@ export const ProcessAuditBarChart = ({
   onSelectDepartment,
   onSelectStatus,
   currentYear = new Date().getFullYear(),
+  startDate,
+  endDate,
+  defaultStartDate,
+  defaultEndDate,
+  onDateRangeChange,
 }) => {
-  // Dimension view tab: 'monthly' | 'department' | 'shift'
+  // Dimension view tab: 'monthly' | 'department' | 'issueType' | 'shift'
   const [activeTab, setActiveTab] = useState('monthly');
   // Hovered bar anchor: { item, idx, centerX, barTopY }
   const [hoveredBar, setHoveredBar] = useState(null);
 
-  const getStatusCategory = (r) => {
-    const s = (r.status || '').toLowerCase();
-    if (s.includes('close')) return 'closed';
-    if (s.includes('pending')) return 'open';
-    if (
-      s.includes('progress') ||
-      s.includes('signed') ||
-      s.includes('review') ||
-      s.includes('approval') ||
-      (s.includes('approved') && !s.includes('pending'))
-    ) {
-      return 'inProgress';
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const thisYear = now.getFullYear();
+
+  // Calculate default rolling 12 months range
+  const calcDefault12Months = () => {
+    const s = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const e = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      start: `${s.getFullYear()}-${pad(s.getMonth() + 1)}-01`,
+      end: `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}`
+    };
+  };
+
+  const defaultRange = calcDefault12Months();
+  const activeDefaultStart = defaultStartDate || defaultRange.start;
+  const activeDefaultEnd = defaultEndDate || defaultRange.end;
+
+  const [localStart, setLocalStart] = useState(startDate || activeDefaultStart);
+  const [localEnd, setLocalEnd] = useState(endDate || activeDefaultEnd);
+
+  // Synchronize local state with props
+  useEffect(() => {
+    if (startDate !== undefined) setLocalStart(startDate);
+  }, [startDate]);
+
+  useEffect(() => {
+    if (endDate !== undefined) setLocalEnd(endDate);
+  }, [endDate]);
+
+  const activeStart = startDate !== undefined ? startDate : localStart;
+  const activeEnd = endDate !== undefined ? endDate : localEnd;
+
+  const isDefault12Months = activeStart === activeDefaultStart && activeEnd === activeDefaultEnd;
+  const isCurrentYear = activeStart === `${thisYear}-01-01` && activeEnd === `${thisYear}-12-31`;
+
+  const handleDateChange = (newStart, newEnd) => {
+    setLocalStart(newStart);
+    setLocalEnd(newEnd);
+    if (onDateRangeChange) {
+      onDateRangeChange(newStart, newEnd);
     }
+  };
+
+  const handlePreset = (presetKey) => {
+    if (presetKey === 'last12') {
+      handleDateChange(activeDefaultStart, activeDefaultEnd);
+    } else if (presetKey === 'currentYear') {
+      handleDateChange(`${thisYear}-01-01`, `${thisYear}-12-31`);
+    }
+  };
+
+  const getStatusCategory = (r) => {
+    const disp = getProcessAuditDisplayStatus(r);
+    if (disp === 'Closed') return 'closed';
+    if (disp === 'Awaiting Review' || disp === 'Signed off') return 'inProgress';
     return 'open';
   };
 
@@ -73,23 +127,46 @@ export const ProcessAuditBarChart = ({
     return 'General';
   };
 
+  // Helper to generate list of month slots between activeStart and activeEnd
+  const generateMonthsInRange = (startStr, endStr) => {
+    const start = startStr ? new Date(startStr) : new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const end = endStr ? new Date(endStr) : new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+    const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+    const result = [];
+    let count = 0;
+    while (cur <= endMonth && count < 24) {
+      const yr = cur.getFullYear();
+      const m = cur.getMonth();
+      const mName = cur.toLocaleString('en-US', { month: 'short' });
+      const yrShort = String(yr).slice(-2);
+      const key = `${yr}-${String(m + 1).padStart(2, '0')}`;
+      const label = `${mName} '${yrShort}`;
+      result.push({ key, label, year: yr, monthIndex: m });
+      cur = new Date(yr, m + 1, 1);
+      count++;
+    }
+    return result;
+  };
+
   // Extract or compute dataset based on activeTab
   const chartData = useMemo(() => {
     const hasRequests = Array.isArray(requests) && requests.length > 0;
 
     if (activeTab === 'monthly') {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthSlots = generateMonthsInRange(activeStart, activeEnd);
       if (hasRequests) {
-        return months.map((m, index) => {
+        return monthSlots.map((slot) => {
           const mReqs = requests.filter((r) => {
             const dVal = r.escalation_date || r.created_at || r.createdAt;
             if (!dVal) return false;
             const d = new Date(dVal);
-            return !isNaN(d.getTime()) && d.getMonth() === index;
+            return !isNaN(d.getTime()) && d.getFullYear() === slot.year && d.getMonth() === slot.monthIndex;
           });
           return {
-            key: m,
-            label: m,
+            key: slot.key,
+            label: slot.label,
             total: mReqs.length,
             open: mReqs.filter((r) => getStatusCategory(r) === 'open').length,
             inProgress: mReqs.filter((r) => getStatusCategory(r) === 'inProgress').length,
@@ -100,7 +177,7 @@ export const ProcessAuditBarChart = ({
       if (stats.monthlyTrend && stats.monthlyTrend.length > 0) {
         return stats.monthlyTrend.map((item) => ({ key: item.month, label: item.month, ...item }));
       }
-      return months.map((m) => ({ key: m, label: m, total: 0, open: 0, inProgress: 0, closed: 0 }));
+      return monthSlots.map((slot) => ({ key: slot.key, label: slot.label, total: 0, open: 0, inProgress: 0, closed: 0 }));
     }
 
     if (activeTab === 'department') {
@@ -126,6 +203,30 @@ export const ProcessAuditBarChart = ({
       return defaultDepts.map((d) => ({ key: d, label: d, total: 0, open: 0, inProgress: 0, closed: 0 }));
     }
 
+    if (activeTab === 'issueType') {
+      const defaultTypes = ['Repeated', 'New', 'Standard'];
+      const foundTypes = hasRequests
+        ? Array.from(new Set(requests.map((r) => (r.issue_type || r.issueType || '').trim()).filter(Boolean)))
+        : [];
+      const allTypes = Array.from(new Set([...defaultTypes, ...foundTypes]));
+      return allTypes.map((typeKey) => {
+        const tReqs = hasRequests
+          ? requests.filter((r) => {
+              const t = (r.issue_type || r.issueType || 'Standard').trim().toLowerCase();
+              return t === typeKey.toLowerCase();
+            })
+          : [];
+        return {
+          key: typeKey,
+          label: typeKey,
+          total: tReqs.length,
+          open: tReqs.filter((r) => getStatusCategory(r) === 'open').length,
+          inProgress: tReqs.filter((r) => getStatusCategory(r) === 'inProgress').length,
+          closed: tReqs.filter((r) => getStatusCategory(r) === 'closed').length,
+        };
+      });
+    }
+
     if (activeTab === 'shift') {
       const shiftList = ['Morning (Shift 1)', 'Evening (Shift 2)', 'Night (Shift 3)', 'General'];
       if (hasRequests) {
@@ -149,7 +250,7 @@ export const ProcessAuditBarChart = ({
     }
 
     return [];
-  }, [activeTab, requests, stats]);
+  }, [activeTab, requests, stats, activeStart, activeEnd]);
 
   // Aggregate metrics
   const totalVolume = useMemo(() => {
@@ -226,7 +327,7 @@ export const ProcessAuditBarChart = ({
                 </h2>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Visual distribution of shopfloor audit observations by timeline, responsible department, and shifts.
+                Visual distribution of shopfloor audit observations by timeline, responsible department, issue types, and shifts.
               </p>
             </div>
           </div>
@@ -260,6 +361,18 @@ export const ProcessAuditBarChart = ({
               </button>
               <button
                 type="button"
+                onClick={() => setActiveTab('issueType')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  activeTab === 'issueType'
+                    ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
+                    : 'hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Issue Type</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab('shift')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                   activeTab === 'shift'
@@ -271,6 +384,80 @@ export const ProcessAuditBarChart = ({
                 <span>Shift</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Embedded Date Range Filter Bar for Bar Diagram (Matching IHLR Style) */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mt-3.5 pt-3.5 border-t border-slate-100/90">
+          {/* Quick Presets */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1">
+              <Calendar className="w-3 h-3 text-indigo-500" />
+              <span>Timeline:</span>
+            </span>
+
+            <button
+              type="button"
+              onClick={() => handlePreset('last12')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                isDefault12Months
+                  ? 'bg-blue-600 text-white shadow-xs font-extrabold'
+                  : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Last 12 Months
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePreset('currentYear')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                isCurrentYear
+                  ? 'bg-blue-600 text-white shadow-xs font-extrabold'
+                  : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Year {thisYear}
+            </button>
+          </div>
+
+          {/* Custom Date Range Pickers Cluster */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/80 focus-within:bg-white border border-slate-200/90 focus-within:border-blue-500 rounded-xl p-1 shadow-2xs focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+              <div className="w-[135px]">
+                <DateInput
+                  value={activeStart}
+                  onChange={(e) => handleDateChange(e.target.value, activeEnd)}
+                  placeholder="From Date"
+                  className="w-full px-1.5 py-0.5 text-xs font-semibold text-slate-800 bg-transparent border-0 focus:ring-0 outline-none"
+                />
+              </div>
+              <span className="text-slate-400 text-xs font-bold px-0.5 select-none">→</span>
+              <div className="w-[135px]">
+                <DateInput
+                  value={activeEnd}
+                  onChange={(e) => handleDateChange(activeStart, e.target.value)}
+                  placeholder="To Date"
+                  className="w-full px-1.5 py-0.5 text-xs font-semibold text-slate-800 bg-transparent border-0 focus:ring-0 outline-none"
+                />
+              </div>
+            </div>
+
+            {!isDefault12Months && (
+              <button
+                type="button"
+                onClick={() => handleDateChange(activeDefaultStart, activeDefaultEnd)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer shadow-2xs"
+                title="Reset date filter to Last 12 Months"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset</span>
+              </button>
+            )}
+
+            <span className="text-[11px] font-semibold text-slate-500 font-mono hidden sm:inline">
+              ({formatDateDDMMYYYY(activeStart)} - {formatDateDDMMYYYY(activeEnd)})
+            </span>
           </div>
         </div>
 

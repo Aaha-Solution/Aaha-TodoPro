@@ -126,17 +126,18 @@ export const formatReassignmentHistory = (history) => {
   };
 };
 
-export const getProcessAuditDisplayStatus = (r) => {
-  if (!r) return 'Pending';
-  const sLower = String(r.status || 'Pending').toLowerCase();
+export const getProcessAuditDisplayStatus = (statusOrReq, maybeReq) => {
+  const r = (typeof statusOrReq === 'object' && statusOrReq !== null) ? statusOrReq : (typeof maybeReq === 'object' && maybeReq !== null ? maybeReq : null);
+  const rawStatus = (typeof statusOrReq === 'string' ? statusOrReq : r?.status) || '';
+  const sLower = String(rawStatus || 'Pending').toLowerCase().trim();
   if (sLower.includes('close')) return 'Closed';
   if (sLower.includes('reject')) return 'Rejected';
-  if (sLower.includes('pending')) return 'Pending';
-  if (sLower === 'open' || sLower.includes('open') || sLower.includes('reopen')) return 'Open';
-  if (sLower.includes('signed off') || sLower.includes('signed')) return 'Signed off';
-  if (sLower.includes('review') || sLower.includes('approval') || sLower.includes('progress')) return 'Awaiting Review';
+  if (sLower.includes('review') || sLower.includes('approval') || sLower.includes('progress') || sLower.includes('signed')) return 'Awaiting Review';
 
-  const isCloserCompleted = Boolean(
+
+
+
+  const isCloserCompleted = Boolean(r) && Boolean(
     (r.temporary_action && String(r.temporary_action).trim()) ||
     (r.permanent_fix && String(r.permanent_fix).trim()) ||
     (r.corrective_action && String(r.corrective_action).trim()) ||
