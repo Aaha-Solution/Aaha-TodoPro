@@ -33,7 +33,7 @@ import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
-import { isIhlrRequestVisibleToUser } from '../../utils/ihlrAuthUtils';
+import { isIhlrRequestAssignedToUser, isIhlrRequestVisibleToUser } from '../../utils/ihlrAuthUtils';
 import { formatIhlrShiftDisplay } from '../../utils/constants';
 
 const IhlrApprovals = () => {
@@ -491,8 +491,8 @@ const IhlrApprovals = () => {
       const nonClosedData = (Array.isArray(data) ? data : []).filter(
         (r) => String(r.status || '').toUpperCase() !== 'CLOSED'
       );
-      // Enforce that closer non-admins only see requests where they are the selected person (resp_person) or creator
-      const visibleData = isAdmin ? nonClosedData : nonClosedData.filter((r) => isIhlrRequestVisibleToUser(r, user));
+      // Enforce that closer non-admins only see requests assigned to them (not requests they raised)
+      const visibleData = isAdmin ? nonClosedData : nonClosedData.filter((r) => isIhlrRequestAssignedToUser(r, user));
       setRequests(visibleData);
 
       // Check if a specific request was targeted via navigation (e.g. from Notifications Centre)
@@ -1052,8 +1052,8 @@ const IhlrApprovals = () => {
 
   // Filter requests
   const filtered = requests.filter((r) => {
-    // Restrict visibility for closer non-admins strictly to their assigned requests (or created)
-    if (!isAdmin && !isIhlrRequestVisibleToUser(r, user)) return false;
+    // Restrict visibility for closer non-admins strictly to their assigned requests (not requests they raised)
+    if (!isAdmin && !isIhlrRequestAssignedToUser(r, user)) return false;
 
     // Never show CLOSED requests in approvals tab
     if (String(r.status || '').toUpperCase() === 'CLOSED') return false;
