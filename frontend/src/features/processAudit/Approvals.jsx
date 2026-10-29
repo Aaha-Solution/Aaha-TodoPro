@@ -1718,7 +1718,7 @@ const ProcessAuditApprovals = () => {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
-                    <span>Occurrence Cause (Production Team - 5 Why)</span>
+                    <span>Occurrence Cause (5 Why)</span>
                   </span>
                 </div>
               </div>
@@ -2128,7 +2128,7 @@ const ProcessAuditApprovals = () => {
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
-                    : 'Enter person name (manual entry)...'
+                    : 'Enter person name ...'
                 }
                 value={closerPermanentClosedBy || ''}
                 onChange={(e) => {
