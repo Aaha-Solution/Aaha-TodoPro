@@ -3092,8 +3092,8 @@ const ProcessAuditApprovals = () => {
                           <td className="py-3.5 px-3 cursor-default" onClick={(e) => e.stopPropagation()}>
                             <div className="flex flex-col gap-1 max-w-[160px]">
                               {closerActionText ? (
-                                <div className="text-[11px] font-medium text-slate-800 line-clamp-2" title={closerActionText}>
-                                  {closerActionText}
+                                <div className="text-[11px] font-medium text-slate-800 line-clamp-2">
+                                  {}
                                 </div>
                               ) : (
                                 <span className="inline-block text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 w-fit">
