@@ -149,8 +149,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     (req?.status || '').toUpperCase() === 'CLOSED' ||
     (req?.status || '').toUpperCase() === 'APPROVED';
 
-  // Editing feature is restricted to Admin role only
-  const canEditRequester = Boolean(req && isAdmin && (!isClosed || isAdmin));
+  // Editing feature is restricted to Admin role only when request is not closed
+  const canEditRequester = Boolean(req && isAdmin && !isClosed);
 
   const initEditState = (targetReq = req) => {
     if (!targetReq) return;
@@ -211,7 +211,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     if (isOpen && request) {
       initEditState(request);
       initAdminState(request);
-      if (initialEditMode && isAdmin) {
+      const requestIsClosed = (request.status || '').toUpperCase() === 'CLOSED' || (request.status || '').toUpperCase() === 'APPROVED';
+      if (initialEditMode && isAdmin && !requestIsClosed) {
         setIsEditMode(true);
         setActiveTab('requester');
       } else {
@@ -333,6 +334,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   const handleSaveRequesterDetails = async () => {
     if (!isAdmin) {
       modalError('Editing feature is restricted to Admin role only.');
+      return;
+    }
+    if (isClosed) {
+      modalError('This issue has been closed and cannot be edited.');
       return;
     }
     const newErrors = {};
@@ -1242,8 +1247,18 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
                     IHLR Rejection Analysis Report
                   </h3>
-                  {canEditRequester && activeTab === 'requester' && (
-                    isEditMode ? (
+                  {isAdmin && activeTab === 'requester' && (
+                    isClosed ? (
+                      <button
+                        type="button"
+                        disabled={true}
+                        className="px-3 py-1 bg-slate-100 text-slate-400 border border-slate-200 text-[11px] font-bold rounded-full uppercase tracking-wider shadow-none cursor-not-allowed select-none opacity-60 flex items-center gap-1.5"
+                        title="This issue has been closed. Editing is disabled."
+                      >
+                        <Edit2 className="w-3 h-3 text-slate-400" />
+                        <span>EDIT MODE</span>
+                      </button>
+                    ) : isEditMode ? (
                       <div className="flex items-center gap-2">
                         <span className="px-3 py-1 bg-amber-500 text-white text-[10px] font-black rounded-full uppercase tracking-wider animate-pulse">
                           EDITING REQUESTER DETAILS

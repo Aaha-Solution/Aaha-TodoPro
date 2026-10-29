@@ -144,7 +144,7 @@ const IhlrApprovals = () => {
   //    - Quality Admin can click the Pencil icon to unlock, edit, and update closer fields anytime.
   const canUpdateCloserFields = Boolean(
     selectedRequest && (
-      (isAdmin && adminEditCloser) ||
+      (isAdmin && adminEditCloser && !isSelectedClosed) ||
       (!isAdmin && isCloser && !hasCloserSubmitted && !isSelectedClosed)
     )
   );
@@ -2772,24 +2772,31 @@ const IhlrApprovals = () => {
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
-                              {isAdmin && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    populateForm(r, true);
-                                    setAdminEditCloser(true);
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                  }}
-                                  className={`p-1 rounded-md transition cursor-pointer ${
-                                    isSelected && adminEditCloser
-                                      ? 'text-amber-600 bg-amber-50 ring-1 ring-amber-300'
-                                      : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                                  }`}
-                                  title="Admin: Edit Closer Fields"
-                                >
-                                  <Pencil className="w-4 h-4" />
-                                </button>
-                              )}
+                              {isAdmin && (() => {
+                                const isRowClosed = (r.status || '').toUpperCase() === 'CLOSED' || (r.status || '').toUpperCase() === 'APPROVED';
+                                return (
+                                  <button
+                                    type="button"
+                                    disabled={isRowClosed}
+                                    onClick={() => {
+                                      if (isRowClosed) return;
+                                      populateForm(r, true);
+                                      setAdminEditCloser(true);
+                                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
+                                    className={`p-1 rounded-md transition ${
+                                      isRowClosed
+                                        ? 'text-slate-300 hover:bg-transparent cursor-not-allowed select-none opacity-50'
+                                        : isSelected && adminEditCloser
+                                          ? 'text-amber-600 bg-amber-50 ring-1 ring-amber-300 cursor-pointer'
+                                          : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50 cursor-pointer'
+                                    }`}
+                                    title={isRowClosed ? "Issue is closed. Editing is disabled." : "Admin: Edit Closer Fields"}
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </button>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>

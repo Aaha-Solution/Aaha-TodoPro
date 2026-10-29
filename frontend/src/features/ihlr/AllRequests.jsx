@@ -774,18 +774,27 @@ const IhlrAllRequests = () => {
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
-                        {isAdmin && (
-                          <button
-                            onClick={() => {
-                              setActiveModalRequest(r);
-                              setModalInitialEdit(true);
-                            }}
-                            className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
-                            title="Edit Request (Admin Only)"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                        {isAdmin && (() => {
+                          const isRowClosed = (r.status || '').toUpperCase() === 'CLOSED' || (r.status || '').toUpperCase() === 'APPROVED';
+                          return (
+                            <button
+                              disabled={isRowClosed}
+                              onClick={() => {
+                                if (isRowClosed) return;
+                                setActiveModalRequest(r);
+                                setModalInitialEdit(true);
+                              }}
+                              className={`p-1.5 rounded-lg transition ${
+                                isRowClosed
+                                  ? 'text-slate-300 hover:bg-transparent cursor-not-allowed select-none opacity-50'
+                                  : 'text-amber-600 hover:bg-amber-50 cursor-pointer'
+                              }`}
+                              title={isRowClosed ? "Issue is closed. Editing is disabled." : "Edit Request (Admin Only)"}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          );
+                        })()}
                       </div>
                     </td>
                   </tr>
