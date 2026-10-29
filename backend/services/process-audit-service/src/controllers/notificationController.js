@@ -80,6 +80,11 @@ export const getNotifications = async (req, res) => {
     const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
     const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'QAD' || userName.toLowerCase().includes('admin');
 
+    const rawIds = req.body?.ids || req.body?.notifIds || [];
+    const ids = Array.isArray(rawIds)
+      ? rawIds.map((id) => Number(String(id).replace(/^pa-notif-|^notif-/, ''))).filter((n) => !isNaN(n) && n > 0)
+      : [];
+
     // Auto-sync fallback: only insert if NO notification of any type exists for this request
     await pool.query(`
       INSERT INTO process_audit_notifications (user_name, user_id, user_email, request_id, issue_no, type, title, message, link)
@@ -368,8 +373,20 @@ export const markAllAsRead = async (req, res) => {
     const userDept = (req.body?.department || req.query.department || req.user?.department || '').trim().toUpperCase();
     const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'QAD' || userName.toLowerCase().includes('admin');
 
+    const rawIds = req.body?.ids || req.body?.notifIds || [];
+    const ids = Array.isArray(rawIds)
+      ? rawIds.map((id) => Number(String(id).replace(/^pa-notif-|^notif-/, ''))).filter((n) => !isNaN(n) && n > 0)
+      : [];
+
     if (pool) {
+      if (ids.length > 0) {
+        await pool.query('UPDATE process_audit_notifications SET is_read = 1 WHERE id IN (?)', [ids]).catch(() => {});
+      }
+
       if (isAdmin) {
+        await pool.query('UPDATE process_audit_notifications SET is_read = 1').catch(() => {});
+      }
+      if (false) {
         await pool.query(
           `UPDATE process_audit_notifications SET is_read = 1 WHERE 
            user_id = ? OR 

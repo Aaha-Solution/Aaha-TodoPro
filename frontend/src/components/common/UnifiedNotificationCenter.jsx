@@ -72,7 +72,14 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
     const updated = notifications.map((n) => ({ ...n, read: true }));
     setNotifications(updated);
     dispatch(setReduxMarkAllAsRead());
-    await markAllNotificationsReadForTab(tabMode, user?.name, user, notifications.map(n => n.id));
+    const allKeys = (notifications || []).flatMap((n) => [
+      n.id,
+      n.notifId,
+      n.rawId ? `req-${n.rawId}` : null,
+      n.reqNo,
+      n.notifId ? `pa-notif-${n.notifId}` : null,
+    ]).filter(Boolean);
+    await markAllNotificationsReadForTab(tabMode, user?.name, user, allKeys);
     window.dispatchEvent(new Event('refreshNotifications'));
   };
 

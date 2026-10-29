@@ -81,6 +81,29 @@ export const setReadOverride = (tab, user, notifKey, isRead) => {
   }
 };
 
+export const getMarkAllReadTimestamp = (tab, user) => {
+  try {
+    const userKey = getNotificationStorageUserKey(user);
+    const val = localStorage.getItem(`notifications_mark_all_read_${tab}_${userKey}`);
+    return val ? Number(val) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const setMarkAllReadTimestamp = (tab, user, timestamp = Date.now()) => {
+  try {
+    const userKey = getNotificationStorageUserKey(user);
+    localStorage.setItem(`notifications_mark_all_read_${tab}_${userKey}`, String(timestamp));
+    if (user?.name && userKey !== user.name.trim().toLowerCase()) {
+      localStorage.setItem(`notifications_mark_all_read_${tab}_${user.name.trim().toLowerCase()}`, String(timestamp));
+    }
+  } catch (e) {
+    if (e) { console.warn('Failed to save markAllRead timestamp:', e);
+  }
+  }
+};
+
 /**
  * Loads and standardizes IHLR notifications & recent defect requests.
  */
@@ -104,6 +127,10 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           user_name: resolvedUser?.name,
           user_id: resolvedUser?.id,
           user_email: resolvedUser?.email,
+          role: resolvedUser?.role,
+          department: resolvedUser?.department,
+          user_department: resolvedUser?.department,
+
           role: resolvedUser?.role,
           department: resolvedUser?.department,
         })
@@ -387,6 +414,10 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           user_email: resolvedUser?.email,
           role: resolvedUser?.role,
           department: resolvedUser?.department,
+          user_department: resolvedUser?.department,
+
+          role: resolvedUser?.role,
+          department: resolvedUser?.department,
         })
         .catch(() => []),
       processAuditService.getRequests().catch(() => []),
@@ -461,20 +492,29 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         const notifIdStr = `pa-notif-${n.id}`;
         const rawReq = n.requestId || n.issue_no || '';
         const reqNoKey = rawReq ? (String(rawReq).startsWith('#') ? rawReq : `#${rawReq}`) : '#PA';
+        const paSavedRead = getReadOverride('process-audit', resolvedUser, notifIdStr) ?? getReadOverride('process-audit', resolvedUser, n.id);
+        const paMarkAllTime = getMarkAllReadTimestamp('process-audit', resolvedUser);
+        const paNotifTime = n.created_at || n.date || n.time ? new Date(n.created_at || n.date || n.time).getTime() : 0;
+        const paIsBeforeMarkAll = Boolean(paMarkAllTime && paNotifTime && paNotifTime <= paMarkAllTime);
+        const paDecidedRead = paSavedRead !== null ? paSavedRead : (paIsBeforeMarkAll ? true : null);
 
         // Authoritative read status
         let isItemRead = false;
         if (n.is_read !== undefined && n.is_read !== null) {
           isItemRead = Number(n.is_read) === 1;
           if (!isItemRead) {
-            setReadOverride('process-audit', resolvedUser, notifIdStr, false);
-            setReadOverride('process-audit', resolvedUser, n.id, false);
+            // keep local state intact
+            // keep local state intact
           }
         } else {
           const savedRead =
             getReadOverride('process-audit', resolvedUser, notifIdStr) ??
             getReadOverride('process-audit', resolvedUser, n.id);
           isItemRead = savedRead !== null ? savedRead : Boolean(n.read);
+        }
+
+        if (paDecidedRead !== null) {
+          isItemRead = paDecidedRead;
         }
 
         // Deduplicate streamList
@@ -592,7 +632,12 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         const accentColor = isClosed ? 'emerald' : 'amber';
         const footerFlag = isClosed ? 'CASE_CLOSED' : 'ACTION_REQUIRED';
 
-        const savedRead = getReadOverride('process-audit', resolvedUser, `req-${r.id || idx}`) ?? getReadOverride('process-audit', resolvedUser, reqNo);
+        const paReqKey = `pa-req-${r.id || idx}`;
+        const savedRead = getReadOverride('process-audit', resolvedUser, paReqKey) ?? getReadOverride('process-audit', resolvedUser, `req-${r.id || idx}`) ?? getReadOverride('process-audit', resolvedUser, reqNo);
+        const paReqMarkAllTime = getMarkAllReadTimestamp('process-audit', resolvedUser);
+        const reqTime = r.created_at || r.escalation_date ? new Date(r.created_at || r.escalation_date).getTime() : 0;
+        const isReqBeforeMarkAll = Boolean(paReqMarkAllTime && reqTime && reqTime <= paReqMarkAllTime);
+        const resolvedReqRead = savedRead !== null ? savedRead : (isReqBeforeMarkAll ? true : (isClosed ? true : false));
 
         streamList.push({
           id: `pa-req-${r.id || idx}`,
@@ -606,7 +651,7 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           timeDisplay: formatStreamDate(r.created_at || r.escalation_date),
           subCategory: 'PROCESS AUDIT OBSERVATION',
           footerFlag,
-          read: savedRead !== null ? savedRead : false,
+          read: resolvedReqRead,
           type: r.status || 'info',
           link: isClosed ? '/process-audit/all-requests' : '/process-audit/approvals',
         });
@@ -640,7 +685,7 @@ export const markNotificationReadForTab = async (tab, notifId, rawId, isRead = t
   if (!notifId && rawId) setReadOverride(tab, activeUser, `req-${rawId}`, isRead);
   if (!notifId && reqNo) setReadOverride(tab, activeUser, reqNo, isRead);
 
-  const idToMark = notifId;
+  const idToMark = notifId || (fullId && !String(fullId).startsWith('pa-req-') && !String(fullId).startsWith('req-') ? String(fullId).replace(/^pa-notif-|^notif-/, '') : null);
   if (!idToMark) return;
 
   if (tab === 'ihlr') {
@@ -659,6 +704,10 @@ export const markNotificationReadForTab = async (tab, notifId, rawId, isRead = t
  */
 export const markAllNotificationsReadForTab = async (tab, userName, user = null, allIds = []) => {
   const resolvedUser = user || storage.getUser();
+  setMarkAllReadTimestamp(tab, resolvedUser, Date.now());
+  const cleanNumericIds = Array.isArray(allIds)
+    ? allIds.map((id) => Number(String(id).replace(/^pa-notif-|^notif-|^req-/, ''))).filter((n) => !isNaN(n) && n > 0)
+    : [];
   const payload =
     typeof userName === 'object' && userName !== null
       ? userName
@@ -667,10 +716,23 @@ export const markAllNotificationsReadForTab = async (tab, userName, user = null,
           user_name: userName || resolvedUser?.name,
           user_id: resolvedUser?.id,
           user_email: resolvedUser?.email,
+          role: resolvedUser?.role,
+          department: resolvedUser?.department,
+          user_department: resolvedUser?.department,
+
         };
 
+  payload.ids = cleanNumericIds;
+  payload.allIds = allIds;
+
   if (Array.isArray(allIds) && allIds.length > 0) {
-    allIds.forEach((id) => setReadOverride(tab, resolvedUser, id, true));
+    allIds.forEach((id) => {
+      setReadOverride(tab, resolvedUser, id, true);
+      const num = Number(String(id).replace(/^pa-notif-|^notif-|^req-/, ''));
+      if (!isNaN(num) && num > 0) {
+        setReadOverride(tab, resolvedUser, num, true);
+      }
+    });
   }
   return tab === 'ihlr'
     ? ihlrService.markAllNotificationsAsRead(payload).catch(() => {})

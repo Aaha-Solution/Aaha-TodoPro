@@ -74,8 +74,17 @@ const Notification = () => {
 
   const handleMarkAllRead = async () => {
     const activeUser = user || storage.getUser();
-    await markAllNotificationsReadForTab(tabMode, activeUser?.name, activeUser);
+    const allKeys = (notifications || []).flatMap((n) => [
+      n.id,
+      n.notifId,
+      n.rawId ? `req-${n.rawId}` : null,
+      n.reqNo,
+      n.notifId ? `pa-notif-${n.notifId}` : null,
+    ]).filter(Boolean);
+
     dispatch(markAllAsRead());
+    await markAllNotificationsReadForTab(tabMode, activeUser?.name, activeUser, allKeys);
+
     window.dispatchEvent(new Event('refreshNotifications'));
   };
 
