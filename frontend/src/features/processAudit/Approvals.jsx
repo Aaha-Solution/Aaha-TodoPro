@@ -117,7 +117,7 @@ const ProcessAuditApprovals = () => {
       } else {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
-    } catch (_) {}
+    } catch (_) { }
   };
 
   useEffect(() => {
@@ -424,14 +424,14 @@ const ProcessAuditApprovals = () => {
   );
 
   const canUpdateAdminFields = Boolean(
-    selectedRequest && isAdmin && !isSelectedClosed
+    selectedRequest && isAdmin && !isSelectedClosed && !isCloserDataToBeUpdated
   );
 
   const isLockedForCloserUser = isSelectedClosed || (!isAdmin && hasCloserSubmitted);
 
   // Reassign Closer is disabled when no request is selected, or when request is closed or editing closer fields
   const isReassignDisabled = Boolean(
-    !selectedRequest || isSelectedClosed || adminEditCloser
+    !selectedRequest || isSelectedClosed || adminEditCloser || isCloserDataToBeUpdated
   );
 
   // Fetch users for department-based reassignment
@@ -1141,8 +1141,8 @@ const ProcessAuditApprovals = () => {
       return;
     }
 
-    if (!isReassignOpen && isCloserDataToBeUpdated) {
-      const msg = 'Corrective Action & Target Date must be completed before Admin Sign-Off.';
+    if (isCloserDataToBeUpdated) {
+      const msg = 'Corrective Action & Target Date must be completed before Admin Sign-Off or reassignment.';
       setErrorMessage(msg);
       modalWarning(msg);
       return;
@@ -1579,7 +1579,7 @@ const ProcessAuditApprovals = () => {
           </p>
         </div>
 
-       
+
       </div>
 
       {/* Main Two-Column Split Layout */}
@@ -1744,16 +1744,15 @@ const ProcessAuditApprovals = () => {
                             !selectedRequest
                               ? 'Select request on right'
                               : canUpdateCloserFields
-                              ? `Enter ${label} cause...${isMandatory ? ' (Mandatory)' : ''}`
-                              : isAdmin
-                              ? `Click Edit Closer Fields below to edit ${label}...`
-                              : `Enter ${label} cause...`
+                                ? `Enter ${label} cause...${isMandatory ? ' (Mandatory)' : ''}`
+                                : isAdmin
+                                  ? `Click Edit Closer Fields below to edit ${label}...`
+                                  : `Enter ${label} cause...`
                           }
-                          className={`w-full px-3 py-1.5 rounded-lg text-slate-800 outline-none transition disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed ${
-                            hasError
+                          className={`w-full px-3 py-1.5 rounded-lg text-slate-800 outline-none transition disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed ${hasError
                               ? 'bg-rose-50/20 border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
                               : 'bg-white border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                          }`}
+                            }`}
                         />
                       </div>
                       {hasError && (
@@ -1789,16 +1788,15 @@ const ProcessAuditApprovals = () => {
                   !selectedRequest
                     ? 'Click a row on the right to select'
                     : canUpdateCloserFields
-                    ? 'Describe temporary actions taken...'
-                    : isAdmin
-                    ? 'Click Edit Closer Fields below to edit...'
-                    : 'Describe temporary actions taken...'
+                      ? 'Describe temporary actions taken...'
+                      : isAdmin
+                        ? 'Click Edit Closer Fields below to edit...'
+                        : 'Describe temporary actions taken...'
                 }
-                className={`w-full px-3.5 py-2 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
-                  closerActionError
+                className={`w-full px-3.5 py-2 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${closerActionError
                     ? 'border border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
                     : 'border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               />
               {closerActionError && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -1817,9 +1815,8 @@ const ProcessAuditApprovals = () => {
               </div>
 
               {/* Styled File Input Button */}
-              <div className={`flex items-center gap-2 p-1 rounded-xl transition ${
-                evidenceError ? 'border border-rose-400 bg-rose-50/20 ring-1 ring-rose-400/30' : ''
-              }`}>
+              <div className={`flex items-center gap-2 p-1 rounded-xl transition ${evidenceError ? 'border border-rose-400 bg-rose-50/20 ring-1 ring-rose-400/30' : ''
+                }`}>
                 <button
                   type="button"
                   disabled={!canUpdateCloserFields}
@@ -1832,8 +1829,8 @@ const ProcessAuditApprovals = () => {
                   {newEvidenceFiles.length > 0
                     ? `${newEvidenceFiles.length} file(s) selected`
                     : existingEvidence.length > 0
-                    ? `${existingEvidence.length} existing attachment(s)`
-                    : 'No file chosen'}
+                      ? `${existingEvidence.length} existing attachment(s)`
+                      : 'No file chosen'}
                 </span>
                 <input
                   ref={fileInputRef}
@@ -1880,7 +1877,7 @@ const ProcessAuditApprovals = () => {
                   <span>TEMPORARY TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
-              
+
               </div>
               <DateInput
                 disabled={!canUpdateCloserFields}
@@ -1902,11 +1899,10 @@ const ProcessAuditApprovals = () => {
                     setCloserPermanentTargetDateError(false);
                   }
                 }}
-                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${
-                  closerTargetDateError
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${closerTargetDateError
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               />
               {closerTargetDateError && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -1942,13 +1938,12 @@ const ProcessAuditApprovals = () => {
                     setCloserTemporaryClosedByError(false);
                   }
                 }}
-                className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${
-                  !canUpdateCloserFields
+                className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${!canUpdateCloserFields
                     ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                     : closerTemporaryClosedByError
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                      : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
               />
               {closerTemporaryClosedByError ? (
                 <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
@@ -1990,16 +1985,15 @@ const ProcessAuditApprovals = () => {
                   !selectedRequest
                     ? 'Click a row on the right to select'
                     : canUpdateCloserFields
-                    ? 'Describe permanent corrective action...'
-                    : isAdmin
-                    ? 'Click Edit Closer Fields below to edit...'
-                    : 'Describe permanent corrective action...'
+                      ? 'Describe permanent corrective action...'
+                      : isAdmin
+                        ? 'Click Edit Closer Fields below to edit...'
+                        : 'Describe permanent corrective action...'
                 }
-                className={`w-full px-3.5 py-2 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${
-                  closerPermanentFixError
+                className={`w-full px-3.5 py-2 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${closerPermanentFixError
                     ? 'border border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
                     : 'border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               />
               {closerPermanentFixError && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -2017,9 +2011,8 @@ const ProcessAuditApprovals = () => {
                 </label>
               </div>
 
-              <div className={`flex items-center gap-2 p-1 rounded-xl transition ${
-                closerPermanentEvidenceError ? 'border border-rose-400 bg-rose-50/20 ring-1 ring-rose-400/30' : ''
-              }`}>
+              <div className={`flex items-center gap-2 p-1 rounded-xl transition ${closerPermanentEvidenceError ? 'border border-rose-400 bg-rose-50/20 ring-1 ring-rose-400/30' : ''
+                }`}>
                 <button
                   type="button"
                   disabled={!canUpdateCloserFields}
@@ -2032,8 +2025,8 @@ const ProcessAuditApprovals = () => {
                   {newPermanentEvidenceFiles.length > 0
                     ? `${newPermanentEvidenceFiles.length} file(s) selected`
                     : existingPermanentEvidence.length > 0
-                    ? `${existingPermanentEvidence.length} existing attachment(s)`
-                    : 'No file chosen'}
+                      ? `${existingPermanentEvidence.length} existing attachment(s)`
+                      : 'No file chosen'}
                 </span>
                 <input
                   ref={fileInputPermanentRef}
@@ -2101,11 +2094,10 @@ const ProcessAuditApprovals = () => {
                     setCloserPermanentTargetDateError(false);
                   }
                 }}
-                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${
-                  closerPermanentTargetDateError
+                className={`w-full px-3.5 py-2 bg-white border rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition ${closerPermanentTargetDateError
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                  }`}
               />
               {closerPermanentTargetDateError && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -2141,13 +2133,12 @@ const ProcessAuditApprovals = () => {
                     setCloserPermanentClosedByError(false);
                   }
                 }}
-                className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${
-                  !canUpdateCloserFields
+                className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${!canUpdateCloserFields
                     ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                     : closerPermanentClosedByError
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                }`}
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                      : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
               />
               {closerPermanentClosedByError ? (
                 <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
@@ -2283,6 +2274,7 @@ const ProcessAuditApprovals = () => {
                         <span>Disabled</span>
                       </span>
                     )}
+
                   </label>
                   <div className="flex items-center gap-2">
                     {selectedRequest && (
@@ -2326,14 +2318,25 @@ const ProcessAuditApprovals = () => {
                   </div>
                 ) : (
                   selectedRequest && !isSelectedClosed && (
-                    <div className="p-2.5 px-3 rounded-xl border border-blue-200 bg-blue-50/70 text-blue-900 text-[11px] flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-blue-600 shrink-0" />
+                    <div className={`p-2.5 px-3 rounded-xl text-[11px] flex items-center gap-2 border ${isCloserDataToBeUpdated && !isReassignOpen
+                        ? 'border-amber-200 bg-amber-50/80 text-amber-900 animate-in fade-in'
+                        : 'border-blue-200 bg-blue-50/70 text-blue-900'
+                      }`}>
+                      <AlertCircle className={`w-4 h-4 shrink-0 ${isCloserDataToBeUpdated && !isReassignOpen ? 'text-amber-600' : 'text-blue-600'}`} />
                       <div className="leading-tight">
-                        <span className="font-bold">{isReassignOpen ? 'Reassignment: ' : 'Admin Review: '}</span>
-                        <span className="text-blue-800">
+                        <span className="font-bold">
+                          {isReassignOpen
+                            ? 'Reassignment: '
+                            : isCloserDataToBeUpdated
+                              ? 'Closer Submission Pending: '
+                              : 'Admin Review: '}
+                        </span>
+                        <span className={isCloserDataToBeUpdated && !isReassignOpen ? 'text-amber-800' : 'text-blue-800'}>
                           {isReassignOpen
                             ? 'Enter reassignment remarks and select the new executor.'
-                            : 'Enter review remarks and select CLOSED to finalize sign-off.'}
+                            : isCloserDataToBeUpdated
+                              ? `Awaiting containment & closer log from ${selectedRequest?.executor || 'Assigned Closer'} (${selectedRequest?.department || 'PRODUCTION'}). Admin Review, Sign-Off, and reassignment unlock after closer submission.`
+                              : 'Enter review remarks and select CLOSED to finalize sign-off.'}
                         </span>
                       </div>
                     </div>
@@ -2343,21 +2346,19 @@ const ProcessAuditApprovals = () => {
                 {/* Reassign Closer (Optional - Button trigger to expand) */}
                 <div className="space-y-2">
                   {!isReassignOpen || !selectedRequest ? (
-                    <div className={`flex items-center justify-between p-2.5 rounded-xl border transition ${
-                      isReassignDisabled
+                    <div className={`flex items-center justify-between p-2.5 rounded-xl border transition ${isReassignDisabled
                         ? 'bg-slate-100/70 border-slate-200 text-slate-400 select-none'
                         : 'bg-slate-50 border-slate-200/90'
-                    }`}>
+                      }`}>
                       <div className="flex items-center gap-2">
                         <UserCheck className={`w-4 h-4 ${isReassignDisabled ? 'text-slate-400' : 'text-blue-600'}`} />
                         <div className="text-left">
                           <div className={`text-[11px] font-bold flex items-center gap-1.5 ${isReassignDisabled ? 'text-slate-500' : 'text-slate-800'}`}>
                             <span>Reassign Closer</span>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
-                              isReassignDisabled
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${isReassignDisabled
                                 ? 'bg-slate-200/60 text-slate-500 border-slate-300/80'
                                 : 'bg-purple-50 text-purple-700 border-purple-200'
-                            }`}>
+                              }`}>
                               Admin
                             </span>
                             <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
@@ -2385,18 +2386,17 @@ const ProcessAuditApprovals = () => {
                           !selectedRequest
                             ? 'Select a request first to reassign closer'
                             : isSelectedClosed
-                            ? 'Request closed — executor cannot be reassigned'
-                            : isCloserDataToBeUpdated
-                            ? 'Disabled while closer submission is pending'
-                            : adminEditCloser
-                            ? 'Disabled while editing closer fields'
-                            : 'Reassign Closer'
+                              ? 'Request closed — executor cannot be reassigned'
+                              : isCloserDataToBeUpdated
+                                ? 'Disabled while closer submission is pending'
+                                : adminEditCloser
+                                  ? 'Disabled while editing closer fields'
+                                  : 'Reassign Closer'
                         }
-                        className={`px-2.5 py-1.5 rounded-lg font-bold text-xs border shadow-2xs transition flex items-center gap-1.5 shrink-0 ${
-                          isReassignDisabled
+                        className={`px-2.5 py-1.5 rounded-lg font-bold text-xs border shadow-2xs transition flex items-center gap-1.5 shrink-0 ${isReassignDisabled
                             ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed select-none'
                             : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 cursor-pointer'
-                        }`}
+                          }`}
                       >
                         <UserCheck className="w-3.5 h-3.5" />
                         <span>Reassign</span>
@@ -2438,11 +2438,10 @@ const ProcessAuditApprovals = () => {
                           <select
                             value={reassignedDept}
                             onChange={(e) => handleDeptChange(e.target.value)}
-                            className={`w-full px-2.5 py-2 bg-white border rounded-xl font-semibold text-slate-800 text-xs outline-none cursor-pointer ${
-                              reassignDeptError
+                            className={`w-full px-2.5 py-2 bg-white border rounded-xl font-semibold text-slate-800 text-xs outline-none cursor-pointer ${reassignDeptError
                                 ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                                 : 'border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                            }`}
+                              }`}
                           >
                             <option value="">Select Department</option>
                             {departmentList.map((dept) => (
@@ -2484,17 +2483,16 @@ const ProcessAuditApprovals = () => {
                                 setIsReassignUserDropdownOpen((prev) => !prev);
                               }
                             }}
-                            className={`w-full min-h-[38px] px-2.5 py-1.5 border rounded-xl text-xs font-semibold transition flex items-center justify-between gap-1.5 ${
-                              reassignPersonError
+                            className={`w-full min-h-[38px] px-2.5 py-1.5 border rounded-xl text-xs font-semibold transition flex items-center justify-between gap-1.5 ${reassignPersonError
                                 ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 cursor-pointer'
                                 : !reassignedDept
-                                ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                                : getDepartmentUsers(reassignedDept).length === 0
-                                ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                                : isReassignUserDropdownOpen
-                                ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 cursor-pointer shadow-xs'
-                                : 'bg-white border-slate-300 hover:border-slate-400 text-slate-800 cursor-pointer'
-                            }`}
+                                  ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                                  : getDepartmentUsers(reassignedDept).length === 0
+                                    ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                                    : isReassignUserDropdownOpen
+                                      ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 cursor-pointer shadow-xs'
+                                      : 'bg-white border-slate-300 hover:border-slate-400 text-slate-800 cursor-pointer'
+                              }`}
                           >
                             <div className="flex-1 flex flex-wrap items-center gap-1 min-w-0">
                               {!reassignedDept ? (
@@ -2530,9 +2528,8 @@ const ProcessAuditApprovals = () => {
                                 </span>
                               )}
                               <ChevronDown
-                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                  isReassignUserDropdownOpen ? 'rotate-180 text-blue-600' : ''
-                                }`}
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${isReassignUserDropdownOpen ? 'rotate-180 text-blue-600' : ''
+                                  }`}
                               />
                             </div>
                           </div>
@@ -2573,19 +2570,17 @@ const ProcessAuditApprovals = () => {
                                       <div
                                         key={u.id || u.name}
                                         onClick={() => handleToggleReassignUser(u.name)}
-                                        className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition select-none text-xs ${
-                                          isChecked
+                                        className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition select-none text-xs ${isChecked
                                             ? 'bg-blue-50/80 text-blue-900 font-semibold'
                                             : 'hover:bg-slate-50 text-slate-700'
-                                        }`}
+                                          }`}
                                       >
                                         <div className="flex items-center gap-2 min-w-0 pr-2">
                                           <div
-                                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition shrink-0 ${
-                                              isChecked
+                                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition shrink-0 ${isChecked
                                                 ? 'bg-blue-600 border-blue-600 text-white'
                                                 : 'border-slate-300 bg-white'
-                                            }`}
+                                              }`}
                                           >
                                             {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                                           </div>
@@ -2637,10 +2632,10 @@ const ProcessAuditApprovals = () => {
                   <textarea
                     rows={2}
                     maxLength={1000}
-                    disabled={!selectedRequest || adminEditCloser || isSelectedClosed}
+                    disabled={!selectedRequest || adminEditCloser || isSelectedClosed || (isCloserDataToBeUpdated && !isReassignOpen)}
                     value={closerRemarks}
                     onChange={(e) => {
-                      if (adminEditCloser) return;
+                      if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
                       setCloserRemarks(e.target.value);
                       if (remarksError && e.target.value.trim()) {
                         setRemarksError(false);
@@ -2650,22 +2645,29 @@ const ProcessAuditApprovals = () => {
                       !selectedRequest
                         ? 'Click a row on the right to select'
                         : adminEditCloser
-                        ? 'Disabled while editing closer fields...'
-                        : isReassignOpen
-                        ? 'Enter reason for reassigning to new executor...'
-                        : 'Enter admin review remarks and sign-off notes...'
+                          ? 'Disabled while editing closer fields...'
+                          : isCloserDataToBeUpdated && !isReassignOpen
+                            ? 'Disabled while closer submission is pending...'
+
+
+                            : isReassignOpen
+                              ? 'Enter reason for reassigning to new executor...'
+                              : 'Enter admin review remarks and sign-off notes...'
                     }
-                    className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none ${
-                      adminEditCloser
+                    className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none ${adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
                         ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed select-none'
                         : remarksError
-                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                        : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                    }`}
+                          ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                          : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
                   />
                   {adminEditCloser ? (
                     <p className="text-[10px] text-slate-400 mt-0.5">
                       Disabled while editing closer fields.
+                    </p>
+                  ) : isCloserDataToBeUpdated && !isReassignOpen ? (
+                    <p className="text-[10px] text-amber-700 mt-0.5 font-medium">
+                      Closer containment actions &amp; target date required first.
                     </p>
                   ) : remarksError ? (
                     <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
@@ -2707,7 +2709,9 @@ const ProcessAuditApprovals = () => {
                     placeholder={
                       !selectedRequest
                         ? 'Click a row on the right to select'
-                        : `e.g. Leave empty to attach ${getLoggedInUserName()}`
+                        : isCloserDataToBeUpdated && !isReassignOpen
+                          ? 'Disabled while closer submission is pending...'
+                          : `e.g. Leave empty to attach ${getLoggedInUserName()}`
                     }
                     value={reviewedBy || ''}
                     onKeyDown={(e) => {
@@ -2727,17 +2731,20 @@ const ProcessAuditApprovals = () => {
                         setReviewedByError(false);
                       }
                     }}
-                    className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${
-                      adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
+                    className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
                         ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed select-none'
                         : reviewedByError
-                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                        : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                    }`}
+                          ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                          : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
                   />
                   {reviewedByError ? (
                     <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
                       <span>* {reviewedByError}</span>
+                    </p>
+                  ) : isCloserDataToBeUpdated && !isReassignOpen ? (
+                    <p className="text-[10px] text-amber-700 mt-0.5 font-medium">
+                      Reviewer assignment unlocks after closer submission.
                     </p>
                   ) : (
                     <p className="text-[10px] text-slate-400 mt-0.5">
@@ -2767,22 +2774,23 @@ const ProcessAuditApprovals = () => {
                   <select
                     value={isReassignOpen ? 'PENDING' : closerStatus}
                     onChange={(e) => {
-                      if (adminEditCloser || isReassignOpen || isSelectedClosed) return;
+                      if (adminEditCloser || isReassignOpen || isSelectedClosed || isCloserDataToBeUpdated) return;
                       setCloserStatus(e.target.value);
                       if (e.target.value) setStatusError(false);
                     }}
-                    disabled={adminEditCloser || !selectedRequest || isReassignOpen || isSelectedClosed}
-                    className={`w-full px-3.5 py-2.5 border rounded-xl font-bold outline-none transition ${
-                      adminEditCloser
+                    disabled={adminEditCloser || !selectedRequest || isReassignOpen || isSelectedClosed || isCloserDataToBeUpdated}
+                    className={`w-full px-3.5 py-2.5 border rounded-xl font-bold outline-none transition ${adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
                         ? 'cursor-not-allowed bg-slate-100 border-slate-200 text-slate-400 select-none'
+
+
                         : isReassignOpen
-                        ? 'cursor-not-allowed bg-slate-50 border-slate-200 text-slate-700'
-                        : statusError
-                        ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 text-rose-700'
-                        : closerStatus === 'CLOSED'
-                        ? 'bg-white border-slate-200 text-emerald-700 cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'
-                        : 'bg-white border-slate-200 text-slate-600 cursor-pointer focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                    }`}
+                          ? 'cursor-not-allowed bg-slate-50 border-slate-200 text-slate-700'
+                          : statusError
+                            ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 text-rose-700'
+                            : closerStatus === 'CLOSED'
+                              ? 'bg-white border-slate-200 text-emerald-700 cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'
+                              : 'bg-white border-slate-200 text-slate-600 cursor-pointer focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
                   >
                     {isReassignOpen ? (
                       <option value="PENDING">PENDING (Awaiting Closer)</option>
@@ -2806,6 +2814,10 @@ const ProcessAuditApprovals = () => {
                       ) : isReassignOpen ? (
                         <span className="text-amber-700 font-medium">
                           Status locked to PENDING for new assignee.
+                        </span>
+                      ) : isCloserDataToBeUpdated && !isReassignOpen ? (
+                        <span className="text-amber-700 font-medium">
+                          Status unlocks after closer submission.
                         </span>
                       ) : closerStatus === 'CLOSED' ? (
                         <span className="text-emerald-600 font-semibold">
@@ -2851,6 +2863,16 @@ const ProcessAuditApprovals = () => {
                     >
                       <Lock className="w-4 h-4 text-slate-400" />
                       <span>Sign-Off Locked (Closer Edit Active)</span>
+                    </button>
+                  ) : isCloserDataToBeUpdated && !isReassignOpen ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-2.5 px-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                      title="Closer containment actions & target date required before Admin Sign-Off"
+                    >
+                      <Lock className="w-4 h-4 text-amber-600" />
+                      <span>Sign-Off Locked (Closer Pending)</span>
                     </button>
                   ) : isSelectedClosed ? (
                     <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
@@ -2932,7 +2954,7 @@ const ProcessAuditApprovals = () => {
               </select>
             </div>
 
-       
+
             <button
               onClick={() => setShowExportModal(true)}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow transition transform active:scale-95 cursor-pointer shrink-0"
@@ -3024,11 +3046,10 @@ const ProcessAuditApprovals = () => {
                         <tr
                           key={r.id || idx}
                           onClick={() => populateForm(r)}
-                          className={`transition-colors cursor-pointer ${
-                            isSelected
+                          className={`transition-colors cursor-pointer ${isSelected
                               ? 'bg-blue-50/80 border-l-4 border-l-blue-600 font-medium'
                               : 'hover:bg-slate-50/80'
-                          }`}
+                            }`}
                         >
                           <td className="py-3.5 px-3 text-center font-mono text-[11px] text-slate-500">
                             {startIndex + idx + 1}
@@ -3134,7 +3155,7 @@ const ProcessAuditApprovals = () => {
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
-                             
+
                             </div>
                           </td>
                         </tr>
