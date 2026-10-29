@@ -1372,7 +1372,7 @@ const ProcessAuditRequestDetailsModal = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
                     <ShieldAlert className="w-4 h-4" />
-                    <span>Occurrence Cause (Production Team - 5-Why Analysis)</span>
+                    <span>Occurrence Cause (5-Why Analysis)</span>
                   </div>
                   <span className="text-[11px] text-slate-400 font-mono">W1 to W5 Breakdown</span>
                 </div>

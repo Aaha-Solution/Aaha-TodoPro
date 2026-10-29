@@ -426,7 +426,15 @@ const CreateRequest = () => {
 
   const handleClearAllExecutors = () => {
     setSelectedExecutors([]);
-    setFormData((f) => ({ ...f, executor: '' }));
+    setFormData((f) => ({ ...f, department: '', executor: '' }));
+    setDeptUsers([]);
+    setExecutorDropdownOpen(false);
+    setExecutorSearch('');
+    setErrors((err) => ({
+      ...err,
+      department: false,
+      executor: false,
+    }));
   };
 
   const [attachments, setAttachments] = useState([]);
@@ -1397,7 +1405,7 @@ const CreateRequest = () => {
                   <span>Assign Executor</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
-                {formData.department && availableExecutors.length > 0 && selectedExecutors.length > 0 && (
+                {(formData.department || selectedExecutors.length > 0) && (
                   <div className="flex items-center gap-2 text-[10px]">
                     <button
                       type="button"
