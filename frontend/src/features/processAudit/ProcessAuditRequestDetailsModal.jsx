@@ -2130,11 +2130,7 @@ const ProcessAuditRequestDetailsModal = ({
                     <strong className="text-blue-700 block mt-0.5 font-semibold">
                       <span className="break-words [overflow-wrap:anywhere] [word-break:break-word]">{req.created_by || 'Quality Auditor'}</span>
                     </strong>
-                    {resolveAuditorEmail(req) !== '—' && (
-                      <span className="text-[11px] text-slate-500 font-medium block truncate">
-                        {resolveAuditorEmail(req)}
-                      </span>
-                    )}
+                   
                   </div>
 
                   {req.notify_emails && (
