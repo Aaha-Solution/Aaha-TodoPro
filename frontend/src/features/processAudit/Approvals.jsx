@@ -42,7 +42,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { processAuditService } from '../../services/processAuditService';
-import { formatReassignmentHistory } from './processAuditExportUtils';
+import { exportProcessAuditToExcel, exportProcessAuditToPdf, formatReassignmentHistory } from './processAuditExportUtils';
 import { useAuth } from '../../hooks/useAuth';
 import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
@@ -1386,7 +1386,56 @@ const ProcessAuditApprovals = () => {
   };
 
   // Export to Excel (.xlsx)
-  const handleExportExcel = () => {
+  const handleOpenExportModal = () => {
+    if (!filtered || filtered.length === 0) {
+      modalWarning('No data available to export. Please adjust your search or status filter.', 'No Data Available');
+      return;
+    }
+    setShowExportModal(true);
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      if (!filtered || filtered.length === 0) {
+        modalWarning('No data available to export. Cannot download an empty file.', 'No Data Available');
+        setShowExportModal(false);
+        return;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      await exportProcessAuditToExcel({
+        requests: filtered,
+        fileName: `Process_Audit_Approvals_Queue_${today}.xlsx`,
+        sheetName: 'Process Audit Approvals Queue'
+      });
+      setShowExportModal(false);
+    } catch (err) {
+      console.error('Failed to export approvals to Excel:', err);
+      modalError('Failed to export to Excel: ' + err.message);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      if (!filtered || filtered.length === 0) {
+        modalWarning('No data available to export. Cannot download an empty file.', 'No Data Available');
+        setShowExportModal(false);
+        return;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      await exportProcessAuditToPdf({
+        requests: filtered,
+        fileName: `Process_Audit_Approvals_Queue_${today}.pdf`,
+        title: 'Process Audit Sign-off & Closer Approvals Queue',
+        filterText: `Status Filter: ${selectedStatus}`
+      });
+      setShowExportModal(false);
+    } catch (err) {
+      console.error('Failed to export approvals to PDF:', err);
+      modalError('Failed to export to PDF: ' + err.message);
+    }
+  };
+
+  const _disabledOldExportExcel = () => {
     try {
       const exportData = filtered.map((r, index) => {
         return {
@@ -1437,7 +1486,7 @@ const ProcessAuditApprovals = () => {
   };
 
   // Export to PDF (.pdf)
-  const handleExportPdf = () => {
+  const _disabledOldExportPdf = () => {
     try {
       const doc = new jsPDF({
         orientation: 'landscape',
@@ -2956,7 +3005,7 @@ const ProcessAuditApprovals = () => {
 
 
             <button
-              onClick={() => setShowExportModal(true)}
+              onClick={handleOpenExportModal}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow transition transform active:scale-95 cursor-pointer shrink-0"
               id="approvals-export-view-btn"
             >

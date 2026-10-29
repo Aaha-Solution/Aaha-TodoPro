@@ -1,8 +1,7 @@
 import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { parseAttachments } from '../../components/common/attachmentUtils';
-import { fetchAttachmentImageBase64 } from '../../components/common/attachmentUtils';
+import { parseAttachments, resolveAttachmentUrl, fetchAttachmentImageBase64 } from '../../components/common/attachmentUtils';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import nipponLogo from '../../assets/Nippon Logo.png';
 
@@ -69,6 +68,21 @@ export const loadLogoBase64 = async () => {
 };
 
 /**
+ * Converts a 1-based column number into an Excel column letter (e.g., 1 -> 'A', 26 -> 'Z', 27 -> 'AA')
+ */
+export const getExcelColLetter = (colIndex) => {
+  let temp;
+  let letter = '';
+  let c = colIndex;
+  while (c > 0) {
+    temp = (c - 1) % 26;
+    letter = String.fromCharCode(65 + temp) + letter;
+    c = Math.floor((c - temp - 1) / 26);
+  }
+  return letter;
+};
+
+/**
  * Formats reassignment history into structured Yes/No status and readable multiline string
  */
 export const formatReassignmentHistory = (history) => {
@@ -126,6 +140,9 @@ export const formatReassignmentHistory = (history) => {
   };
 };
 
+/**
+ * Returns user-facing status label matching the UI: Closed, Awaiting Review, Pending
+ */
 export const getProcessAuditDisplayStatus = (statusOrReq, maybeReq) => {
   const r = (typeof statusOrReq === 'object' && statusOrReq !== null) ? statusOrReq : (typeof maybeReq === 'object' && maybeReq !== null ? maybeReq : null);
   const rawStatus = (typeof statusOrReq === 'string' ? statusOrReq : r?.status) || '';
@@ -133,9 +150,6 @@ export const getProcessAuditDisplayStatus = (statusOrReq, maybeReq) => {
   if (sLower.includes('close')) return 'Closed';
   if (sLower.includes('reject')) return 'Rejected';
   if (sLower.includes('review') || sLower.includes('approval') || sLower.includes('progress') || sLower.includes('signed')) return 'Awaiting Review';
-
-
-
 
   const isCloserCompleted = Boolean(r) && Boolean(
     (r.temporary_action && String(r.temporary_action).trim()) ||
@@ -235,7 +249,7 @@ export const getProcessAuditExportImages = async (targetReq) => {
   const pFiles = parseAttachments(reqData.permanent_evidence_attachment);
 
   const items = [
-    ...dFiles.filter(isImg).map((a) => ({ ...a, label: 'Issue Defect Evidence Image' })),
+    ...dFiles.filter(isImg).map((a) => ({ ...a, label: 'Audit Defect Evidence Image' })),
     ...tFiles.filter(isImg).map((a) => ({ ...a, label: 'Temporary Action Evidence Image' })),
     ...pFiles.filter(isImg).map((a) => ({ ...a, label: 'Permanent Action Evidence Image' }))
   ];
@@ -257,6 +271,7 @@ export const getProcessAuditExportImages = async (targetReq) => {
 
 /**
  * Common Excel Export function for Process Audit (Approvals, AllRequests, Dashboard, Details Modal)
+ * Generates official dynamic-column workbook matching IHLR with Super Headings, embedded images for all evidence attachments, and reassignment history.
  */
 export const exportProcessAuditToExcel = async ({
   requests,
@@ -268,6 +283,49 @@ export const exportProcessAuditToExcel = async ({
     throw new Error('No data available to export.');
   }
 
+  // Parse defect/observation files, temporary evidence files, and permanent evidence files
+  const reqParsedDefectFiles = reqList.map((r) => parseAttachments(r.attachments));
+  const reqParsedTempFiles = reqList.map((r) => parseAttachments(r.temporary_evidence_attachment || r.action_attachments));
+  const reqParsedPermFiles = reqList.map((r) => parseAttachments(r.permanent_evidence_attachment));
+
+  // Determine maximum counts for each evidence category across all exported requests
+  const maxDefectCount = Math.max(1, ...reqParsedDefectFiles.map((files) => files.length));
+  const maxTempCount = Math.max(1, ...reqParsedTempFiles.map((files) => files.length));
+  const maxPermCount = Math.max(1, ...reqParsedPermFiles.map((files) => files.length));
+
+  // Helper to load file metadata and image base64
+  const loadFilesData = async (files) => {
+    return await Promise.all(
+      files.map(async (file) => {
+        const isImg = isImageAttachment(file);
+        if (isImg) {
+          const imgData = await fetchAttachmentImageBase64(file, 'process-audit');
+          if (imgData && imgData.base64) {
+            return {
+              isImage: true,
+              imgData,
+              name: file.name || file.filename || 'Evidence Image',
+              file
+            };
+          }
+        }
+        return {
+          isImage: false,
+          imgData: null,
+          name: file.name || file.filename || (typeof file === 'string' ? file : 'Attachment'),
+          file
+        };
+      })
+    );
+  };
+
+  // Preload evidence data & image thumbnails for ALL attachments across all rows (Defect, Temporary, Permanent)
+  const [rowDefectData, rowTempData, rowPermData] = await Promise.all([
+    Promise.all(reqParsedDefectFiles.map(loadFilesData)),
+    Promise.all(reqParsedTempFiles.map(loadFilesData)),
+    Promise.all(reqParsedPermFiles.map(loadFilesData))
+  ]);
+
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'India Nippon Electricals Limited';
   workbook.created = new Date();
@@ -276,11 +334,49 @@ export const exportProcessAuditToExcel = async ({
     views: [{ showGridLines: true }]
   });
 
-  // 33 Columns configuration
+  // Dynamic headers for observation evidence (AUDIT EVIDENCE 1, AUDIT EVIDENCE 2, ...)
+  const defectEvidenceHeaders = Array.from(
+    { length: maxDefectCount },
+    (_, i) => (maxDefectCount > 1 ? `AUDIT EVIDENCE ${i + 1}` : 'AUDIT EVIDENCE 1')
+  );
+
+  // Dynamic headers for closer temporary evidence (TEMPORARY EVIDENCE 1, TEMPORARY EVIDENCE 2, ...)
+  const tempEvidenceHeaders = Array.from(
+    { length: maxTempCount },
+    (_, i) => (maxTempCount > 1 ? `TEMPORARY EVIDENCE ${i + 1}` : 'TEMPORARY EVIDENCE 1')
+  );
+
+  // Dynamic headers for closer permanent evidence (PERMANENT EVIDENCE 1, PERMANENT EVIDENCE 2, ...)
+  const permEvidenceHeaders = Array.from(
+    { length: maxPermCount },
+    (_, i) => (maxPermCount > 1 ? `PERMANENT EVIDENCE ${i + 1}` : 'PERMANENT EVIDENCE 1')
+  );
+
+  // Calculate dynamic section column boundaries:
+  // 1. Requestor: 15 fixed columns + maxDefectCount dynamic evidence columns + 1 fixed column (LOGGED AT)
+  const requestorEndCol = 16 + maxDefectCount;
+
+  // 2. Closer: 9 fixed columns (WHY 1..5, OVERALL ROOT CAUSE, TEMP ACTION, TEMP TARGET DATE, TEMP CLOSED BY)
+  //            + maxTempCount (TEMPORARY EVIDENCE 1..N)
+  //            + 3 fixed columns (PERMANENT ACTION, PERMANENT TARGET DATE, PERM CLOSED BY)
+  //            + maxPermCount (PERMANENT EVIDENCE 1..N)
+  const closerStartCol = requestorEndCol + 1;
+  const closerColCount = 12 + maxTempCount + maxPermCount;
+  const closerEndCol = closerStartCol + closerColCount - 1;
+
+  // 3. Reassignment Tracking: 2 columns (REASSIGNED STATUS, REASSIGNMENT DETAILS)
+  const reassignStartCol = closerEndCol + 1;
+  const reassignEndCol = reassignStartCol + 2 - 1;
+
+  // 4. Auditor Review & Closure Sign-off: 4 columns (AUDITOR REVIEW REMARKS, REVIEWED / CLOSED BY, STATUS, CLOSED AT)
+  const statusStartCol = reassignEndCol + 1;
+  const statusEndCol = statusStartCol + 4 - 1;
+
+  // Dynamic column widths configuration matching IHLR exactly
   const colWidths = [
-    // 1-16: REQUESTOR (Audit Observation & Parameters)
+    // 1-15: REQUESTOR (Audit Observation & Parameters)
     8,  // 1: SL NO
-    14, // 2: ISSUE NO
+    14, // 2: AUDIT REQ NO
     14, // 3: ESCALATION DATE
     12, // 4: SHIFT
     16, // 5: PRODUCT
@@ -292,161 +388,218 @@ export const exportProcessAuditToExcel = async ({
     20, // 11: ASSIGNED EXECUTOR
     18, // 12: LOGGED BY AUDITOR
     22, // 13: AUDITOR EMAIL
-    34, // 14: AUDIT OBSERVATION
+    32, // 14: AUDIT OBSERVATION
     24, // 15: ADDITIONAL COMMENTS
-    26, // 16: AUDIT EVIDENCE ATTACHMENTS
-    // 17-26: CLOSER (Root Cause & Actions)
-    30, // 17: 5-WHY ROOT CAUSE ANALYSIS
-    24, // 18: OVERALL ROOT CAUSE
-    28, // 19: TEMPORARY ACTION
-    15, // 20: TEMPORARY TARGET DATE
-    18, // 21: TEMPORARY CLOSED BY
-    24, // 22: TEMPORARY EVIDENCE
-    28, // 23: PERMANENT ACTION
-    15, // 24: PERMANENT TARGET DATE
-    18, // 25: PERMANENT CLOSED BY
-    24, // 26: PERMANENT EVIDENCE
-    // 27-28: REASSIGNMENT TRACKING
-    16, // 27: REASSIGNED STATUS
-    36, // 28: REASSIGNMENT DETAILS
-    // 29-32: AUDITOR REVIEW & CLOSURE SIGN-OFF
-    24, // 29: AUDITOR REVIEW REMARKS
-    16, // 30: STATUS
-    18, // 31: REVIEWED / CLOSED BY
-    14  // 32: CLOSED AT
+    // Dynamic Observation Evidence columns
+    ...Array(maxDefectCount).fill(22),
+    // Fixed Trailing Requestor column
+    16, // LOGGED AT
+    // Closer before Temp Evidence
+    20, // WHY 1
+    20, // WHY 2
+    20, // WHY 3
+    20, // WHY 4
+    20, // WHY 5
+    24, // OVERALL ROOT CAUSE
+    30, // TEMPORARY ACTION
+    16, // TEMPORARY TARGET DATE
+    20, // TEMPORARY CLOSED BY
+    // Dynamic Temporary Evidence columns
+    ...Array(maxTempCount).fill(22),
+    // Closer between Temp and Perm Evidence
+    32, // PERMANENT ACTION
+    16, // PERMANENT TARGET DATE
+    20, // PERMANENT CLOSED BY
+    // Dynamic Permanent Evidence columns
+    ...Array(maxPermCount).fill(22),
+    // Reassignment Tracking
+    16, // REASSIGNED STATUS
+    38, // REASSIGNMENT DETAILS
+    // Auditor Review & Closure Sign-Off
+    24, // AUDITOR REVIEW REMARKS
+    18, // REVIEWED / CLOSED BY
+    20, // STATUS
+    16  // CLOSED AT
   ];
 
   colWidths.forEach((w, i) => {
     worksheet.getColumn(i + 1).width = w;
   });
 
-  // ROW 1: SUPER HEADINGS
-  worksheet.mergeCells('A1:P1');
+  // ==============================================================
+  // ROW 1: SUPER HEADINGS (Phase Header Row matching IHLR design)
+  // ==============================================================
+  worksheet.mergeCells(`A1:${getExcelColLetter(requestorEndCol)}1`);
   const superReq = worksheet.getCell('A1');
   superReq.value = 'REQUESTOR (AUDIT OBSERVATION & PARAMETERS)';
-  superReq.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E3A8A' } }; // blue-900
-  superReq.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }; // blue-100
+  superReq.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF78350F' } }; // amber-900
+  superReq.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // amber-100
   superReq.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('Q1:Z1');
-  const superCloser = worksheet.getCell('Q1');
+  worksheet.mergeCells(`${getExcelColLetter(closerStartCol)}1:${getExcelColLetter(closerEndCol)}1`);
+  const superCloser = worksheet.getCell(`${getExcelColLetter(closerStartCol)}1`);
   superCloser.value = 'CLOSER (ROOT CAUSE & ACTIONS)';
   superCloser.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF7C2D12' } }; // orange-900
   superCloser.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEDD5' } }; // orange-100
   superCloser.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('AA1:AB1');
-  const superReassign = worksheet.getCell('AA1');
+  worksheet.mergeCells(`${getExcelColLetter(reassignStartCol)}1:${getExcelColLetter(reassignEndCol)}1`);
+  const superReassign = worksheet.getCell(`${getExcelColLetter(reassignStartCol)}1`);
   superReassign.value = 'REASSIGNMENT TRACKING';
   superReassign.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF4C1D95' } }; // violet-900
   superReassign.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } }; // violet-100
   superReassign.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.mergeCells('AC1:AF1');
-  const superStatus = worksheet.getCell('AC1');
+  worksheet.mergeCells(`${getExcelColLetter(statusStartCol)}1:${getExcelColLetter(statusEndCol)}1`);
+  const superStatus = worksheet.getCell(`${getExcelColLetter(statusStartCol)}1`);
   superStatus.value = 'AUDITOR REVIEW & CLOSURE SIGN-OFF';
-  superStatus.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF065F46' } }; // emerald-900
-  superStatus.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }; // emerald-100
+  superStatus.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E293B' } }; // slate-800
+  superStatus.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; // slate-100
   superStatus.alignment = { vertical: 'middle', horizontal: 'center' };
 
-  worksheet.getRow(1).height = 24;
+  const superRow = worksheet.getRow(1);
+  superRow.height = 30;
+  superRow.eachCell({ includeEmpty: true }, (c) => {
+    c.border = {
+      top: { style: 'medium', color: { argb: 'FFCBD5E1' } },
+      bottom: { style: 'medium', color: { argb: 'FFCBD5E1' } },
+      left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+    };
+  });
 
-  // ROW 2: DETAILED COLUMN HEADINGS
-  const columnHeaders = [
-    'SL NO',
-    'ISSUE NO',
-    'ESCALATION DATE',
-    'SHIFT',
-    'PRODUCT',
-    'MODEL',
-    'PROCESS / OPERATION',
-    'ISSUE TYPE',
-    'PRIORITY',
-    'ASSIGNED DEPT',
-    'ASSIGNED EXECUTOR',
-    'LOGGED BY AUDITOR',
-    'AUDITOR EMAIL',
-    'AUDIT OBSERVATION',
-    'ADDITIONAL COMMENTS',
-    'AUDIT EVIDENCE ATTACHMENTS',
-    '5-WHY ROOT CAUSE ANALYSIS',
+  // ==============================================================
+  // ROW 2: SUB-COLUMN HEADERS (Grouped strictly by Super Headings)
+  // ==============================================================
+  const subHeaders = [
+    // 1-15 Requestor (Strictly in CreateRequest form order!)
+    'SL NO', 'AUDIT REQ NO', 'ESCALATION DATE', 'SHIFT', 'PRODUCT',
+    'MODEL', 'PROCESS / OPERATION', 'ISSUE TYPE', 'PRIORITY',
+    'ASSIGNED DEPT', 'ASSIGNED EXECUTOR', 'LOGGED BY AUDITOR', 'AUDITOR EMAIL',
+    'AUDIT OBSERVATION', 'ADDITIONAL COMMENTS',
+    // Dynamic Defect Evidence columns (AUDIT EVIDENCE 1, AUDIT EVIDENCE 2, ...)
+    ...defectEvidenceHeaders,
+    'LOGGED AT',
+    // Closer before Temp Evidence
+    'WHY 1', 'WHY 2', 'WHY 3', 'WHY 4', 'WHY 5',
     'OVERALL ROOT CAUSE',
-    'TEMPORARY ACTION',
-    'TEMPORARY TARGET DATE',
-    'TEMPORARY CLOSED BY',
-    'TEMPORARY EVIDENCE',
-    'PERMANENT ACTION',
-    'PERMANENT TARGET DATE',
-    'PERMANENT CLOSED BY',
-    'PERMANENT EVIDENCE',
-    'REASSIGNED STATUS',
-    'REASSIGNMENT DETAILS',
-    'AUDITOR REVIEW REMARKS',
-    'STATUS',
-    'REVIEWED / CLOSED BY',
-    'CLOSED AT'
+    'TEMPORARY ACTION', 'TEMPORARY TARGET DATE', 'TEMPORARY CLOSED BY',
+    // Dynamic Temporary Evidence columns (TEMPORARY EVIDENCE 1, TEMPORARY EVIDENCE 2, ...)
+    ...tempEvidenceHeaders,
+    // Closer between Temp and Perm Evidence
+    'PERMANENT ACTION', 'PERMANENT TARGET DATE', 'PERMANENT CLOSED BY',
+    // Dynamic Permanent Evidence columns (PERMANENT EVIDENCE 1, PERMANENT EVIDENCE 2, ...)
+    ...permEvidenceHeaders,
+    // 2 Reassignment Tracking columns
+    'REASSIGNED STATUS', 'REASSIGNMENT DETAILS',
+    // 4 Remarks, Review & Status columns
+    'AUDITOR REVIEW REMARKS', 'REVIEWED / CLOSED BY', 'STATUS', 'CLOSED AT'
   ];
 
-  const headerRow = worksheet.getRow(2);
-  headerRow.values = columnHeaders;
-  headerRow.height = 30;
+  const headerRow2 = worksheet.addRow(subHeaders);
+  headerRow2.height = 28;
 
-  headerRow.eachCell((cell, colNumber) => {
-    cell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FFFFFFFF' } };
+  headerRow2.eachCell((cell, colNum) => {
     cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     cell.border = {
       top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-      left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-      bottom: { style: 'medium', color: { argb: 'FF475569' } },
-      right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+      bottom: { style: 'medium', color: { argb: 'FF94A3B8' } },
+      left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
     };
 
-    if (colNumber <= 16) {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; // blue-900
-    } else if (colNumber <= 26) {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF9A3412' } }; // orange-800
-    } else if (colNumber <= 28) {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B21B6' } }; // violet-800
+    if (colNum <= requestorEndCol) {
+      cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF78350F' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE68A' } }; // amber-200
+    } else if (colNum <= closerEndCol) {
+      cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF7C2D12' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFED7AA' } }; // orange-200
+    } else if (colNum <= reassignEndCol) {
+      cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF4C1D95' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDD6FE' } }; // violet-200
     } else {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF065F46' } }; // emerald-800
+      cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF1E293B' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }; // slate-200
     }
   });
 
-  // DATA ROWS
+  // ==============================================================
+  // DATA ROWS (Starts at Row 3)
+  // ==============================================================
+  const regularFont = { name: 'Arial', size: 9.5, color: { argb: 'FF1E293B' } };
+  const thinBorder = {
+    top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+    left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+    bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+    right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+  };
+
+  // Calculate 1-indexed column locations
+  const defectColStart = 16;
+  const createdAtCol = 16 + maxDefectCount;
+
+  const whysStartCol = createdAtCol + 1;
+  const overallRootCauseCol = whysStartCol + 5;
+  const tempActionCol = overallRootCauseCol + 1;
+  const tempTargetDateCol = tempActionCol + 1;
+  const tempClosedByCol = tempTargetDateCol + 1;
+  const tempColStart = tempClosedByCol + 1;
+
+  const permActionCol = tempColStart + maxTempCount;
+  const permTargetDateCol = permActionCol + 1;
+  const permClosedByCol = permTargetDateCol + 1;
+  const permColStart = permClosedByCol + 1;
+
+  const reassignStatusCol = permColStart + maxPermCount;
+  const reassignDetailsCol = reassignStatusCol + 1;
+
+  const remarksCol = reassignDetailsCol + 1;
+  const reviewedByCol = remarksCol + 1;
+  const statusCol = reviewedByCol + 1;
+  const closedAtCol = statusCol + 1;
+
   reqList.forEach((r, idx) => {
-    const rowIdx = idx + 3;
+    const defectList = rowDefectData[idx] || [];
+    const tempList = rowTempData[idx] || [];
+    const permList = rowPermData[idx] || [];
+    const rowNum = idx + 3;
+
+    const { reassignedStatus, reassignmentDetails, hasReassignments, count } = formatReassignmentHistory(r.reassignment_history);
+
+    // Build values for dynamic evidence columns
+    const buildEvidenceValues = (fileList, maxCount) => {
+      const values = [];
+      for (let e = 0; e < maxCount; e++) {
+        const fileItem = fileList[e];
+        if (!fileItem) {
+          values.push('—');
+        } else if (fileItem.isImage && fileItem.imgData?.base64) {
+          values.push('');
+        } else {
+          values.push(fileItem.name || 'Attachment');
+        }
+      }
+      return values;
+    };
+
+    const defectValues = buildEvidenceValues(defectList, maxDefectCount);
+    const tempValues = buildEvidenceValues(tempList, maxTempCount);
+    const permValues = buildEvidenceValues(permList, maxPermCount);
+
+    const whyArray = parseWhyList(r.prod_why_why || r.why_why);
     const reqNo = r.issue_no || (r.id ? `PA-${r.id}` : `#${idx + 1}`);
     const escDate = r.escalation_date ? formatDateDDMMYYYY(r.escalation_date) : (r.created_at ? formatDateDDMMYYYY(r.created_at) : '—');
+    const displayStatus = getProcessAuditDisplayStatus(r);
     const closedAt = r.closed_at ? formatDateDDMMYYYY(r.closed_at) : '—';
-
-    const creatorAttachments = parseAttachments(r.attachments);
-    const creatorAttStr = creatorAttachments.map(a => a.name || a.filename).filter(Boolean).join(', ') || '—';
-
-    const tempAttachments = parseAttachments(r.temporary_evidence_attachment || r.action_attachments);
-    const tempAttStr = tempAttachments.map(a => a.name || a.filename).filter(Boolean).join(', ') || '—';
-
-    const permAttachments = parseAttachments(r.permanent_evidence_attachment);
-    const permAttStr = permAttachments.map(a => a.name || a.filename).filter(Boolean).join(', ') || '—';
-
-    const whyAnalysisVal = (() => {
-      const parsedWhys = parseWhyList(r.prod_why_why || r.why_why);
-      if (parsedWhys.length > 0) {
-        return parsedWhys.map((w, i) => w && String(w).trim() ? `W${i + 1}: ${String(w).trim()}` : null).filter(Boolean).join('\n') || '—';
-      }
-      return '—';
-    })();
 
     const tempTargetDate = (r.temporary_target_date ? formatDateDDMMYYYY(r.temporary_target_date) : '') ||
       (r.target_date ? formatDateDDMMYYYY(r.target_date) : '—');
     const permTargetDate = r.permanent_target_date ? formatDateDDMMYYYY(r.permanent_target_date) : '—';
-
-    const tempClosedBy = r.temporary_closed_by || r.action_taken_by || '—';
-    const permClosedBy = r.permanent_closed_by || r.closed_by || '—';
-
-    const { reassignedStatus, reassignmentDetails } = formatReassignmentHistory(r.reassignment_history);
-    const displayStatus = getProcessAuditDisplayStatus(r);
+    const tempClosedBy = r.temporary_closed_by || r.closer_updated_by || r.action_taken_by || '—';
+    const permClosedBy = r.permanent_closed_by || r.closer_updated_by || r.closed_by || '—';
 
     const rowData = [
+      // 1-15 Requestor (Strictly in form order!)
       idx + 1,
       reqNo,
       escDate,
@@ -458,91 +611,187 @@ export const exportProcessAuditToExcel = async ({
       r.priority || '—',
       r.department || '—',
       r.executor || '—',
-      r.created_by || '—',
+      r.created_by || 'Quality Auditor',
       resolveAuditorEmail(r),
       r.issue_observation || r.problem || '—',
       r.comments || '—',
-      creatorAttStr,
-      whyAnalysisVal,
+
+      // Dynamic Defect Evidence values
+      ...defectValues,
+
+      // Trailing Requestor column
+      r.created_at ? formatDateDDMMYYYY(r.created_at) : '—',
+
+      // Closer before Temp Evidence
+      whyArray[0] || '—',
+      whyArray[1] || '—',
+      whyArray[2] || '—',
+      whyArray[3] || '—',
+      whyArray[4] || '—',
       r.root_cause || '—',
       r.temporary_action || r.action || '—',
       tempTargetDate,
       tempClosedBy,
-      tempAttStr,
+
+      // Dynamic Temporary Evidence values
+      ...tempValues,
+
+      // Closer between Temp and Perm Evidence
       r.permanent_fix || r.corrective_action || '—',
       permTargetDate,
       permClosedBy,
-      permAttStr,
+
+      // Dynamic Permanent Evidence values
+      ...permValues,
+
+      // Reassignment Tracking
       reassignedStatus,
       reassignmentDetails,
+
+      // Auditor Review & Closure Sign-off
       r.creator_remark || r.remarks || '—',
-      displayStatus,
       r.reviewed_by || r.approved_by || r.closed_by || '—',
+      displayStatus,
       closedAt
     ];
 
-    const dataRow = worksheet.getRow(rowIdx);
-    dataRow.values = rowData;
-    dataRow.height = 24;
+    const row = worksheet.addRow(rowData);
 
-    dataRow.eachCell((cell, colNumber) => {
-      cell.font = { name: 'Arial', size: 9 };
+    const hasAnyImage = [
+      ...defectList,
+      ...tempList,
+      ...permList
+    ].some((f) => f.isImage && f.imgData?.base64);
+
+    row.height = hasAnyImage ? 56 : (hasReassignments && count > 1 ? Math.max(36, count * 18) : 24);
+
+    row.eachCell((cell) => {
+      cell.font = regularFont;
+      cell.border = thinBorder;
       cell.alignment = { vertical: 'middle', wrapText: true };
-      cell.border = {
-        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
-      };
+    });
 
-      if (idx % 2 === 1) {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
-      }
+    // Center align specific columns
+    row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' }; // SL NO
+    row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' }; // AUDIT REQ NO
+    row.getCell(3).alignment = { vertical: 'middle', horizontal: 'center' }; // ESCALATION DATE
+    row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' }; // SHIFT
+    row.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' }; // ISSUE TYPE
+    row.getCell(9).alignment = { vertical: 'middle', horizontal: 'center' }; // PRIORITY
+    row.getCell(createdAtCol).alignment = { vertical: 'middle', horizontal: 'center' }; // LOGGED AT
+    row.getCell(tempTargetDateCol).alignment = { vertical: 'middle', horizontal: 'center' }; // TEMP TARGET DATE
+    row.getCell(tempClosedByCol).alignment = { vertical: 'middle', horizontal: 'center' }; // TEMP CLOSED BY
+    row.getCell(permTargetDateCol).alignment = { vertical: 'middle', horizontal: 'center' }; // PERM TARGET DATE
+    row.getCell(permClosedByCol).alignment = { vertical: 'middle', horizontal: 'center' }; // PERM CLOSED BY
+    row.getCell(reassignStatusCol).alignment = { vertical: 'middle', horizontal: 'center' }; // REASSIGNED STATUS
+    row.getCell(reviewedByCol).alignment = { vertical: 'middle', horizontal: 'center' }; // REVIEWED BY
+    row.getCell(statusCol).alignment = { vertical: 'middle', horizontal: 'center' }; // STATUS
+    row.getCell(closedAtCol).alignment = { vertical: 'middle', horizontal: 'center' }; // CLOSED AT
 
-      // Center-align code/date/status columns
-      if ([1, 2, 3, 4, 8, 9, 20, 24, 28, 31, 33].includes(colNumber)) {
-        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-      }
+    // Alternate row background fill
+    if (idx % 2 === 1) {
+      row.eachCell((c) => {
+        if (!c.fill) {
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        }
+      });
+    }
 
-      // Format Status badge color
-      if (colNumber === 31) {
-        cell.font = { name: 'Arial', size: 9, bold: true };
-        if (displayStatus === 'Closed') {
-          cell.font.color = { argb: 'FF15803D' }; // green-700
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }; // green-100
-        } else if (displayStatus === 'Signed off') {
-          cell.font.color = { argb: 'FF4338CA' }; // indigo-700
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } }; // indigo-100
-        } else if (displayStatus === 'Rejected') {
-          cell.font.color = { argb: 'FFB91C1C' }; // red-700
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }; // red-100
+    // Configure Hyperlinks for non-image files or fallback
+    const configureEvidenceCells = (startCol, maxCount, fileList) => {
+      for (let e = 0; e < maxCount; e++) {
+        const fileItem = fileList[e];
+        const cellCol = startCol + e;
+        const evCell = row.getCell(cellCol);
+        evCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+        if (!fileItem) {
+          evCell.value = '—';
+          evCell.font = { name: 'Arial', size: 9, color: { argb: 'FF94A3B8' } };
+        } else if (fileItem.isImage && fileItem.imgData?.base64) {
+          evCell.value = '';
         } else {
-          cell.font.color = { argb: 'FFB45309' }; // amber-700
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // amber-100
+          const fileUrl = resolveAttachmentUrl(fileItem.file || fileItem, 'process-audit');
+          if (fileUrl) {
+            evCell.value = {
+              text: fileItem.name,
+              hyperlink: fileUrl,
+              tooltip: `Click to download ${fileItem.name}`
+            };
+            evCell.font = { name: 'Arial', size: 9, color: { argb: 'FF2563EB' }, underline: true };
+          }
         }
       }
-    });
+    };
+
+    configureEvidenceCells(defectColStart, maxDefectCount, defectList);
+    configureEvidenceCells(tempColStart, maxTempCount, tempList);
+    configureEvidenceCells(permColStart, maxPermCount, permList);
+
+    // Apply UI-matched status styling in Excel
+    const statusCell = row.getCell(statusCol);
+    if (displayStatus === 'Closed') {
+      statusCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF15803D' } }; // emerald-700
+      statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }; // emerald-100
+    } else if (displayStatus === 'Awaiting Review' || displayStatus === 'Signed off') {
+      statusCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFB45309' } }; // amber-700
+      statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // amber-100
+    } else {
+      statusCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFE11D48' } }; // rose-600
+      statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE4E6' } }; // rose-100
+    }
+
+    // Embed image thumbnails into cells for each evidence group
+    const embedEvidenceImages = (colStart, fileList) => {
+      fileList.forEach((fileItem, fileIdx) => {
+        if (fileItem.isImage && fileItem.imgData?.base64) {
+          try {
+            const imgId = workbook.addImage({
+              base64: fileItem.imgData.base64,
+              extension: fileItem.imgData.extension === 'png' ? 'png' : 'jpeg'
+            });
+            const colZeroIndexed = (colStart - 1) + fileIdx;
+            worksheet.addImage(imgId, {
+              tl: { col: colZeroIndexed + 0.12, row: rowNum - 0.88 },
+              ext: { width: 85, height: 48 },
+              editAs: 'oneCell'
+            });
+          } catch (e) {
+            console.warn(`Could not add image at col ${colStart + fileIdx} to Excel:`, e);
+          }
+        }
+      });
+    };
+
+    embedEvidenceImages(defectColStart, defectList);
+    embedEvidenceImages(tempColStart, tempList);
+    embedEvidenceImages(permColStart, permList);
   });
 
+  const today = new Date().toISOString().slice(0, 10);
+  const targetFileName = fileName || `Process_Audit_Analysis_Report_${today}.xlsx`;
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
   const downloadUrl = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = downloadUrl;
-  a.download = fileName || `Process_Audit_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = targetFileName.endsWith('.xlsx') ? targetFileName : `${targetFileName}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
   URL.revokeObjectURL(downloadUrl);
 };
 
 /**
- * Common PDF Export function for Process Audit (Approvals, AllRequests, Details Modal)
+ * Common PDF Export function for Process Audit (Approvals, AllRequests, Dashboard, Details Modal)
+ * Generates official landscape document with company logo, table formatting, and page numbers matching IHLR.
  */
 export const exportProcessAuditToPdf = async ({
   requests,
   fileName,
-  title = 'Process Audit Observation & Action Report',
+  title = 'Process Audit Observation & Verification Log',
   filterText = ''
 }) => {
   const reqList = Array.isArray(requests) ? requests : [requests].filter(Boolean);
@@ -701,8 +950,8 @@ export const exportProcessAuditToPdf = async ({
       margin: { left: 40, right: 40 },
       tableWidth: 515,
       columnStyles: {
-        0: { cellWidth: 150 },
-        1: { cellWidth: 365 }
+        0: { cellWidth: 160 },
+        1: { cellWidth: 355 }
       },
       head: [
         [
@@ -710,7 +959,7 @@ export const exportProcessAuditToPdf = async ({
             content: '2. AUDIT OBSERVATION & DEFECT PROBLEM DESCRIPTION',
             colSpan: 2,
             styles: {
-              fillColor: [37, 99, 235], // blue-600
+              fillColor: [30, 41, 59], // slate-800
               textColor: [255, 255, 255],
               fontStyle: 'bold',
               fontSize: 8.5
@@ -720,15 +969,15 @@ export const exportProcessAuditToPdf = async ({
       ],
       body: [
         [
-          { content: 'Issue / Observation:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
-          { content: r.issue_observation || r.problem || 'No observation recorded.' }
+          { content: 'Audit Observation / Defect Details:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: r.issue_observation || r.problem || '—' }
         ],
         [
-          { content: 'Comments:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: 'Additional Comments & Notes:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           { content: r.comments || '—' }
         ],
         [
-          { content: 'Auditor Defect Attachment(s):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: 'Audit Evidence Attachment(s):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           { content: creatorAttStr }
         ]
       ],
@@ -736,67 +985,73 @@ export const exportProcessAuditToPdf = async ({
     });
 
     // Section 3: 3. ROOT CAUSE OCCURRENCE ANALYSIS (5-WHY)
+    const whyList = parseWhyList(r.prod_why_why || r.why_why);
     const sec3Y = doc.lastAutoTable.finalY + 8;
-    const whys = parseWhyList(r.prod_why_why || r.why_why);
-    const whyRows = [];
-    for (let i = 0; i < 5; i++) {
-      const cause = (whys[i] && String(whys[i]).trim()) || '—';
-      if (i === 0 || cause !== '—') {
-        whyRows.push([`Why ${i + 1} (W${i + 1})`, cause]);
-      }
-    }
-
     autoTable(doc, {
       startY: sec3Y,
       theme: 'grid',
       margin: { left: 40, right: 40 },
       tableWidth: 515,
+      columnStyles: {
+        0: { cellWidth: 160 },
+        1: { cellWidth: 355 }
+      },
       head: [
         [
           {
             content: '3. ROOT CAUSE OCCURRENCE ANALYSIS (5-WHY)',
             colSpan: 2,
             styles: {
-              fillColor: [217, 119, 6], // amber-600
+              fillColor: [245, 158, 11], // amber-500
               textColor: [255, 255, 255],
               fontStyle: 'bold',
               fontSize: 8.5
             }
           }
-        ],
-        [
-          { content: 'LEVEL', styles: { halign: 'center', fontStyle: 'bold', fillColor: [245, 158, 11], textColor: [255, 255, 255] } },
-          { content: 'ROOT CAUSE OCCURRENCE INVESTIGATION (5-WHY)', styles: { fontStyle: 'bold', fillColor: [245, 158, 11], textColor: [255, 255, 255] } }
         ]
       ],
-      body: whyRows.length > 0 ? whyRows : [
-        ['Why 1 (W1)', r.root_cause || 'Root cause pending closer investigation.']
+      body: [
+        [
+          { content: 'Why 1 (Occurrence Cause):', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: whyList[0] || '—' }
+        ],
+        [
+          { content: 'Why 2:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: whyList[1] || '—' }
+        ],
+        [
+          { content: 'Why 3:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: whyList[2] || '—' }
+        ],
+        [
+          { content: 'Why 4:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: whyList[3] || '—' }
+        ],
+        [
+          { content: 'Why 5:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: whyList[4] || '—' }
+        ],
+        [
+          { content: 'Overall Root Cause Summary:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
+          { content: r.root_cause || '—' }
+        ]
       ],
-      headStyles: { fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: 110, fontStyle: 'bold', halign: 'center' },
-        1: { cellWidth: 405 }
-      },
       styles: { fontSize: 8, cellPadding: 3.5, valign: 'middle' }
     });
 
     // Section 4: 4. ACTION & CLOSURE SIGN-OFF
     const sec4Y = doc.lastAutoTable.finalY + 8;
     const tempActionVal = r.temporary_action || r.action || '—';
-    const tempTargetDateVal = (r.temporary_target_date ? formatDateDDMMYYYY(r.temporary_target_date) : '') ||
-      (r.target_date ? formatDateDDMMYYYY(r.target_date) : '—');
-    const tempClosedByVal = r.temporary_closed_by || r.action_taken_by || '—';
-
     const permActionVal = r.permanent_fix || r.corrective_action || '—';
+    const tempTargetDateVal = r.temporary_target_date ? formatDateDDMMYYYY(r.temporary_target_date) : (r.target_date ? formatDateDDMMYYYY(r.target_date) : '—');
     const permTargetDateVal = r.permanent_target_date ? formatDateDDMMYYYY(r.permanent_target_date) : '—';
-    const permClosedByVal = r.permanent_closed_by || r.closed_by || '—';
-
-    const closedByVal = isClosedStatus
-      ? (r.reviewed_by || r.approved_by || r.closed_by || 'Quality Auditor')
-      : (r.reviewed_by ? `Reviewed by ${r.reviewed_by}` : 'Pending Closure Authorization');
-
-    const closedDateVal = isClosedStatus
-      ? (r.closed_at ? formatDateDDMMYYYY(r.closed_at) : (r.updated_at ? formatDateDDMMYYYY(r.updated_at) : '—'))
+    const tempClosedByVal = r.temporary_closed_by || r.closer_updated_by || r.action_taken_by || '—';
+    const permClosedByVal = r.permanent_closed_by || r.closer_updated_by || r.closed_by || '—';
+    const closedByVal = r.reviewed_by || r.approved_by || r.closed_by || '—';
+    const closedDateVal = r.closed_at
+      ? formatDateDDMMYYYY(r.closed_at)
+      : isClosedStatus
+      ? (r.updated_at ? formatDateDDMMYYYY(r.updated_at) : '—')
       : '—';
 
     autoTable(doc, {
@@ -954,7 +1209,17 @@ export const exportProcessAuditToPdf = async ({
     return;
   }
 
-  // Multi-record landscape summary table export
+  // Preload image thumbnails for rows that contain an image
+  const rowImages = await Promise.all(
+    reqList.map(async (r) => {
+      const defectFiles = parseAttachments(r.attachments);
+      const firstImg = defectFiles.find(isImageAttachment);
+      if (!firstImg) return null;
+      return await fetchAttachmentImageBase64(firstImg, 'process-audit');
+    })
+  );
+
+  // Multi-record landscape summary table export matching IHLR exactly
   const doc = new jsPDF({
     orientation: 'landscape',
     unit: 'pt',
@@ -972,99 +1237,234 @@ export const exportProcessAuditToPdf = async ({
     }
   }
 
-  doc.setFontSize(14);
+  doc.setFontSize(15);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
+  doc.setTextColor(15, 23, 42); // slate-900
   doc.text('INDIA NIPPON ELECTRICALS LIMITED', textStartX, 30);
 
-  doc.setFontSize(10);
+  doc.setFontSize(10.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(37, 99, 235);
+  doc.setTextColor(37, 99, 235); // blue-600
   doc.text(title, textStartX, 44);
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Generated: ${today} | Total Records: ${reqList.length} ${filterText ? `| ${filterText}` : ''}`, textStartX, 56);
+  doc.setTextColor(100, 116, 139); // slate-500
+  const metaText = filterText
+    ? `Generated: ${today} | Total Records: ${reqList.length} | ${filterText}`
+    : `Generated: ${today} | Total Records: ${reqList.length}`;
+  doc.text(metaText, textStartX, 56);
 
+  // Right-aligned Document Label
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(148, 163, 184); // slate-400
+  doc.text('PROCESS AUDIT ACTION LOG', doc.internal.pageSize.width - 24, 30, { align: 'right' });
+
+  // Super Headings & Detailed Column Headers (14 columns covering all audit phases)
   const tableHeaders = [
     [
-      { content: '#', styles: { halign: 'center' } },
-      { content: 'Req No', styles: { halign: 'center' } },
-      { content: 'Date', styles: { halign: 'center' } },
-      { content: 'Model / Process' },
-      { content: 'Observation & Findings' },
-      { content: 'Department' },
-      { content: 'Executor' },
-      { content: 'Root Cause & Action' },
-      { content: 'Target Date', styles: { halign: 'center' } },
-      { content: 'Status', styles: { halign: 'center' } },
-      { content: 'Remarks' }
+      {
+        content: 'REQUESTOR (AUDIT OBSERVATION & PARAMETERS)',
+        colSpan: 8,
+        styles: {
+          fillColor: [254, 243, 199], // amber-100
+          textColor: [120, 53, 15],  // amber-900
+          halign: 'center',
+          fontStyle: 'bold',
+          fontSize: 8
+        }
+      },
+      {
+        content: 'CLOSER (ROOT CAUSE & ACTIONS)',
+        colSpan: 4,
+        styles: {
+          fillColor: [255, 237, 213], // orange-100
+          textColor: [124, 45, 18],  // orange-900
+          halign: 'center',
+          fontStyle: 'bold',
+          fontSize: 8
+        }
+      },
+      {
+        content: 'REMARKS & STATUS',
+        colSpan: 2,
+        styles: {
+          fillColor: [241, 245, 249], // slate-100
+          textColor: [30, 41, 59],   // slate-800
+          halign: 'center',
+          fontStyle: 'bold',
+          fontSize: 8
+        }
+      }
+    ],
+    [
+      'SL NO',
+      'AUDIT REQ NO',
+      'ESCALATION DATE / SHIFT',
+      'PRODUCT / MODEL',
+      'PROCESS / OPERATION',
+      'AUDIT OBSERVATION',
+      'ASSIGNED DEPT / EXECUTOR',
+      'AUDIT EVIDENCE',
+      'OCCURRENCE CAUSE (5-WHY)',
+      'ACTIONS TAKEN (TEMP / PERM)',
+      'TARGET DATES',
+      'CLOSER EVIDENCE',
+      'REMARKS',
+      'STATUS'
     ]
   ];
 
-  const tableData = reqList.map((r, idx) => {
+  const tableRows = reqList.map((r, idx) => {
+    const defectFiles = parseAttachments(r.attachments);
+    const imgObj = rowImages[idx];
+    const fileCellText = imgObj?.dataUrl
+      ? (defectFiles.length > 1 ? `\n\n(+${defectFiles.length - 1} more file${defectFiles.length - 1 > 1 ? 's' : ''})` : '')
+      : (defectFiles.map((a) => a.name).join(', ') || '—');
+
+    const tempEvFiles = parseAttachments(r.temporary_evidence_attachment || r.action_attachments);
+    const permEvFiles = parseAttachments(r.permanent_evidence_attachment);
+    const closerEvFiles = [...tempEvFiles, ...permEvFiles];
+    const closerEvStr = closerEvFiles.length > 0 ? closerEvFiles.map(a => a.name).join(', ') : '—';
+
+    let deptExecutorStr = r.department || '—';
+    if (r.executor) deptExecutorStr += `\n(${r.executor})`;
+
+    const whyList = parseWhyList(r.prod_why_why || r.why_why);
+    const occCause = whyList[0] || r.root_cause || '—';
+
+    const displayStatus = getProcessAuditDisplayStatus(r);
+    let statusStr = displayStatus.toUpperCase();
+    if (r.reviewed_by && r.reviewed_by.trim()) {
+      statusStr += `\nReviewed: ${r.reviewed_by.trim()}`;
+    }
+
+    let actionStr = '—';
+    if (r.temporary_action && r.permanent_fix) {
+      actionStr = `Temp: ${r.temporary_action}\nPerm: ${r.permanent_fix}`;
+    } else if (r.temporary_action || r.action) {
+      actionStr = `Temp: ${r.temporary_action || r.action}`;
+    } else if (r.permanent_fix) {
+      actionStr = `Perm: ${r.permanent_fix}`;
+    }
+
+    let targetDateStr = '—';
+    const tempTDate = r.temporary_target_date || r.target_date;
+    const permTDate = r.permanent_target_date;
+    if (tempTDate && permTDate) {
+      targetDateStr = `Temp: ${formatDateDDMMYYYY(tempTDate)}\nPerm: ${formatDateDDMMYYYY(permTDate)}`;
+    } else if (tempTDate) {
+      targetDateStr = `Temp: ${formatDateDDMMYYYY(tempTDate)}`;
+    } else if (permTDate) {
+      targetDateStr = `Perm: ${formatDateDDMMYYYY(permTDate)}`;
+    }
+
     const reqNo = r.issue_no || (r.id ? `PA-${r.id}` : `#${idx + 1}`);
     const escDate = r.escalation_date ? formatDateDDMMYYYY(r.escalation_date) : (r.created_at ? formatDateDDMMYYYY(r.created_at) : '—');
-    const displayStatus = getProcessAuditDisplayStatus(r);
 
     return [
       idx + 1,
       reqNo,
-      escDate,
-      `${r.model || r.stage || '—'} / ${r.process_operation || r.line || '—'}`,
+      `${escDate}\n${r.shift || 'Shift 1'}`,
+      `${r.product || '—'}\n${r.model || r.stage || '—'}`,
+      r.process_operation || r.line || '—',
       r.issue_observation || r.problem || '—',
-      r.department || '—',
-      r.executor || '—',
-      [r.root_cause ? `RC: ${r.root_cause}` : '', r.corrective_action ? `Action: ${r.corrective_action}` : ''].filter(Boolean).join(' | ') || '—',
-      r.target_date ? formatDateDDMMYYYY(r.target_date) : '—',
-      displayStatus,
-      r.creator_remark || r.remarks || '—'
+      deptExecutorStr,
+      fileCellText,
+      occCause,
+      actionStr,
+      targetDateStr,
+      closerEvStr,
+      r.creator_remark || r.remarks || '—',
+      statusStr
     ];
   });
 
   autoTable(doc, {
-    startY: 68,
     head: tableHeaders,
-    body: tableData,
+    body: tableRows,
+    startY: 68,
     theme: 'grid',
-    headStyles: {
-      fillColor: [30, 41, 59],
-      textColor: [255, 255, 255],
-      fontSize: 8,
-      fontStyle: 'bold'
-    },
+    margin: { left: 24, right: 24, top: 16, bottom: 20 },
     styles: {
-      fontSize: 7.5,
+      fontSize: 7,
       cellPadding: 3,
+      valign: 'middle',
       overflow: 'linebreak'
     },
+    headStyles: {
+      fillColor: [30, 41, 59], // Dark slate header for 2nd row
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      halign: 'center',
+      fontSize: 7.5
+    },
     columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 45 },
-      2: { cellWidth: 45 },
-      3: { cellWidth: 80 },
-      4: { cellWidth: 150 },
-      5: { cellWidth: 65 },
-      6: { cellWidth: 65 },
-      7: { cellWidth: 150 },
-      8: { cellWidth: 45 },
-      9: { cellWidth: 45 },
-      10: { cellWidth: 70 }
+      0: { cellWidth: 20, halign: 'center' },
+      1: { cellWidth: 42, fontStyle: 'bold', halign: 'center' },
+      2: { cellWidth: 52, halign: 'center' },
+      3: { cellWidth: 56 },
+      4: { cellWidth: 50 },
+      5: { cellWidth: 72 },
+      6: { cellWidth: 54, halign: 'center' },
+      7: { cellWidth: 56, minCellHeight: 34, halign: 'center', valign: 'middle' },
+      8: { cellWidth: 62 },
+      9: { cellWidth: 70 },
+      10: { cellWidth: 52, halign: 'center' },
+      11: { cellWidth: 50 },
+      12: { cellWidth: 58 },
+      13: { cellWidth: 50, halign: 'center', fontStyle: 'bold' }
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252] // slate-50
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 13) {
+        const text = String(data.cell.raw || '').toUpperCase();
+        if (text.startsWith('CLOSED')) {
+          data.cell.styles.textColor = [22, 101, 52]; // emerald-700
+          data.cell.styles.fontStyle = 'bold';
+        } else if (text.includes('REVIEW') || text.includes('SIGNED') || text.includes('PROGRESS')) {
+          data.cell.styles.textColor = [180, 83, 9]; // amber-700
+          data.cell.styles.fontStyle = 'bold';
+        } else {
+          data.cell.styles.textColor = [225, 29, 72]; // rose-600
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    },
+    didDrawCell: (data) => {
+      if (data.section === 'body' && data.column.index === 7) {
+        const imgObj = rowImages[data.row.index];
+        if (imgObj && imgObj.dataUrl) {
+          try {
+            const padding = 2;
+            const cellW = data.cell.width - padding * 2;
+            const cellH = data.cell.height - padding * 2;
+            const imgW = Math.min(cellW, 54);
+            const imgH = Math.min(cellH, 28);
+            const x = data.cell.x + (data.cell.width - imgW) / 2;
+            const y = data.cell.y + (data.cell.height - imgH) / 2;
+            doc.addImage(imgObj.dataUrl, imgObj.extension === 'png' ? 'PNG' : 'JPEG', x, y, imgW, imgH);
+          } catch (e) {
+            console.warn('Could not draw PDF cell image:', e);
+          }
+        }
+      }
+    },
+    didDrawPage: (data) => {
+      const pageCount = doc.internal.getNumberOfPages();
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        `Page ${data.pageNumber} of ${pageCount}`,
+        doc.internal.pageSize.width - 60,
+        doc.internal.pageSize.height - 15
+      );
     }
   });
 
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text(
-      `Page ${i} of ${pageCount}  |  Generated on ${formatDateDDMMYYYY(new Date())}`,
-      24,
-      doc.internal.pageSize.height - 15
-    );
-  }
-
-  doc.save(fileName || `Process_Audit_Log_${today}.pdf`);
+  const targetFileName = fileName || `Process_Audit_Analysis_Report_${today}.pdf`;
+  doc.save(targetFileName.endsWith('.pdf') ? targetFileName : `${targetFileName}.pdf`);
 };
