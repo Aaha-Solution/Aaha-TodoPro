@@ -172,6 +172,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           (n.title && n.title.toLowerCase().includes('cc notification'));
 
         const notifIdStr = `notif-${n.id}`;
+        const notifMessage = n.message;
         const reqNoKey = n.reqNo || (n.requestId ? (String(n.requestId).startsWith('#') ? n.requestId : `#${n.requestId}`) : '');
 
         // Authoritative read status:
@@ -240,7 +241,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
             : n.accentColor || 'amber',
           department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : isCcNotif ? 'INFORMATION' : 'PRODUCTION'),
           title: n.title,
-          message: n.message,
+          message: notifMessage,
           timeDisplay: formatStreamDate(n.date),
           subCategory: 'LINE DEFECT REPORT',
           footerFlag: isClosedNotif
@@ -495,6 +496,14 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         if (isDuplicate) return;
 
         let notifTitle = n.title;
+        let notifMessage = n.message || '';
+        if (notifMessage.includes('TEMPORARY CLOSED BY') || notifMessage.toLowerCase().includes('temporary closed by')) {
+          const reqMatch = Array.isArray(requests)
+            ? requests.find((r) => String(r.id) === String(n.request_id || n.rawId) || String(r.issue_no || '').replace(/^#/, '') === String(n.issue_no || n.requestId || '').replace(/^#/, ''))
+            : null;
+          const realName = reqMatch?.closer_updated_by || reqMatch?.executor || n.user_name || 'Assigned Executor';
+          notifMessage = notifMessage.replace(/TEMPORARY CLOSED BY/gi, realName);
+        }
         if (isReassignedNotif && notifTitle && notifTitle.includes('Assigned') && !notifTitle.includes('Reassigned')) {
           notifTitle = notifTitle.replace(/\bAssigned\b/g, 'Reassigned');
         }
@@ -532,7 +541,7 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
             : n.accentColor || 'amber',
           department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : isCcNotif ? 'INFORMATION' : 'PRODUCTION'),
           title: notifTitle,
-          message: n.message,
+          message: notifMessage,
           timeDisplay: formatStreamDate(n.date || n.time || n.created_at),
           subCategory: 'PROCESS AUDIT OBSERVATION',
           footerFlag: isClosedNotif

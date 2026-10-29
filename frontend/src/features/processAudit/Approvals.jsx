@@ -1072,7 +1072,7 @@ const ProcessAuditApprovals = () => {
         standardization_details: standardizationDetails.trim(),
         action_attachments: combinedEvidence,
         target_date: closerPermanentTargetDate || closerTargetDate || null,
-        action_taken_by: closerTemporaryClosedBy.trim() || closerPermanentClosedBy.trim() || null,
+        action_taken_by: currentUser?.name || selectedRequest?.executor || 'Assigned Executor',
         approved_by: currentUser?.name || currentUser?.email || 'Assigned Executor',
         approved_by_id: currentUser?.id || null,
         approved_by_email: currentUser?.email || null,

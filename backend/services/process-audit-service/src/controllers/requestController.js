@@ -373,7 +373,7 @@ export const updateRequestStatus = async (req, res) => {
       action_attachments: parsedActionAttachments,
       standardization_details: body.standardization_details || body.standardizationDetails || null,
       target_date: body.target_date || body.targetDate || null,
-      action_taken_by: body.temporary_closed_by || body.action_taken_by || body.actionTakenBy || body.approved_by || body.approvedBy || req.user?.name || null,
+      action_taken_by: body.closer_updated_by || body.approved_by || req.user?.name || body.action_taken_by || null,
       approved_by: body.approved_by || body.approvedBy || body.action_taken_by || body.actionTakenBy || req.user?.name || null,
       approved_by_id: body.approved_by_id || body.approvedById || req.user?.id || null,
       approved_by_email: body.approved_by_email || body.approvedByEmail || req.user?.email || null,
@@ -424,8 +424,23 @@ export const updateRequestStatus = async (req, res) => {
         const wasAlreadyClosed = String(existing?.status || '').toUpperCase() === 'CLOSED';
         const isNowClosed = String(updated.status || '').toUpperCase() === 'CLOSED';
         const isClosed = isNowClosed && !wasAlreadyClosed;
-        const closerName = req.user?.name || details.action_taken_by || updated.executor || 'Assigned Executor';
-        const closerDept = updated.department || req.user?.department || 'PRODUCTION';
+        let authUser = req.user;
+        if (!authUser) {
+          const authHeader = req.headers.authorization;
+          if (authHeader && authHeader.startsWith('Bearer ')) {
+            try {
+              authUser = verifyToken(authHeader.split(' ')[1]);
+            } catch {}
+          }
+        }
+        const closerName = 
+          (body.closer_updated_by && !String(body.closer_updated_by).toLowerCase().includes('temporary closed') && String(body.closer_updated_by).trim()) ||
+          (authUser?.name && !String(authUser.name).toLowerCase().includes('temporary closed') && String(authUser.name).trim()) ||
+          (body.approved_by && !String(body.approved_by).toLowerCase().includes('temporary closed') && String(body.approved_by).trim()) ||
+          (updated.executor && String(updated.executor).trim()) ||
+          (existing?.executor && String(existing.executor).trim()) ||
+          'Assigned Executor';
+        const closerDept = updated.department || authUser?.department || req.user?.department || 'PRODUCTION';
 
         // Fetch Quality Admin users from DB
         let adminUsers = [];

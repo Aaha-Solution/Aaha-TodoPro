@@ -50,6 +50,18 @@ const ensureNotificationTable = async () => {
       WHERE (message LIKE '%has been reassigned%' OR message LIKE '%reassigned to you%')
         AND (title LIKE '%Assigned%' AND title NOT LIKE '%Reassigned%')
     `).catch(() => {});
+
+    // Auto-fix existing notifications where temporary_closed_by was mistakenly used in message
+    await pool.query(`
+      UPDATE process_audit_notifications n
+      LEFT JOIN process_audit_requests r ON n.request_id = r.id
+      SET n.message = REPLACE(
+        n.message,
+        'TEMPORARY CLOSED BY',
+        COALESCE(NULLIF(TRIM(r.closer_updated_by), ''), NULLIF(TRIM(r.executor), ''), 'Assigned Executor')
+      )
+      WHERE n.message LIKE '%TEMPORARY CLOSED BY%'
+    `).catch(() => {});
   } catch (err) {
     console.warn('[process_audit_notifications] table ensure warning:', err.message);
   }
