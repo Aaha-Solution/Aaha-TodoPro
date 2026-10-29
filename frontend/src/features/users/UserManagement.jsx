@@ -902,27 +902,18 @@ const UserManagement = () => {
                           </div>
                         </td>
 
-                        {/* Status Toggle */}
+                        {/* Status (Read-Only) */}
                         <td className="py-4 px-4">
-                          <button
-                            onClick={() => {
-                              if (isCurrent) {
-                                modalError('You cannot deactivate your own logged-in user account.');
-                                return;
-                              }
-                              handleToggleStatus(u);
-                            }}
-                            disabled={isCurrent}
-                            className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition ${isCurrent ? 'cursor-default opacity-85' : 'cursor-pointer'} ${
+                          <span
+                            className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border select-none cursor-default ${
                               u.status === 'Active' || u.status === 'ACTIVE'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-slate-100 text-slate-500 border-slate-200'
                             }`}
-                            title="Click to toggle status"
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${u.status === 'Active' || u.status === 'ACTIVE' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
                             <span>{u.status || 'Active'}</span>
-                          </button>
+                          </span>
                         </td>
 
                         {/* Actions */}
