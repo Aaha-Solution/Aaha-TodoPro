@@ -142,7 +142,20 @@ export async function sendEmail({
   }
 
   const DEFAULT_TRIGGER_EMAIL = process.env.SMTP_USER || process.env.EMAIL_USER || '';
-  const cleanTo = (to && to.trim()) ? to.trim() : DEFAULT_TRIGGER_EMAIL;
+  let cleanTo = DEFAULT_TRIGGER_EMAIL;
+  if (to) {
+    const toArr = Array.isArray(to) ? to : String(to).split(',');
+    const uniqueTo = Array.from(
+      new Set(
+        toArr
+          .map((s) => String(s || '').trim().toLowerCase())
+          .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))
+      )
+    );
+    if (uniqueTo.length > 0) {
+      cleanTo = uniqueTo.join(', ');
+    }
+  }
 
   // Collect all CC recipients (combining explicit cc and DEFAULT_TRIGGER_EMAIL)
   const ccSet = new Set();
@@ -154,8 +167,14 @@ export async function sendEmail({
       .forEach((email) => ccSet.add(email));
   }
 
-  // Do not include cleanTo in its own CC list
-  ccSet.delete(cleanTo.toLowerCase());
+  // Do not include any recipient in cleanTo in the CC list
+  if (cleanTo) {
+    cleanTo
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean)
+      .forEach((email) => ccSet.delete(email));
+  }
 
   const ccRecipientList = Array.from(ccSet);
   const ccRecipient = ccRecipientList.length > 0 ? ccRecipientList.join(', ') : undefined;
@@ -438,7 +457,15 @@ export function generateEmailTemplate({
 /**
  * Send dual emails (to raised person & selected person) for IHLR requests
  */
-export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser, allAssignedNames = '', ccList = [], skipCreator = false }) {
+export async function sendIhlrRequestEmails({
+  request,
+  creatorUser,
+  assignedUser,
+  allAssignedNames = '',
+  ccList = null,
+  skipCreator = false,
+  skipCc = false
+}) {
   const reqNo = request.req_no || `IHLR-${request.id || '1'}`;
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const myRequestsUrl = `${baseUrl}/ihlr/my-requests`;
@@ -453,9 +480,11 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
     : (creatorName ? `${creatorName}${creatorEmail ? ` (${creatorEmail})` : ''}` : (creatorEmail || 'Quality Engineer'));
 
   const assignedEmail = assignedUser?.email || request.resp_person_email || process.env.SMTP_USER || '';
-  const assignedName = (request.resp_person && String(request.resp_person).trim())
-    ? String(request.resp_person).trim()
-    : (assignedUser?.name || 'Responsible Officer');
+  const assignedName = (allAssignedNames && String(allAssignedNames).trim())
+    ? String(allAssignedNames).trim()
+    : (request.resp_person && String(request.resp_person).trim())
+      ? String(request.resp_person).trim()
+      : (assignedUser?.name || 'Responsible Officer');
   const assignedDept = request.resp || assignedUser?.department || 'PRODUCTION';
 
   // All assigned members display for creator and summary table (e.g. "Ramesh, srihari")
@@ -467,16 +496,39 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
 
   const mailStatus = formatIhlrMailStatus(request); // Returns 'Pending'
 
-  // Build complete CC list from request.notify_emails, ccList, and default trigger email
-  const notifyList = [
-    ...(Array.isArray(ccList) ? ccList : String(ccList || '').split(',')),
-    ...String(request.notify_emails || '').split(',')
-  ]
-    .map((s) => String(s || '').trim().toLowerCase())
-    .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
+  // Extract all CC emails from request for display in the summary table
+  const allRequestCc = Array.from(new Set(
+    String(request.notify_emails || request.cc_emails || '')
+      .split(',')
+      .map((s) => String(s || '').trim().toLowerCase())
+      .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))
+  ));
 
-  const allCcEmails = Array.from(new Set(notifyList));
-  const ccDisplayStr = allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None';
+  // Determine actual CC recipients for the dispatch:
+  // - If skipCc is true: no CC is sent
+  // - If ccList is provided as an array: use that array (e.g. [] sends no CC)
+  // - If ccList is provided as a string: use that string
+  // - Otherwise: fallback to request.notify_emails
+  let dispatchCcList = [];
+  if (!skipCc) {
+    if (Array.isArray(ccList)) {
+      dispatchCcList = ccList;
+    } else if (typeof ccList === 'string' && ccList.trim()) {
+      dispatchCcList = ccList.split(',');
+    } else if (ccList === null || ccList === undefined) {
+      dispatchCcList = allRequestCc;
+    }
+  }
+
+  const allCcEmails = Array.from(new Set(
+    dispatchCcList
+      .map((s) => String(s || '').trim().toLowerCase())
+      .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))
+  ));
+
+  const ccDisplayStr = allRequestCc.length > 0
+    ? allRequestCc.join(', ')
+    : (allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None');
 
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
@@ -550,7 +602,7 @@ export async function sendIhlrRequestEmails({ request, creatorUser, assignedUser
       moduleType: 'IHLR',
       requestId: request.id,
       referenceNo: reqNo,
-      cc: allCcEmails,
+      cc: skipCc ? [] : allCcEmails,
     });
   }
 

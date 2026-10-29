@@ -624,10 +624,12 @@ export const createIhlrRequest = async (req, res) => {
     data.resp_person_email = combinedAssignedEmails || assignedUser.email;
     data.notify_emails = String(data.notify_emails || data.cc_emails || '').trim();
 
-    const notifyEmailsList = data.notify_emails
-      .split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
+    const notifyEmailsList = Array.from(new Set(
+      data.notify_emails
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))
+    ));
 
     let created = await IhlrRequest.create(data);
     if (!created) {
@@ -768,28 +770,22 @@ export const createIhlrRequest = async (req, res) => {
         ? assignedUsersList.map((u) => u.name).filter(Boolean).join(', ')
         : (created.resp_person || (assignedUser && assignedUser.name) || '');
 
-      if (assignedUsersList && assignedUsersList.length > 0) {
-        let isFirst = true;
-        for (const userItem of assignedUsersList) {
-          sendIhlrRequestEmails({
-            request: created,
-            creatorUser,
-            assignedUser: userItem,
-            allAssignedNames: allAssignedNamesDisplay,
-            ccList: isFirst ? notifyEmailsList : [],
-            skipCreator: !isFirst
-          }).catch((mailErr) => console.warn('[IHLR Mailer] Non-blocking email dispatch warning:', mailErr.message));
-          isFirst = false;
-        }
-      } else {
-        sendIhlrRequestEmails({
-          request: created,
-          creatorUser,
-          assignedUser: null,
-          allAssignedNames: allAssignedNamesDisplay,
-          ccList: notifyEmailsList
-        }).catch((mailErr) => console.warn('[IHLR Mailer] Non-blocking email dispatch warning:', mailErr.message));
-      }
+      const allAssignedEmails = (assignedUsersList && assignedUsersList.length > 0)
+        ? Array.from(new Set(assignedUsersList.map((u) => u.email).filter(Boolean))).join(', ')
+        : (created.resp_person_email || (assignedUser && assignedUser.email) || '');
+
+      // Dispatch a single consolidated notification to all assignees & CC recipients so no one receives duplicate emails
+      sendIhlrRequestEmails({
+        request: created,
+        creatorUser,
+        assignedUser: {
+          name: allAssignedNamesDisplay,
+          email: allAssignedEmails,
+          department: created.resp || 'PRODUCTION'
+        },
+        allAssignedNames: allAssignedNamesDisplay,
+        ccList: notifyEmailsList
+      }).catch((mailErr) => console.warn('[IHLR Mailer] Non-blocking email dispatch warning:', mailErr.message));
     } catch (mailSyncErr) {
       console.warn('[IHLR Mailer] Sync email dispatch warning:', mailSyncErr.message);
     }
