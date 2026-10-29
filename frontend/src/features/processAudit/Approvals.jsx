@@ -3076,7 +3076,7 @@ const ProcessAuditApprovals = () => {
                                 </div>
                               ) : (
                                 <span className="inline-block text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 w-fit">
-                                  Pending Action
+                                  Pending
                                 </span>
                               )}
                               {closerFilledBy && (
