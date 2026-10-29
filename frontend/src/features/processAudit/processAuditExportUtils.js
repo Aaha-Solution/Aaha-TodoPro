@@ -601,7 +601,7 @@ export const exportProcessAuditToPdf = async ({
     doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(191, 219, 254);
-    doc.text(`PROCESS AUDIT INSPECTION REPORT  |  ${reqNo}`, bannerTextX, 66);
+    doc.text(`Process Audit Deviation Action Report   |  ${reqNo}`, bannerTextX, 66);
 
     // Section 1: 1. AUDIT INCIDENT & PARAMETERS (Structured 4-Column Key-Value Grid)
     autoTable(doc, {

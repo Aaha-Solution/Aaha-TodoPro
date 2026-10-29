@@ -2932,16 +2932,7 @@ const ProcessAuditApprovals = () => {
               </select>
             </div>
 
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition active:scale-95 cursor-pointer shrink-0 shadow-2xs"
-              title="Refresh queue and reset filters"
-            >
-              <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`} />
-              <span>Refresh</span>
-            </button>
-
+       
             <button
               onClick={() => setShowExportModal(true)}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow transition transform active:scale-95 cursor-pointer shrink-0"

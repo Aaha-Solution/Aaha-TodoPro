@@ -1400,23 +1400,10 @@ const CreateRequest = () => {
             </div>
 
             <div className="relative" ref={executorDropdownRef}>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center">
-                  <span>Assign Executor</span>
-                  <span className="text-red-500 font-bold ml-1">*</span>
-                </label>
-                {(formData.department || selectedExecutors.length > 0) && (
-                  <div className="flex items-center gap-2 text-[10px]">
-                    <button
-                      type="button"
-                      onClick={handleClearAllExecutors}
-                      className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                )}
-              </div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                <span>Assign Executor</span>
+                <span className="text-red-500 font-bold ml-1">*</span>
+              </label>
 
               {/* Multi-select Trigger Box */}
               <div
