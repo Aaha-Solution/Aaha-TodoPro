@@ -578,15 +578,20 @@ export const createIhlrRequest = async (req, res) => {
     let assignedUsersList = [];
     if (assignedNames.length > 0 && pool) {
       for (const name of assignedNames) {
-        let [aRows] = await pool.query(
-          'SELECT id, name, email, department, role FROM users WHERE (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?))) AND UPPER(TRIM(department)) = UPPER(TRIM(?)) LIMIT 1',
-          [name, name, data.resp || 'PRODUCTION']
-        ).catch(() => [[]]);
+        let aRows = [];
+        if (data.resp && String(data.resp).trim()) {
+          const [deptRows] = await pool.query(
+            'SELECT id, name, email, department, role FROM users WHERE (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?))) AND UPPER(TRIM(department)) = UPPER(TRIM(?)) LIMIT 1',
+            [name, name, String(data.resp).trim()]
+          ).catch(() => [[]]);
+          if (deptRows && deptRows.length > 0) aRows = deptRows;
+        }
         if (!aRows || aRows.length === 0) {
-          [aRows] = await pool.query(
+          const [anyDeptRows] = await pool.query(
             'SELECT id, name, email, department, role FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
             [name, name]
           ).catch(() => [[]]);
+          if (anyDeptRows && anyDeptRows.length > 0) aRows = anyDeptRows;
         }
         if (aRows && aRows.length > 0) {
           const matchedUser = aRows[0];
@@ -599,7 +604,7 @@ export const createIhlrRequest = async (req, res) => {
             id: null,
             name: name,
             email: `${name.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
-            department: data.resp || 'PRODUCTION'
+            department: data.resp || ''
           });
         }
       }
@@ -610,7 +615,7 @@ export const createIhlrRequest = async (req, res) => {
         id: null,
         name: data.resp_person || 'Assigned Officer',
         email: data.resp_person_email || `${String(data.resp_person || 'user').toLowerCase().replace(/\s+/g, '')}@gmail.com`,
-        department: data.resp || 'PRODUCTION'
+        department: data.resp || ''
       }];
     }
 
@@ -668,7 +673,7 @@ export const createIhlrRequest = async (req, res) => {
         qa_why_why: data.qa_why_why || [],
         actual_qty: data.actual_qty ? Number(data.actual_qty) : 1,
         four_m: data.four_m || 'MAN',
-        resp: data.resp || 'PRODUCTION',
+        resp: data.resp || (assignedUser && assignedUser.department) || '',
         resp_person: data.resp_person || '',
         prod_why_why: data.prod_why_why || [],
         temporary_action: data.temporary_action || '',
@@ -708,7 +713,10 @@ export const createIhlrRequest = async (req, res) => {
             created.id,
             reqNo,
             `IHLR Defect Report Logged: #${reqNo}`,
-            `Your IHLR defect observation report for "${created.model}" has been logged and assigned to ${assignedNamesDisplay} (${created.resp || 'Production'}).`
+            (() => {
+              const d = (created.resp || (assignedUser && assignedUser.department) || '').trim();
+              return `Your IHLR defect observation report for "${created.model}" has been logged and assigned to ${assignedNamesDisplay}${d ? ` (${d})` : ''}.`;
+            })()
           ]
         );
 
@@ -774,6 +782,8 @@ export const createIhlrRequest = async (req, res) => {
         ? Array.from(new Set(assignedUsersList.map((u) => u.email).filter(Boolean))).join(', ')
         : (created.resp_person_email || (assignedUser && assignedUser.email) || '');
 
+      const targetDept = (created.resp || data.resp || (assignedUsersList && assignedUsersList[0]?.department) || (assignedUser && assignedUser.department) || '').trim();
+
       // Dispatch a single consolidated notification to all assignees & CC recipients so no one receives duplicate emails
       sendIhlrRequestEmails({
         request: created,
@@ -781,7 +791,7 @@ export const createIhlrRequest = async (req, res) => {
         assignedUser: {
           name: allAssignedNamesDisplay,
           email: allAssignedEmails,
-          department: created.resp || 'PRODUCTION'
+          department: targetDept
         },
         allAssignedNames: allAssignedNamesDisplay,
         ccList: notifyEmailsList
@@ -1169,7 +1179,7 @@ export const updateIhlrRequest = async (req, res) => {
         const isNowClosed = String(updated.status || '').toUpperCase() === 'CLOSED';
         const isClosed = isNowClosed && !wasAlreadyClosed;
         const closerName = req.user?.name || updated.resp_person || 'Assigned Officer';
-        const closerDept = updated.resp || req.user?.department || 'PRODUCTION';
+        const closerDept = (updated.resp || req.user?.department || '').trim();
 
         // Fetch Quality Admin users from DB
         let adminUsers = [];
@@ -1190,15 +1200,20 @@ export const updateIhlrRequest = async (req, res) => {
 
           if (newNames.length > 0) {
             for (const nameItem of newNames) {
-              let [nuRows] = await pool.query(
-                'SELECT id, name, email, department, role FROM users WHERE (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?))) AND UPPER(TRIM(department)) = UPPER(TRIM(?)) LIMIT 1',
-                [nameItem, nameItem, updated.resp || 'PRODUCTION']
-              ).catch(() => [[]]);
+              let nuRows = [];
+              if (updated.resp && String(updated.resp).trim()) {
+                const [matchedDept] = await pool.query(
+                  'SELECT id, name, email, department, role FROM users WHERE (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?))) AND UPPER(TRIM(department)) = UPPER(TRIM(?)) LIMIT 1',
+                  [nameItem, nameItem, String(updated.resp).trim()]
+                ).catch(() => [[]]);
+                if (matchedDept && matchedDept.length > 0) nuRows = matchedDept;
+              }
               if (!nuRows || nuRows.length === 0) {
-                [nuRows] = await pool.query(
+                const [anyDept] = await pool.query(
                   'SELECT id, name, email, department, role FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
                   [nameItem, nameItem]
                 ).catch(() => [[]]);
+                if (anyDept && anyDept.length > 0) nuRows = anyDept;
               }
               if (nuRows && nuRows.length > 0) {
                 targetUsers.push(nuRows[0]);
@@ -1207,7 +1222,7 @@ export const updateIhlrRequest = async (req, res) => {
                   id: null,
                   name: nameItem,
                   email: `${nameItem.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
-                  department: updated.resp || 'PRODUCTION'
+                  department: updated.resp || ''
                 });
               }
             }

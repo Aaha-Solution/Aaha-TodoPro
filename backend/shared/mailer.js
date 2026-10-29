@@ -485,7 +485,8 @@ export async function sendIhlrRequestEmails({
     : (request.resp_person && String(request.resp_person).trim())
       ? String(request.resp_person).trim()
       : (assignedUser?.name || 'Responsible Officer');
-  const assignedDept = request.resp || assignedUser?.department || 'PRODUCTION';
+  const assignedDept = (request.resp || assignedUser?.department || '').trim();
+  const assignedDeptDisplay = assignedDept ? ` (${assignedDept})` : '';
 
   // All assigned members display for creator and summary table (e.g. "Ramesh, srihari")
   const allAssignedPersonsDisplay = (allAssignedNames && String(allAssignedNames).trim())
@@ -554,7 +555,7 @@ export async function sendIhlrRequestEmails({
       headerTitle: `IHLR Defect Report Logged: #${reqNo}`,
       headerSubtitle: `Your In-House Line Rejection analysis report has been recorded and dispatched for containment.`,
       recipientName: creatorName,
-      greetingMessage: `Your IHLR defect observation report for <strong>${request.model}</strong> has been logged into the database and assigned to <strong>${allAssignedPersonsDisplay}</strong> (${assignedDept}) for 5-Why root cause countermeasure.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
+      greetingMessage: `Your IHLR defect observation report for <strong>${request.model}</strong> has been logged into the database and assigned to <strong>${allAssignedPersonsDisplay}</strong>${assignedDeptDisplay} for 5-Why root cause countermeasure.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
       tableData: tableSummary,
       actionButtonText: 'View My IHLR Requests',
       actionButtonUrl: myRequestsUrl,
@@ -568,7 +569,7 @@ export async function sendIhlrRequestEmails({
       recipientName: creatorName,
       recipientRole: 'RAISED_PERSON',
       subject: creatorSubject,
-      text: `Your IHLR defect request #${reqNo} (${request.model} - "${request.problem}") has been successfully logged (Status: Pending) and assigned to ${allAssignedPersonsDisplay} (${assignedDept}).`,
+      text: `Your IHLR defect request #${reqNo} (${request.model} - "${request.problem}") has been successfully logged (Status: Pending) and assigned to ${allAssignedPersonsDisplay}${assignedDeptDisplay}.`,
       html: creatorHtml,
       moduleType: 'IHLR',
       requestId: request.id,
@@ -578,7 +579,9 @@ export async function sendIhlrRequestEmails({
 
   // 2. EMAIL TO SELECTED PERSON IN FIELD (ASSIGNED USER)
   if (assignedEmail) {
-    const assignedSubject = `[Action Required] IHLR Rejection #${reqNo} Assigned to You (${assignedDept}) - Pending`;
+    const assignedSubject = assignedDept
+      ? `[Action Required] IHLR Rejection #${reqNo} Assigned to You (${assignedDept}) - Pending`
+      : `[Action Required] IHLR Rejection #${reqNo} Assigned to You - Pending`;
     const assignedHtml = generateEmailTemplate({
       headerTitle: `Action Required: IHLR Incident #${reqNo}`,
       headerSubtitle: `An in-house line rejection has been assigned to you for investigation and corrective action.`,
@@ -629,7 +632,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
   const assignedName = (request.resp_person && String(request.resp_person).trim())
     ? String(request.resp_person).trim()
     : (assignedUser?.name || 'Responsible Officer');
-  const assignedDept = request.resp || assignedUser?.department || 'PRODUCTION';
+  const assignedDept = (request.resp || assignedUser?.department || '').trim();
 
   const isClosed = String(request.status).toUpperCase() === 'CLOSED' || String(request.status).toUpperCase() === 'APPROVED';
   const mailStatus = isClosed ? 'Closed' : 'Awaiting Review';
