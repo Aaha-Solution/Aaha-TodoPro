@@ -832,7 +832,7 @@ const ProcessAuditRequestDetailsModal = ({
       className="fixed inset-0 !m-0 !mt-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150 overscroll-contain"
       style={{ zIndex: 99990 }}
       onClick={() => {
-        if (!isEditMode) {
+        if (false /* backdrop click-to-close disabled to prevent accidental closure */ && !isEditMode) {
           onClose();
         }
       }}
