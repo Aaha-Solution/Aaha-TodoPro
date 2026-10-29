@@ -1168,7 +1168,7 @@ const ProcessAuditRequestDetailsModal = ({
                   <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     Admin Remarks
                   </span>
-                  <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium min-h-[50px] whitespace-pre-wrap">
+                  <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium min-h-[50px] whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word]">
                     {req.creator_remark || req.remarks || (
                       <span className="text-slate-400 italic">No admin review remarks recorded.</span>
                     )}
@@ -1176,7 +1176,7 @@ const ProcessAuditRequestDetailsModal = ({
                 </div>
 
                 {/* Key Details Grid (formatted like Closer Tab Target Date & Closed By) */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs [&>*]:min-w-0">
                   <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       REVIEWED BY
@@ -1327,7 +1327,7 @@ const ProcessAuditRequestDetailsModal = ({
                         {statusBadgeLabel.toUpperCase()}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-500 mt-0.5 break-words [overflow-wrap:anywhere] [word-break:break-word]">
                       Model: <strong className="text-slate-800">{req.model || req.stage || '—'}</strong> | Operation:{' '}
                       <strong className="text-slate-800">{req.process_operation || req.line || '—'}</strong>
                     </p>
@@ -1384,7 +1384,7 @@ const ProcessAuditRequestDetailsModal = ({
                           <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
                             {item.label}:{['W1', 'W2', 'W3'].includes(item.label) && <span className="text-red-500 font-bold ml-0.5">*</span>}
                           </span>
-                          <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
+                          <span className="text-slate-800 font-medium leading-relaxed pt-0.5 min-w-0 break-words [overflow-wrap:anywhere] [word-break:break-word]">
                             {item.val}
                           </span>
                         </div>
@@ -1412,7 +1412,7 @@ const ProcessAuditRequestDetailsModal = ({
                   <Wrench className="w-4 h-4" />
                   <span>Temporary Action</span>
                 </div>
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium break-words [overflow-wrap:anywhere] [word-break:break-word]">
                   {req.temporary_action || req.corrective_action || req.action || <span className="text-slate-400 italic">No temporary action recorded.</span>}
                 </div>
               </div>
@@ -1480,7 +1480,7 @@ const ProcessAuditRequestDetailsModal = ({
                     <Wrench className="w-4 h-4" />
                     <span>Permanent Action</span>
                   </div>
-                  <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                  <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium break-words [overflow-wrap:anywhere] [word-break:break-word]">
                     {req.permanent_fix || <span className="text-slate-400 italic">No permanent action recorded.</span>}
                   </div>
                 </div>
@@ -2013,7 +2013,7 @@ const ProcessAuditRequestDetailsModal = ({
                   <span>1. INCIDENT &amp; LINE DEFECT DETAILS</span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs p-4 rounded-2xl bg-slate-50/90 border border-slate-200/90">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs p-4 rounded-2xl bg-slate-50/90 border border-slate-200/90 [&>*]:min-w-0">
                   <div>
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       ISSUE NO
@@ -2058,7 +2058,7 @@ const ProcessAuditRequestDetailsModal = ({
                       PRODUCT
                     </span>
                     <strong className="text-slate-800 block mt-0.5 font-semibold">
-                      {req.product || '—'}
+                      <span className="break-words [overflow-wrap:anywhere] [word-break:break-word]">{req.product || '—'}</span>
                     </strong>
                   </div>
 
@@ -2067,7 +2067,7 @@ const ProcessAuditRequestDetailsModal = ({
                       RESPONSIBILITY (DEPT)
                     </span>
                     <strong className="text-slate-800 block mt-0.5 font-bold">
-                      {req.department || '—'}
+                      <span className="break-words [overflow-wrap:anywhere] [word-break:break-word]">{req.department || '—'}</span>
                     </strong>
                     {req.executor && (
                       <span className="text-[11px] text-blue-600 font-medium block truncate">
@@ -2081,7 +2081,7 @@ const ProcessAuditRequestDetailsModal = ({
                       MODEL
                     </span>
                     <strong className="text-slate-800 block mt-0.5 font-bold">
-                      {req.model || req.stage || '—'}
+                      <span className="break-words [overflow-wrap:anywhere] [word-break:break-word]">{req.model || req.stage || '—'}</span>
                     </strong>
                   </div>
 
@@ -2090,7 +2090,7 @@ const ProcessAuditRequestDetailsModal = ({
                       PROCESS / OPERATION
                     </span>
                     <strong className="text-slate-800 block mt-0.5 font-semibold">
-                      {req.process_operation || req.line || '—'}
+                      <span className="break-words [overflow-wrap:anywhere] [word-break:break-word]">{req.process_operation || req.line || '—'}</span>
                     </strong>
                   </div>
 
@@ -2099,7 +2099,7 @@ const ProcessAuditRequestDetailsModal = ({
                       ISSUE TYPE
                     </span>
                     <strong className="text-slate-800 block mt-0.5 font-semibold">
-                      {req.issue_type || 'Process'}
+                      <span className="break-words [overflow-wrap:anywhere] [word-break:break-word]">{req.issue_type || 'Process'}</span>
                     </strong>
                   </div>
 
@@ -2119,7 +2119,7 @@ const ProcessAuditRequestDetailsModal = ({
                       PRIORITY
                     </span>
                     <strong className="text-amber-700 block mt-0.5 font-bold">
-                      {req.priority || 'Medium'}
+                      <span className="break-words [overflow-wrap:anywhere] [word-break:break-word]">{req.priority || 'Medium'}</span>
                     </strong>
                   </div>
 
@@ -2128,7 +2128,7 @@ const ProcessAuditRequestDetailsModal = ({
                       CREATED BY
                     </span>
                     <strong className="text-blue-700 block mt-0.5 font-semibold">
-                      {req.created_by || 'Quality Auditor'}
+                      <span className="break-words [overflow-wrap:anywhere] [word-break:break-word]">{req.created_by || 'Quality Auditor'}</span>
                     </strong>
                     {resolveAuditorEmail(req) !== '—' && (
                       <span className="text-[11px] text-slate-500 font-medium block truncate">
