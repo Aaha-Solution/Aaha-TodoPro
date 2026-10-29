@@ -2171,7 +2171,7 @@ const ProcessAuditRequestDetailsModal = ({
                     <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                       Issue / Observation
                     </span>
-                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-800 leading-relaxed font-medium">
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-800 leading-relaxed font-medium break-words [overflow-wrap:anywhere] [word-break:break-word]">
                       {req.issue_observation || req.problem || 'No observation recorded.'}
                     </div>
                   </div>
@@ -2181,7 +2181,7 @@ const ProcessAuditRequestDetailsModal = ({
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                         Comments
                       </span>
-                      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-800 leading-relaxed font-medium">
+                      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-800 leading-relaxed font-medium break-words [overflow-wrap:anywhere] [word-break:break-word]">
                         {req.comments}
                       </div>
                     </div>
