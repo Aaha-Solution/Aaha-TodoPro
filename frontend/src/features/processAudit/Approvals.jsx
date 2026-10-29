@@ -3055,8 +3055,13 @@ const ProcessAuditApprovals = () => {
                     <tr>
                       <td colSpan={9} className="py-12 text-center text-slate-400">
                         <ClipboardCheck className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                        <p className="font-semibold text-slate-600">No requests found matching criteria</p>
-                        {hasActiveFilters && (
+                        <p className="font-semibold text-slate-600">
+                          {isAdmin ? 'No requests found matching criteria' : 'No Process Audit requests assigned to you found matching criteria'}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          {isAdmin ? 'Try clearing filters or search parameters.' : `When an auditor assigns a request to ${currentUser?.name || 'you'}, it will appear here.`}
+                        </p>
+                        {false && (
                           <button
                             type="button"
                             onClick={handleRefresh}
