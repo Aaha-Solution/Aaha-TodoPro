@@ -1740,10 +1740,6 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                   <div className="flex items-center gap-4 text-[11px] font-medium text-slate-600">
                     <div>
-                      <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Date</span>
-                      <span className="font-mono font-bold text-slate-800">{formatDate(request.temporary_target_date || request.permanent_target_date) || '—'}</span>
-                    </div>
-                    <div>
                       <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Responsibility (Resp)</span>
                       <span className="font-bold text-slate-800">
                         {request.resp || 'Production'}{request.resp_person ? ` (${request.resp_person})` : ''}
