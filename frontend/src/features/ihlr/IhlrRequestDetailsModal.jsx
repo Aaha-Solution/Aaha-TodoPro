@@ -165,24 +165,24 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     setEditFormData({
       batch_date: bDate || new Date().toISOString().split('T')[0],
       shift: targetReq.shift || 'Shift 1',
-      model: targetReq.model || '',
+      model: (targetReq.model || '').trim(),
       four_m: targetReq.four_m || 'MAN',
       resp: targetReq.resp || 'PRODUCTION',
       resp_person: targetReq.resp_person || '',
       actual_qty: targetReq.actual_qty || 1,
-      problem_detected_at: targetReq.problem_detected_at || '',
+      problem_detected_at: (targetReq.problem_detected_at || '').trim(),
       received_from: targetReq.received_from || '',
-      analysis_done_by: targetReq.analysis_done_by || '',
-      created_by: targetReq.created_by || user?.name || user?.email || 'Admin',
-      created_by_email: targetReq.created_by_email || user?.email || '',
-      problem: targetReq.problem || '',
-      occurrence_cause: targetReq.occurrence_cause || targetReq.detailed_observation || ''
+      analysis_done_by: (targetReq.analysis_done_by || '').trim(),
+      created_by: (targetReq.created_by || user?.name || user?.email || 'Admin').trim(),
+      created_by_email: (targetReq.created_by_email || user?.email || '').trim(),
+      problem: (targetReq.problem || '').trim(),
+      occurrence_cause: (targetReq.occurrence_cause || targetReq.detailed_observation || '').trim()
     });
     setEditAttachments(parseAttachments(targetReq.defect_image));
     setNewFiles([]);
     setEditQaWhyWhy(
       Array.isArray(targetReq.qa_why_why) && targetReq.qa_why_why.length > 0
-        ? [...targetReq.qa_why_why, '', '', '', ''].slice(0, 5)
+        ? [...targetReq.qa_why_why.map((w) => (w || '').trim()), '', '', '', ''].slice(0, 5)
         : ['', '', '', '', '']
     );
     setEditErrors({});
@@ -428,7 +428,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         problem: editFormData.problem.trim(),
         occurrence_cause: editFormData.occurrence_cause?.trim() || '',
         defect_image: finalAttachments.length > 0 ? JSON.stringify(finalAttachments) : '',
-        qa_why_why: editQaWhyWhy
+        qa_why_why: Array.isArray(editQaWhyWhy) ? editQaWhyWhy.map((w) => (w || '').trim()) : []
       };
 
       const result = await ihlrService.updateRequest(req.id, requesterUpdates);
@@ -2266,12 +2266,19 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <input
                         type="text"
                         value={editFormData.model}
+                        onKeyDown={(e) => {
+                          if (e.key === ' ' && (!editFormData.model || e.target.selectionStart === 0)) {
+                            e.preventDefault();
+                          }
+                        }}
                         onChange={(e) => {
-                          setEditFormData(prev => ({ ...prev, model: e.target.value }));
-                          if (editErrors.model && e.target.value.trim()) {
+                          const val = (e.target.value || '').replace(/^\s+/, '');
+                          setEditFormData(prev => ({ ...prev, model: val }));
+                          if (editErrors.model && val.trim()) {
                             setEditErrors(prev => ({ ...prev, model: '' }));
                           }
                         }}
+                        onBlur={() => setEditFormData(prev => ({ ...prev, model: (prev.model || '').trim() }))}
                         placeholder="Model name / Part description"
                         className={`w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition ${editErrors.model
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
@@ -2318,12 +2325,19 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <input
                         type="text"
                         value={editFormData.problem_detected_at}
+                        onKeyDown={(e) => {
+                          if (e.key === ' ' && (!editFormData.problem_detected_at || e.target.selectionStart === 0)) {
+                            e.preventDefault();
+                          }
+                        }}
                         onChange={(e) => {
-                          setEditFormData(prev => ({ ...prev, problem_detected_at: e.target.value }));
-                          if (editErrors.problem_detected_at && e.target.value.trim()) {
+                          const val = (e.target.value || '').replace(/^\s+/, '');
+                          setEditFormData(prev => ({ ...prev, problem_detected_at: val }));
+                          if (editErrors.problem_detected_at && val.trim()) {
                             setEditErrors(prev => ({ ...prev, problem_detected_at: '' }));
                           }
                         }}
+                        onBlur={() => setEditFormData(prev => ({ ...prev, problem_detected_at: (prev.problem_detected_at || '').trim() }))}
                         placeholder="e.g. Line 2 Assembly"
                         className={`w-full px-3 py-2 rounded-xl text-xs text-slate-900 outline-none transition ${editErrors.problem_detected_at
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
@@ -2379,6 +2393,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         type="text"
                         value={editFormData.analysis_done_by}
                         onKeyDown={(e) => {
+                          if (e.key === ' ' && (!editFormData.analysis_done_by || e.target.selectionStart === 0)) {
+                            e.preventDefault();
+                            return;
+                          }
                           if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
                             e.preventDefault();
                             setEditErrors(prev => ({ ...prev, analysis_done_by: 'Only text / letters allowed, numbers are not allowed' }));
@@ -2386,7 +2404,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         }}
                         onChange={(e) => {
                           const raw = e.target.value;
-                          const cleaned = raw.replace(/[0-9]/g, '');
+                          const cleaned = raw.replace(/[0-9]/g, '').replace(/^\s+/, '');
                           setEditFormData(prev => ({ ...prev, analysis_done_by: cleaned }));
                           if (/\d/.test(raw)) {
                             setEditErrors(prev => ({ ...prev, analysis_done_by: 'Only text / letters allowed, numbers are not allowed' }));
@@ -2394,6 +2412,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                             setEditErrors(prev => ({ ...prev, analysis_done_by: '' }));
                           }
                         }}
+                        onBlur={() => setEditFormData(prev => ({ ...prev, analysis_done_by: (prev.analysis_done_by || '').trim() }))}
                         placeholder="e.g. GURU"
                         className={`w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition ${editErrors.analysis_done_by
                             ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
@@ -2414,9 +2433,16 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <input
                         type="text"
                         value={editFormData.created_by}
-                        onChange={(e) => {
-                          setEditFormData(prev => ({ ...prev, created_by: e.target.value }));
+                        onKeyDown={(e) => {
+                          if (e.key === ' ' && (!editFormData.created_by || e.target.selectionStart === 0)) {
+                            e.preventDefault();
+                          }
                         }}
+                        onChange={(e) => {
+                          const val = (e.target.value || '').replace(/^\s+/, '');
+                          setEditFormData(prev => ({ ...prev, created_by: val }));
+                        }}
+                        onBlur={() => setEditFormData(prev => ({ ...prev, created_by: (prev.created_by || '').trim() }))}
                         placeholder="e.g. Admin"
                         className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
                       />
@@ -2453,12 +2479,19 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <textarea
                       rows={3}
                       value={editFormData.problem}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' && (!editFormData.problem || e.target.selectionStart === 0)) {
+                          e.preventDefault();
+                        }
+                      }}
                       onChange={(e) => {
-                        setEditFormData(prev => ({ ...prev, problem: e.target.value }));
-                        if (editErrors.problem && e.target.value.trim()) {
+                        const val = (e.target.value || '').replace(/^\s+/, '');
+                        setEditFormData(prev => ({ ...prev, problem: val }));
+                        if (editErrors.problem && val.trim()) {
                           setEditErrors(prev => ({ ...prev, problem: '' }));
                         }
                       }}
+                      onBlur={() => setEditFormData(prev => ({ ...prev, problem: (prev.problem || '').trim() }))}
                       placeholder="Describe the defect phenomenon in detail..."
                       className={`w-full p-3 rounded-2xl text-xs text-slate-900 outline-none transition leading-relaxed ${editErrors.problem
                           ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
@@ -2610,13 +2643,26 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                               <input
                                 type="text"
                                 value={editQaWhyWhy[idx] || ''}
+                                onKeyDown={(e) => {
+                                  if (e.key === ' ' && (!editQaWhyWhy[idx] || e.target.selectionStart === 0)) {
+                                    e.preventDefault();
+                                  }
+                                }}
                                 onChange={(e) => {
+                                  const val = (e.target.value || '').replace(/^\s+/, '');
                                   const copy = [...editQaWhyWhy];
-                                  copy[idx] = e.target.value;
+                                  copy[idx] = val;
                                   setEditQaWhyWhy(copy);
-                                  if (isMandatory && editErrors[errorKey] && e.target.value.trim()) {
+                                  if (isMandatory && editErrors[errorKey] && val.trim()) {
                                     setEditErrors(prev => ({ ...prev, [errorKey]: '' }));
                                   }
+                                }}
+                                onBlur={() => {
+                                  setEditQaWhyWhy((prev) => {
+                                    const copy = [...prev];
+                                    copy[idx] = (copy[idx] || '').trim();
+                                    return copy;
+                                  });
                                 }}
                                 placeholder={`QA Root Cause Level ${idx + 1}...${isMandatory ? ' (Mandatory)' : ''}`}
                                 className={`flex-1 px-3 py-1.5 rounded-xl text-xs text-slate-800 outline-none transition ${hasError

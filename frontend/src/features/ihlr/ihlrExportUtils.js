@@ -521,23 +521,23 @@ export const exportIhlrToExcel = async ({
       ...defectValues,
 
       // Trailing Requestor columns
-      r.why_why?.[0] || r.qa_why_why?.[0] || '—',
-      r.why_why?.[1] || r.qa_why_why?.[1] || '—',
-      r.why_why?.[2] || r.qa_why_why?.[2] || '—',
-      r.why_why?.[3] || r.qa_why_why?.[3] || '—',
-      r.why_why?.[4] || r.qa_why_why?.[4] || '—',
-      r.created_by || '—',
+      (r.why_why?.[0] || r.qa_why_why?.[0] || '').trim() || '—',
+      (r.why_why?.[1] || r.qa_why_why?.[1] || '').trim() || '—',
+      (r.why_why?.[2] || r.qa_why_why?.[2] || '').trim() || '—',
+      (r.why_why?.[3] || r.qa_why_why?.[3] || '').trim() || '—',
+      (r.why_why?.[4] || r.qa_why_why?.[4] || '').trim() || '—',
+      (r.created_by || '').trim() || '—',
       r.created_at ? formatDateDDMMYYYY(r.created_at) : '—',
 
       // Closer before Temp Evidence
-      r.prod_why_why?.[0] || '—',
-      r.prod_why_why?.[1] || '—',
-      r.prod_why_why?.[2] || '—',
-      r.prod_why_why?.[3] || '—',
-      r.prod_why_why?.[4] || '—',
-      r.temporary_action || r.action || '—',
+      (r.prod_why_why?.[0] || '').trim() || '—',
+      (r.prod_why_why?.[1] || '').trim() || '—',
+      (r.prod_why_why?.[2] || '').trim() || '—',
+      (r.prod_why_why?.[3] || '').trim() || '—',
+      (r.prod_why_why?.[4] || '').trim() || '—',
+      (r.temporary_action || r.action || '').trim() || '—',
       (r.temporary_target_date || r.target_date) ? formatDateDDMMYYYY(r.temporary_target_date || r.target_date) : '—',
-      r.temporary_closed_by || r.closer_updated_by || '—',
+      (r.temporary_closed_by || r.closer_updated_by || '').trim() || '—',
 
       // Temporary Evidence values
       ...tempValues,
@@ -816,7 +816,7 @@ export const exportIhlrToPdf = async ({
     if (r.resp) respStr += `\n${r.resp}`;
     if (r.resp_person) respStr += `\n(${r.resp_person})`;
 
-    const occCause = r.occurrence_cause || r.detailed_observation || r.prod_why_why?.[0] || '—';
+    const occCause = (r.occurrence_cause || r.detailed_observation || r.prod_why_why?.[0] || '').trim() || '—';
 
     const displayStatus = getIhlrDisplayStatus(r.status, r);
     let statusStr = displayStatus;

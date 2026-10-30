@@ -424,30 +424,30 @@ const IhlrApprovals = () => {
     // 5-Why Occurrence Cause
     const whyArray = Array.isArray(req.prod_why_why) ? req.prod_why_why : [];
     const paddedWhys = [
-      whyArray[0] || '',
-      whyArray[1] || '',
-      whyArray[2] || '',
-      whyArray[3] || '',
-      whyArray[4] || ''
+      (whyArray[0] || '').trim(),
+      (whyArray[1] || '').trim(),
+      (whyArray[2] || '').trim(),
+      (whyArray[3] || '').trim(),
+      (whyArray[4] || '').trim()
     ];
     setCloserWhyWhy(paddedWhys);
     setCloserWhyErrors({ w1: false, w2: false, w3: false });
 
-    setCloserAction(req.temporary_action || '');
+    setCloserAction((req.temporary_action || '').trim());
     setCloserActionError(false);
     setCloserTargetDate(req.temporary_target_date ? req.temporary_target_date.split('T')[0] : '');
     setCloserTargetDateError(false);
-    setCloserTemporaryClosedBy(req.temporary_closed_by || '');
+    setCloserTemporaryClosedBy((req.temporary_closed_by || '').trim());
     setCloserTemporaryClosedByError(false);
-    setCloserPermanentFix(req.permanent_fix || '');
+    setCloserPermanentFix((req.permanent_fix || '').trim());
     setCloserPermanentFixError(false);
     setCloserPermanentTargetDate(req.permanent_target_date ? req.permanent_target_date.split('T')[0] : '');
     setCloserPermanentTargetDateError(false);
-    setCloserPermanentClosedBy(req.permanent_closed_by || '');
+    setCloserPermanentClosedBy((req.permanent_closed_by || '').trim());
     setCloserPermanentClosedByError(false);
-    setCloserRemarks(req.remarks || '');
+    setCloserRemarks((req.remarks || '').trim());
     setRemarksError(false);
-    setReviewedBy(req.reviewed_by || '');
+    setReviewedBy((req.reviewed_by || '').trim());
     setReviewedByError(false);
     setCloserStatus(req.status === 'CLOSED' ? 'CLOSED' : '');
     setStatusError(false);
@@ -564,16 +564,25 @@ const IhlrApprovals = () => {
   }, [user?.name, user?.email, user?.role, user?.department, isAdmin]);
 
   const handleWhyChange = (index, val) => {
+    const cleaned = (val || '').replace(/^\s+/, '');
     setCloserWhyWhy((prev) => {
       const updated = [...prev];
-      updated[index] = val;
+      updated[index] = cleaned;
       return updated;
     });
-    if (val && val.trim()) {
+    if (cleaned && cleaned.trim()) {
       if (index === 0) setCloserWhyErrors((prev) => ({ ...prev, w1: false }));
       if (index === 1) setCloserWhyErrors((prev) => ({ ...prev, w2: false }));
       if (index === 2) setCloserWhyErrors((prev) => ({ ...prev, w3: false }));
     }
+  };
+
+  const handleWhyBlur = (index) => {
+    setCloserWhyWhy((prev) => {
+      const updated = [...prev];
+      updated[index] = (updated[index] || '').trim();
+      return updated;
+    });
   };
 
   const handleFileSelect = (e) => {
@@ -813,12 +822,12 @@ const IhlrApprovals = () => {
         : '';
 
       const payload = {
-        prod_why_why: closerWhyWhy,
-        temporary_action: closerAction || '',
+        prod_why_why: closerWhyWhy.map((w) => (w || '').trim()),
+        temporary_action: (closerAction || '').trim(),
         temporary_evidence_attachment: JSON.stringify(combinedEvidence),
         temporary_target_date: closerTargetDate || null,
         temporary_closed_by: effectiveTempClosedBy || null,
-        permanent_fix: closerPermanentFix || '',
+        permanent_fix: (closerPermanentFix || '').trim(),
         permanent_evidence_attachment: JSON.stringify(combinedPermEvidence),
         permanent_target_date: closerPermanentTargetDate || null,
         permanent_closed_by: effectivePermClosedBy || null,
@@ -1348,7 +1357,13 @@ const IhlrApprovals = () => {
                           type="text"
                           disabled={!canUpdateCloserFields}
                           value={closerWhyWhy[idx] || ''}
+                          onKeyDown={(e) => {
+                            if (e.key === ' ' && (!closerWhyWhy[idx] || e.target.selectionStart === 0)) {
+                              e.preventDefault();
+                            }
+                          }}
                           onChange={(e) => handleWhyChange(idx, e.target.value)}
+                          onBlur={() => handleWhyBlur(idx)}
                           placeholder={
                             !selectedRequest
                               ? 'Select request on right'
@@ -1399,12 +1414,19 @@ const IhlrApprovals = () => {
                 rows={2}
                 disabled={!canUpdateCloserFields}
                 value={closerAction}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' && (!closerAction || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                  }
+                }}
                 onChange={(e) => {
-                  setCloserAction(e.target.value);
-                  if (e.target.value.trim()) {
+                  const val = (e.target.value || '').replace(/^\s+/, '');
+                  setCloserAction(val);
+                  if (val.trim()) {
                     setCloserActionError(false);
                   }
                 }}
+                onBlur={() => setCloserAction((prev) => (prev || '').trim())}
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
@@ -1589,6 +1611,10 @@ const IhlrApprovals = () => {
                 }
                 value={closerTemporaryClosedBy || ''}
                 onKeyDown={(e) => {
+                  if (e.key === ' ' && (!closerTemporaryClosedBy || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                    return;
+                  }
                   if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
                     setCloserTemporaryClosedByError('Only text / letters allowed, numbers are not allowed');
@@ -1597,7 +1623,7 @@ const IhlrApprovals = () => {
                 onChange={(e) => {
                   if (!canUpdateCloserFields) return;
                   const raw = e.target.value;
-                  const cleaned = raw.replace(/[0-9]/g, '');
+                  const cleaned = raw.replace(/[0-9]/g, '').replace(/^\s+/, '');
                   setCloserTemporaryClosedBy(cleaned);
                   if (/\d/.test(raw)) {
                     setCloserTemporaryClosedByError('Only text / letters allowed, numbers are not allowed');
@@ -1607,6 +1633,7 @@ const IhlrApprovals = () => {
                     setCloserTemporaryClosedByError(false);
                   }
                 }}
+                onBlur={() => setCloserTemporaryClosedBy((prev) => (prev || '').trim())}
                 className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${
                   !canUpdateCloserFields
                     ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
@@ -1656,12 +1683,19 @@ const IhlrApprovals = () => {
                 rows={2}
                 disabled={!canUpdateCloserFields}
                 value={closerPermanentFix}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' && (!closerPermanentFix || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                  }
+                }}
                 onChange={(e) => {
-                  setCloserPermanentFix(e.target.value);
-                  if (e.target.value.trim()) {
+                  const val = (e.target.value || '').replace(/^\s+/, '');
+                  setCloserPermanentFix(val);
+                  if (val.trim()) {
                     setCloserPermanentFixError(false);
                   }
                 }}
+                onBlur={() => setCloserPermanentFix((prev) => (prev || '').trim())}
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
@@ -1839,6 +1873,10 @@ const IhlrApprovals = () => {
                 }
                 value={closerPermanentClosedBy || ''}
                 onKeyDown={(e) => {
+                  if (e.key === ' ' && (!closerPermanentClosedBy || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                    return;
+                  }
                   if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
                     setCloserPermanentClosedByError('Only text / letters allowed, numbers are not allowed');
@@ -1847,7 +1885,7 @@ const IhlrApprovals = () => {
                 onChange={(e) => {
                   if (!canUpdateCloserFields) return;
                   const raw = e.target.value;
-                  const cleaned = raw.replace(/[0-9]/g, '');
+                  const cleaned = raw.replace(/[0-9]/g, '').replace(/^\s+/, '');
                   setCloserPermanentClosedBy(cleaned);
                   if (/\d/.test(raw)) {
                     setCloserPermanentClosedByError('Only text / letters allowed, numbers are not allowed');
@@ -1857,6 +1895,7 @@ const IhlrApprovals = () => {
                     setCloserPermanentClosedByError(false);
                   }
                 }}
+                onBlur={() => setCloserPermanentClosedBy((prev) => (prev || '').trim())}
                 className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${
                   !canUpdateCloserFields
                     ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
@@ -2332,9 +2371,14 @@ const IhlrApprovals = () => {
                     maxLength={1000}
                     disabled={!selectedRequest || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
                     value={closerRemarks}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' && (!closerRemarks || e.target.selectionStart === 0)) {
+                        e.preventDefault();
+                      }
+                    }}
                     onChange={(e) => {
                       if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
-                      const val = e.target.value;
+                      const val = (e.target.value || '').replace(/^\s+/, '');
                       setCloserRemarks(val);
                       if (!val.trim()) {
                         setRemarksError('Remarks is required. Please enter remarks.');
@@ -2342,6 +2386,7 @@ const IhlrApprovals = () => {
                         setRemarksError(false);
                       }
                     }}
+                    onBlur={() => setCloserRemarks((prev) => (prev || '').trim())}
                     placeholder={
                       !selectedRequest
                         ? 'Click a row on the right to select'
@@ -2404,6 +2449,10 @@ const IhlrApprovals = () => {
                     }
                     value={reviewedBy || ''}
                     onKeyDown={(e) => {
+                      if (e.key === ' ' && (!reviewedBy || e.target.selectionStart === 0)) {
+                        e.preventDefault();
+                        return;
+                      }
                       if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
                         e.preventDefault();
                         setReviewedByError('Only text / letters allowed, numbers are not allowed');
@@ -2412,7 +2461,7 @@ const IhlrApprovals = () => {
                     onChange={(e) => {
                       if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
                       const raw = e.target.value;
-                      const cleaned = raw.replace(/[0-9]/g, '');
+                      const cleaned = raw.replace(/[0-9]/g, '').replace(/^\s+/, '');
                       setReviewedBy(cleaned);
                       if (/\d/.test(raw)) {
                         setReviewedByError('Only text / letters allowed, numbers are not allowed');
@@ -2420,6 +2469,7 @@ const IhlrApprovals = () => {
                         setReviewedByError(false);
                       }
                     }}
+                    onBlur={() => setReviewedBy((prev) => (prev || '').trim())}
                     className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${
                       adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
                         ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed select-none'

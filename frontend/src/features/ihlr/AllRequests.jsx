@@ -941,8 +941,19 @@ const IhlrAllRequests = () => {
                 <textarea
                   rows={3}
                   disabled={!isAdmin && editingCloser.status === 'CLOSED'}
-                  defaultValue={editingCloser.temporary_action || editingCloser.permanent_fix}
+                  defaultValue={(editingCloser.temporary_action || editingCloser.permanent_fix || '').trim()}
                   id="modal-action-text"
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' && (!e.target.value || e.target.selectionStart === 0)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onChange={(e) => {
+                    e.target.value = e.target.value.replace(/^\s+/, '');
+                  }}
+                  onBlur={(e) => {
+                    e.target.value = e.target.value.trim();
+                  }}
                   placeholder="Describe corrective actions performed..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none disabled:bg-slate-100 disabled:text-slate-400"
                 />
@@ -966,7 +977,7 @@ const IhlrAllRequests = () => {
                   type="button"
                   onClick={() => {
                     const s = document.getElementById('modal-status-select').value;
-                    const a = document.getElementById('modal-action-text').value;
+                    const a = (document.getElementById('modal-action-text')?.value || '').trim();
                     handleUpdateStatus(editingCloser.id, s, a);
                   }}
                   className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"

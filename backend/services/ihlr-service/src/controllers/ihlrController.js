@@ -629,6 +629,16 @@ export const createIhlrRequest = async (req, res) => {
     data.resp_person_email = combinedAssignedEmails || assignedUser.email;
     data.notify_emails = String(data.notify_emails || data.cc_emails || '').trim();
 
+    data.problem = (data.problem || '').trim();
+    data.model = (data.model || '').trim();
+    data.problem_detected_at = (data.problem_detected_at || '').trim();
+    data.analysis_done_by = String(data.analysis_done_by || '').replace(/[0-9]/g, '').trim();
+    data.qa_why_why = Array.isArray(data.qa_why_why) ? data.qa_why_why.map((w) => (typeof w === 'string' ? w.trim() : '')) : [];
+    data.prod_why_why = Array.isArray(data.prod_why_why) ? data.prod_why_why.map((w) => (typeof w === 'string' ? w.trim() : '')) : [];
+    data.temporary_action = (data.temporary_action || '').trim();
+    data.permanent_fix = (data.permanent_fix || '').trim();
+    data.remarks = (data.remarks || '').trim();
+
     const notifyEmailsList = Array.from(new Set(
       data.notify_emails
         .split(',')
@@ -1138,19 +1148,62 @@ export const updateIhlrRequest = async (req, res) => {
     if (safeUpdates.permanent_target_date !== undefined) {
       safeUpdates.permanent_target_date = safeUpdates.permanent_target_date ? String(safeUpdates.permanent_target_date).split('T')[0] : null;
     }
-    if (safeUpdates.prod_why_why !== undefined && typeof safeUpdates.prod_why_why === 'string') {
-      try {
-        safeUpdates.prod_why_why = JSON.parse(safeUpdates.prod_why_why);
-      } catch {
-        safeUpdates.prod_why_why = [safeUpdates.prod_why_why];
+    if (safeUpdates.prod_why_why !== undefined) {
+      if (typeof safeUpdates.prod_why_why === 'string') {
+        try {
+          safeUpdates.prod_why_why = JSON.parse(safeUpdates.prod_why_why);
+        } catch {
+          safeUpdates.prod_why_why = [safeUpdates.prod_why_why];
+        }
+      }
+      if (Array.isArray(safeUpdates.prod_why_why)) {
+        safeUpdates.prod_why_why = safeUpdates.prod_why_why.map((w) => (typeof w === 'string' ? w.trim() : ''));
       }
     }
-    if (safeUpdates.qa_why_why !== undefined && typeof safeUpdates.qa_why_why === 'string') {
-      try {
-        safeUpdates.qa_why_why = JSON.parse(safeUpdates.qa_why_why);
-      } catch {
-        safeUpdates.qa_why_why = [safeUpdates.qa_why_why];
+    if (safeUpdates.qa_why_why !== undefined) {
+      if (typeof safeUpdates.qa_why_why === 'string') {
+        try {
+          safeUpdates.qa_why_why = JSON.parse(safeUpdates.qa_why_why);
+        } catch {
+          safeUpdates.qa_why_why = [safeUpdates.qa_why_why];
+        }
       }
+      if (Array.isArray(safeUpdates.qa_why_why)) {
+        safeUpdates.qa_why_why = safeUpdates.qa_why_why.map((w) => (typeof w === 'string' ? w.trim() : ''));
+      }
+    }
+    if (safeUpdates.problem !== undefined && typeof safeUpdates.problem === 'string') {
+      safeUpdates.problem = safeUpdates.problem.trim();
+    }
+    if (safeUpdates.model !== undefined && typeof safeUpdates.model === 'string') {
+      safeUpdates.model = safeUpdates.model.trim();
+    }
+    if (safeUpdates.problem_detected_at !== undefined && typeof safeUpdates.problem_detected_at === 'string') {
+      safeUpdates.problem_detected_at = safeUpdates.problem_detected_at.trim();
+    }
+    if (safeUpdates.analysis_done_by !== undefined && typeof safeUpdates.analysis_done_by === 'string') {
+      safeUpdates.analysis_done_by = safeUpdates.analysis_done_by.trim();
+    }
+    if (safeUpdates.created_by !== undefined && typeof safeUpdates.created_by === 'string') {
+      safeUpdates.created_by = safeUpdates.created_by.trim();
+    }
+    if (safeUpdates.temporary_action !== undefined && typeof safeUpdates.temporary_action === 'string') {
+      safeUpdates.temporary_action = safeUpdates.temporary_action.trim();
+    }
+    if (safeUpdates.permanent_fix !== undefined && typeof safeUpdates.permanent_fix === 'string') {
+      safeUpdates.permanent_fix = safeUpdates.permanent_fix.trim();
+    }
+    if (safeUpdates.remarks !== undefined && typeof safeUpdates.remarks === 'string') {
+      safeUpdates.remarks = safeUpdates.remarks.trim();
+    }
+    if (safeUpdates.reviewed_by !== undefined && typeof safeUpdates.reviewed_by === 'string') {
+      safeUpdates.reviewed_by = safeUpdates.reviewed_by.trim();
+    }
+    if (safeUpdates.temporary_closed_by !== undefined && typeof safeUpdates.temporary_closed_by === 'string') {
+      safeUpdates.temporary_closed_by = safeUpdates.temporary_closed_by.trim();
+    }
+    if (safeUpdates.permanent_closed_by !== undefined && typeof safeUpdates.permanent_closed_by === 'string') {
+      safeUpdates.permanent_closed_by = safeUpdates.permanent_closed_by.trim();
     }
 
     if (Object.keys(safeUpdates).length === 0) {

@@ -264,7 +264,7 @@ const IhlrCreateRequest = () => {
           });
           setAttachments(parseAttachments(r.defect_image));
           if (Array.isArray(r.qa_why_why) && r.qa_why_why.length > 0) {
-            setQaWhyWhy([...r.qa_why_why, '', '', '', ''].slice(0, 5));
+            setQaWhyWhy([...r.qa_why_why.map((w) => (w || '').trim()), '', '', '', ''].slice(0, 5));
           }
         }
       }).catch(err => console.warn('Failed to load request for edit:', err));
@@ -411,14 +411,23 @@ const IhlrCreateRequest = () => {
   };
 
   const handleQaWhyChange = (index, value) => {
+    const cleaned = (value || '').replace(/^\s+/, '');
     const updated = [...qaWhyWhy];
-    updated[index] = value;
+    updated[index] = cleaned;
     setQaWhyWhy(updated);
-    if (value && value.trim()) {
+    if (cleaned && cleaned.trim()) {
       if (index === 0) setErrors((prev) => ({ ...prev, w1: false }));
       if (index === 1) setErrors((prev) => ({ ...prev, w2: false }));
       if (index === 2) setErrors((prev) => ({ ...prev, w3: false }));
     }
+  };
+
+  const handleQaWhyBlur = (index) => {
+    setQaWhyWhy((prev) => {
+      const updated = [...prev];
+      updated[index] = (updated[index] || '').trim();
+      return updated;
+    });
   };
 
   const getFileMeta = (file) => {
@@ -854,6 +863,10 @@ const IhlrCreateRequest = () => {
                 placeholder={`e.g. Leave empty to attach ${getLoggedInUserName()}`}
                 value={formData.created_by || ''}
                 onKeyDown={(e) => {
+                  if (e.key === ' ' && (!formData.created_by || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                    return;
+                  }
                   if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
                     setErrors((prev) => ({ ...prev, created_by: 'Only text / letters allowed, numbers are not allowed' }));
@@ -861,7 +874,7 @@ const IhlrCreateRequest = () => {
                 }}
                 onChange={(e) => {
                   const raw = e.target.value;
-                  const cleaned = raw.replace(/[0-9]/g, '');
+                  const cleaned = raw.replace(/[0-9]/g, '').replace(/^\s+/, '');
                   setFormData({ ...formData, created_by: cleaned });
                   if (/\d/.test(raw)) {
                     setErrors((prev) => ({ ...prev, created_by: 'Only text / letters allowed, numbers are not allowed' }));
@@ -869,6 +882,7 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, created_by: false }));
                   }
                 }}
+                onBlur={() => setFormData((prev) => ({ ...prev, created_by: (prev.created_by || '').trim() }))}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition ${errors.created_by
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
@@ -958,12 +972,19 @@ const IhlrCreateRequest = () => {
                 type="text"
                 placeholder="e.g. OLS LONG ARM"
                 value={formData.model}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' && (!formData.model || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                  }
+                }}
                 onChange={(e) => {
-                  setFormData({ ...formData, model: e.target.value });
-                  if (errors.model && e.target.value.trim()) {
+                  const val = (e.target.value || '').replace(/^\s+/, '');
+                  setFormData({ ...formData, model: val });
+                  if (errors.model && val.trim()) {
                     setErrors((prev) => ({ ...prev, model: false }));
                   }
                 }}
+                onBlur={() => setFormData((prev) => ({ ...prev, model: (prev.model || '').trim() }))}
                 className={`w-full px-3 py-2 border rounded-xl font-semibold text-slate-900 outline-none transition ${errors.model
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
@@ -986,12 +1007,19 @@ const IhlrCreateRequest = () => {
                 type="text"
                 placeholder="e.g. Low voltage / Improper sensor solder"
                 value={formData.problem}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' && (!formData.problem || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                  }
+                }}
                 onChange={(e) => {
-                  setFormData({ ...formData, problem: e.target.value });
-                  if (errors.problem && e.target.value.trim()) {
+                  const val = (e.target.value || '').replace(/^\s+/, '');
+                  setFormData({ ...formData, problem: val });
+                  if (errors.problem && val.trim()) {
                     setErrors((prev) => ({ ...prev, problem: false }));
                   }
                 }}
+                onBlur={() => setFormData((prev) => ({ ...prev, problem: (prev.problem || '').trim() }))}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition ${errors.problem
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
@@ -1014,12 +1042,19 @@ const IhlrCreateRequest = () => {
                 type="text"
                 placeholder="e.g. Final Testing"
                 value={formData.problem_detected_at}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' && (!formData.problem_detected_at || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                  }
+                }}
                 onChange={(e) => {
-                  setFormData({ ...formData, problem_detected_at: e.target.value });
-                  if (errors.problem_detected_at && e.target.value.trim()) {
+                  const val = (e.target.value || '').replace(/^\s+/, '');
+                  setFormData({ ...formData, problem_detected_at: val });
+                  if (errors.problem_detected_at && val.trim()) {
                     setErrors((prev) => ({ ...prev, problem_detected_at: false }));
                   }
                 }}
+                onBlur={() => setFormData((prev) => ({ ...prev, problem_detected_at: (prev.problem_detected_at || '').trim() }))}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none transition ${errors.problem_detected_at
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
@@ -1079,6 +1114,10 @@ const IhlrCreateRequest = () => {
                 placeholder="e.g. GURU"
                 value={formData.analysis_done_by}
                 onKeyDown={(e) => {
+                  if (e.key === ' ' && (!formData.analysis_done_by || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                    return;
+                  }
                   if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
                     setErrors((prev) => ({ ...prev, analysis_done_by: 'Only text / letters allowed, numbers are not allowed' }));
@@ -1086,7 +1125,7 @@ const IhlrCreateRequest = () => {
                 }}
                 onChange={(e) => {
                   const raw = e.target.value;
-                  const cleaned = raw.replace(/[0-9]/g, '');
+                  const cleaned = raw.replace(/[0-9]/g, '').replace(/^\s+/, '');
                   setFormData({ ...formData, analysis_done_by: cleaned });
                   if (/\d/.test(raw)) {
                     setErrors((prev) => ({ ...prev, analysis_done_by: 'Only text / letters allowed, numbers are not allowed' }));
@@ -1094,6 +1133,7 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, analysis_done_by: false }));
                   }
                 }}
+                onBlur={() => setFormData((prev) => ({ ...prev, analysis_done_by: (prev.analysis_done_by || '').trim() }))}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition ${errors.analysis_done_by
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
@@ -1746,7 +1786,13 @@ const IhlrCreateRequest = () => {
                       type="text"
                       placeholder={`Why #${idx + 1} cause...${isMandatory ? ' (Mandatory)' : ''}`}
                       value={val}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' && (!val || e.target.selectionStart === 0)) {
+                          e.preventDefault();
+                        }
+                      }}
                       onChange={(e) => handleQaWhyChange(idx, e.target.value)}
+                      onBlur={() => handleQaWhyBlur(idx)}
                       className={`flex-1 px-3 py-2 border rounded-xl text-xs text-slate-900 outline-none transition ${hasError
                           ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                           : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
