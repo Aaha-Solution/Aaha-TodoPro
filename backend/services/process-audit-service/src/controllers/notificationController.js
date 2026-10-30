@@ -131,17 +131,17 @@ export const getNotifications = async (req, res) => {
       params.push(userEmail.toLowerCase());
     }
     if (isAdmin) {
-      conditions.push("LOWER(TRIM(user_name)) LIKE '%admin%'");
-      conditions.push("LOWER(TRIM(user_email)) LIKE '%admin%'");
-      conditions.push("type LIKE '%admin%'");
-      conditions.push("type = 'closer_completed_pending_admin_signoff'");
-      conditions.push("type = 'closer_completed_pending_review'");
-      conditions.push("type = 'case_closed'");
-      conditions.push("type = 'reassigned'");
-      conditions.push("type = 'pa_reassigned'");
-      conditions.push("type = 'approval_required'");
-      conditions.push("type = 'assignment_required'");
-      conditions.push("type = 'assigned_to_pa'");
+      conditions.push('1=1');
+
+
+
+
+
+
+
+
+
+
     }
 
     if (conditions.length > 0) {
@@ -166,7 +166,12 @@ export const getNotifications = async (req, res) => {
 
     // Also include synthetic recent request stream if notifications table is empty
     if (notifRows.length === 0) {
-      let requests = (await ProcessAuditRequest.getAll()) || [];
+      let requests = [];
+      try {
+        requests = (await (ProcessAuditRequest.findAll ? ProcessAuditRequest.findAll() : (ProcessAuditRequest.getAll ? ProcessAuditRequest.getAll() : []))) || [];
+      } catch (reqErr) {
+        console.warn('[getNotifications] fallback requests warning:', reqErr.message);
+      }
       if (!isAdmin) {
         if (!userName && !userId && !userEmail) {
           return successResponse(res, [], 'Process Audit notifications retrieved');
@@ -234,7 +239,8 @@ export const getNotifications = async (req, res) => {
     }
 
     const formatted = notifRows.map((n) => {
-      const d = n.created_at ? new Date(n.created_at) : new Date();
+      const parsedDate = n.created_at ? new Date(n.created_at) : new Date();
+      const d = (parsedDate instanceof Date && !isNaN(parsedDate.getTime())) ? parsedDate : new Date();
       const isConfirmed = n.type === 'submission_confirmed' || n.type === 'request_created';
       const isClosed = ['case_closed', 'closed', 'request_closed'].includes(n.type) || (n.title && n.title.toLowerCase().includes('closed'));
       const isUpdated = ['countermeasure_updated', 'countermeasure_saved'].includes(n.type);
@@ -301,6 +307,8 @@ export const getNotifications = async (req, res) => {
         department: dept,
         title: notifTitle,
         message: n.message,
+        created_at: n.created_at,
+        timestamp: d.getTime(),
         date: d.toLocaleDateString('en-GB', {
           day: '2-digit',
           month: 'short',
@@ -340,9 +348,10 @@ export const getNotifications = async (req, res) => {
 export const markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
+    const numericId = Number(String(id).replace(/\D/g, '')) || id;
     const isRead = req.body?.read !== undefined ? (req.body.read ? 1 : 0) : 1;
     if (pool) {
-      await pool.query('UPDATE process_audit_notifications SET is_read = ? WHERE id = ?', [isRead, id]);
+      await pool.query('UPDATE process_audit_notifications SET is_read = ? WHERE id = ?', [isRead, numericId]);
     }
     broadcastEvent('notifications:refresh', { module: 'process_audit', action: isRead ? 'read' : 'unread', id });
     return successResponse(res, { id }, `Notification marked as ${isRead ? 'read' : 'unread'}`);
@@ -354,8 +363,9 @@ export const markAsRead = async (req, res) => {
 export const markAsUnread = async (req, res) => {
   try {
     const { id } = req.params;
+    const numericId = Number(String(id).replace(/\D/g, '')) || id;
     if (pool) {
-      await pool.query('UPDATE process_audit_notifications SET is_read = 0 WHERE id = ?', [id]);
+      await pool.query('UPDATE process_audit_notifications SET is_read = 0 WHERE id = ?', [numericId]);
     }
     broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'unread', id });
     return successResponse(res, { id }, 'Notification marked as unread');

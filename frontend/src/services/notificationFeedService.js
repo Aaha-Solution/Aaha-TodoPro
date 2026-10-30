@@ -492,19 +492,29 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         const notifIdStr = `pa-notif-${n.id}`;
         const rawReq = n.requestId || n.issue_no || '';
         const reqNoKey = rawReq ? (String(rawReq).startsWith('#') ? rawReq : `#${rawReq}`) : '#PA';
-        const paSavedRead = getReadOverride('process-audit', resolvedUser, notifIdStr) ?? getReadOverride('process-audit', resolvedUser, n.id);
-        const paMarkAllTime = getMarkAllReadTimestamp('process-audit', resolvedUser);
-        const paNotifTime = n.created_at || n.date || n.time ? new Date(n.created_at || n.date || n.time).getTime() : 0;
-        const paIsBeforeMarkAll = Boolean(paMarkAllTime && paNotifTime && paNotifTime <= paMarkAllTime);
-        const paDecidedRead = paSavedRead !== null ? paSavedRead : (paIsBeforeMarkAll ? true : null);
+
+
+        // unused notif time
+        // unused mark all check
+        // resolved override
 
         // Authoritative read status
         let isItemRead = false;
         if (n.is_read !== undefined && n.is_read !== null) {
           isItemRead = Number(n.is_read) === 1;
           if (!isItemRead) {
-            // keep local state intact
-            // keep local state intact
+            setReadOverride('process-audit', resolvedUser, notifIdStr, false);
+            setReadOverride('process-audit', resolvedUser, n.id, false);
+            if (rawReq) {
+              setReadOverride('process-audit', resolvedUser, `req-${rawReq}`, false);
+              setReadOverride('process-audit', resolvedUser, reqNoKey, false);
+            }
+            setReadOverride('process-audit', resolvedUser, notifIdStr, false);
+            setReadOverride('process-audit', resolvedUser, n.id, false);
+            if (rawReq) {
+              setReadOverride('process-audit', resolvedUser, `req-${rawReq}`, false);
+              setReadOverride('process-audit', resolvedUser, reqNoKey, false);
+            }
           }
         } else {
           const savedRead =
@@ -513,8 +523,8 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           isItemRead = savedRead !== null ? savedRead : Boolean(n.read);
         }
 
-        if (paDecidedRead !== null) {
-          isItemRead = paDecidedRead;
+        if (false) {
+          // override removed
         }
 
         // Deduplicate streamList
@@ -637,7 +647,7 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         const paReqMarkAllTime = getMarkAllReadTimestamp('process-audit', resolvedUser);
         const reqTime = r.created_at || r.escalation_date ? new Date(r.created_at || r.escalation_date).getTime() : 0;
         const isReqBeforeMarkAll = Boolean(paReqMarkAllTime && reqTime && reqTime <= paReqMarkAllTime);
-        const resolvedReqRead = savedRead !== null ? savedRead : (isReqBeforeMarkAll ? true : (isClosed ? true : false));
+        const resolvedReqRead = savedRead !== null ? savedRead : (isClosed || isReqBeforeMarkAll ? true : false);
 
         streamList.push({
           id: `pa-req-${r.id || idx}`,

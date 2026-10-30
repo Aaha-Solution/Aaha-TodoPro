@@ -243,6 +243,7 @@ const ensureTable = async () => {
 ensureTable();
 
 export const ProcessAuditRequest = {
+  getAll: async (filters = {}) => ProcessAuditRequest.findAll(filters),
   findAll: async (filters = {}) => {
     if (!pool) throw new Error('Database connection pool is not available');
     let query = `

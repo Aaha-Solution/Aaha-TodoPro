@@ -41,9 +41,11 @@ const Notification = () => {
     const handleRefresh = () => fetchLiveNotifications();
 
     window.addEventListener('refreshNotifications', handleRefresh);
+    const interval = setInterval(fetchLiveNotifications, 5000);
 
     return () => {
       window.removeEventListener('refreshNotifications', handleRefresh);
+      clearInterval(interval);
     };
   }, [user?.name, user?.id, user?.role, tabMode]);
 
@@ -148,7 +150,7 @@ const Notification = () => {
             {notifications.length === 0 ? (
               <p className="p-6 text-center text-xs text-slate-400">No notifications in stream</p>
             ) : (
-              notifications.slice(0, 1).map((item) => {
+              notifications.slice(0, 10).map((item) => {
                 const badgeColor =
                   item.accentColor === 'emerald'
                     ? 'bg-emerald-600'
