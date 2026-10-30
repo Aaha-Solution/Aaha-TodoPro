@@ -492,8 +492,8 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         const notifIdStr = `pa-notif-${n.id}`;
         const rawReq = n.requestId || n.issue_no || '';
         const reqNoKey = rawReq ? (String(rawReq).startsWith('#') ? rawReq : `#${rawReq}`) : '#PA';
-
-
+        const paSavedRead = getReadOverride('process-audit', resolvedUser, notifIdStr) ?? getReadOverride('process-audit', resolvedUser, n.id);
+        const paDecidedRead = paSavedRead;
         // unused notif time
         // unused mark all check
         // resolved override
@@ -503,18 +503,8 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         if (n.is_read !== undefined && n.is_read !== null) {
           isItemRead = Number(n.is_read) === 1;
           if (!isItemRead) {
-            setReadOverride('process-audit', resolvedUser, notifIdStr, false);
-            setReadOverride('process-audit', resolvedUser, n.id, false);
-            if (rawReq) {
-              setReadOverride('process-audit', resolvedUser, `req-${rawReq}`, false);
-              setReadOverride('process-audit', resolvedUser, reqNoKey, false);
-            }
-            setReadOverride('process-audit', resolvedUser, notifIdStr, false);
-            setReadOverride('process-audit', resolvedUser, n.id, false);
-            if (rawReq) {
-              setReadOverride('process-audit', resolvedUser, `req-${rawReq}`, false);
-              setReadOverride('process-audit', resolvedUser, reqNoKey, false);
-            }
+            // keep local state intact
+            // keep local state intact
           }
         } else {
           const savedRead =
@@ -523,8 +513,8 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           isItemRead = savedRead !== null ? savedRead : Boolean(n.read);
         }
 
-        if (false) {
-          // override removed
+        if (paDecidedRead !== null) {
+          isItemRead = paDecidedRead;
         }
 
         // Deduplicate streamList
@@ -647,7 +637,7 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         const paReqMarkAllTime = getMarkAllReadTimestamp('process-audit', resolvedUser);
         const reqTime = r.created_at || r.escalation_date ? new Date(r.created_at || r.escalation_date).getTime() : 0;
         const isReqBeforeMarkAll = Boolean(paReqMarkAllTime && reqTime && reqTime <= paReqMarkAllTime);
-        const resolvedReqRead = savedRead !== null ? savedRead : (isClosed || isReqBeforeMarkAll ? true : false);
+        const resolvedReqRead = savedRead !== null ? savedRead : (isClosed ? true : false);
 
         streamList.push({
           id: `pa-req-${r.id || idx}`,

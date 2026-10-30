@@ -41,7 +41,7 @@ const Notification = () => {
     const handleRefresh = () => fetchLiveNotifications();
 
     window.addEventListener('refreshNotifications', handleRefresh);
-    const interval = setInterval(fetchLiveNotifications, 5000);
+    const interval = setInterval(fetchLiveNotifications, 10000);
 
     return () => {
       window.removeEventListener('refreshNotifications', handleRefresh);

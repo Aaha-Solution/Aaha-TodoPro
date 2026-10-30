@@ -740,7 +740,6 @@ const CreateRequest = () => {
       } catch {}
       window.dispatchEvent(new Event('refreshNotifications'));
       await success(`Request ${savedId} created successfully!`);
-      window.dispatchEvent(new Event('refreshNotifications'));
       navigate('/process-audit/all-requests');
     } catch (err) {
       console.error('Failed to save request in DB:', err);
@@ -752,7 +751,6 @@ const CreateRequest = () => {
         localStorage.removeItem('process_audit_create_request_draft');
       } catch {}
       await success(`Request ${formData.requestId} created successfully!`);
-      window.dispatchEvent(new Event('refreshNotifications'));
       navigate('/process-audit/all-requests');
     } finally {
       setIsSubmitting(false);

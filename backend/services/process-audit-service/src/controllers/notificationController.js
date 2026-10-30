@@ -131,17 +131,17 @@ export const getNotifications = async (req, res) => {
       params.push(userEmail.toLowerCase());
     }
     if (isAdmin) {
-      conditions.push('1=1');
-
-
-
-
-
-
-
-
-
-
+      conditions.push("LOWER(TRIM(user_name)) LIKE '%admin%'");
+      conditions.push("LOWER(TRIM(user_email)) LIKE '%admin%'");
+      conditions.push("type LIKE '%admin%'");
+      conditions.push("type = 'closer_completed_pending_admin_signoff'");
+      conditions.push("type = 'closer_completed_pending_review'");
+      conditions.push("type = 'case_closed'");
+      conditions.push("type = 'reassigned'");
+      conditions.push("type = 'pa_reassigned'");
+      conditions.push("type = 'approval_required'");
+      conditions.push("type = 'assignment_required'");
+      conditions.push("type = 'assigned_to_pa'");
     }
 
     if (conditions.length > 0) {
@@ -348,10 +348,9 @@ export const getNotifications = async (req, res) => {
 export const markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    const numericId = Number(String(id).replace(/\D/g, '')) || id;
     const isRead = req.body?.read !== undefined ? (req.body.read ? 1 : 0) : 1;
     if (pool) {
-      await pool.query('UPDATE process_audit_notifications SET is_read = ? WHERE id = ?', [isRead, numericId]);
+      await pool.query('UPDATE process_audit_notifications SET is_read = ? WHERE id = ?', [isRead, id]);
     }
     broadcastEvent('notifications:refresh', { module: 'process_audit', action: isRead ? 'read' : 'unread', id });
     return successResponse(res, { id }, `Notification marked as ${isRead ? 'read' : 'unread'}`);
@@ -363,9 +362,8 @@ export const markAsRead = async (req, res) => {
 export const markAsUnread = async (req, res) => {
   try {
     const { id } = req.params;
-    const numericId = Number(String(id).replace(/\D/g, '')) || id;
     if (pool) {
-      await pool.query('UPDATE process_audit_notifications SET is_read = 0 WHERE id = ?', [numericId]);
+      await pool.query('UPDATE process_audit_notifications SET is_read = 0 WHERE id = ?', [id]);
     }
     broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'unread', id });
     return successResponse(res, { id }, 'Notification marked as unread');
