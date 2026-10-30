@@ -80,11 +80,6 @@ export const getNotifications = async (req, res) => {
     const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
     const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'QAD' || userName.toLowerCase().includes('admin');
 
-    const rawIds = req.body?.ids || req.body?.notifIds || [];
-    const ids = Array.isArray(rawIds)
-      ? rawIds.map((id) => Number(String(id).replace(/^pa-notif-|^notif-/, ''))).filter((n) => !isNaN(n) && n > 0)
-      : [];
-
     // Auto-sync fallback: only insert if NO notification of any type exists for this request
     await pool.query(`
       INSERT INTO process_audit_notifications (user_name, user_id, user_email, request_id, issue_no, type, title, message, link)
@@ -166,12 +161,7 @@ export const getNotifications = async (req, res) => {
 
     // Also include synthetic recent request stream if notifications table is empty
     if (notifRows.length === 0) {
-      let requests = [];
-      try {
-        requests = (await (ProcessAuditRequest.findAll ? ProcessAuditRequest.findAll() : (ProcessAuditRequest.getAll ? ProcessAuditRequest.getAll() : []))) || [];
-      } catch (reqErr) {
-        console.warn('[getNotifications] fallback requests warning:', reqErr.message);
-      }
+      let requests = (await ProcessAuditRequest.getAll()) || [];
       if (!isAdmin) {
         if (!userName && !userId && !userEmail) {
           return successResponse(res, [], 'Process Audit notifications retrieved');
@@ -239,8 +229,7 @@ export const getNotifications = async (req, res) => {
     }
 
     const formatted = notifRows.map((n) => {
-      const parsedDate = n.created_at ? new Date(n.created_at) : new Date();
-      const d = (parsedDate instanceof Date && !isNaN(parsedDate.getTime())) ? parsedDate : new Date();
+      const d = n.created_at ? new Date(n.created_at) : new Date();
       const isConfirmed = n.type === 'submission_confirmed' || n.type === 'request_created';
       const isClosed = ['case_closed', 'closed', 'request_closed'].includes(n.type) || (n.title && n.title.toLowerCase().includes('closed'));
       const isUpdated = ['countermeasure_updated', 'countermeasure_saved'].includes(n.type);
@@ -307,8 +296,6 @@ export const getNotifications = async (req, res) => {
         department: dept,
         title: notifTitle,
         message: n.message,
-        created_at: n.created_at,
-        timestamp: d.getTime(),
         date: d.toLocaleDateString('en-GB', {
           day: '2-digit',
           month: 'short',
@@ -381,20 +368,8 @@ export const markAllAsRead = async (req, res) => {
     const userDept = (req.body?.department || req.query.department || req.user?.department || '').trim().toUpperCase();
     const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'QAD' || userName.toLowerCase().includes('admin');
 
-    const rawIds = req.body?.ids || req.body?.notifIds || [];
-    const ids = Array.isArray(rawIds)
-      ? rawIds.map((id) => Number(String(id).replace(/^pa-notif-|^notif-/, ''))).filter((n) => !isNaN(n) && n > 0)
-      : [];
-
     if (pool) {
-      if (ids.length > 0) {
-        await pool.query('UPDATE process_audit_notifications SET is_read = 1 WHERE id IN (?)', [ids]).catch(() => {});
-      }
-
       if (isAdmin) {
-        await pool.query('UPDATE process_audit_notifications SET is_read = 1').catch(() => {});
-      }
-      if (false) {
         await pool.query(
           `UPDATE process_audit_notifications SET is_read = 1 WHERE 
            user_id = ? OR 

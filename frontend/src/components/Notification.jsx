@@ -41,11 +41,9 @@ const Notification = () => {
     const handleRefresh = () => fetchLiveNotifications();
 
     window.addEventListener('refreshNotifications', handleRefresh);
-    const interval = setInterval(fetchLiveNotifications, 10000);
 
     return () => {
       window.removeEventListener('refreshNotifications', handleRefresh);
-      clearInterval(interval);
     };
   }, [user?.name, user?.id, user?.role, tabMode]);
 
@@ -76,17 +74,8 @@ const Notification = () => {
 
   const handleMarkAllRead = async () => {
     const activeUser = user || storage.getUser();
-    const allKeys = (notifications || []).flatMap((n) => [
-      n.id,
-      n.notifId,
-      n.rawId ? `req-${n.rawId}` : null,
-      n.reqNo,
-      n.notifId ? `pa-notif-${n.notifId}` : null,
-    ]).filter(Boolean);
-
+    await markAllNotificationsReadForTab(tabMode, activeUser?.name, activeUser);
     dispatch(markAllAsRead());
-    await markAllNotificationsReadForTab(tabMode, activeUser?.name, activeUser, allKeys);
-
     window.dispatchEvent(new Event('refreshNotifications'));
   };
 
@@ -150,7 +139,7 @@ const Notification = () => {
             {notifications.length === 0 ? (
               <p className="p-6 text-center text-xs text-slate-400">No notifications in stream</p>
             ) : (
-              notifications.slice(0, 10).map((item) => {
+              notifications.slice(0, 1).map((item) => {
                 const badgeColor =
                   item.accentColor === 'emerald'
                     ? 'bg-emerald-600'
