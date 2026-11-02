@@ -497,24 +497,60 @@ export const IhlrBarChart = ({
                 );
               })}
 
-              {/* Data Bars (Grouped: Pending, Awaiting Review, Closed side-by-side) */}
+              {/* Data Bars (Grouped & Centered: Pending, Awaiting Review, Closed) */}
               {chartData.map((item, idx) => {
                 const centerX = paddingLeft + idx * slotWidth + slotWidth / 2;
                 const isHovered = hoveredBar && hoveredBar.item.key === item.key;
 
-                const subBarWidth = Math.max((barWidth - 4) / 3, 6);
                 const baseY = paddingTop + innerHeight;
 
                 const openH = ((item.open || 0) / maxVal) * innerHeight;
                 const progH = ((item.inProgress || 0) / maxVal) * innerHeight;
                 const closedH = ((item.closed || 0) / maxVal) * innerHeight;
 
-                const maxSubH = Math.max(openH, progH, closedH);
-                const barTopY = item.total > 0 ? (baseY - maxSubH) : baseY;
+                // Collect only active sub-bars so bars are always centered together
+                const activeBars = [];
+                if (openH > 0) {
+                  activeBars.push({
+                    key: 'open',
+                    count: item.open || 0,
+                    h: openH,
+                    fill: 'url(#ihlr-grad-open)',
+                  });
+                }
+                if (progH > 0) {
+                  activeBars.push({
+                    key: 'inProgress',
+                    count: item.inProgress || 0,
+                    h: progH,
+                    fill: 'url(#ihlr-grad-progress)',
+                  });
+                }
+                if (closedH > 0) {
+                  activeBars.push({
+                    key: 'closed',
+                    count: item.closed || 0,
+                    h: closedH,
+                    fill: 'url(#ihlr-grad-closed)',
+                  });
+                }
 
-                const openX = centerX - barWidth / 2;
-                const progX = openX + subBarWidth + 2;
-                const closedX = progX + subBarWidth + 2;
+                const numActive = activeBars.length;
+                const maxSubH = Math.max(openH, progH, closedH);
+                const barTopY = item.total > 0 ? baseY - maxSubH : baseY;
+
+                // Dynamic bar layout:
+                // If 1 bar is active, center it directly at centerX.
+                // If multiple bars are active, center the group around centerX.
+                const gap = 3;
+                const subBarW =
+                  numActive === 1
+                    ? Math.max(Math.min(barWidth * 0.45, 16), 11)
+                    : Math.max(Math.floor((barWidth - (numActive - 1) * gap) / numActive), 8);
+
+                const totalGroupW =
+                  numActive > 0 ? numActive * subBarW + (numActive - 1) * gap : 0;
+                const groupStartX = centerX - totalGroupW / 2;
 
                 return (
                   <g
@@ -544,43 +580,25 @@ export const IhlrBarChart = ({
                       fill="transparent"
                     />
 
-                    {/* Sub-bar: Pending (Rose) */}
-                    {openH > 0 && (
-                      <rect
-                        x={openX}
-                        y={baseY - openH}
-                        width={subBarWidth}
-                        height={openH}
-                        fill="url(#ihlr-grad-open)"
-                        rx="3"
-                      />
-                    )}
+                    {/* Render active sub-bars centered */}
+                    {activeBars.map((bar, bIdx) => {
+                      const barX = groupStartX + bIdx * (subBarW + gap);
+                      const barY = baseY - bar.h;
 
-                    {/* Sub-bar: Awaiting Review (Amber) */}
-                    {progH > 0 && (
-                      <rect
-                        x={progX}
-                        y={baseY - progH}
-                        width={subBarWidth}
-                        height={progH}
-                        fill="url(#ihlr-grad-progress)"
-                        rx="3"
-                      />
-                    )}
+                      return (
+                        <rect
+                          key={bar.key}
+                          x={barX}
+                          y={barY}
+                          width={subBarW}
+                          height={bar.h}
+                          fill={bar.fill}
+                          rx="3"
+                        />
+                      );
+                    })}
 
-                    {/* Sub-bar: Closed (Emerald) */}
-                    {closedH > 0 && (
-                      <rect
-                        x={closedX}
-                        y={baseY - closedH}
-                        width={subBarWidth}
-                        height={closedH}
-                        fill="url(#ihlr-grad-closed)"
-                        rx="3"
-                      />
-                    )}
-
-                    {/* Top Value Counter if total > 0 */}
+                    {/* Top Value Counter if total > 0 (always centered directly on top of the bar group) */}
                     {item.total > 0 && (
                       <text
                         x={centerX}
