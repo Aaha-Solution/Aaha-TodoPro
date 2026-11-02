@@ -701,15 +701,15 @@ const CreateRequest = () => {
     const payload = {
       issue_no: formattedIssueNo,
       escalation_date: formData.date,
-      product: formData.product,
-      model: formData.model,
-      process_operation: formData.processOperation,
+      product: (formData.product || '').trim(),
+      model: (formData.model || '').trim(),
+      process_operation: (formData.processOperation || '').trim(),
       shift: formData.shift,
-      issue_type: formData.issueType || '',
-      priority: formData.priority || '',
-      issue_observation: formData.issueObservation,
-      department: formData.department,
-      executor: selectedExecutors.length > 0 ? selectedExecutors.join(', ') : (formData.executor || ''),
+      issue_type: (formData.issueType || '').trim(),
+      priority: (formData.priority || '').trim(),
+      issue_observation: (formData.issueObservation || '').trim(),
+      department: (formData.department || '').trim(),
+      executor: selectedExecutors.length > 0 ? selectedExecutors.join(', ').trim() : (formData.executor || '').trim(),
       executor_email: (() => {
         if (selectedExecutors.length > 0) {
           const matchedEmails = deptUsers
@@ -720,10 +720,10 @@ const CreateRequest = () => {
         }
         return '';
       })(),
-      notify_emails: formData.notify_emails || '',
-      comments: formData.comments,
+      notify_emails: (formData.notify_emails || '').trim(),
+      comments: (formData.comments || '').trim(),
       attachments: finalAttachments,
-      created_by: creatorName,
+      created_by: creatorName.trim(),
       created_by_id: user?.id || null,
       created_by_email: user?.email || null,
     };
@@ -917,6 +917,10 @@ const CreateRequest = () => {
                   placeholder={`e.g. Leave empty to attach ${getLoggedInUserName()}`}
                   value={formData.created_by || ''}
                   onKeyDown={(e) => {
+                    if (e.key === ' ' && (!formData.created_by || e.target.selectionStart === 0)) {
+                      e.preventDefault();
+                      return;
+                    }
                     if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
                       e.preventDefault();
                       setErrors((prev) => ({ ...prev, created_by: 'Only text / letters allowed, numbers are not allowed' }));
@@ -924,7 +928,7 @@ const CreateRequest = () => {
                   }}
                   onChange={(e) => {
                     const raw = e.target.value;
-                    const cleaned = raw.replace(/[0-9]/g, '');
+                    const cleaned = raw.replace(/[0-9]/g, '').replace(/^\s+/, '');
                     setFormData({ ...formData, created_by: cleaned });
                     if (/\d/.test(raw)) {
                       setErrors((prev) => ({ ...prev, created_by: 'Only text / letters allowed, numbers are not allowed' }));
@@ -932,6 +936,7 @@ const CreateRequest = () => {
                       setErrors((prev) => ({ ...prev, created_by: false }));
                     }
                   }}
+                  onBlur={() => setFormData((prev) => ({ ...prev, created_by: (prev.created_by || '').trim() }))}
                   className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-semibold text-slate-900 outline-none transition ${
                     errors.created_by
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
@@ -1063,12 +1068,19 @@ const CreateRequest = () => {
                   type="text"
                   placeholder="Enter model"
                   value={formData.model}
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' && (!formData.model || e.target.selectionStart === 0)) {
+                      e.preventDefault();
+                    }
+                  }}
                   onChange={(e) => {
-                    setFormData({ ...formData, model: e.target.value });
-                    if (errors.model && e.target.value.trim()) {
+                    const val = (e.target.value || '').replace(/^\s+/, '');
+                    setFormData({ ...formData, model: val });
+                    if (errors.model && val.trim()) {
                       setErrors((prev) => ({ ...prev, model: false }));
                     }
                   }}
+                  onBlur={() => setFormData((prev) => ({ ...prev, model: (prev.model || '').trim() }))}
                   className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium placeholder:text-slate-400 outline-none transition ${
                     errors.model
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
@@ -1091,12 +1103,19 @@ const CreateRequest = () => {
                   type="text"
                   placeholder="Enter process or operation"
                   value={formData.processOperation}
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' && (!formData.processOperation || e.target.selectionStart === 0)) {
+                      e.preventDefault();
+                    }
+                  }}
                   onChange={(e) => {
-                    setFormData({ ...formData, processOperation: e.target.value });
-                    if (errors.processOperation && e.target.value.trim()) {
+                    const val = (e.target.value || '').replace(/^\s+/, '');
+                    setFormData({ ...formData, processOperation: val });
+                    if (errors.processOperation && val.trim()) {
                       setErrors((prev) => ({ ...prev, processOperation: false }));
                     }
                   }}
+                  onBlur={() => setFormData((prev) => ({ ...prev, processOperation: (prev.processOperation || '').trim() }))}
                   className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium placeholder:text-slate-400 outline-none transition ${
                     errors.processOperation
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
@@ -1186,12 +1205,19 @@ const CreateRequest = () => {
                 rows={3}
                 placeholder="Enter detailed issue observation..."
                 value={formData.issueObservation}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' && (!formData.issueObservation || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                  }
+                }}
                 onChange={(e) => {
-                  setFormData({ ...formData, issueObservation: e.target.value });
-                  if (errors.issueObservation && e.target.value.trim()) {
+                  const val = (e.target.value || '').replace(/^\s+/, '');
+                  setFormData({ ...formData, issueObservation: val });
+                  if (errors.issueObservation && val.trim()) {
                     setErrors((prev) => ({ ...prev, issueObservation: false }));
                   }
                 }}
+                onBlur={() => setFormData((prev) => ({ ...prev, issueObservation: (prev.issueObservation || '').trim() }))}
                 className={`w-full p-3.5 border rounded-xl text-xs outline-none transition shadow-2xs ${
                   errors.issueObservation
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
@@ -1833,7 +1859,16 @@ const CreateRequest = () => {
               rows={3}
               placeholder="Enter optional comments, remarks, or specific handling notes..."
               value={formData.comments}
-              onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === ' ' && (!formData.comments || e.target.selectionStart === 0)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                const val = (e.target.value || '').replace(/^\s+/, '');
+                setFormData({ ...formData, comments: val });
+              }}
+              onBlur={() => setFormData((prev) => ({ ...prev, comments: (prev.comments || '').trim() }))}
               className="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
             />
           </div>

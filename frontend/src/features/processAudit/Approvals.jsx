@@ -672,9 +672,10 @@ const ProcessAuditApprovals = () => {
   }, [user?.name, user?.role, location.key, queryRequestId]);
 
   const handleWhyChange = (index, val) => {
+    const cleaned = (val || '').replace(/^\s+/, '');
     setCloserWhyWhy((prev) => {
       const updated = [...prev];
-      updated[index] = val;
+      updated[index] = cleaned;
       return updated;
     });
     if (val && val.trim()) {
@@ -762,11 +763,11 @@ const ProcessAuditApprovals = () => {
       whyArray = [req.root_cause];
     }
     const paddedWhys = [
-      whyArray[0] || '',
-      whyArray[1] || '',
-      whyArray[2] || '',
-      whyArray[3] || '',
-      whyArray[4] || ''
+      (whyArray[0] || '').trim(),
+      (whyArray[1] || '').trim(),
+      (whyArray[2] || '').trim(),
+      (whyArray[3] || '').trim(),
+      (whyArray[4] || '').trim()
     ];
     setCloserWhyWhy(paddedWhys);
     setCloserWhyErrors({ w1: false, w2: false, w3: false });
@@ -1058,8 +1059,8 @@ const ProcessAuditApprovals = () => {
 
       const payload = {
         status: targetStatus,
-        prod_why_why: closerWhyWhy,
-        root_cause: closerWhyWhy[0] || rootCause || '',
+        prod_why_why: closerWhyWhy.map((w) => (w || '').trim()),
+        root_cause: (closerWhyWhy[0] || rootCause || '').trim(),
         temporary_action: closerAction.trim(),
         temporary_evidence_attachment: combinedEvidence,
         temporary_target_date: closerTargetDate || null,
@@ -1788,7 +1789,19 @@ const ProcessAuditApprovals = () => {
                           type="text"
                           disabled={!canUpdateCloserFields}
                           value={closerWhyWhy[idx] || ''}
+                          onKeyDown={(e) => {
+                            if (e.key === ' ' && (!closerWhyWhy[idx] || e.target.selectionStart === 0)) {
+                              e.preventDefault();
+                            }
+                          }}
                           onChange={(e) => handleWhyChange(idx, e.target.value)}
+                          onBlur={() => {
+                            setCloserWhyWhy((prev) => {
+                              const updated = [...prev];
+                              updated[idx] = (updated[idx] || '').trim();
+                              return updated;
+                            });
+                          }}
                           placeholder={
                             !selectedRequest
                               ? 'Select request on right'
@@ -1827,12 +1840,19 @@ const ProcessAuditApprovals = () => {
                 rows={2}
                 disabled={!canUpdateCloserFields}
                 value={closerAction}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' && (!closerAction || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                  }
+                }}
                 onChange={(e) => {
-                  setCloserAction(e.target.value);
-                  if (e.target.value.trim()) {
+                  const val = (e.target.value || '').replace(/^\s+/, '');
+                  setCloserAction(val);
+                  if (val.trim()) {
                     setCloserActionError(false);
                   }
                 }}
+                onBlur={() => setCloserAction((prev) => (prev || '').trim())}
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
@@ -1977,16 +1997,30 @@ const ProcessAuditApprovals = () => {
                     : 'Enter person name (manual entry)...'
                 }
                 value={closerTemporaryClosedBy || ''}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' && (!closerTemporaryClosedBy || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                    return;
+                  }
+                  if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    setCloserTemporaryClosedByError('Only text / letters allowed, numbers are not allowed');
+                  }
+                }}
                 onChange={(e) => {
                   if (!canUpdateCloserFields) return;
-                  const val = e.target.value;
-                  setCloserTemporaryClosedBy(val);
-                  if (!val.trim()) {
+                  const raw = e.target.value;
+                  const cleaned = raw.replace(/[0-9]/g, '').replace(/^\s+/, '');
+                  setCloserTemporaryClosedBy(cleaned);
+                  if (/\d/.test(raw)) {
+                    setCloserTemporaryClosedByError('Only text / letters allowed, numbers are not allowed');
+                  } else if (!cleaned.trim()) {
                     setCloserTemporaryClosedByError('Temporary Closed By is required. Please enter person name.');
                   } else {
                     setCloserTemporaryClosedByError(false);
                   }
                 }}
+                onBlur={() => setCloserTemporaryClosedBy((prev) => (prev || '').trim())}
                 className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${!canUpdateCloserFields
                     ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                     : closerTemporaryClosedByError
@@ -2024,12 +2058,19 @@ const ProcessAuditApprovals = () => {
                 rows={2}
                 disabled={!canUpdateCloserFields}
                 value={closerPermanentFix}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' && (!closerPermanentFix || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                  }
+                }}
                 onChange={(e) => {
-                  setCloserPermanentFix(e.target.value);
-                  if (e.target.value.trim()) {
+                  const val = (e.target.value || '').replace(/^\s+/, '');
+                  setCloserPermanentFix(val);
+                  if (val.trim()) {
                     setCloserPermanentFixError(false);
                   }
                 }}
+                onBlur={() => setCloserPermanentFix((prev) => (prev || '').trim())}
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
@@ -2172,16 +2213,30 @@ const ProcessAuditApprovals = () => {
                     : 'Enter person name ...'
                 }
                 value={closerPermanentClosedBy || ''}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' && (!closerPermanentClosedBy || e.target.selectionStart === 0)) {
+                    e.preventDefault();
+                    return;
+                  }
+                  if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    setCloserPermanentClosedByError('Only text / letters allowed, numbers are not allowed');
+                  }
+                }}
                 onChange={(e) => {
                   if (!canUpdateCloserFields) return;
-                  const val = e.target.value;
-                  setCloserPermanentClosedBy(val);
-                  if (!val.trim()) {
+                  const raw = e.target.value;
+                  const cleaned = raw.replace(/[0-9]/g, '').replace(/^\s+/, '');
+                  setCloserPermanentClosedBy(cleaned);
+                  if (/\d/.test(raw)) {
+                    setCloserPermanentClosedByError('Only text / letters allowed, numbers are not allowed');
+                  } else if (!cleaned.trim()) {
                     setCloserPermanentClosedByError('Permanent Closed By is required. Please enter person name.');
                   } else {
                     setCloserPermanentClosedByError(false);
                   }
                 }}
+                onBlur={() => setCloserPermanentClosedBy((prev) => (prev || '').trim())}
                 className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${!canUpdateCloserFields
                     ? 'bg-slate-100/70 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                     : closerPermanentClosedByError
@@ -2683,13 +2738,20 @@ const ProcessAuditApprovals = () => {
                     maxLength={1000}
                     disabled={!selectedRequest || adminEditCloser || isSelectedClosed || (isCloserDataToBeUpdated && !isReassignOpen)}
                     value={closerRemarks}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' && (!closerRemarks || e.target.selectionStart === 0)) {
+                        e.preventDefault();
+                      }
+                    }}
                     onChange={(e) => {
                       if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
-                      setCloserRemarks(e.target.value);
-                      if (remarksError && e.target.value.trim()) {
+                      const val = (e.target.value || '').replace(/^\s+/, '');
+                      setCloserRemarks(val);
+                      if (remarksError && val.trim()) {
                         setRemarksError(false);
                       }
                     }}
+                    onBlur={() => setCloserRemarks((prev) => (prev || '').trim())}
                     placeholder={
                       !selectedRequest
                         ? 'Click a row on the right to select'
@@ -2764,6 +2826,10 @@ const ProcessAuditApprovals = () => {
                     }
                     value={reviewedBy || ''}
                     onKeyDown={(e) => {
+                      if (e.key === ' ' && (!reviewedBy || e.target.selectionStart === 0)) {
+                        e.preventDefault();
+                        return;
+                      }
                       if (/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
                         e.preventDefault();
                         setReviewedByError('Only text / letters allowed, numbers are not allowed');
@@ -2772,7 +2838,7 @@ const ProcessAuditApprovals = () => {
                     onChange={(e) => {
                       if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
                       const raw = e.target.value;
-                      const cleaned = raw.replace(/[0-9]/g, '');
+                      const cleaned = raw.replace(/[0-9]/g, '').replace(/^\s+/, '');
                       setReviewedBy(cleaned);
                       if (/\d/.test(raw)) {
                         setReviewedByError('Only text / letters allowed, numbers are not allowed');
@@ -2780,6 +2846,7 @@ const ProcessAuditApprovals = () => {
                         setReviewedByError(false);
                       }
                     }}
+                    onBlur={() => setReviewedBy((prev) => (prev || '').trim())}
                     className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
                         ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed select-none'
                         : reviewedByError

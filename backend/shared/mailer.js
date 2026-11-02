@@ -133,7 +133,13 @@ export async function sendEmail({
   const focusModule = (process.env.EMAIL_FOCUS_MODULE || 'ALL').toUpperCase();
   const currentModule = (moduleType || 'GENERAL').toUpperCase();
   const allowedModules = focusModule.split(',').map((s) => s.trim());
-  if (focusModule !== 'ALL' && !allowedModules.includes(currentModule) && currentModule !== 'DIAGNOSTIC') {
+  const isAllowed =
+    focusModule === 'ALL' ||
+    allowedModules.includes(currentModule) ||
+    currentModule === 'DIAGNOSTIC' ||
+    (allowedModules.includes('IHLR') && currentModule === 'PROCESS_AUDIT');
+
+  if (!isAllowed) {
     return {
       success: true,
       skipped: true,
@@ -196,7 +202,10 @@ export async function sendEmail({
   if (currentModule === 'PROCESS_AUDIT') defaultPortalName = 'INEL Process Audit Portal';
   else if (currentModule === 'IHLR') defaultPortalName = 'INEL IHLR Portal';
 
-  const senderFrom = process.env.SMTP_FROM || (DEFAULT_TRIGGER_EMAIL ? `"${defaultPortalName}" <${DEFAULT_TRIGGER_EMAIL}>` : `"${defaultPortalName}"`);
+  let senderFrom = process.env.SMTP_FROM || (DEFAULT_TRIGGER_EMAIL ? `"${defaultPortalName}" <${DEFAULT_TRIGGER_EMAIL}>` : `"${defaultPortalName}"`);
+  if (currentModule === 'PROCESS_AUDIT' && DEFAULT_TRIGGER_EMAIL) {
+    senderFrom = `"INEL Process Audit Portal" <${DEFAULT_TRIGGER_EMAIL}>`;
+  }
 
   // Automatically attach INEL logo if referenced in HTML
   const finalAttachments = Array.isArray(attachments) ? [...attachments] : [];
@@ -790,7 +799,15 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
 /**
  * Send request creation emails for Process Audit requests
  */
-export async function sendProcessAuditRequestEmails({ request, creatorUser, assignedUser, skipCreator = false }) {
+export async function sendProcessAuditRequestEmails({
+  request,
+  creatorUser,
+  assignedUser,
+  allAssignedNames,
+  ccList,
+  skipCreator = false,
+  skipCc = false
+}) {
   const reqNo = request.issue_no || (request.id ? `PA-${request.id}` : 'PA-1');
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const myRequestsUrl = `${baseUrl}/process-audit/all-requests`;
@@ -807,14 +824,46 @@ export async function sendProcessAuditRequestEmails({ request, creatorUser, assi
   const assignedName = assignedUser?.name || request.executor || 'Assigned Executor';
   const assignedDept = request.department || assignedUser?.department || 'Production';
 
-  const notifyList = [
-    ...String(request.notify_emails || request.cc_emails || '').split(',')
-  ]
-    .map((s) => String(s || '').trim().toLowerCase())
-    .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
+  // All assigned members display for creator and summary table (e.g. "Ramesh, Srihari")
+  const allAssignedPersonsDisplay = (allAssignedNames && String(allAssignedNames).trim())
+    ? String(allAssignedNames).trim()
+    : (request.executor && String(request.executor).trim())
+      ? String(request.executor).trim()
+      : assignedName;
 
-  const allCcEmails = Array.from(new Set(notifyList));
-  const ccDisplayStr = allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None';
+  // Extract all CC emails from request for display in the summary table
+  const allRequestCc = Array.from(new Set(
+    String(request.notify_emails || request.cc_emails || '')
+      .split(',')
+      .map((s) => String(s || '').trim().toLowerCase())
+      .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))
+  ));
+
+  // Determine actual CC recipients for the dispatch:
+  // - If skipCc is true: no CC is sent
+  // - If ccList is provided as an array: use that array
+  // - If ccList is provided as a string: use that string
+  // - Otherwise: fallback to request.notify_emails
+  let dispatchCcList = [];
+  if (!skipCc) {
+    if (Array.isArray(ccList)) {
+      dispatchCcList = ccList;
+    } else if (typeof ccList === 'string' && ccList.trim()) {
+      dispatchCcList = ccList.split(',');
+    } else if (ccList === null || ccList === undefined) {
+      dispatchCcList = allRequestCc;
+    }
+  }
+
+  const allCcEmails = Array.from(new Set(
+    dispatchCcList
+      .map((s) => String(s || '').trim().toLowerCase())
+      .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))
+  ));
+
+  const ccDisplayStr = allRequestCc.length > 0
+    ? allRequestCc.join(', ')
+    : (allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None');
 
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
@@ -825,7 +874,7 @@ export async function sendProcessAuditRequestEmails({ request, creatorUser, assi
     { label: 'Shift / Escalation Date', value: `Shift ${request.shift || 'I'} • ${request.escalation_date || 'Today'}` },
     { label: 'Issue Type / Priority', value: `${request.issue_type || 'Process'} / ${request.priority || 'Medium'}` },
     { label: 'Target Dept', value: assignedDept },
-    { label: 'Assigned Executor', value: assignedName },
+    { label: 'Assigned Executor', value: allAssignedPersonsDisplay },
     { label: 'Audit Observation', value: request.issue_observation || request.problem || '—' },
     { label: 'Status', value: 'Pending' }
   ];
@@ -882,11 +931,12 @@ export async function sendProcessAuditRequestEmails({ request, creatorUser, assi
       recipientName: assignedName,
       recipientRole: 'SELECTED_PERSON',
       subject: assignedSubject,
-      text: `Process Audit Request #${reqNo} (${request.model || request.product} - "${request.issue_observation || request.problem}") has been assigned to you by ${creatorName} (Status: Pending). Please log in to complete containment analysis.`,
+      text: `Process Audit Request #${reqNo} (${request.model || request.product} - "${request.issue_observation || request.problem}") has been assigned to you by ${createdByDisplay} (Status: Pending). Please log in to complete containment analysis.`,
       html: assignedHtml,
       moduleType: 'PROCESS_AUDIT',
       requestId: request.id,
       referenceNo: reqNo,
+      cc: skipCc ? [] : allCcEmails,
     });
   }
 
@@ -989,6 +1039,7 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
       moduleType: 'PROCESS_AUDIT',
       requestId: request.id,
       referenceNo: reqNo,
+      cc: allCcEmails,
     });
   }
 

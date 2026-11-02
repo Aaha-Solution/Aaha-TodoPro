@@ -22,8 +22,12 @@ export const notificationSlice = createSlice({
           item.notifId === target ||
           String(item.id) === String(target) ||
           String(item.id) === `notif-${target}` ||
+          String(item.id) === `pa-notif-${target}` ||
+          String(item.id) === `pa-req-${target}` ||
+          String(item.id) === `req-${target}` ||
           String(item.notifId) === String(target) ||
-          (!item.notifId && item.rawId === target);
+          (!item.notifId && item.rawId === target) ||
+          (!item.notifId && String(item.rawId) === String(target));
         if (matches && !item.read) {
           item.read = true;
           anyChanged = true;
@@ -36,14 +40,36 @@ export const notificationSlice = createSlice({
       state.unreadCount = Math.max(0, state.unreadCount - dec);
     },
     markAsUnread: (state, action) => {
-      const n = state.notifications.find(item => item.id === action.payload || item.notifId === action.payload);
+      const target = action.payload;
+      const n = state.notifications.find(item =>
+        item.id === target ||
+        item.notifId === target ||
+        String(item.id) === String(target) ||
+        String(item.id) === `notif-${target}` ||
+        String(item.id) === `pa-notif-${target}` ||
+        String(item.id) === `pa-req-${target}` ||
+        String(item.id) === `req-${target}` ||
+        String(item.notifId) === String(target) ||
+        (!item.notifId && (item.rawId === target || String(item.rawId) === String(target)))
+      );
       if (n && n.read) {
         n.read = false;
         state.unreadCount = state.notifications.filter(item => !item.read).length;
       }
     },
     toggleNotificationRead: (state, action) => {
-      const n = state.notifications.find(item => item.id === action.payload || item.notifId === action.payload);
+      const target = action.payload;
+      const n = state.notifications.find(item =>
+        item.id === target ||
+        item.notifId === target ||
+        String(item.id) === String(target) ||
+        String(item.id) === `notif-${target}` ||
+        String(item.id) === `pa-notif-${target}` ||
+        String(item.id) === `pa-req-${target}` ||
+        String(item.id) === `req-${target}` ||
+        String(item.notifId) === String(target) ||
+        (!item.notifId && (item.rawId === target || String(item.rawId) === String(target)))
+      );
       if (n) {
         n.read = !n.read;
         state.unreadCount = state.notifications.filter(item => !item.read).length;

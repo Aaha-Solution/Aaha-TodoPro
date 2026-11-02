@@ -28,7 +28,8 @@ export const ensureAttachmentTable = async () => {
   await ensureAttachmentTable();
 })();
 
-export const Attachment = {
+export const ProcessAuditAttachment = {
+
   // Save file buffer directly into MySQL database (LONGBLOB) - No disk storage
   saveAttachment: async (file) => {
     if (!pool) throw new Error('Database pool not available');
@@ -146,4 +147,7 @@ export const Attachment = {
   },
 };
 
-export default Attachment;
+
+
+export const Attachment = ProcessAuditAttachment;
+export default ProcessAuditAttachment;
