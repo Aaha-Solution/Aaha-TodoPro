@@ -395,7 +395,7 @@ export const IhlrBarChart = ({
 
           <div className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs flex items-center justify-between">
             <div className="min-w-0 pr-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Peak Category</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Top Contributor</span>
               <div className="text-sm font-black text-slate-800 truncate mt-0.5">
                 {peakItem && (peakItem.total || 0) > 0 ? `${(peakItem.rawLabel || peakItem.label || '').replace(/\n/g, ' ')} (${peakItem.total})` : 'None'}
               </div>
