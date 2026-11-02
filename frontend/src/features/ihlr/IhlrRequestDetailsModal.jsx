@@ -1045,8 +1045,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
           ],
           [
             { content: 'LEVEL', styles: { halign: 'center', fontStyle: 'bold' } },
-            { content: 'QA PROBLEM INVESTIGATION (5-WHY)', styles: { fontStyle: 'bold' } },
-            { content: 'PRODUCTION OCCURRENCE CAUSE (5-WHY)', styles: { fontStyle: 'bold' } }
+            { content: 'PROBLEM CAUSE (5-WHY)', styles: { fontStyle: 'bold' } },
+            { content: 'OCCURRENCE CAUSE (5-WHY)', styles: { fontStyle: 'bold' } }
           ]
         ],
         body: whyRows,
@@ -1767,7 +1767,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
                       <ShieldAlert className="w-4 h-4" />
-                      <span>Occurrence Cause (Production 5-Why Analysis)</span>
+                      <span>Occurrence Cause (5-Why Analysis)</span>
                     </div>
                     <span className="text-[11px] text-slate-400 font-mono">W1 to W5 Breakdown</span>
                   </div>
@@ -2609,7 +2609,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-amber-600 text-xs font-bold uppercase tracking-wider">
                       <ShieldCheck className="w-4 h-4" />
-                      <span>4. QA PROBLEM CAUSE (5-WHY ROOT CAUSE ANALYSIS)</span>
+                      <span>4. PROBLEM CAUSE (5-WHY ROOT CAUSE ANALYSIS)</span>
                     </div>
                     <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
                       <span>W1, W2 & W3 Mandatory</span>
@@ -2621,7 +2621,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <div className="flex items-center gap-2 pb-2 border-b border-amber-200/60">
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                       <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                        QA Problem Cause (5-Why Breakdown)
+                        Problem Cause (5-Why Breakdown)
                       </h4>
                     </div>
                     <div className="space-y-2.5">
@@ -2664,7 +2664,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                                     return copy;
                                   });
                                 }}
-                                placeholder={`QA Root Cause Level ${idx + 1}...${isMandatory ? ' (Mandatory)' : ''}`}
+                                placeholder={`Problem Cause Level ${idx + 1}...${isMandatory ? ' (Mandatory)' : ''}`}
                                 className={`flex-1 px-3 py-1.5 rounded-xl text-xs text-slate-800 outline-none transition ${hasError
                                     ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                                     : 'bg-white border border-amber-200/80 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
@@ -2941,16 +2941,16 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-amber-600 text-xs font-bold uppercase tracking-wider">
                       <ShieldCheck className="w-4 h-4" />
-                      <span>4. QA PROBLEM CAUSE (5-WHY ROOT CAUSE ANALYSIS)</span>
+                      <span>4. PROBLEM CAUSE (5-WHY ROOT CAUSE ANALYSIS)</span>
                     </div>
-                    <span className="text-[11px] text-slate-400 font-mono">Logged by Requester / QA</span>
+                    <span className="text-[11px] text-slate-400 font-mono">Logged by Creator</span>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-amber-50/40 border border-amber-200/80 space-y-3 text-xs">
                     <div className="flex items-center gap-2 pb-2 border-b border-amber-200/60">
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                       <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                        QA Problem Cause (5-Why Breakdown)
+                        Problem Cause (5-Why Breakdown)
                       </h4>
                     </div>
                     <div className="space-y-2">

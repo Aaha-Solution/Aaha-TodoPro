@@ -346,7 +346,7 @@ export const exportIhlrToExcel = async ({
   // ==============================================================
   worksheet.mergeCells(`A1:${getExcelColLetter(requestorEndCol)}1`);
   const superReq = worksheet.getCell('A1');
-  superReq.value = 'REQUESTOR (DEFECT INVESTIGATION & QA 5-WHY)';
+  superReq.value = 'REQUESTOR (DEFECT INVESTIGATION & 5-WHY)';
   superReq.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF78350F' } }; // amber-900
   superReq.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // amber-100
   superReq.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -753,7 +753,7 @@ export const exportIhlrToPdf = async ({
   const tableHeaders = [
     [
       {
-        content: 'REQUESTOR (DEFECT INVESTIGATION & QA 5-WHY)',
+        content: 'REQUESTOR (DEFECT INVESTIGATION & 5-WHY)',
         colSpan: 10,
         styles: {
           fillColor: [254, 243, 199], // amber-100
@@ -764,7 +764,7 @@ export const exportIhlrToPdf = async ({
         }
       },
       {
-        content: 'CLOSER (PRODUCTION CONTAINMENT)',
+        content: 'CLOSER (CONTAINMENT & ACTIONS)',
         colSpan: 3,
         styles: {
           fillColor: [255, 237, 213], // orange-100

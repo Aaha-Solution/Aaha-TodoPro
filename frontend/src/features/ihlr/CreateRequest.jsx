@@ -778,7 +778,7 @@ const IhlrCreateRequest = () => {
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             {isEditMode
-              ? 'Update line rejection incident details, defect description, attachments, and QA 5-Why analysis.'
+              ? 'Update line rejection incident details, defect description, attachments, and Problem Cause 5-Why analysis.'
               : 'Log line rejection incident, 5-Why problem root cause, and occurrence containment.'}
           </p>
         </div>
@@ -1750,7 +1750,7 @@ const IhlrCreateRequest = () => {
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                    3. Problem Cause Why-Why Analysis (QA Team)
+                    3. Problem Cause Why-Why Analysis
                   </h2>
                   <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
                     <span>W1, W2 & W3 Mandatory</span>
@@ -1758,7 +1758,7 @@ const IhlrCreateRequest = () => {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500">
-                  5-Why investigation path performed by Quality Assurance to isolate root failure.
+                  5-Why investigation path to isolate root failure.
                 </p>
               </div>
             </div>
