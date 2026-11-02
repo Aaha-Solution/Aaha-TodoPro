@@ -180,7 +180,10 @@ export const IhlrBarChart = ({
   // Peak category
   const peakItem = useMemo(() => {
     if (!chartData || chartData.length === 0) return null;
-    return [...chartData].sort((a, b) => (b.total || 0) - (a.total || 0))[0];
+    const sorted = [...chartData].sort((a, b) => (b.total || 0) - (a.total || 0));
+    // If no category has any records (> 0), there is no peak category
+    if (!sorted[0] || (sorted[0].total || 0) <= 0) return null;
+    return sorted[0];
   }, [chartData]);
 
   // Closure rate
@@ -394,7 +397,7 @@ export const IhlrBarChart = ({
             <div className="min-w-0 pr-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Peak Category</span>
               <div className="text-sm font-black text-slate-800 truncate mt-0.5">
-                {peakItem ? `${peakItem.label} (${peakItem.total})` : 'None'}
+                {peakItem && (peakItem.total || 0) > 0 ? `${(peakItem.rawLabel || peakItem.label || '').replace(/\n/g, ' ')} (${peakItem.total})` : 'None'}
               </div>
             </div>
             <TrendingUp className="w-4 h-4 text-amber-500 shrink-0" />
