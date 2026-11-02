@@ -132,6 +132,9 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           (uName && nName && (uName === nName || nNameList.includes(uName))) ||
           (uEmail && nEmail && (uEmail === nEmail || nEmailList.includes(uEmail)));
 
+        // If explicitly addressed to another user (different user_id), never show it to the current user
+        if (nId && uId && nId !== uId && !isDirectMatch) return;
+
         // Non-admins only see notifications directly addressed to them
         if (!isAdmin && !isDirectMatch) return;
 
@@ -411,6 +414,9 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           (uId && nId && uId === nId) ||
           (uName && nName && (uName === nName || nNameList.includes(uName))) ||
           (uEmail && nEmail && (uEmail === nEmail || nEmailList.includes(uEmail)));
+
+        // If explicitly addressed to another user (different user_id), never show it to the current user
+        if (nId && uId && nId !== uId && !isDirectMatch) return;
 
         // Non-admins only see notifications directly addressed to them
         if (!isAdmin && !isDirectMatch) return;

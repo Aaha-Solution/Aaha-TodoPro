@@ -419,6 +419,9 @@ const ensureNotificationTable = async () => {
       await pool.query(`ALTER TABLE process_audit_notifications ADD COLUMN user_email VARCHAR(150) NULL`).catch(() => {});
     }
 
+    // Ensure user_id index exists for fast lookup
+    await pool.query(`ALTER TABLE process_audit_notifications ADD INDEX idx_pa_notif_user_id (user_id)`).catch(() => {});
+
     // Clean up duplicate fallback notifications where assignment_required already exists for the request
     await pool.query(`
       DELETE FROM process_audit_notifications 
@@ -515,17 +518,8 @@ export const getNotifications = async (req, res) => {
       params.push(userEmail.toLowerCase());
     }
     if (isAdmin) {
-      conditions.push("LOWER(TRIM(user_name)) LIKE '%admin%'");
-      conditions.push("LOWER(TRIM(user_email)) LIKE '%admin%'");
-      conditions.push("type LIKE '%admin%'");
-      conditions.push("type = 'closer_completed_pending_admin_signoff'");
-      conditions.push("type = 'closer_completed_pending_review'");
-      conditions.push("type = 'case_closed'");
-      conditions.push("type = 'reassigned'");
-      conditions.push("type = 'pa_reassigned'");
-      conditions.push("type = 'approval_required'");
-      conditions.push("type = 'assignment_required'");
-      conditions.push("type = 'assigned_to_pa'");
+      // For Admin / QAD users: only include notifications addressed to generic admin where user_id IS NULL or 0
+      conditions.push("( (user_id IS NULL OR user_id = 0) AND (LOWER(TRIM(user_name)) LIKE '%admin%' OR LOWER(TRIM(user_email)) LIKE '%admin%' OR type LIKE '%admin%') )");
     }
 
     if (conditions.length > 0) {
@@ -758,43 +752,29 @@ export const markAllAsRead = async (req, res) => {
     const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'QAD' || userName.toLowerCase().includes('admin');
 
     if (pool) {
-      if (isAdmin) {
-        await pool.query(
-          `UPDATE process_audit_notifications SET is_read = 1 WHERE 
-           user_id = ? OR 
-           LOWER(TRIM(user_name)) LIKE '%admin%' OR 
-           LOWER(TRIM(user_email)) LIKE '%admin%' OR 
-           type IN ('approval_required', 'assignment_required', 'assigned_to_pa', 'request_approved', 'request_closed', 'case_closed', 'request_rejected', 'reassigned', 'pa_reassigned', 'request_created', 'submission_confirmed', 'closer_completed_pending_review', 'closer_completed_pending_admin_signoff', 'countermeasure_saved')`,
-          [userId || 1]
-        );
-      } else {
-        const conditions = [];
-        const params = [];
-        if (userId) {
-          conditions.push('user_id = ?');
-          params.push(userId);
-        }
-        if (userName) {
-          conditions.push('LOWER(TRIM(user_name)) = LOWER(TRIM(?))');
-          params.push(userName);
-          conditions.push('FIND_IN_SET(?, REPLACE(LOWER(user_name), ", ", ","))');
-          params.push(userName.toLowerCase());
-        }
-        if (userEmail) {
-          conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
-          params.push(userEmail);
-          conditions.push('FIND_IN_SET(?, REPLACE(LOWER(user_email), ", ", ","))');
-          params.push(userEmail.toLowerCase());
-        }
+      const conditions = [];
+      const params = [];
+      if (userId) {
+        conditions.push('user_id = ?');
+        params.push(userId);
+      }
+      if (userName) {
+        conditions.push('(user_id IS NULL AND (LOWER(TRIM(user_name)) = LOWER(TRIM(?)) OR FIND_IN_SET(?, REPLACE(LOWER(user_name), ", ", ","))))');
+        params.push(userName, userName.toLowerCase());
+      }
+      if (userEmail) {
+        conditions.push('(user_id IS NULL AND (LOWER(TRIM(user_email)) = LOWER(TRIM(?)) OR FIND_IN_SET(?, REPLACE(LOWER(user_email), ", ", ","))))');
+        params.push(userEmail, userEmail.toLowerCase());
+      }
+      if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN') {
+        conditions.push("((user_id IS NULL OR user_id = 0) AND (LOWER(TRIM(user_name)) LIKE '%admin%' OR LOWER(TRIM(user_email)) LIKE '%admin%'))");
+      }
 
-        if (conditions.length > 0) {
-          await pool.query(`UPDATE process_audit_notifications SET is_read = 1 WHERE ${conditions.join(' OR ')}`, params);
-        } else {
-          await pool.query('UPDATE process_audit_notifications SET is_read = 1');
-        }
+      if (conditions.length > 0) {
+        await pool.query(`UPDATE process_audit_notifications SET is_read = 1 WHERE ${conditions.join(' OR ')}`, params);
       }
     }
-    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'mark_all_read', userName });
+    broadcastEvent('notifications:refresh', { module: 'process_audit', action: 'mark_all_read', userId, userName });
     return successResponse(res, null, 'All notifications marked as read');
   } catch (error) {
     return errorResponse(res, error.message, 500);

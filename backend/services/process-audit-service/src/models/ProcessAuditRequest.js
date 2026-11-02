@@ -195,9 +195,13 @@ const ensureTable = async () => {
     if (!colNames.includes('created_by_email')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN created_by_email VARCHAR(150) NULL`).catch(() => {});
     }
+    if (!colNames.includes('executor_email')) {
+      await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN executor_email VARCHAR(255) NULL`).catch(() => {});
+    }
     if (!colNames.includes('notify_emails')) {
       await pool.query(`ALTER TABLE process_audit_requests ADD COLUMN notify_emails TEXT NULL`).catch(() => {});
     }
+    await pool.query(`ALTER TABLE process_audit_requests ADD INDEX idx_pa_created_by_id (created_by_id)`).catch(() => {});
 
     // Ensure executor resolution columns exist in MySQL
     if (!colNames.includes('root_cause')) {
@@ -504,6 +508,7 @@ export const ProcessAuditRequest = {
     const created_by = data.created_by || data.createdBy || data.creator_name || data.creator || null;
     const created_by_id = data.created_by_id || data.createdById || data.userId || null;
     const created_by_email = data.created_by_email || data.creator_email || data.email || null;
+    const executor_email = data.executor_email || null;
     const notify_emails = String(data.notify_emails || data.cc_emails || '').trim();
 
     // issue_no can be passed from frontend or match the auto-increment id
@@ -512,8 +517,8 @@ export const ProcessAuditRequest = {
     // Notice: id is omitted from the INSERT query so MySQL's AUTO_INCREMENT automatically assigns 1, 2, 3...
     const query = `
       INSERT INTO process_audit_requests 
-      (issue_no, escalation_date, product, model, process_operation, shift, issue_type, priority, issue_observation, attachments, department, executor, comments, status, created_by, created_by_id, created_by_email, notify_emails)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (issue_no, escalation_date, product, model, process_operation, shift, issue_type, priority, issue_observation, attachments, department, executor, comments, status, created_by, created_by_id, created_by_email, executor_email, notify_emails)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const [result] = await pool.query(query, [
@@ -534,6 +539,7 @@ export const ProcessAuditRequest = {
       created_by,
       created_by_id,
       created_by_email,
+      executor_email,
       notify_emails || null
     ]);
 
@@ -585,6 +591,7 @@ export const ProcessAuditRequest = {
       { name: 'closed_by_id', type: 'INT NULL' },
       { name: 'closed_at', type: 'TIMESTAMP NULL' },
       { name: 'reassignment_history', type: 'JSON NULL' },
+      { name: 'executor_email', type: 'VARCHAR(255) NULL' },
       { name: 'notify_emails', type: 'TEXT NULL' },
       { name: 'prod_why_why', type: 'JSON NULL' },
       { name: 'temporary_action', type: 'TEXT NULL' },
@@ -663,7 +670,7 @@ export const ProcessAuditRequest = {
     const allowedFields = [
       'issue_no', 'escalation_date', 'product', 'model', 'process_operation',
       'shift', 'issue_type', 'priority', 'issue_observation', 'attachments',
-      'department', 'executor', 'comments', 'status', 'created_by', 'created_by_id', 'created_by_email',
+      'department', 'executor', 'executor_email', 'notify_emails', 'comments', 'status', 'created_by', 'created_by_id', 'created_by_email',
       'root_cause', 'corrective_action', 'action_attachments', 'standardization_details',
       'target_date', 'action_taken_by', 'approved_by', 'approved_by_id',
       'approved_by_email', 'creator_remark', 'reviewed_by', 'reviewed_by_id', 'reviewed_by_email', 'closed_by', 'closed_by_id',

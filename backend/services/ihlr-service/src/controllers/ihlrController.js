@@ -1694,14 +1694,8 @@ export const getIhlrNotifications = async (req, res) => {
         params.push(userEmail.toLowerCase());
       }
       if (isAdmin) {
-        conditions.push("LOWER(TRIM(user_name)) LIKE '%admin%'");
-        conditions.push("LOWER(TRIM(user_email)) LIKE '%admin%'");
-        conditions.push("type LIKE '%admin%'");
-        conditions.push("type = 'closer_completed_pending_admin_signoff'");
-        conditions.push("type = 'closer_completed_pending_review'");
-        conditions.push("type = 'submission_confirmed'");
-        conditions.push("type = 'case_closed'");
-        conditions.push("type = 'ihlr_reassigned'");
+        // For Admin / QAD users: only include notifications addressed to generic admin where user_id IS NULL or 0
+        conditions.push("( (user_id IS NULL OR user_id = 0) AND (LOWER(TRIM(user_name)) LIKE '%admin%' OR LOWER(TRIM(user_email)) LIKE '%admin%' OR type LIKE '%admin%') )");
       }
 
       if (conditions.length > 0) {
@@ -1712,10 +1706,10 @@ export const getIhlrNotifications = async (req, res) => {
       query += ' ORDER BY id DESC LIMIT 50';
       const [rows] = await pool.query(query, params).catch(() => [[]]);
       const rawRows = rows || [];
-      // Deduplicate so that no user receives duplicate notifications for the same request and event type
+      // Deduplicate so that no user receives duplicate notifications for the same request, type and recipient
       const seen = new Set();
       notifRows = rawRows.filter((r) => {
-        const key = `${r.request_id || r.req_no}_${r.type}`;
+        const key = `${r.request_id || r.req_no}_${r.type}_${r.user_id || r.user_name || ''}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -1887,34 +1881,26 @@ export const markAllIhlrNotificationsRead = async (req, res) => {
     const isAdmin = userRole === 'ADMIN' || userDept === 'QAD' || userName.toLowerCase().includes('admin');
 
     if (pool) {
-      if (isAdmin) {
-        await pool.query(
-          `UPDATE ihlr_notifications SET is_read = 1 WHERE 
-           user_id = ? OR 
-           LOWER(TRIM(user_name)) LIKE '%admin%' OR 
-           LOWER(TRIM(user_email)) LIKE '%admin%' OR 
-           type IN ('closer_completed_pending_review', 'closer_completed_pending_admin_signoff', 'submission_confirmed', 'case_closed', 'ihlr_reassigned')`,
-          [userId || 1]
-        );
-      } else {
-        const conditions = [];
-        const params = [];
-        if (userId) {
-          conditions.push('user_id = ?');
-          params.push(userId);
-        }
-        if (userName) {
-          conditions.push('LOWER(TRIM(user_name)) = LOWER(TRIM(?))');
-          params.push(userName);
-        }
-        if (userEmail) {
-          conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
-          params.push(userEmail);
-        }
+      const conditions = [];
+      const params = [];
+      if (userId) {
+        conditions.push('user_id = ?');
+        params.push(userId);
+      }
+      if (userName) {
+        conditions.push('(user_id IS NULL AND (LOWER(TRIM(user_name)) = LOWER(TRIM(?)) OR FIND_IN_SET(?, REPLACE(LOWER(user_name), ", ", ","))))');
+        params.push(userName, userName.toLowerCase());
+      }
+      if (userEmail) {
+        conditions.push('(user_id IS NULL AND (LOWER(TRIM(user_email)) = LOWER(TRIM(?)) OR FIND_IN_SET(?, REPLACE(LOWER(user_email), ", ", ","))))');
+        params.push(userEmail, userEmail.toLowerCase());
+      }
+      if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN') {
+        conditions.push("((user_id IS NULL OR user_id = 0) AND (LOWER(TRIM(user_name)) LIKE '%admin%' OR LOWER(TRIM(user_email)) LIKE '%admin%'))");
+      }
 
-        if (conditions.length > 0) {
-          await pool.query(`UPDATE ihlr_notifications SET is_read = 1 WHERE ${conditions.join(' OR ')}`, params);
-        }
+      if (conditions.length > 0) {
+        await pool.query(`UPDATE ihlr_notifications SET is_read = 1 WHERE ${conditions.join(' OR ')}`, params);
       }
     }
     broadcastEvent('notifications:refresh', { module: 'ihlr', action: 'mark_all_read', userId, userName });

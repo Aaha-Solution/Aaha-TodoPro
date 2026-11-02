@@ -42,6 +42,10 @@ const ensureColumns = async () => {
     if (!colNames.includes('notify_emails')) {
       await pool.query('ALTER TABLE ihlr_requests ADD COLUMN notify_emails VARCHAR(500) NULL AFTER resp_person_email').catch(() => {});
     }
+    await pool.query('ALTER TABLE ihlr_requests ADD INDEX idx_ihlr_created_by_id (created_by_id)').catch(() => {});
+    await pool.query('ALTER TABLE ihlr_notifications ADD INDEX idx_ihlr_notif_user_id (user_id)').catch(() => {});
+    await pool.query('ALTER TABLE ihlr_notifications ADD INDEX idx_ihlr_notif_email (user_email)').catch(() => {});
+    await pool.query('ALTER TABLE ihlr_notifications ADD INDEX idx_ihlr_notif_read (is_read)').catch(() => {});
     // Ensure no duplicate req_no exist (resolve duplicate req_no by re-assigning CONCAT('IHLR-', id))
     await pool.query(`
       UPDATE ihlr_requests r1

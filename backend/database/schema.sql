@@ -95,13 +95,16 @@ CREATE TABLE process_audit_requests (
   created_by VARCHAR(100) NULL,
   created_by_id INT NULL,
   created_by_email VARCHAR(150) NULL,
+  executor_email VARCHAR(255) NULL,
+  notify_emails TEXT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_pa_issue_no (issue_no),
   INDEX idx_pa_status (status),
   INDEX idx_pa_dept (department),
   INDEX idx_pa_executor (executor),
-  INDEX idx_pa_created_by (created_by)
+  INDEX idx_pa_created_by (created_by),
+  INDEX idx_pa_created_by_id (created_by_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==============================================================================
@@ -158,6 +161,7 @@ CREATE TABLE process_audit_notifications (
   link VARCHAR(255) DEFAULT '/process-audit/approvals',
   is_read TINYINT(1) DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_pa_notif_user_id (user_id),
   INDEX idx_pa_notif_user (user_name),
   INDEX idx_pa_notif_email (user_email),
   INDEX idx_pa_notif_req (request_id),
@@ -220,11 +224,13 @@ CREATE TABLE ihlr_requests (
   created_by_id INT NULL,
   created_by_email VARCHAR(150) NULL,
   resp_person_email VARCHAR(255) NULL,
+  notify_emails VARCHAR(500) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_ihlr_req_no (req_no),
   INDEX idx_ihlr_resp_person (resp_person),
-  INDEX idx_ihlr_status (status)
+  INDEX idx_ihlr_status (status),
+  INDEX idx_ihlr_created_by_id (created_by_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==============================================================================
@@ -243,8 +249,11 @@ CREATE TABLE ihlr_notifications (
   link VARCHAR(255) DEFAULT '/ihlr/approvals',
   is_read TINYINT(1) DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_ihlr_notif_user_id (user_id),
   INDEX idx_ihlr_notif_user (user_name),
-  INDEX idx_ihlr_notif_req (request_id)
+  INDEX idx_ihlr_notif_email (user_email),
+  INDEX idx_ihlr_notif_req (request_id),
+  INDEX idx_ihlr_notif_read (is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==============================================================================
