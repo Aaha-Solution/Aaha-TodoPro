@@ -266,7 +266,7 @@ export const exportIhlrToExcel = async ({
   );
 
   // Calculate dynamic section column boundaries:
-  // 1. Requestor: 13 fixed columns (SL NO through USER NAME) + maxDefectCount + 7 fixed columns (QA WHY 1..5, RAISED BY, CREATED AT)
+  // 1. Requestor: 13 fixed columns (SL NO through USER NAME) + maxDefectCount + 7 fixed columns (QA WHY 1..5, CREATED BY, CREATED AT)
   const requestorEndCol = 20 + maxDefectCount;
 
   // 2. Closer: 8 fixed columns (PROD WHY 1..5, TEMP ACTION, TEMP TARGET DATE, TEM CLOSED BY)
@@ -309,7 +309,7 @@ export const exportIhlrToExcel = async ({
     20, // QA WHY 3
     20, // QA WHY 4
     20, // QA WHY 5
-    18, // RAISED BY
+    18, // CREATED BY
     16, // ISSUE CREATED AT
     // Closer before Temp Evidence
     20, // PROD WHY 1
@@ -396,7 +396,7 @@ export const exportIhlrToExcel = async ({
     ...defectEvidenceHeaders,
     // 7 trailing Requestor columns
     'QA WHY 1', 'QA WHY 2', 'QA WHY 3', 'QA WHY 4', 'QA WHY 5',
-    'RAISED BY', 'ISSUE CREATED AT',
+    'CREATED BY', 'ISSUE CREATED AT',
     // Closer before Temp Evidence
     'PROD WHY 1', 'PROD WHY 2', 'PROD WHY 3', 'PROD WHY 4', 'PROD WHY 5',
     'TEMPORARY ACTION TAKEN', 'TEMPORARY TARGET DATE', 'TEMPORARY CLOSED BY',
