@@ -1004,6 +1004,18 @@ export const createRequest = async (req, res) => {
     requestData.executor_email = combinedAssignedEmails || assignedUser.email;
     requestData.notify_emails = String(requestData.notify_emails || requestData.cc_emails || '').trim();
 
+    if (!creatorUser.email && requestData.created_by_email) {
+      creatorUser.email = requestData.created_by_email;
+    }
+
+    // Parse notify / CC email list upfront so it is in scope for both DB notifications and email dispatch
+    const notifyEmailsList = Array.from(new Set(
+      String(requestData.notify_emails || '')
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))
+    ));
+
     const created = await ProcessAuditRequest.create(requestData);
     const issueNo = created.issue_no || (created.id ? `PA-${created.id}` : 'PA-1');
     const assignedNamesDisplay = assignedUsersList.map((u) => u.name).join(', ') || assignedUser.name;
@@ -1046,11 +1058,6 @@ export const createRequest = async (req, res) => {
         }
 
         // Notification C: For Each CC / Notify Email (if any)
-        const notifyEmailsList = String(requestData.notify_emails || '')
-          .split(',')
-          .map((s) => s.trim().toLowerCase())
-          .filter((s) => s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
-
         for (const notifyEmail of notifyEmailsList) {
           let notifyUser = null;
           if (pool) {
