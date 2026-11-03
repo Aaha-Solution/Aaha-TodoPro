@@ -562,8 +562,8 @@ export const getNotifications = async (req, res) => {
         const isApproved = (r.status || '').toLowerCase().includes('approved') || (r.status || '').toLowerCase().includes('review');
         const isRejected = (r.status || '').toLowerCase().includes('reject');
         let title = `Audit Request Raised: #${r.issue_no}`;
-        let msg = `Audit request #${r.issue_no} (${r.model || 'Model'} - ${r.department}) logged with problem "${r.problem || r.issue_observation || '—'}".`;
-        let badgeLabel = 'REPORT LOGGED';
+        let msg = `Audit request #${r.issue_no} (${r.model || 'Model'} - ${r.department}) registered with problem "${r.problem || r.issue_observation || '—'}".`;
+        let badgeLabel = '';
         let accentColor = 'blue';
 
         if (isClosed) {
@@ -572,9 +572,9 @@ export const getNotifications = async (req, res) => {
           badgeLabel = 'CASE CLOSED';
           accentColor = 'emerald';
         } else if (isApproved) {
-          title = `Pending Sign-Off: #${r.issue_no}`;
-          msg = `Request #${r.issue_no} has actions submitted and is pending sign-off.`;
-          badgeLabel = 'PENDING SIGN-OFF';
+          title = `Action Required: #${r.issue_no}`;
+          msg = `Request #${r.issue_no} has actions submitted and is awaiting sign-off.`;
+          badgeLabel = '';
           accentColor = 'amber';
         } else if (isRejected) {
           title = `Request Needs Attention: #${r.issue_no}`;
@@ -630,7 +630,7 @@ export const getNotifications = async (req, res) => {
       let dept = n.department || 'QUALITY AUDIT';
 
       if (isPendingSignoff) {
-        badgeLabel = 'PENDING SIGN-OFF';
+        badgeLabel = '';
         accentColor = 'amber';
         footerFlag = 'ACTION_REQUIRED';
         dept = 'QUALITY SIGN-OFF';
@@ -640,7 +640,7 @@ export const getNotifications = async (req, res) => {
         footerFlag = 'REASSIGNED';
         dept = n.department || 'PRODUCTION';
       } else if (isConfirmed) {
-        badgeLabel = 'REPORT LOGGED';
+        badgeLabel = '';
         accentColor = 'blue';
         footerFlag = 'SYSTEM_LOGS';
         dept = 'QAD';
@@ -650,7 +650,7 @@ export const getNotifications = async (req, res) => {
         footerFlag = 'CASE_CLOSED';
         dept = 'QUALITY VERIFIED';
       } else if (isUpdated) {
-        badgeLabel = 'ACTION SUBMITTED';
+        badgeLabel = '';
         accentColor = 'indigo';
         footerFlag = 'OPERATIONAL_UPDATE';
         dept = 'PRODUCTION';
@@ -1432,7 +1432,7 @@ export const updateRequestStatus = async (req, res) => {
                 admin.email || 'admin@gmail.com',
                 updated.id || id,
                 issueNo,
-                `Admin Action Required: Pending Sign-Off #${issueNo}`,
+                `Admin Action Required: Sign-Off Review #${issueNo}`,
                 `Closer ${closerName} (${closerDept}) has completed actions for #${issueNo} (${updated.model || 'Process'}). Action required: Please enter validation remarks and update status to finalize closure.`
               ]
             ).catch((e) => console.warn('[PA Admin Notif Error]:', e.message));

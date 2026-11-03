@@ -218,7 +218,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
         const matchesTitle = (item.title || '').toLowerCase().includes(query);
         const matchesDept = (item.department || '').toLowerCase().includes(query);
         const matchesMsg = (item.message || '').toLowerCase().includes(query);
-        const matchesBadge = (item.badgeLabel || '').toLowerCase().includes(query);
+        const matchesBadge = !['REPORT LOGGED', 'PENDING SIGN-OFF', 'COUNTERMEASURE SUBMITTED', 'ACTION SUBMITTED'].includes(String(item.badgeLabel || '').trim().toUpperCase()) && (item.badgeLabel || '').toLowerCase().includes(query);
         return matchesId || matchesTitle || matchesDept || matchesMsg || matchesBadge;
       }
 
@@ -231,124 +231,17 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
       {/* 1. Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-            <span
-              className={`font-bold uppercase tracking-wider font-mono px-2 py-0.5 rounded text-[10px] ${isIhlr
-                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                : 'bg-blue-50 text-blue-700 border border-blue-200'
-                }`}
-            >
-              {isIhlr ? 'IN-HOUSE LINE REJECTION' : 'PROCESS AUDIT OBSERVATION'}
-            </span>
-            <span>/</span>
-            <span>Alerts &amp; Dispatch</span>
-          </div>
+         
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Notifications Centre
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {isIhlr
-              ? 'Real-time line defect alerts, containment tracking, and 5-Why root-cause notifications.'
-              : 'Automated task assignments, approval sign-off requests, and audit lifecycle alerts.'}
-          </p>
         </div>
 
 
       </div>
 
-      {/* 2. Unified Toolbar (Search & Mark All Read) */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Left Side: Search */}
-        <div className="flex flex-1 items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder={
-                isIhlr
-                  ? 'Search by ID, title, department, defect...'
-                  : 'Search by issue ID, title, auditor, department...'
-              }
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 bg-slate-50/80 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
+   
 
-        {/* Right Side: Mark All Read */}
-        <div className="flex items-center shrink-0 self-end md:self-auto">
-          <button
-            type="button"
-            disabled={unreadCount === 0}
-            onClick={handleMarkAllRead}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition shadow-2xs ${unreadCount === 0
-              ? 'bg-slate-100/70 border-slate-200 text-slate-400 cursor-not-allowed opacity-60 select-none'
-              : 'border-slate-200/90 bg-white hover:bg-slate-50 text-slate-800 hover:border-slate-300 cursor-pointer'
-              }`}
-            title={unreadCount === 0 ? 'No unread notifications to mark as read' : 'Mark all notifications as read'}
-          >
-            <CheckCheck className={`w-4 h-4 ${unreadCount === 0 ? 'text-slate-400' : 'text-slate-600'}`} />
-            <span>Mark All Read</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 3. Filter Pills */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={() => setActiveFilterTab('ALL')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${activeFilterTab === 'ALL'
-            ? 'bg-[#2563eb] text-white shadow-xs'
-            : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
-            }`}
-        >
-          <span>All Alerts</span>
-          <span
-            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${activeFilterTab === 'ALL' ? 'bg-white/20 text-white font-bold' : 'bg-slate-100 text-slate-700 font-bold'
-              }`}
-          >
-            {totalCount}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveFilterTab('UNREAD')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${activeFilterTab === 'UNREAD'
-            ? 'bg-[#2563eb] text-white shadow-xs'
-            : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
-            }`}
-        >
-          <span>Unread</span>
-          <span
-            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${unreadCount > 0 ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-500'
-              }`}
-          >
-            {unreadCount}
-          </span>
-        </button>
-      </div>
-
-      {/* 4. Section Divider: LIVE ACTIVITY STREAMS */}
-      <div className="relative flex items-center justify-center py-2">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-200/90" />
-        </div>
-        <div className="relative px-4 bg-[#f8fafc] text-[10px] font-bold text-slate-400 tracking-widest uppercase">
-          LIVE ACTIVITY STREAMS
-        </div>
-      </div>
 
       {/* 5. Notifications Cards List */}
       <div className="space-y-4">
@@ -434,6 +327,13 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
 
             const defaultLink = isIhlr ? '/ihlr/all-requests' : '/process-audit/approvals';
 
+            const showBadge = Boolean(
+              item.badgeLabel &&
+              !['REPORT LOGGED', 'PENDING SIGN-OFF', 'COUNTERMEASURE SUBMITTED', 'ACTION SUBMITTED'].includes(
+                String(item.badgeLabel).trim().toUpperCase()
+              )
+            );
+
             return (
               <div
                 key={item.id}
@@ -450,11 +350,13 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                       <IconComponent className="w-4 h-4" />
                     </div>
 
-                    <span
+                    {showBadge && (
+<span
                       className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider text-white shadow-2xs ${badgeBg}`}
                     >
                       {item.badgeLabel}
                     </span>
+                    )}
 
                     <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">
                       {item.reqNo}

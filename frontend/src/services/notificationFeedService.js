@@ -6,6 +6,28 @@ import { isIhlrRequestVisibleToUser } from '../utils/ihlrAuthUtils';
 /**
  * Helper to safely format ISO/timestamp dates into human-readable strings.
  */
+const SUPPRESSED_NOTIFICATION_BADGES = ['REPORT LOGGED', 'PENDING SIGN-OFF', 'COUNTERMEASURE SUBMITTED', 'ACTION SUBMITTED'];
+
+export const sanitizeBadgeLabel = (label) => {
+  if (!label) return '';
+  const str = String(label).trim().toUpperCase();
+  if (SUPPRESSED_NOTIFICATION_BADGES.includes(str)) return '';
+  return label;
+};
+
+export const cleanNotificationText = (text) => {
+  if (!text) return '';
+  return String(text)
+    .replace(/\bPending Sign-Off:?\s*/gi, 'Action Required: ')
+    .replace(/\bAdmin Action Required: Pending Sign-Off\b/gi, 'Admin Action Required: Sign-Off Review')
+    .replace(/\bNew IHLR Report Logged\b/gi, 'New IHLR Report')
+    .replace(/\bIHLR Defect Report Logged:?\s*/gi, 'IHLR Defect Report: ')
+    .replace(/\bProcess Audit Report Logged:?\s*/gi, 'Process Audit Report: ')
+    .replace(/\bpending sign-off\b/gi, 'awaiting sign-off')
+    .replace(/\bCOUNTERMEASURE SUBMITTED\b/gi, '')
+    .trim();
+};
+
 const formatStreamDate = (dateVal) => {
   if (!dateVal) return 'Recent Today';
   try {
@@ -204,9 +226,9 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           if (reqNoKey && s.reqNo === reqNoKey) {
             if (isAssignmentNotif && (s.type === 'assignment_required' || s.type === 'approval_required' || s.badgeLabel === 'ACTION REQUIRED')) return true;
             if (isClosedNotif && s.badgeLabel === 'CASE CLOSED') return true;
-            if (isPendingSignoff && s.badgeLabel === 'PENDING SIGN-OFF') return true;
-            if (isUpdatedNotif && s.badgeLabel === 'COUNTERMEASURE SUBMITTED') return true;
-            if (isConfirmedNotif && s.badgeLabel === 'REPORT LOGGED') return true;
+            if (isPendingSignoff && (s.badgeLabel === 'PENDING SIGN-OFF' || s.isPendingSignoff || s.type === n.type)) return true;
+            if (isUpdatedNotif && (s.badgeLabel === 'COUNTERMEASURE SUBMITTED' || s.isUpdatedNotif || s.type === n.type)) return true;
+            if (isConfirmedNotif && (s.badgeLabel === 'REPORT LOGGED' || s.isConfirmedNotif || s.type === n.type)) return true;
             if (isCcNotif && s.badgeLabel === 'CC NOTIFICATION') return true;
             if (s.type === n.type && s.title === n.title) return true;
           }
@@ -223,14 +245,17 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           badgeLabel: isClosedNotif
             ? 'CASE CLOSED'
             : isPendingSignoff
-            ? 'PENDING SIGN-OFF'
+            ? ''
             : isUpdatedNotif
-            ? 'COUNTERMEASURE SUBMITTED'
+            ? ''
             : isConfirmedNotif
-            ? 'REPORT LOGGED'
+            ? ''
             : isCcNotif
             ? 'CC NOTIFICATION'
-            : n.badgeLabel || 'ACTION REQUIRED',
+            : sanitizeBadgeLabel(n.badgeLabel || 'ACTION REQUIRED'),
+          isPendingSignoff,
+          isUpdatedNotif,
+          isConfirmedNotif,
           accentColor: isClosedNotif
             ? 'emerald'
             : isPendingSignoff
@@ -243,8 +268,8 @@ export const fetchIhlrNotificationsFeed = async (user) => {
             ? 'blue'
             : n.accentColor || 'amber',
           department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : isCcNotif ? 'INFORMATION' : 'PRODUCTION'),
-          title: n.title,
-          message: notifMessage,
+          title: cleanNotificationText(n.title),
+          message: cleanNotificationText(notifMessage),
           timeDisplay: formatStreamDate(n.date),
           subCategory: 'LINE DEFECT REPORT',
           footerFlag: isClosedNotif
@@ -489,9 +514,9 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           if (reqNoKey && s.reqNo === reqNoKey) {
             if (isAssignmentNotif && (s.type === 'assignment_required' || s.type === 'approval_required' || s.badgeLabel === 'ACTION REQUIRED')) return true;
             if (isClosedNotif && s.badgeLabel === 'CASE CLOSED') return true;
-            if (isPendingSignoff && s.badgeLabel === 'PENDING SIGN-OFF') return true;
-            if (isUpdatedNotif && (s.badgeLabel === 'COUNTERMEASURE SUBMITTED' || s.badgeLabel === 'ACTION SUBMITTED')) return true;
-            if (isConfirmedNotif && s.badgeLabel === 'REPORT LOGGED') return true;
+            if (isPendingSignoff && (s.badgeLabel === 'PENDING SIGN-OFF' || s.isPendingSignoff || s.type === n.type)) return true;
+            if (isUpdatedNotif && (s.badgeLabel === 'COUNTERMEASURE SUBMITTED' || s.badgeLabel === 'ACTION SUBMITTED' || s.isUpdatedNotif || s.type === n.type)) return true;
+            if (isConfirmedNotif && (s.badgeLabel === 'REPORT LOGGED' || s.isConfirmedNotif || s.type === n.type)) return true;
             if (isCcNotif && s.badgeLabel === 'CC NOTIFICATION') return true;
             if (isReassignedNotif && s.badgeLabel === 'REASSIGNED') return true;
             if (s.type === n.type && s.title === n.title) return true;
@@ -522,16 +547,19 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           badgeLabel: isClosedNotif
             ? 'CASE CLOSED'
             : isPendingSignoff
-            ? 'PENDING SIGN-OFF'
+            ? ''
             : isReassignedNotif
             ? 'REASSIGNED'
             : isUpdatedNotif
-            ? 'ACTION SUBMITTED'
+            ? ''
             : isConfirmedNotif
-            ? 'REPORT LOGGED'
+            ? ''
             : isCcNotif
             ? 'CC NOTIFICATION'
-            : n.badgeLabel || 'ACTION REQUIRED',
+            : sanitizeBadgeLabel(n.badgeLabel || 'ACTION REQUIRED'),
+          isPendingSignoff,
+          isUpdatedNotif,
+          isConfirmedNotif,
           accentColor: isClosedNotif
             ? 'emerald'
             : isPendingSignoff
@@ -546,8 +574,8 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
             ? 'blue'
             : n.accentColor || 'amber',
           department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : isCcNotif ? 'INFORMATION' : 'PRODUCTION'),
-          title: notifTitle,
-          message: notifMessage,
+          title: cleanNotificationText(notifTitle),
+          message: cleanNotificationText(notifMessage),
           timeDisplay: formatStreamDate(n.date || n.time || n.created_at),
           subCategory: 'PROCESS AUDIT OBSERVATION',
           footerFlag: isClosedNotif
