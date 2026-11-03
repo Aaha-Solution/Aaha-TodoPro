@@ -239,9 +239,6 @@ export const IhlrBarChart = ({
                   </span>
                 </h2>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Visual distribution of manufacturing line rejections by timeline, responsible department, 4M, and shifts.
-              </p>
             </div>
           </div>
 

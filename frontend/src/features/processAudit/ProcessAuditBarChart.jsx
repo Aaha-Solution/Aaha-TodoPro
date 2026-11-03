@@ -326,9 +326,6 @@ export const ProcessAuditBarChart = ({
                   </span>
                 </h2>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Visual distribution of shopfloor audit observations by timeline, responsible department, issue types, and shifts.
-              </p>
             </div>
           </div>
 

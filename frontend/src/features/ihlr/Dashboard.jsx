@@ -331,14 +331,7 @@ const IhlrDashboard = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               IHLR Analysis Dashboard
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-              <Building2 className="w-3.5 h-3.5 text-blue-500" />
-              <span>Plant-Wide Quality Overview</span>
-            </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Real-time plant-wide metrics of in-house line rejection reports, containment actions, and 4M root-cause breakdown across all departments.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -403,9 +396,6 @@ const IhlrDashboard = () => {
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`} />
                   </button>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Filter KPI metrics, 4M breakdown, and recent rejection logs
-                </p>
               </div>
             </div>
 
@@ -634,184 +624,6 @@ const IhlrDashboard = () => {
         onSelectStatus={(status) => setSelectedStatus(status)}
         currentYear={currentYear}
       />
-
-      {/* Recent IHLR Analysis Reports Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-        <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-slate-900">Recent 5 Issues</h2>
-              {hasActiveFilters && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                  Filtered
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {hasActiveFilters
-                ? 'Displaying recent line rejection issues matching your active filter criteria.'
-                : 'Live manufacturing rejection cases with Why-Why analysis & closure actions.'}
-            </p>
-          </div>
-          {hasActiveFilters && (
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              <button
-                onClick={handleResetFilters}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>Clear Filters</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                <th className="py-3.5 px-4 text-center w-14">SL NO</th>
-                <th className="py-3.5 px-4">ISSUE NO</th>
-                <th className="py-3.5 px-4">DATE / SHIFT</th>
-                <th className="py-3.5 px-6">PROBLEM &amp; MODEL</th>
-                <th className="py-3.5 px-4">STAGE &amp; LINE</th>
-                <th className="py-3.5 px-2 text-center w-14">DEFECT</th>
-                <th className="py-3.5 px-4 text-center">4M</th>
-                <th className="py-3.5 px-4">RESP</th>
-                <th className="py-3.5 px-4">STATUS</th>
-                <th className="py-3.5 px-6 text-right">ACTION</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs">
-              {(stats.recentRequests || []).length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="py-12 text-center text-slate-400">
-                    <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <p className="font-semibold text-slate-600">
-                      {hasActiveFilters
-                        ? 'No IHLR Issues match the selected filter criteria'
-                        : 'No IHLR Reports recorded yet'}
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      {hasActiveFilters
-                        ? 'Try adjusting or clearing the department or date filter criteria.'
-                        : canCreate
-                        ? 'Click "Create IHLR Issue" to file your first rejection report.'
-                        : 'Rejection reports will appear here once recorded.'}
-                    </p>
-                    {hasActiveFilters && (
-                      <button
-                        type="button"
-                        onClick={handleResetFilters}
-                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Reset All Filters</span>
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ) : (
-                (stats.recentRequests || []).slice(0, 5).map((req, index) => (
-                  <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
-                    {/* SL NO */}
-                    <td className="py-4 px-4 text-center font-mono font-semibold text-slate-500">
-                      {index + 1}
-                    </td>
-
-                    {/* Issue NO */}
-                    <td className="py-4 px-4 font-mono font-bold text-blue-600">
-                      {String(req.req_no).startsWith('IHLR-') ? req.req_no : `#${req.req_no}`}
-                    </td>
-
-                    {/* Date / Shift */}
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <div className="font-semibold text-slate-900">
-                        {formatDateDDMMYYYY(req.batch_date)}
-                      </div>
-                      {Boolean(
-                        req.batch_date &&
-                        (String(req.batch_date).slice(0, 10) < defaultStartDate || new Date(req.batch_date).getFullYear() < currentYear) &&
-                        (req.status || '').toUpperCase() !== 'CLOSED'
-                      ) && (
-                        <div className="mt-1">
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                            {new Date(req.batch_date).getFullYear()} Carryover
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[10px] font-bold text-slate-600 font-mono">
-                          {formatIhlrShiftDisplay(req.shift)}
-                        </span>
-                        {getIhlrShiftDetails(req.shift)?.timing && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 font-mono border border-slate-200">
-                            {getIhlrShiftDetails(req.shift).timing}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Problem & Model */}
-                    <td className="py-4 px-6">
-                      <div className="font-bold text-slate-900">{req.problem}</div>
-                      <div className="text-[11px] text-blue-600 font-medium">{req.model}</div>
-                    </td>
-
-                    {/* Detected At & Line */}
-                    <td className="py-4 px-4">
-                      <div className="font-semibold text-slate-800">{req.problem_detected_at}</div>
-                      <span className="text-[10px] text-slate-500 font-mono">{req.received_from}</span>
-                    </td>
-
-                    {/* Defect Attachment Thumbnail (Display only - No modal on click) */}
-                    <td className="py-4 px-2 text-center">
-                      <div className="flex items-center justify-center">
-                        <IhlrAttachmentThumbnail
-                          rawAttachment={req.defect_image}
-                        />
-                      </div>
-                    </td>
-
-                    {/* 4M */}
-                    <td className="py-4 px-4 text-center">
-                      <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                        {req.four_m || 'MAN'}
-                      </span>
-                    </td>
-
-                    {/* Responsibility */}
-                    <td className="py-4 px-4 font-mono">
-                      <div className="font-bold text-slate-800 text-xs">{req.resp || '-'}</div>
-                      {req.resp_person && (
-                        <div className="text-[10px] text-blue-600 font-semibold truncate max-w-[120px]" title={req.resp_person}>{req.resp_person}</div>
-                      )}
-                    </td>
-
-                    {/* Status */}
-                    <td className="py-4 px-4">
-                      {getStatusBadge(req.status, req)}
-                    </td>
-
-                    {/* View Action */}
-                    <td className="py-4 px-6 text-right">
-                      <button
-                        onClick={() => setSelectedRequest(req)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/60 hover:bg-blue-100/80 border border-blue-200/60 rounded-lg transition cursor-pointer"
-                        title="View Detailed Why-Why Analysis"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>View</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
       {/* Inspection Modal (Matching Screenshots 1 & 2) */}
       <IhlrRequestDetailsModal
