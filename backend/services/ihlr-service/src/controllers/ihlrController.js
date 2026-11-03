@@ -1774,6 +1774,8 @@ export const getIhlrNotifications = async (req, res) => {
           title,
           message: msg,
           date: r.created_at ? new Date(r.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent Today',
+          created_at: r.created_at,
+          raw_date: r.created_at,
           status: r.status || 'OPEN',
           read: false,
           link: '/ihlr/approvals'
@@ -1829,6 +1831,8 @@ export const getIhlrNotifications = async (req, res) => {
         title: n.title,
         message: n.message,
         date: n.created_at ? new Date(n.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent Today',
+        created_at: n.created_at,
+        raw_date: n.created_at,
         subCategory: 'LINE DEFECT REPORT',
         footerFlag,
         read: Boolean(n.is_read),

@@ -26,6 +26,37 @@ const formatStreamDate = (dateVal) => {
 };
 
 /**
+ * Helper to extract a normalized numeric epoch timestamp from any notification or request item
+ * for rock-solid chronological sorting (newest first).
+ */
+export const getNotificationSortTime = (item) => {
+  if (!item) return 0;
+  const candidates = [item.createdAt, item.rawDate, item.created_at, item.date, item.timeDisplay];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    if (candidate instanceof Date && !isNaN(candidate.getTime())) return candidate.getTime();
+    if (typeof candidate === 'number' && !isNaN(candidate) && candidate > 0) return candidate;
+    if (typeof candidate === 'string') {
+      const trimmed = candidate.trim();
+      const direct = new Date(trimmed.replace(' ', 'T'));
+      if (!isNaN(direct.getTime())) return direct.getTime();
+      const rawDirect = new Date(trimmed);
+      if (!isNaN(rawDirect.getTime())) return rawDirect.getTime();
+      const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[^\d]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+      if (dmyMatch) {
+        const [_, day, month, year, hours, minutes, seconds] = dmyMatch;
+        const d = new Date(Number(year), Number(month) - 1, Number(day), Number(hours || 0), Number(minutes || 0), Number(seconds || 0));
+        if (!isNaN(d.getTime())) return d.getTime();
+      }
+    }
+  }
+  const idCandidate = Number(item.notifId || item.rawId);
+  if (!isNaN(idCandidate) && idCandidate > 0) return idCandidate;
+  return 0;
+};
+
+
+/**
  * Read state overrides cache (persists read/unread state in localStorage)
 /**
  * Helper to get a stable, isolated user key for localStorage overrides.
@@ -246,6 +277,8 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           title: n.title,
           message: notifMessage,
           timeDisplay: formatStreamDate(n.date),
+          createdAt: n.created_at || n.date,
+          rawDate: n.created_at || n.date,
           subCategory: 'LINE DEFECT REPORT',
           footerFlag: isClosedNotif
             ? 'CASE_CLOSED'
@@ -308,6 +341,8 @@ export const fetchIhlrNotificationsFeed = async (user) => {
               title: `Defect Containment & Closure Approved – ${reqNo}`,
               message: `Rejection incident ${reqNo} (Model: ${r.model || 'OLS LONG ARM'}, Defect: "${r.problem || 'Quality variance'}") has been verified. 5-Why root cause countermeasure confirmed by ${r.analysis_done_by || 'Quality Assurance'}. Status: Closed.`,
               timeDisplay: formattedDate,
+              createdAt: r.created_at || r.batch_date,
+              rawDate: r.created_at || r.batch_date,
               subCategory: fourM,
               footerFlag: 'SYSTEM_LOGS',
               read: isReqRead,
@@ -325,6 +360,8 @@ export const fetchIhlrNotificationsFeed = async (user) => {
               title: `Occurrence Countermeasure in Progress – ${reqNo}`,
               message: `Line rejection report ${reqNo} ("${r.problem || 'Defect under investigation'}"). Assigned responsible person ${r.resp_person || 'Supervisor'} (${dept}) is executing containment and 5-Why countermeasure actions. Target Date: ${r.target_date ? String(r.target_date).split('T')[0] : 'TBD'}.`,
               timeDisplay: formattedDate,
+              createdAt: r.created_at || r.batch_date,
+              rawDate: r.created_at || r.batch_date,
               subCategory: fourM,
               footerFlag: 'ACTION_REQUIRED',
               read: isReqRead,
@@ -342,6 +379,8 @@ export const fetchIhlrNotificationsFeed = async (user) => {
               title: `New Defect Incident Logged – ${reqNo}`,
               message: `Incident ${reqNo} detected at ${r.problem_detected_at || 'Assembly Line'} for Model ${r.model || 'OLS LONG ARM'} (Rejected Qty: ${r.actual_qty || 1} units). Assigned to ${r.resp_person || 'Supervisor'} (${dept}). Quality team initiated 5-Why problem root cause isolation.`,
               timeDisplay: formattedDate,
+              createdAt: r.created_at || r.batch_date,
+              rawDate: r.created_at || r.batch_date,
               subCategory: fourM,
               footerFlag: 'ACTION_REQUIRED',
               read: isReqRead,
@@ -352,6 +391,16 @@ export const fetchIhlrNotificationsFeed = async (user) => {
         }
       });
     }
+
+    // Guarantee all IHLR notifications are sorted chronologically descending (newest first)
+    streamList.sort((a, b) => {
+      const timeA = getNotificationSortTime(a);
+      const timeB = getNotificationSortTime(b);
+      if (timeB !== timeA) return timeB - timeA;
+      const idA = Number(a.notifId || a.rawId || 0);
+      const idB = Number(b.notifId || b.rawId || 0);
+      return idB - idA;
+    });
 
     return streamList;
   } catch (err) {

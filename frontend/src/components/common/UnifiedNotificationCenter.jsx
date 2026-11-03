@@ -26,7 +26,8 @@ import {
 import {
   fetchNotificationsForTab,
   markNotificationReadForTab,
-  markAllNotificationsReadForTab
+  markAllNotificationsReadForTab,
+  getNotificationSortTime
 } from '../../services/notificationFeedService';
 
 const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
@@ -209,7 +210,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
 
   // Filtered List
   const filteredNotifications = useMemo(() => {
-    return notifications.filter((item) => {
+    const list = notifications.filter((item) => {
       if (activeFilterTab === 'UNREAD' && item.read) return false;
 
       if (searchTerm.trim()) {
@@ -223,6 +224,15 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
       }
 
       return true;
+    });
+
+    return [...list].sort((a, b) => {
+      const timeA = getNotificationSortTime(a);
+      const timeB = getNotificationSortTime(b);
+      if (timeB !== timeA) return timeB - timeA;
+      const idA = Number(a.notifId || a.rawId || 0);
+      const idB = Number(b.notifId || b.rawId || 0);
+      return idB - idA;
     });
   }, [notifications, activeFilterTab, searchTerm]);
 
