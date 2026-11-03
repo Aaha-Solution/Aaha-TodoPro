@@ -231,17 +231,78 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
       {/* 1. Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-         
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
+            <span
+              className={`font-bold uppercase tracking-wider font-mono px-2 py-0.5 rounded text-[10px] ${isIhlr
+                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                : 'bg-blue-50 text-blue-700 border border-blue-200'
+                }`}
+            >
+              {isIhlr ? 'IN-HOUSE LINE REJECTION' : 'PROCESS AUDIT OBSERVATION'}
+            </span>
+            <span>/</span>
+            <span>Alerts &amp; Dispatch</span>
+          </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Notifications Centre
           </h1>
-        
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            {isIhlr
+              ? 'Real-time line defect alerts, containment tracking, and 5-Why root-cause notifications.'
+              : 'Automated task assignments, approval sign-off requests, and audit lifecycle alerts.'}
+          </p>
         </div>
 
 
       </div>
 
- 
+      {/* 2. Unified Toolbar (Search & Mark All Read) */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Left Side: Search */}
+        <div className="flex flex-1 items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder={
+                isIhlr
+                  ? 'Search by ID, title, department, defect...'
+                  : 'Search by issue ID, title, auditor, department...'
+              }
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 bg-slate-50/80 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Right Side: Mark All Read */}
+        <div className="flex items-center shrink-0 self-end md:self-auto">
+          <button
+            type="button"
+            disabled={unreadCount === 0}
+            onClick={handleMarkAllRead}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition shadow-2xs ${unreadCount === 0
+              ? 'bg-slate-100/70 border-slate-200 text-slate-400 cursor-not-allowed opacity-60 select-none'
+              : 'border-slate-200/90 bg-white hover:bg-slate-50 text-slate-800 hover:border-slate-300 cursor-pointer'
+              }`}
+            title={unreadCount === 0 ? 'No unread notifications to mark as read' : 'Mark all notifications as read'}
+          >
+            <CheckCheck className={`w-4 h-4 ${unreadCount === 0 ? 'text-slate-400' : 'text-slate-600'}`} />
+            <span>Mark All Read</span>
+          </button>
+        </div>
+      </div>
+
       {/* 3. Filter Pills */}
       <div className="flex items-center gap-2 flex-wrap">
         <button
@@ -373,14 +434,6 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
 
             const defaultLink = isIhlr ? '/ihlr/all-requests' : '/process-audit/approvals';
 
-            const showBadge = Boolean(
-              item.badgeLabel &&
-              item.badgeLabel.trim() &&
-              !['REPORT LOGGED', 'PENDING SIGN-OFF', 'COUNTERMEASURE SUBMITTED', 'ACTION SUBMITTED'].includes(
-                String(item.badgeLabel).trim().toUpperCase()
-              )
-            );
-
             return (
               <div
                 key={item.id}
@@ -397,13 +450,11 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                       <IconComponent className="w-4 h-4" />
                     </div>
 
-                    {showBadge && (
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider text-white shadow-2xs ${badgeBg}`}
-                      >
-                        {item.badgeLabel}
-                      </span>
-                    )}
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider text-white shadow-2xs ${badgeBg}`}
+                    >
+                      {item.badgeLabel}
+                    </span>
 
                     <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">
                       {item.reqNo}
