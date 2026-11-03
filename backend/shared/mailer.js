@@ -392,9 +392,6 @@ export function generateEmailTemplate({
                     <div style="font-size: 16px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px; line-height: 1.25;">
                       INDIA NIPPON ELECTRICALS LIMITED
                     </div>
-                    <div style="font-size: 11px; color: #94a3b8; margin-top: 3px; font-weight: 500; letter-spacing: 0.2px;">
-                      Enterprise Quality Management &amp; Audit System
-                    </div>
                   </td>
                 </tr>
               </table>
@@ -430,17 +427,16 @@ export function generateEmailTemplate({
         </table>
 
         <!-- Action CTA -->
-        ${
-          actionButtonText && actionButtonUrl
-            ? `
+        ${actionButtonText && actionButtonUrl
+      ? `
           <div style="text-align: center; margin: 28px 0 20px 0;">
             <a href="${actionButtonUrl}" style="background: #2563eb; color: #ffffff; padding: 12px 28px; font-size: 13px; font-weight: 700; text-decoration: none; border-radius: 10px; display: inline-block; box-shadow: 0 2px 8px rgba(37,99,235,0.25);">
               ${actionButtonText} &rarr;
             </a>
           </div>
         `
-            : ''
-        }
+      : ''
+    }
 
         <p style="font-size: 12px; color: #64748b; margin: 20px 0 0 0; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 16px;">
           ${footerNote || 'Please do not reply directly to this automated email. Log in to the INEL portal to submit your containment actions and sign-offs.'}
@@ -542,15 +538,11 @@ export async function sendIhlrRequestEmails({
 
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
-    { label: 'Created By', value: createdByDisplay },
-    { label: 'CC Recipient(s)', value: ccDisplayStr },
-    { label: 'Defect / Problem', value: request.problem },
+    { label: 'Problem', value: request.problem },
     { label: 'Model', value: request.model },
-    { label: 'Detected At', value: request.problem_detected_at || 'Cell Inspection' },
-    { label: 'Shift / Batch Date', value: `Shift ${request.shift || 'I'} • ${request.batch_date || 'Today'}` },
-    { label: '4M Category', value: request.four_m || 'MAN' },
     { label: 'Actual Qty', value: String(request.actual_qty || 1) },
-    { label: 'Target Dept', value: assignedDept },
+    { label: 'Detected At', value: request.problem_detected_at || 'Cell Inspection' },
+    { label: 'Shift', value: ` ${request.shift || 'I'} • ${request.batch_date || 'Today'}` },
     { label: 'Assigned Person(s)', value: allAssignedPersonsDisplay },
     { label: 'Status', value: mailStatus },
   ];
@@ -588,18 +580,14 @@ export async function sendIhlrRequestEmails({
 
   // 2. EMAIL TO SELECTED PERSON IN FIELD (ASSIGNED USER)
   if (assignedEmail) {
-    const assignedSubject = assignedDept
-      ? `[Action Required] IHLR Rejection #${reqNo} Assigned to You (${assignedDept}) - Pending`
-      : `[Action Required] IHLR Rejection #${reqNo} Assigned to You - Pending`;
+
     const assignedHtml = generateEmailTemplate({
-      headerTitle: `Action Required: IHLR Incident #${reqNo}`,
-      headerSubtitle: `An in-house line rejection has been assigned to you for investigation and corrective action.`,
+      headerTitle: `Action Required: IHLR  #${reqNo}`,
+
       recipientName: assignedName,
-      greetingMessage: `<strong>${createdByDisplay}</strong> from ${creatorDept} has logged an in-house line rejection and designated you as the responsible owner for containment and 5-Why analysis.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
       tableData: tableSummary,
       actionButtonText: 'Open Report & Submit Countermeasure',
       actionButtonUrl: approvalsUrl,
-      footerNote: 'Immediate action required: please inspect the defective batch and record corrective containment measures in the portal.',
       badgeColor: '#f59e0b',
       badgeText: 'PENDING ACTION',
     });
@@ -674,7 +662,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
 
   // 1. Notify Creator (Raised Person / Requester)
   if (creatorEmail) {
-    const subject = isClosed 
+    const subject = isClosed
       ? `[IHLR Case Closed] Defect Report #${reqNo} Verified & Closed`
       : `[Action Required] Closer Completed Countermeasures for #${reqNo} (Awaiting Review)`;
 
@@ -973,7 +961,7 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
     try {
       const parsed = JSON.parse(request.prod_why_why);
       closerWhy1 = Array.isArray(parsed) && parsed.length > 0 ? (parsed[0] || '—') : '—';
-    } catch {}
+    } catch { }
   }
   if (closerWhy1 === '—' && request.root_cause) {
     closerWhy1 = request.root_cause;
@@ -1006,7 +994,7 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
 
   // 1. Notify Creator (Raised Person / Auditor)
   if (creatorEmail) {
-    const subject = isClosed 
+    const subject = isClosed
       ? `[Process Audit Case Closed] Audit Finding #${reqNo} Verified & Closed`
       : `[Action Required] Closer Completed Countermeasures for #${reqNo} (Awaiting Review)`;
 
