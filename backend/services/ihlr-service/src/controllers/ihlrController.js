@@ -722,7 +722,7 @@ export const createIhlrRequest = async (req, res) => {
             creatorUser.email,
             created.id,
             reqNo,
-            `IHLR Defect Report: #${reqNo}`,
+            `IHLR Defect Report Logged: #${reqNo}`,
             (() => {
               const d = (created.resp || (assignedUser && assignedUser.department) || '').trim();
               return `Your IHLR defect observation report for "${created.model}" has been logged and assigned to ${assignedNamesDisplay}${d ? ` (${d})` : ''}.`;
@@ -1547,7 +1547,7 @@ export const updateIhlrRequest = async (req, res) => {
                 admin.email || 'admin@gmail.com',
                 updated.id || id,
                 reqNo,
-                `Admin Action Required: Sign-Off Review #${reqNo}`,
+                `Admin Action Required: Pending Sign-Off #${reqNo}`,
                 `Closer ${closerName} (${closerDept}) has completed countermeasures for #${reqNo} (${updated.model || 'Model'}). Action required: Please enter validation remarks and update status to finalize closure.`
               ]
             ).catch((e) => console.warn('[Admin Notif Error]:', e.message));
@@ -1755,7 +1755,7 @@ export const getIhlrNotifications = async (req, res) => {
       const notifications = requests.slice(0, 15).map((r) => {
         const isClosed = (r.status || '').toUpperCase() === 'CLOSED';
         const isInProgress = (r.status || '').toUpperCase() === 'IN_PROGRESS';
-        let title = 'New IHLR Defect Report';
+        let title = 'New IHLR Report Logged';
         let msg = `${String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`} (Model: ${r.model || '—'}) reported with defect "${r.problem || '—'}".`;
 
         if (isClosed) {
@@ -1794,12 +1794,12 @@ export const getIhlrNotifications = async (req, res) => {
       let dept = 'PRODUCTION';
 
       if (isPendingSignoff) {
-        badgeLabel = '';
+        badgeLabel = 'PENDING SIGN-OFF';
         accentColor = 'amber';
         footerFlag = 'ACTION_REQUIRED';
         dept = 'QUALITY SIGN-OFF';
       } else if (isConfirmed) {
-        badgeLabel = '';
+        badgeLabel = 'REPORT LOGGED';
         accentColor = 'blue';
         footerFlag = 'SYSTEM_LOGS';
         dept = 'QAD';
@@ -1809,7 +1809,7 @@ export const getIhlrNotifications = async (req, res) => {
         footerFlag = 'CASE_CLOSED';
         dept = 'QUALITY VERIFIED';
       } else if (isUpdated) {
-        badgeLabel = '';
+        badgeLabel = 'COUNTERMEASURE SUBMITTED';
         accentColor = 'indigo';
         footerFlag = 'OPERATIONAL_UPDATE';
         dept = 'PRODUCTION';

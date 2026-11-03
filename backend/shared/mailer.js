@@ -561,7 +561,7 @@ export async function sendIhlrRequestEmails({
   if (creatorEmail && !skipCreator) {
     const creatorSubject = `[IHLR Confirmation] Defect Request #${reqNo} Successfully Submitted (Pending)`;
     const creatorHtml = generateEmailTemplate({
-      headerTitle: `IHLR Defect Report: #${reqNo}`,
+      headerTitle: `IHLR Defect Report Logged: #${reqNo}`,
       headerSubtitle: `Your In-House Line Rejection analysis report has been recorded and dispatched for containment.`,
       recipientName: creatorName,
       greetingMessage: `Your IHLR defect observation report for <strong>${request.model}</strong> has been logged into the database and assigned to <strong>${allAssignedPersonsDisplay}</strong>${assignedDeptDisplay} for 5-Why root cause countermeasure.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
@@ -885,7 +885,7 @@ export async function sendProcessAuditRequestEmails({
   if (creatorEmail && !skipCreator) {
     const creatorSubject = `[Process Audit Confirmation] Observation Finding #${reqNo} Successfully Submitted (Pending)`;
     const creatorHtml = generateEmailTemplate({
-      headerTitle: `Process Audit Report: #${reqNo}`,
+      headerTitle: `Process Audit Report Logged: #${reqNo}`,
       headerSubtitle: `Your process audit observation finding has been recorded and assigned for root cause containment.`,
       recipientName: creatorName,
       greetingMessage: `Your Process Audit observation report for <strong>${request.model || request.product}</strong> has been logged into the database and assigned to <strong>${assignedName}</strong> (${assignedDept}) for 5-Why root cause analysis and corrective action.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,

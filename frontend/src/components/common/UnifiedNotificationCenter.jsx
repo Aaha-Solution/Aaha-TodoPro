@@ -218,7 +218,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
         const matchesTitle = (item.title || '').toLowerCase().includes(query);
         const matchesDept = (item.department || '').toLowerCase().includes(query);
         const matchesMsg = (item.message || '').toLowerCase().includes(query);
-        const matchesBadge = !['REPORT LOGGED', 'PENDING SIGN-OFF', 'COUNTERMEASURE SUBMITTED', 'ACTION SUBMITTED'].includes(String(item.badgeLabel || '').trim().toUpperCase()) && (item.badgeLabel || '').toLowerCase().includes(query);
+        const matchesBadge = (item.badgeLabel || '').toLowerCase().includes(query);
         return matchesId || matchesTitle || matchesDept || matchesMsg || matchesBadge;
       }
 
@@ -235,13 +235,59 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Notifications Centre
           </h1>
+        
         </div>
 
 
       </div>
 
-   
+ 
+      {/* 3. Filter Pills */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setActiveFilterTab('ALL')}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${activeFilterTab === 'ALL'
+            ? 'bg-[#2563eb] text-white shadow-xs'
+            : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
+            }`}
+        >
+          <span>All Alerts</span>
+          <span
+            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${activeFilterTab === 'ALL' ? 'bg-white/20 text-white font-bold' : 'bg-slate-100 text-slate-700 font-bold'
+              }`}
+          >
+            {totalCount}
+          </span>
+        </button>
 
+        <button
+          type="button"
+          onClick={() => setActiveFilterTab('UNREAD')}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${activeFilterTab === 'UNREAD'
+            ? 'bg-[#2563eb] text-white shadow-xs'
+            : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
+            }`}
+        >
+          <span>Unread</span>
+          <span
+            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${unreadCount > 0 ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-500'
+              }`}
+          >
+            {unreadCount}
+          </span>
+        </button>
+      </div>
+
+      {/* 4. Section Divider: LIVE ACTIVITY STREAMS */}
+      <div className="relative flex items-center justify-center py-2">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-slate-200/90" />
+        </div>
+        <div className="relative px-4 bg-[#f8fafc] text-[10px] font-bold text-slate-400 tracking-widest uppercase">
+          LIVE ACTIVITY STREAMS
+        </div>
+      </div>
 
       {/* 5. Notifications Cards List */}
       <div className="space-y-4">
@@ -329,6 +375,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
 
             const showBadge = Boolean(
               item.badgeLabel &&
+              item.badgeLabel.trim() &&
               !['REPORT LOGGED', 'PENDING SIGN-OFF', 'COUNTERMEASURE SUBMITTED', 'ACTION SUBMITTED'].includes(
                 String(item.badgeLabel).trim().toUpperCase()
               )
@@ -351,11 +398,11 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
                     </div>
 
                     {showBadge && (
-<span
-                      className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider text-white shadow-2xs ${badgeBg}`}
-                    >
-                      {item.badgeLabel}
-                    </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider text-white shadow-2xs ${badgeBg}`}
+                      >
+                        {item.badgeLabel}
+                      </span>
                     )}
 
                     <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">

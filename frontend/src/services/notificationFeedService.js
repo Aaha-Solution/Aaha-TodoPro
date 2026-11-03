@@ -271,7 +271,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           title: cleanNotificationText(n.title),
           message: cleanNotificationText(notifMessage),
           timeDisplay: formatStreamDate(n.date),
-          subCategory: 'LINE DEFECT REPORT',
+      
           footerFlag: isClosedNotif
             ? 'CASE_CLOSED'
             : isPendingSignoff
