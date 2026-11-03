@@ -152,7 +152,7 @@ const IhlrApprovals = () => {
   // 2. Admin Only Fields (Remarks, Status):
   //    Strictly for Admins only. Hidden for regular users.
   const canUpdateAdminFields = Boolean(
-    selectedRequest && isAdmin
+    selectedRequest && isAdmin && !isSelectedClosed
   );
 
   const isLockedForCloserUser = !isAdmin && (isSelectedClosed || hasCloserSubmitted);
@@ -892,6 +892,11 @@ const IhlrApprovals = () => {
     if (e && e.preventDefault) e.preventDefault();
     if (!selectedRequest) return;
 
+    if (isSelectedClosed) {
+      modalWarning('This incident is closed. Editing is disabled.');
+      return;
+    }
+
     if (adminEditCloser) {
       modalWarning('Admin Sign-Off is disabled while editing closer fields. Please save or cancel closer log updates first.');
       return;
@@ -1344,6 +1349,8 @@ const IhlrApprovals = () => {
                           placeholder={
                             !selectedRequest
                               ? 'Select request on right'
+                              : isSelectedClosed
+                              ? 'Incident is closed (Read-only)'
                               : canUpdateCloserFields
                               ? `Enter ${label} cause...${isMandatory ? ' (Mandatory)' : ''}`
                               : isAdmin
@@ -1381,7 +1388,7 @@ const IhlrApprovals = () => {
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
+                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1407,6 +1414,8 @@ const IhlrApprovals = () => {
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
+                    : isSelectedClosed
+                    ? 'Incident is closed (Read-only)'
                     : canUpdateCloserFields
                     ? 'Describe temporary actions taken / countermeasures...'
                     : isAdmin
@@ -1439,7 +1448,7 @@ const IhlrApprovals = () => {
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1515,7 +1524,7 @@ const IhlrApprovals = () => {
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1570,7 +1579,7 @@ const IhlrApprovals = () => {
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1582,6 +1591,8 @@ const IhlrApprovals = () => {
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
+                    : isSelectedClosed
+                    ? 'Incident is closed (Read-only)'
                     : canUpdateCloserFields
                     ? 'Enter person name...'
                     : 'Read-only (Closer only)'
@@ -1650,7 +1661,7 @@ const IhlrApprovals = () => {
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
+                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1676,6 +1687,8 @@ const IhlrApprovals = () => {
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
+                    : isSelectedClosed
+                    ? 'Incident is closed (Read-only)'
                     : canUpdateCloserFields
                     ? 'Describe permanent corrective action / long-term countermeasure...'
                     : isAdmin
@@ -1708,7 +1721,7 @@ const IhlrApprovals = () => {
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1783,7 +1796,7 @@ const IhlrApprovals = () => {
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1832,7 +1845,7 @@ const IhlrApprovals = () => {
                       </span>
                     ) : (
                       <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
+                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
                       </span>
                     )
                   )}
@@ -1844,6 +1857,8 @@ const IhlrApprovals = () => {
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
+                    : isSelectedClosed
+                    ? 'Incident is closed (Read-only)'
                     : canUpdateCloserFields
                     ? 'Enter person name...'
                     : 'Read-only (Closer only)'
@@ -1902,6 +1917,11 @@ const IhlrApprovals = () => {
                 >
                   Select a Request to Update
                 </button>
+              ) : isSelectedClosed ? (
+                <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Incident Closed — Updates Locked</span>
+                </div>
               ) : isAdmin ? (
                 adminEditCloser ? (
                   <div className="flex items-center gap-2">
@@ -1948,11 +1968,6 @@ const IhlrApprovals = () => {
                     <span>Edit Closer Fields</span>
                   </button>
                 )
-              ) : isSelectedClosed ? (
-                <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Incident Closed — Updates Locked (Admin Only)</span>
-                </div>
               ) : hasCloserSubmitted ? (
                 <div className="w-full py-2.5 px-4 rounded-xl border border-blue-200 bg-blue-50/90 text-blue-900 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-blue-600" />
@@ -2356,7 +2371,7 @@ const IhlrApprovals = () => {
                   <textarea
                     rows={2}
                     maxLength={1000}
-                    disabled={!selectedRequest || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
+                    disabled={!selectedRequest || isSelectedClosed || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
                     value={closerRemarks}
                     onKeyDown={(e) => {
                       if (e.key === ' ' && (!closerRemarks || e.target.selectionStart === 0)) {
@@ -2364,7 +2379,7 @@ const IhlrApprovals = () => {
                       }
                     }}
                     onChange={(e) => {
-                      if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
+                      if (isSelectedClosed || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
                       const val = (e.target.value || '').replace(/^\s+/, '');
                       setCloserRemarks(val);
                       if (!val.trim()) {
@@ -2377,21 +2392,27 @@ const IhlrApprovals = () => {
                     placeholder={
                       !selectedRequest
                         ? 'Click a row on the right to select'
+                        : isSelectedClosed
+                        ? 'Incident is closed. Remarks are finalized (Read-Only).'
                         : adminEditCloser
                         ? 'Disabled while editing closer fields...'
                         : isCloserDataToBeUpdated && !isReassignOpen
                         ? 'Awaiting closer Temporary Action & Target Date...'
                         : 'Enter remarks and validation summary...'
                     }
-                    className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition resize-none ${
-                      adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
-                        ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed select-none'
+                    className={`w-full px-3.5 py-2 border rounded-xl outline-none transition resize-none ${
+                      !selectedRequest || isSelectedClosed || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
+                        ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                         : remarksError
-                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                        : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-800'
+                        : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
                     }`}
                   />
-                  {adminEditCloser ? (
+                  {isSelectedClosed ? (
+                    <p className="text-[10px] text-emerald-700 font-medium mt-0.5">
+                      Incident is closed. Remarks are finalized.
+                    </p>
+                  ) : adminEditCloser ? (
                     <p className="text-[10px] text-slate-400 mt-0.5">
                       Disabled while editing closer fields.
                     </p>
@@ -2428,14 +2449,17 @@ const IhlrApprovals = () => {
                   </div>
                   <input
                     type="text"
-                    disabled={!selectedRequest || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
+                    disabled={!selectedRequest || isSelectedClosed || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
                     placeholder={
                       !selectedRequest
                         ? 'Click a row on the right to select'
+                        : isSelectedClosed
+                        ? 'Incident is closed (Read-Only)'
                         : `e.g. Leave empty to attach ${getLoggedInUserName()}`
                     }
                     value={reviewedBy || ''}
                     onKeyDown={(e) => {
+                      if (isSelectedClosed) return;
                       if (e.key === ' ' && (!reviewedBy || e.target.selectionStart === 0)) {
                         e.preventDefault();
                         return;
@@ -2446,7 +2470,7 @@ const IhlrApprovals = () => {
                       }
                     }}
                     onChange={(e) => {
-                      if (adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
+                      if (isSelectedClosed || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)) return;
                       const raw = e.target.value;
                       const cleaned = raw.replace(/[0-9]/g, '').replace(/^\s+/, '');
                       setReviewedBy(cleaned);
@@ -2457,12 +2481,12 @@ const IhlrApprovals = () => {
                       }
                     }}
                     onBlur={() => setReviewedBy((prev) => (prev || '').trim())}
-                    className={`w-full px-3.5 py-2 border rounded-xl text-slate-800 outline-none transition font-semibold ${
-                      adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
-                        ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed select-none'
+                    className={`w-full px-3.5 py-2 border rounded-xl outline-none transition font-semibold ${
+                      !selectedRequest || isSelectedClosed || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)
+                        ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed select-none'
                         : reviewedByError
-                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                        : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-800'
+                        : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
                     }`}
                   />
                   {reviewedByError ? (
@@ -2497,14 +2521,14 @@ const IhlrApprovals = () => {
                   <select
                     value={isReassignOpen ? 'OPEN' : closerStatus}
                     onChange={(e) => {
-                      if (adminEditCloser || isReassignOpen || isCloserDataToBeUpdated) return;
+                      if (isSelectedClosed || adminEditCloser || isReassignOpen || isCloserDataToBeUpdated) return;
                       setCloserStatus(e.target.value);
                       if (e.target.value) setStatusError(false);
                     }}
-                    disabled={adminEditCloser || !selectedRequest || isReassignOpen || isCloserDataToBeUpdated}
+                    disabled={!selectedRequest || isSelectedClosed || adminEditCloser || isReassignOpen || isCloserDataToBeUpdated}
                     className={`w-full px-3.5 py-2.5 border rounded-xl font-bold outline-none transition ${
-                      adminEditCloser || isCloserDataToBeUpdated
-                        ? 'cursor-not-allowed bg-slate-100 border-slate-200 text-slate-400 select-none'
+                      !selectedRequest || isSelectedClosed || adminEditCloser || isCloserDataToBeUpdated
+                        ? 'cursor-not-allowed bg-slate-100 border-slate-200 text-slate-500 select-none'
                         : isReassignOpen
                         ? 'cursor-not-allowed bg-slate-50 border-slate-200 text-slate-700'
                         : statusError
@@ -2529,7 +2553,11 @@ const IhlrApprovals = () => {
                     </p>
                   ) : (
                     <p className="text-[10px] mt-0.5">
-                      {adminEditCloser ? (
+                      {isSelectedClosed ? (
+                        <span className="text-emerald-700 font-semibold">
+                          Incident is closed. Status is locked.
+                        </span>
+                      ) : adminEditCloser ? (
                         <span className="text-slate-400">
                           Disabled while editing closer fields.
                         </span>
@@ -2564,6 +2592,11 @@ const IhlrApprovals = () => {
                     >
                       Select a Request to Review
                     </button>
+                  ) : isSelectedClosed ? (
+                    <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Incident Fully Validated &amp; Closed — Updates Locked</span>
+                    </div>
                   ) : adminEditCloser ? (
                     <button
                       type="button"
@@ -2599,7 +2632,7 @@ const IhlrApprovals = () => {
                       ) : (
                         <>
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>{isReassignOpen ? 'Confirm & Reassign Closer' : isSelectedClosed ? 'Update Admin Review & Remarks' : 'Save Admin Review & Status Sign-Off'}</span>
+                          <span>{isReassignOpen ? 'Confirm & Reassign Closer' : 'Save Admin Review & Status Sign-Off'}</span>
                         </>
                       )}
                     </button>

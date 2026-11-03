@@ -1797,11 +1797,13 @@ const ProcessAuditApprovals = () => {
                           placeholder={
                             !selectedRequest
                               ? 'Select request on right'
-                              : canUpdateCloserFields
-                                ? `Enter ${label} cause...${isMandatory ? ' (Mandatory)' : ''}`
-                                : isAdmin
-                                  ? `Click Edit Closer Fields below to edit ${label}...`
-                                  : `Enter ${label} cause...`
+                              : isSelectedClosed
+                                ? 'Incident closed (Read-only)'
+                                : canUpdateCloserFields
+                                  ? `Enter ${label} cause...${isMandatory ? ' (Mandatory)' : ''}`
+                                  : isAdmin
+                                    ? `Click Edit Closer Fields below to edit ${label}...`
+                                    : `Enter ${label} cause...`
                           }
                           className={`w-full px-3 py-1.5 rounded-lg text-slate-800 outline-none transition disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed ${hasError
                               ? 'bg-rose-50/20 border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
@@ -1848,11 +1850,13 @@ const ProcessAuditApprovals = () => {
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
-                    : canUpdateCloserFields
-                      ? 'Describe temporary actions taken...'
-                      : isAdmin
-                        ? 'Click Edit Closer Fields below to edit...'
-                        : 'Describe temporary actions taken...'
+                    : isSelectedClosed
+                      ? 'Incident closed (Read-only)'
+                      : canUpdateCloserFields
+                        ? 'Describe temporary actions taken...'
+                        : isAdmin
+                          ? 'Click Edit Closer Fields below to edit...'
+                          : 'Describe temporary actions taken...'
                 }
                 className={`w-full px-3.5 py-2 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${closerActionError
                     ? 'border border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
@@ -2066,11 +2070,13 @@ const ProcessAuditApprovals = () => {
                 placeholder={
                   !selectedRequest
                     ? 'Click a row on the right to select'
-                    : canUpdateCloserFields
-                      ? 'Describe permanent corrective action...'
-                      : isAdmin
-                        ? 'Click Edit Closer Fields below to edit...'
-                        : 'Describe permanent corrective action...'
+                    : isSelectedClosed
+                      ? 'Incident closed (Read-only)'
+                      : canUpdateCloserFields
+                        ? 'Describe permanent corrective action...'
+                        : isAdmin
+                          ? 'Click Edit Closer Fields below to edit...'
+                          : 'Describe permanent corrective action...'
                 }
                 className={`w-full px-3.5 py-2 rounded-xl text-slate-800 outline-none disabled:bg-slate-100/70 disabled:text-slate-500 disabled:cursor-not-allowed transition resize-none ${closerPermanentFixError
                     ? 'border border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
