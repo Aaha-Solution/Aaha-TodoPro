@@ -142,7 +142,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
       >
         <div className="p-5 flex flex-col flex-1 overflow-y-auto">
           {/* Top Logo and Title */}
-          <div className="flex items-center justify-between pb-5 border-b border-slate-800/80">
+          <div className="flex items-center justify-between pb-5 border-b border-slate-800/80 mb-6">
             <div 
               className="flex items-center gap-3 cursor-pointer"
               onClick={() => navigate('/system-selection')}
@@ -166,34 +166,6 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
             <button onClick={closeSidebar} className="p-1 text-slate-400 hover:text-white lg:hidden">
               <X className="w-5 h-5" />
             </button>
-          </div>
-
-          {/* User Profile Card */}
-          <div className="my-5 p-3 rounded-2xl bg-[#131b2e] border border-slate-800 flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-full ${isIhlr ? 'bg-amber-600' : 'bg-blue-600'} text-white flex items-center justify-center font-bold text-sm shadow-sm`}>
-              {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-            </div>
-            <div className="text-left flex-1 min-w-0">
-              <p className="text-xs font-bold text-white truncate">{user?.name || 'User'}</p>
-              <p className="text-[10px] text-slate-400">
-                {isIhlr 
-                  ? (isQad ? 'QAD Team' : (userDept ? userDept.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Production')) 
-                  : (userDept ? userDept.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Request Creator')}
-              </p>
-            </div>
-          </div>
-
-          {/* Active System Static Label */}
-          <div className="mb-6 p-3 rounded-2xl bg-[#101728] border border-slate-800/90 select-none">
-            <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400 block font-mono">
-              ACTIVE SYSTEM
-            </span>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className={`w-2 h-2 rounded-full ${isIhlr ? 'bg-amber-500' : 'bg-blue-500'} animate-pulse`}></span>
-              <span className="text-xs font-bold text-white">
-                {isIhlr ? 'In-House Line Rejection' : 'Process Audit Observation'}
-              </span>
-            </div>
           </div>
 
           {/* Navigation Links */}
