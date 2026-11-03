@@ -487,12 +487,10 @@ const IhlrApprovals = () => {
     }
     try {
       const data = await ihlrService.getRequests();
-      // Filter out CLOSED requests: once closed they should not be shown in the approvals tab
-      const nonClosedData = (Array.isArray(data) ? data : []).filter(
-        (r) => String(r.status || '').toUpperCase() !== 'CLOSED'
-      );
+      // Maintain all requests including CLOSED so closed requests stay visible in the approvals tab
+      const rawData = Array.isArray(data) ? data : [];
       // Enforce that closer non-admins only see requests assigned to them (not requests they raised)
-      const visibleData = isAdmin ? nonClosedData : nonClosedData.filter((r) => isIhlrRequestAssignedToUser(r, user));
+      const visibleData = isAdmin ? rawData : rawData.filter((r) => isIhlrRequestAssignedToUser(r, user));
       setRequests(visibleData);
 
       // Check if a specific request was targeted via navigation (e.g. from Notifications Centre)
@@ -1009,36 +1007,15 @@ const IhlrApprovals = () => {
       setIsReassignUserDropdownOpen(false);
       setReassignUserSearch('');
 
-      const isNowClosed = updated && String(updated.status || '').toUpperCase() === 'CLOSED';
-
       // Immediate optimistic table row update in local state
-      setRequests((prev) => {
-        if (isNowClosed) {
-          return prev.filter((r) => r.id !== updated.id);
-        }
-        return prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r));
-      });
+      setRequests((prev) =>
+        prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r))
+      );
 
-      if (updated && !isNowClosed && !isReassigned) {
+      if (updated && !isReassigned) {
         populateForm(updated);
       } else {
         clearForm();
-        const normalizeReq = (str) => String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const normClosed = normalizeReq(selectedRequest?.req_no);
-        const normSearch = normalizeReq(search);
-        const normId = String(selectedRequest?.id || '');
-        const isSearchTargetingClosed = Boolean(
-          normSearch && (
-            normSearch === normClosed ||
-            normSearch === normId ||
-            normSearch === `ihlr${normId}` ||
-            (normClosed && (normClosed.includes(normSearch) || normSearch.includes(normClosed)))
-          )
-        );
-        if (isSearchTargetingClosed) {
-          setSearch('');
-          navigate(location.pathname, { replace: true, state: {} });
-        }
       }
       setAdminEditCloser(false);
       window.dispatchEvent(new CustomEvent('ihlrLiveUpdate', { detail: updated }));
@@ -1064,11 +1041,9 @@ const IhlrApprovals = () => {
     // Restrict visibility for closer non-admins strictly to their assigned requests (not requests they raised)
     if (!isAdmin && !isIhlrRequestAssignedToUser(r, user)) return false;
 
-    // Never show CLOSED requests in approvals tab
-    if (String(r.status || '').toUpperCase() === 'CLOSED') return false;
-
+    const isClosed = String(r.status || '').toUpperCase() === 'CLOSED';
     const isReqOpen = String(r.status || '').toUpperCase() === 'OPEN';
-    const isCompleted = !isReqOpen && (
+    const isCompleted = !isReqOpen && !isClosed && (
       String(r.status || '').toUpperCase() === 'IN_PROGRESS' ||
       String(r.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
       String(r.status || '').toUpperCase() === 'AWAITING_REVIEW' ||
@@ -1088,10 +1063,12 @@ const IhlrApprovals = () => {
       (r.analysis_done_by || '').toLowerCase().includes(search.toLowerCase()) ||
       (r.resp_person || '').toLowerCase().includes(search.toLowerCase());
 
+    const selStatus = (selectedStatus || 'All').toUpperCase();
     const matchesStatus =
-      selectedStatus === 'All' ||
-      (selectedStatus === 'IN_PROGRESS' && isCompleted) ||
-      (selectedStatus === 'OPEN' && !isCompleted);
+      selStatus === 'ALL' ||
+      (selStatus === 'CLOSED' && isClosed) ||
+      ((selStatus === 'IN_PROGRESS' || selStatus === 'AWAITING REVIEW') && isCompleted) ||
+      ((selStatus === 'OPEN' || selStatus === 'PENDING') && !isCompleted && !isClosed);
     return matchesSearch && matchesStatus;
   });
 
@@ -2049,8 +2026,18 @@ const IhlrApprovals = () => {
                       </span>
                     </div>
                   </div>
+                ) : isSelectedClosed ? (
+                  <div className="p-2.5 px-3 rounded-xl border border-emerald-200 bg-emerald-50/80 text-emerald-900 text-[11px] flex items-center gap-2 animate-in fade-in">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div className="leading-tight">
+                      <span className="font-bold">Incident Closed: </span>
+                      <span className="text-emerald-800">
+                        This request is closed. Admin review remarks and sign-off are maintained.
+                      </span>
+                    </div>
+                  </div>
                 ) : (
-                  selectedRequest && !isSelectedClosed && (
+                  selectedRequest && (
                     <div className="p-2.5 px-3 rounded-xl border border-amber-200 bg-amber-50/70 text-amber-900 text-[11px] flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                       <div className="leading-tight">
@@ -2612,7 +2599,7 @@ const IhlrApprovals = () => {
                       ) : (
                         <>
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>{isReassignOpen ? 'Confirm & Reassign Closer' : 'Save Admin Review & Status Sign-Off'}</span>
+                          <span>{isReassignOpen ? 'Confirm & Reassign Closer' : isSelectedClosed ? 'Update Admin Review & Remarks' : 'Save Admin Review & Status Sign-Off'}</span>
                         </>
                       )}
                     </button>
@@ -2655,12 +2642,16 @@ const IhlrApprovals = () => {
             <div className="w-full sm:w-44">
               <select
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                onChange={(e) => {
+                  setSelectedStatus(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
               >
                 <option value="All">All Decisions</option>
                 <option value="OPEN">Pending</option>
                 <option value="IN_PROGRESS">Awaiting Review</option>
+                <option value="CLOSED">Closed</option>
               </select>
             </div>
 
@@ -2918,12 +2909,9 @@ const IhlrApprovals = () => {
         }}
         onUpdated={(updatedReq) => {
           if (updatedReq) {
-            setRequests((prev) => {
-              if (String(updatedReq.status || '').toUpperCase() === 'CLOSED') {
-                return prev.filter((r) => r.id !== updatedReq.id);
-              }
-              return prev.map((r) => (r.id === updatedReq.id ? { ...r, ...updatedReq } : r));
-            });
+            setRequests((prev) =>
+              prev.map((r) => (r.id === updatedReq.id ? { ...r, ...updatedReq } : r))
+            );
             if (activeModalRequest) {
               setActiveModalRequest(updatedReq);
             }
