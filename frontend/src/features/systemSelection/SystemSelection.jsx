@@ -105,7 +105,7 @@ const SystemSelection = () => {
       icon: AlertCircle,
       title: 'IHLR',
       description:
-        'In-House Line Rejection monitoring, scrap analysis, defect categorization, root cause containment & PPM performance tracking.',
+        'In-House Line Rejection Analysis  and Action Status .',
       tags: ['Line Rejection', 'Scrap Monitoring', 'Root Cause 8D'],
       path: '/ihlr/dashboard',
     },
@@ -214,15 +214,11 @@ const SystemSelection = () => {
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 sm:py-14 flex flex-col justify-center">
         {/* Title Header */}
         <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-blue-600 mb-2 font-mono">
-            WORKSPACE PORTAL SELECTION
-          </p>
+          
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
             Select Operational System
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-2.5 font-normal leading-relaxed">
-            Please select one of the core manufacturing modules below to access the main workflow workspace.
-          </p>
+          
         </div>
 
         {/* 3 Operational System Cards */}
@@ -259,17 +255,8 @@ const SystemSelection = () => {
                     {mod.description}
                   </p>
 
-                  {/* Feature Tags */}
-                  <div className="flex flex-wrap gap-2 mb-8">
-                    {mod.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-[11px] font-medium text-slate-600 bg-slate-100/80 px-2.5 py-1 rounded-md border border-slate-200/50"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+                 
+                
                 </div>
 
                 {/* Bottom Launch Module Action Row */}
