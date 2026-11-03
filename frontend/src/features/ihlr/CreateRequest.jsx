@@ -1628,7 +1628,7 @@ const IhlrCreateRequest = () => {
             <Paperclip className="w-5 h-5 text-slate-700 mt-0.5" />
             <div>
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center">
-                <span>2. Defect Evidence / Attachment Upload (Images, PDF, Word, Excel, PPT)</span>
+                <span>2. Defect Evidence / Attachment Upload (Images, PDF, Word, Excel, PPT, JPEG)</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </h2>
               <p className="text-xs text-slate-500">
@@ -1859,9 +1859,7 @@ const IhlrCreateRequest = () => {
               </div>
             </div>
           ) : (
-            <div className="flex-1 text-xs text-slate-400 font-medium hidden sm:block">
-              All mandatory fields are marked with <span className="text-rose-500 font-bold">*</span>
-            </div>
+            <div className="flex-1" />
           )}
 
           {/* Action Buttons: Clear Form & Submit */}
@@ -1886,12 +1884,12 @@ const IhlrCreateRequest = () => {
               ) : (
                 <>
                   <Send className="w-4 h-4" />
-                  <span>{submitting ? 'Submitting...' : 'Submit Report'}</span>
+                  <span>{submitting ? 'Submitting...' : 'Submit'}</span>
                 </>
               )}
             </button>
           </div>
-          j        </div>
+        </div>
       </form>
 
       {/* Universal In-Page Attachment Preview Modal (Interactive Excel Spreadsheet, PDF, Images) */}
