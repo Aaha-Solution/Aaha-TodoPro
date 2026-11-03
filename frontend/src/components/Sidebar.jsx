@@ -52,22 +52,24 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
     }
   };
 
-  const navItems = isIhlr
+  const isUserRole = user?.role?.toUpperCase() === 'USER' || (!isAdmin);
+  const prefix = isIhlr ? '/ihlr' : '/process-audit';
+
+  const navItems = isUserRole
     ? [
-        { name: 'Dashboard', path: '/ihlr/dashboard', icon: LayoutDashboard },
-        ...(canCreate ? [{ name: 'Create Request', path: '/ihlr/create-request', icon: Plus, isAction: true }] : []),
-        { name: 'All Requests', path: '/ihlr/all-requests', icon: Layers },
-        { name: isAdmin ? 'All Approvals' : 'Approvals', path: '/ihlr/approvals', icon: ClipboardCheck },
-        ...(isAdmin ? [{ name: 'User Management', path: '/ihlr/users', icon: Users }] : []),
-        { name: 'Notifications', path: '/ihlr/notifications', icon: Bell },
+        { name: 'Dashboard', path: `${prefix}/dashboard`, icon: LayoutDashboard },
+        { name: 'My Action', path: `${prefix}/approvals`, icon: ClipboardCheck },
+        { name: 'My Notifications', path: `${prefix}/notifications`, icon: Bell },
+        { name: 'All Requests', path: `${prefix}/all-requests`, icon: Layers },
+        ...(canCreate ? [{ name: 'Create Request', path: `${prefix}/create-request`, icon: Plus, isAction: true }] : []),
       ]
     : [
-        { name: 'Dashboard', path: '/process-audit/dashboard', icon: LayoutDashboard },
-        ...(canCreate ? [{ name: 'Create Request', path: '/process-audit/create-request', icon: Plus, isAction: true }] : []),
-        { name: 'All Requests', path: '/process-audit/all-requests', icon: Layers },
-        { name: isAdmin ? 'All Approvals' : 'Approvals', path: '/process-audit/approvals', icon: ClipboardCheck },
-        ...(isAdmin ? [{ name: 'User Management', path: '/process-audit/users', icon: Users }] : []),
-        { name: 'Notifications', path: '/process-audit/notifications', icon: Bell },
+        { name: 'Dashboard', path: `${prefix}/dashboard`, icon: LayoutDashboard },
+        ...(canCreate ? [{ name: 'Create Request', path: `${prefix}/create-request`, icon: Plus, isAction: true }] : []),
+        { name: 'All Requests', path: `${prefix}/all-requests`, icon: Layers },
+        { name: 'My Action', path: `${prefix}/approvals`, icon: ClipboardCheck },
+        ...(isAdmin ? [{ name: 'User Management', path: `${prefix}/users`, icon: Users }] : []),
+        { name: 'My Notifications', path: `${prefix}/notifications`, icon: Bell },
       ];
 
   const isItemActive = (item) => {
@@ -192,7 +194,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
                 >
                   <Icon className="w-4 h-4 stroke-[2]" />
                   <span className="flex-1 text-left">{item.name}</span>
-                  {item.name === 'Notifications' && unreadCount > 0 && (
+                  {(item.name === 'My Notifications' || item.name === 'Notifications') && unreadCount > 0 && (
                     <span className="relative flex items-center justify-center">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                       <span className="relative px-1.5 py-0.5 text-[10px] font-extrabold bg-red-600 text-white rounded-full leading-none shadow-xs">
