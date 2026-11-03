@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
+  AlertCircle,
   FileText,
   UploadCloud,
   Paperclip,
@@ -65,6 +66,43 @@ const IhlrCreateRequest = () => {
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [annotatingItem, setAnnotatingItem] = useState(null);
   const [errors, setErrors] = useState({});
+
+  const MANDATORY_FIELD_LABELS = {
+    batch_date: 'Incident Date',
+    shift: 'Shift',
+    model: 'Model Name / Part',
+    problem: 'Problem / Defect Description',
+    problem_detected_at: 'Problem Detected At',
+    received_from: 'Received From (Line/D3)',
+    analysis_done_by: 'Analysis Done By',
+    actual_qty: 'Actual Rejected Qty',
+    four_m: '4M Category',
+    resp: 'Responsibility Dept',
+    resp_person: 'User Name',
+    attachments: 'Defect Attachment Evidence',
+    w1: 'Why 1',
+    w2: 'Why 2',
+    w3: 'Why 3',
+    created_by: 'Created By'
+  };
+
+  const missingErrors = Object.entries(errors)
+    .filter(([key, val]) => Boolean(val))
+    .map(([key, val]) => ({
+      key,
+      label: MANDATORY_FIELD_LABELS[key] || val || key,
+      message: typeof val === 'string' ? val : ''
+    }));
+
+  const scrollToField = (fieldKey) => {
+    const el = document.getElementById(`field-${fieldKey}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const input = el.querySelector('input, select, textarea, [tabindex="0"]');
+      if (input && input.focus) input.focus();
+    }
+  };
+
 
   const getDraftKey = () => {
     let uid = user?.id || user?.email;
@@ -776,27 +814,10 @@ const IhlrCreateRequest = () => {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             {isEditMode ? `Edit Requester Details (${formData.req_no})` : 'Create IHLR Analysis Report'}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {isEditMode
-              ? 'Update line rejection incident details, defect description, attachments, and Problem Cause 5-Why analysis.'
-              : 'Log line rejection incident, 5-Why problem root cause, and occurrence containment.'}
-          </p>
+
         </div>
 
-        {/* Logged User Info Pill */}
-        <div className="flex items-center gap-2.5 px-3.5 py-2 bg-white rounded-xl border border-slate-200/80 shadow-2xs self-start sm:self-auto">
-          <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs uppercase">
-            {getLoggedInUserName()?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-800 uppercase tracking-wide text-xs">
-              {isAdmin ? 'Logged Admin' : 'Logged User'}
-            </span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-              {userDept || 'QAD'}
-            </span>
-          </div>
-        </div>
+
       </div>
 
       {hasRestoredDraft && (
@@ -826,9 +847,7 @@ const IhlrCreateRequest = () => {
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
                 1. Requestor &amp; Line Defect Details
               </h2>
-              <p className="text-xs text-slate-500">
-                Primary defect parameters, detection stage, and line responsibility.
-              </p>
+
             </div>
           </div>
 
@@ -848,7 +867,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Created By (Manual entry by user - Text only) */}
-            <div>
+            <div id="field-created_by">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center justify-between">
                 <span className="flex items-center">
                   <span>Created By</span>
@@ -884,8 +903,8 @@ const IhlrCreateRequest = () => {
                 }}
                 onBlur={() => setFormData((prev) => ({ ...prev, created_by: (prev.created_by || '').trim() }))}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition ${errors.created_by
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                  : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.created_by && (
@@ -896,7 +915,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Incident Date */}
-            <div>
+            <div id="field-batch_date">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center justify-between">
                 <span className="flex items-center">
                   <span>Incident Date</span>
@@ -918,8 +937,8 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition ${errors.batch_date
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                  : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.batch_date && (
@@ -930,7 +949,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Shift */}
-            <div>
+            <div id="field-shift">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
                 <span>Shift</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
@@ -944,8 +963,8 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition cursor-pointer ${errors.shift
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                  : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               >
                 <option value="">Select Shift</option>
@@ -963,7 +982,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Model */}
-            <div>
+            <div id="field-model">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
                 <span>Model Name / Part</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
@@ -986,8 +1005,8 @@ const IhlrCreateRequest = () => {
                 }}
                 onBlur={() => setFormData((prev) => ({ ...prev, model: (prev.model || '').trim() }))}
                 className={`w-full px-3 py-2 border rounded-xl font-semibold text-slate-900 outline-none transition ${errors.model
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                  : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.model && (
@@ -998,7 +1017,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Problem Description */}
-            <div className="sm:col-span-2">
+            <div id="field-problem" className="sm:col-span-2">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
                 <span>Problem / Defect Description</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
@@ -1021,8 +1040,8 @@ const IhlrCreateRequest = () => {
                 }}
                 onBlur={() => setFormData((prev) => ({ ...prev, problem: (prev.problem || '').trim() }))}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition ${errors.problem
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                  : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.problem && (
@@ -1033,7 +1052,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Problem Detected At */}
-            <div>
+            <div id="field-problem_detected_at">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
                 <span>Problem Detected At</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
@@ -1056,8 +1075,8 @@ const IhlrCreateRequest = () => {
                 }}
                 onBlur={() => setFormData((prev) => ({ ...prev, problem_detected_at: (prev.problem_detected_at || '').trim() }))}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none transition ${errors.problem_detected_at
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                  : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.problem_detected_at && (
@@ -1068,7 +1087,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Received From */}
-            <div>
+            <div id="field-received_from">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
                 <span>Received From (Line/D3)</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
@@ -1082,8 +1101,8 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition cursor-pointer ${errors.received_from
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                  : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               >
                 <option value="">Select</option>
@@ -1104,7 +1123,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Analysis Done By */}
-            <div>
+            <div id="field-analysis_done_by">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
                 <span>Analysis Done By</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
@@ -1135,8 +1154,8 @@ const IhlrCreateRequest = () => {
                 }}
                 onBlur={() => setFormData((prev) => ({ ...prev, analysis_done_by: (prev.analysis_done_by || '').trim() }))}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition ${errors.analysis_done_by
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                  : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.analysis_done_by && (
@@ -1147,7 +1166,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Actual Quantity */}
-            <div>
+            <div id="field-actual_qty">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
                 <span>Actual Rejected Qty</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
@@ -1164,8 +1183,8 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-mono transition ${errors.actual_qty
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                  : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.actual_qty && (
@@ -1176,7 +1195,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* 4M Category */}
-            <div>
+            <div id="field-four_m">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
                 <span>4M Category</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
@@ -1190,8 +1209,8 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-bold transition cursor-pointer ${errors.four_m
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                  : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               >
                 <option value="">Select 4M Category</option>
@@ -1208,7 +1227,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Responsibility (Department) */}
-            <div className="sm:col-span-1 lg:col-span-2">
+            <div id="field-resp" className="sm:col-span-1 lg:col-span-2">
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
                 <span>Responsibility (Resp)</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
@@ -1225,8 +1244,8 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-bold cursor-pointer transition ${errors.resp
-                    ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                    : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                  : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               >
                 <option value="">Select Responsibility</option>
@@ -1246,7 +1265,7 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Responsible Person(s) / User Name based on Department - Multi-Select */}
-            <div className="relative sm:col-span-1 lg:col-span-2" ref={userDropdownRef}>
+            <div id="field-resp_person" className="relative sm:col-span-1 lg:col-span-2" ref={userDropdownRef}>
               <div className="flex items-center justify-between mb-1">
                 <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center">
                   <span>User Name (Based on Dep)</span>
@@ -1273,14 +1292,14 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 className={`w-full min-h-[42px] px-3 py-2 border rounded-xl text-xs font-medium transition flex items-center justify-between gap-2 ${errors.resp_person
-                    ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 cursor-pointer'
-                    : !formData.resp
+                  ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 cursor-pointer'
+                  : !formData.resp
+                    ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                    : getDepartmentUsers(formData.resp).length === 0
                       ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                      : getDepartmentUsers(formData.resp).length === 0
-                        ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                        : isUserDropdownOpen
-                          ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 cursor-pointer shadow-xs'
-                          : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-800 cursor-pointer'
+                      : isUserDropdownOpen
+                        ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 cursor-pointer shadow-xs'
+                        : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-800 cursor-pointer'
                   }`}
               >
                 <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
@@ -1371,15 +1390,15 @@ const IhlrCreateRequest = () => {
                             key={u.id || u.name}
                             onClick={() => handleToggleUser(u.name)}
                             className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition select-none ${isChecked
-                                ? 'bg-blue-50/80 text-blue-900 font-semibold'
-                                : 'hover:bg-slate-50 text-slate-700'
+                              ? 'bg-blue-50/80 text-blue-900 font-semibold'
+                              : 'hover:bg-slate-50 text-slate-700'
                               }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0 pr-2">
                               <div
                                 className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${isChecked
-                                    ? 'bg-blue-600 border-blue-600 text-white'
-                                    : 'border-slate-300 bg-white'
+                                  ? 'bg-blue-600 border-blue-600 text-white'
+                                  : 'border-slate-300 bg-white'
                                   }`}
                               >
                                 {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
@@ -1442,11 +1461,10 @@ const IhlrCreateRequest = () => {
               {/* Multi-Select Trigger Box */}
               <div
                 onClick={() => setIsNotifyEmailDropdownOpen((prev) => !prev)}
-                className={`w-full min-h-[42px] px-3 py-2 border rounded-xl text-xs font-medium transition flex items-center justify-between gap-2 cursor-pointer ${
-                  isNotifyEmailDropdownOpen
+                className={`w-full min-h-[42px] px-3 py-2 border rounded-xl text-xs font-medium transition flex items-center justify-between gap-2 cursor-pointer ${isNotifyEmailDropdownOpen
                     ? 'bg-white border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs'
                     : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-800'
-                }`}
+                  }`}
               >
                 <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
                   {getSelectedNotifyEmails().length === 0 ? (
@@ -1490,9 +1508,8 @@ const IhlrCreateRequest = () => {
                     </span>
                   )}
                   <ChevronDown
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      isNotifyEmailDropdownOpen ? 'rotate-180 text-indigo-600' : ''
-                    }`}
+                    className={`w-4 h-4 transition-transform duration-200 ${isNotifyEmailDropdownOpen ? 'rotate-180 text-indigo-600' : ''
+                      }`}
                   />
                 </div>
               </div>
@@ -1533,19 +1550,17 @@ const IhlrCreateRequest = () => {
                           <div
                             key={u.id || u.email}
                             onClick={() => handleToggleNotifyEmail(emailLower)}
-                            className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition select-none ${
-                              isChecked
+                            className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition select-none ${isChecked
                                 ? 'bg-indigo-50/80 text-indigo-900 font-semibold'
                                 : 'hover:bg-slate-50 text-slate-700'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0 pr-2">
                               <div
-                                className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${
-                                  isChecked
+                                className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${isChecked
                                     ? 'bg-indigo-600 border-indigo-600 text-white'
                                     : 'border-slate-300 bg-white'
-                                }`}
+                                  }`}
                               >
                                 {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                               </div>
@@ -1582,10 +1597,10 @@ const IhlrCreateRequest = () => {
                         (u.department || '').toLowerCase().includes(q)
                       );
                     }).length === 0 && (
-                      <div className="p-4 text-center text-xs text-slate-400">
-                        No user emails found matching "{notifyEmailSearchTerm}"
-                      </div>
-                    )}
+                        <div className="p-4 text-center text-xs text-slate-400">
+                          No user emails found matching "{notifyEmailSearchTerm}"
+                        </div>
+                      )}
                   </div>
 
                   {/* Dropdown footer */}
@@ -1608,7 +1623,7 @@ const IhlrCreateRequest = () => {
         </div>
 
         {/* Section 2: Defect Evidence / Attachment Upload */}
-        <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
+        <div id="field-attachments" className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
           <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
             <Paperclip className="w-5 h-5 text-slate-700 mt-0.5" />
             <div>
@@ -1627,8 +1642,8 @@ const IhlrCreateRequest = () => {
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
             className={`border-2 border-dashed rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer transition-colors ${errors.attachments
-                ? 'border-rose-400 bg-rose-50/30 hover:bg-rose-50/50'
-                : 'border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-slate-50'
+              ? 'border-rose-400 bg-rose-50/30 hover:bg-rose-50/50'
+              : 'border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-slate-50'
               }`}
           >
             <input
@@ -1770,14 +1785,14 @@ const IhlrCreateRequest = () => {
               const errorKey = `w${idx + 1}`;
               const hasError = isMandatory && Boolean(errors[errorKey]);
               return (
-                <div key={idx} className="space-y-1">
+                <div key={idx} id={`field-w${idx + 1}`} className="space-y-1">
                   <div className="flex items-center gap-3">
                     <span
                       className={`w-8 h-8 rounded-xl font-mono font-bold text-xs flex items-center justify-center shrink-0 border transition ${isMandatory
-                          ? hasError
-                            ? 'bg-rose-50 border-rose-300 text-rose-700'
-                            : 'bg-amber-100/80 border-amber-300 text-amber-800'
-                          : 'bg-amber-50 border-amber-200 text-amber-700'
+                        ? hasError
+                          ? 'bg-rose-50 border-rose-300 text-rose-700'
+                          : 'bg-amber-100/80 border-amber-300 text-amber-800'
+                        : 'bg-amber-50 border-amber-200 text-amber-700'
                         }`}
                     >
                       W{idx + 1}{isMandatory && <span className="text-red-500 ml-0.5 font-bold">*</span>}
@@ -1794,8 +1809,8 @@ const IhlrCreateRequest = () => {
                       onChange={(e) => handleQaWhyChange(idx, e.target.value)}
                       onBlur={() => handleQaWhyBlur(idx)}
                       className={`flex-1 px-3 py-2 border rounded-xl text-xs text-slate-900 outline-none transition ${hasError
-                          ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                          : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
+                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
+                        : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
                         }`}
                     />
                   </div>
@@ -1810,33 +1825,73 @@ const IhlrCreateRequest = () => {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={handleResetForm}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
-          >
-            Clear Form
-          </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 disabled:opacity-50 cursor-pointer"
-          >
-            {isEditMode ? (
-              <>
-                <Check className="w-4 h-4 stroke-[2.5]" />
-                <span>{submitting ? 'Updating...' : 'Update Requester Details'}</span>
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                <span>{submitting ? 'Submitting...' : 'Submit Report'}</span>
-              </>
-            )}
-          </button>
-        </div>
+        {/* Action Buttons & Missed Mandatory Inputs Area in Red */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-3 border-t border-slate-200/90">
+          {/* Left Area: Missed Mandatory Inputs in Red */}
+          {missingErrors.length > 0 ? (
+            <div className="flex-1 min-w-0 bg-red-50/95 border border-red-300 rounded-2xl p-3 flex items-start gap-2.5 shadow-xs animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <div className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                <AlertCircle className="w-3.5 h-3.5 stroke-[2.5]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-extrabold text-red-700 uppercase tracking-wide">
+                    Missing Mandatory Inputs ({missingErrors.length}):
+                  </span>
+                  <span className="text-[11px] text-red-600 font-medium">
+                    Please complete these fields before submitting:
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {missingErrors.map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => scrollToField(key)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-red-300 text-red-700 hover:bg-red-100 hover:border-red-400 text-xs font-bold shadow-2xs transition cursor-pointer"
+                      title={`Click to jump to ${label}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-600 shrink-0" />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 text-xs text-slate-400 font-medium hidden sm:block">
+              All mandatory fields are marked with <span className="text-rose-500 font-bold">*</span>
+            </div>
+          )}
+
+          {/* Action Buttons: Clear Form & Submit */}
+          <div className="flex items-center justify-end gap-3 shrink-0 self-end lg:self-center">
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+            >
+              Clear Form
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {isEditMode ? (
+                <>
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  <span>{submitting ? 'Updating...' : 'Update Requester Details'}</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  <span>{submitting ? 'Submitting...' : 'Submit Report'}</span>
+                </>
+              )}
+            </button>
+          </div>
+          j        </div>
       </form>
 
       {/* Universal In-Page Attachment Preview Modal (Interactive Excel Spreadsheet, PDF, Images) */}
