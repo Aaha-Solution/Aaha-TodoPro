@@ -25,10 +25,9 @@ export const Login = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const [email, setEmail] = useState(() => localStorage.getItem('todo_remembered_email') || 'admin@gmail.com');
-  const [password, setPassword] = useState('admin@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('todo_remember_me') === 'true');
   const [isLoading, setIsLoading] = useState(false);
 
   const [errorMsg, setErrorMsg] = useState(null);
@@ -83,13 +82,8 @@ export const Login = () => {
       localStorage.removeItem('4m_todo_token');
       localStorage.removeItem('todo_user');
 
-      if (rememberMe) {
-        localStorage.setItem('todo_remembered_email', cleanEmail);
-        localStorage.setItem('todo_remember_me', 'true');
-      } else {
-        localStorage.removeItem('todo_remembered_email');
-        localStorage.removeItem('todo_remember_me');
-      }
+      localStorage.removeItem('todo_remembered_email');
+      localStorage.removeItem('todo_remember_me');
 
       setSuccessMsg(`Welcome back, ${user.name || 'Admin'}!`);
       setIsLoading(false);
@@ -234,20 +228,6 @@ export const Login = () => {
                 </div>
               </div>
 
-              {/* Remember Me */}
-              <div className="flex items-center gap-[8px]">
-                <input
-                  type="checkbox"
-                  id="rememberMe"
-                  className="w-[16px] h-[16px] text-violet-600 bg-slate-50 border-slate-300 rounded focus:ring-violet-500 cursor-pointer accent-[#6320ee]"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  disabled={isLoading}
-                />
-                <label htmlFor="rememberMe" className="text-[14px] text-slate-600 cursor-pointer select-none">
-                  Remember me
-                </label>
-              </div>
 
               {/* Submit */}
               <button
