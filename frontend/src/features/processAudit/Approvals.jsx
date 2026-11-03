@@ -2275,7 +2275,7 @@ const ProcessAuditApprovals = () => {
                   disabled
                   className="w-full py-2.5 px-4 rounded-xl border border-blue-200/80 bg-blue-50/50 text-blue-400 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs"
                 >
-                  Select a Request to Update
+                  Select an Action to Update
                 </button>
               ) : isSelectedClosed ? (
                 <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
@@ -2348,12 +2348,12 @@ const ProcessAuditApprovals = () => {
                   {isSavingCloser ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Saving Closer Log...</span>
+                      <span>Submitting Action...</span>
                     </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      <span>Submit Closer Log (5-Why &amp; Actions)</span>
+                      <span>Submit Action</span>
                     </>
                   )}
                 </button>
@@ -2966,7 +2966,7 @@ const ProcessAuditApprovals = () => {
                       disabled
                       className="w-full py-2.5 px-4 rounded-xl border border-indigo-200/80 bg-indigo-50/50 text-indigo-400 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs"
                     >
-                      Select a Request to Review
+                      Select an Action to Review
                     </button>
                   ) : adminEditCloser ? (
                     <button

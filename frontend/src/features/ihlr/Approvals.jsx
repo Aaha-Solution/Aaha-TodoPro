@@ -1297,11 +1297,6 @@ const IhlrApprovals = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
                     <span>Occurrence Cause (5-Why Analysis)</span>
-                    {selectedRequest && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        Closer
-                      </span>
-                    )}
                   </span>
                 </div>
               </div>
@@ -1381,17 +1376,6 @@ const IhlrApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY ACTION</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
-                  )}
                 </label>
               </div>
               <textarea
@@ -1441,17 +1425,6 @@ const IhlrApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY EVIDENCE ATTACHMENT</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
-                  )}
                 </label>
                 <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
               </div>
@@ -1517,17 +1490,6 @@ const IhlrApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
-                  )}
                 </label>
               </div>
               <DateInput
@@ -1572,17 +1534,6 @@ const IhlrApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>TEMPORARY CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
-                  )}
                 </label>
               </div>
               <input
@@ -1654,17 +1605,6 @@ const IhlrApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT ACTION</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Edit Below)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
-                  )}
                 </label>
               </div>
               <textarea
@@ -1714,17 +1654,6 @@ const IhlrApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT EVIDENCE ATTACHMENT</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
-                  )}
                 </label>
                 <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
               </div>
@@ -1789,17 +1718,6 @@ const IhlrApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
-                  )}
                 </label>
               </div>
               <DateInput
@@ -1838,17 +1756,6 @@ const IhlrApprovals = () => {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <span>PERMANENT CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
-                  {selectedRequest && (
-                    canUpdateCloserFields ? (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                        {isAdmin ? 'Admin Edit' : 'Closer'}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200">
-                        {isSelectedClosed ? 'Closed (Locked)' : isAdmin ? 'Locked (Click Pencil to Edit)' : 'Closer Only (Read-Only)'}
-                      </span>
-                    )
-                  )}
                 </label>
               </div>
               <input
@@ -1915,7 +1822,7 @@ const IhlrApprovals = () => {
                   disabled
                   className="w-full py-2.5 px-4 rounded-xl border border-blue-200/80 bg-blue-50/50 text-blue-400 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs"
                 >
-                  Select a Request to Update
+                  Select an Action to Update
                 </button>
               ) : isSelectedClosed ? (
                 <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
@@ -1988,12 +1895,12 @@ const IhlrApprovals = () => {
                   {isSavingCloser ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Saving Closer Log...</span>
+                      <span>Submitting Action...</span>
                     </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      <span>Submit Closer Log (5-Why &amp; Temporary Action)</span>
+                      <span>Submit Action</span>
                     </>
                   )}
                 </button>
@@ -2590,7 +2497,7 @@ const IhlrApprovals = () => {
                       disabled
                       className="w-full py-2.5 px-4 rounded-xl border border-indigo-200/80 bg-indigo-50/50 text-indigo-400 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs"
                     >
-                      Select a Request to Review
+                      Select an Action to Review
                     </button>
                   ) : isSelectedClosed ? (
                     <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
