@@ -174,12 +174,6 @@ const SystemSelection = () => {
               </span>
             </div>
           </div>
-
-          <div className="h-5 w-px bg-slate-200 hidden sm:block mx-1" />
-
-          <span className="text-xs font-bold tracking-wider text-slate-700 uppercase hidden sm:block">
-            QUALITY &amp; PRODUCTION PORTAL
-          </span>
         </div>
 
         {/* Right User Bar */}
