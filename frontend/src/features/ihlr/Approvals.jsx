@@ -2601,7 +2601,7 @@ const IhlrApprovals = () => {
                   {totalAssignedCount}
                 </span>
                 <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/60 truncate">
-                  {isAdmin ? 'All Plant' : `For ${user?.name || 'You'}`}
+                  {isAdmin ? 'All Plant' : 'For You'}
                 </span>
               </div>
 
