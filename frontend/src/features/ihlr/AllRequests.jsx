@@ -539,7 +539,7 @@ const IhlrAllRequests = () => {
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-extrabold uppercase tracking-widest text-slate-600 font-mono">
-              IHLR ANALYSIS REPORT
+              IHLR ANALYSIS AND ACTION REPORT
             </span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 font-mono">
               {requests.length} Records
@@ -599,10 +599,6 @@ const IhlrAllRequests = () => {
                   <span className="block text-slate-400 font-medium">EVIDENCE</span>
                 </th>
                 <th className="py-2.5 px-2 text-left min-w-[110px]">
-                  <span className="block">OCCURRENCE CAUSE</span>
-                  <span className="block text-slate-400 font-medium">(5-WHY)</span>
-                </th>
-                <th className="py-2.5 px-2 text-left min-w-[110px]">
                   <span className="block">TEMPORARY</span>
                   <span className="block text-slate-400 font-medium">ACTION TAKEN</span>
                 </th>
@@ -627,7 +623,7 @@ const IhlrAllRequests = () => {
             <tbody className="divide-y divide-slate-100 text-xs">
               {paginatedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="py-12 text-center text-slate-400">
+                  <td colSpan={13} className="py-12 text-center text-slate-400">
                     <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600">
                       No IHLR Reports match your filter
@@ -686,14 +682,9 @@ const IhlrAllRequests = () => {
                       <div className="truncate max-w-[85px]">{r.received_from}</div>
                     </td>
 
-                    {/* Analysis Done By & Created By */}
+                    {/* Analysis Done By */}
                     <td className="py-2.5 px-2 font-medium text-slate-800 text-xs align-middle">
                       <div className="truncate max-w-[95px]" title={r.analysis_done_by}>{r.analysis_done_by}</div>
-                      {r.created_by && (
-                        <div className="text-[9px] text-slate-400 font-normal mt-0.5 truncate max-w-[95px]" title={`Created by ${r.created_by}`}>
-                          by {r.created_by}
-                        </div>
-                      )}
                     </td>
 
                     {/* Defect Attachment Thumbnail */}
@@ -705,12 +696,6 @@ const IhlrAllRequests = () => {
                       </div>
                     </td>
 
-                    {/* Occurrence Cause (First Why) */}
-                    <td className="py-2.5 px-2 text-slate-600 text-xs leading-snug align-middle" title={Array.isArray(r.prod_why_why) ? (r.prod_why_why[0] || '') : (r.prod_why_why || r.occurrence_cause || '')}>
-                      <div className="line-clamp-2 max-w-[140px]">
-                        {(Array.isArray(r.prod_why_why) ? r.prod_why_why[0] : (r.prod_why_why || r.occurrence_cause)) || '—'}
-                      </div>
-                    </td>
 
                     {/* Action Taken */}
                     <td className="py-2.5 px-2 text-slate-800 font-medium text-xs leading-snug align-middle" title={r.temporary_action || r.permanent_fix || r.action || ''}>
