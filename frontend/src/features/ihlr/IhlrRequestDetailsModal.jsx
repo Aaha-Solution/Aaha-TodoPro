@@ -487,12 +487,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       }
       return 'Assigned Closer';
     }
-    // 3. Fallback when closer has not submitted yet
-    const pendingP = req?.resp_person || request?.resp_person;
-    if (pendingP && typeof pendingP === 'string' && pendingP.trim()) {
-      return `${pendingP.trim()} (Pending)`;
-    }
-    return 'Pending Closer';
+    // 3. Fallback when closer has not submitted yet (pending)
+    return '—';
   })();
 
   const handleSaveAdminSignOff = async (e) => {
