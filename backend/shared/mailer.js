@@ -334,6 +334,42 @@ export function formatIhlrMailStatus(statusOrReq) {
 }
 
 /**
+ * Helper to generate a styled color pill/badge for Status values in email tables.
+ */
+export function getStatusBadgeHtml(statusVal) {
+  if (!statusVal) return '—';
+  const s = String(statusVal).trim().toLowerCase();
+
+  let bg = '#f1f5f9';
+  let color = '#475569';
+  let border = '#cbd5e1';
+
+  if (s.includes('close') || s.includes('approv')) {
+    // Green (Closed / Approved)
+    bg = '#dcfce7';
+    color = '#15803d';
+    border = '#bbf7d0';
+  } else if (s.includes('pend') || s.includes('open')) {
+    // Amber / Yellow (Pending / Open)
+    bg = '#fef3c7';
+    color = '#b45309';
+    border = '#fde68a';
+  } else if (s.includes('review') || s.includes('progress') || s.includes('submit')) {
+    // Indigo / Blue (Awaiting Review / In Progress / Submitted)
+    bg = '#e0e7ff';
+    color = '#4338ca';
+    border = '#c7d2fe';
+  } else if (s.includes('reject') || s.includes('correct')) {
+    // Rose / Red (Rejected / Correction Needed)
+    bg = '#ffe4e6';
+    color = '#be123c';
+    border = '#fecdd3';
+  }
+
+  return `<span style="display:inline-block; padding: 3px 10px; font-size: 12px; font-weight: 700; background: ${bg}; color: ${color}; border: 1px solid ${border}; border-radius: 6px; letter-spacing: 0.2px;">${statusVal}</span>`;
+}
+
+/**
  * Generate standard HTML template for INEL portal emails
  */
 export function generateEmailTemplate({
@@ -351,18 +387,23 @@ export function generateEmailTemplate({
 }) {
   const resolvedLogo = logoUrl || 'cid:inel-logo';
   const tableRows = tableData
-    .map(
-      (item) => `
+    .map((item) => {
+      const isStatus = String(item.label || '').trim().toLowerCase() === 'status';
+      const cellContent = isStatus
+        ? getStatusBadgeHtml(item.value)
+        : (item.value || '—');
+
+      return `
       <tr>
         <td style="padding: 10px 14px; border-bottom: 1px solid #f1f5f9; color: #64748b; font-size: 13px; font-weight: 600; width: 35%; background: #f8fafc;">
           ${item.label}
         </td>
         <td style="padding: 10px 14px; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-size: 13px; font-weight: 500;">
-          ${item.value || '—'}
+          ${cellContent}
         </td>
       </tr>
-    `
-    )
+    `;
+    })
     .join('');
 
   return `
