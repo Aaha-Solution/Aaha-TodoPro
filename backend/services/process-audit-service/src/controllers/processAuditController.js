@@ -1911,10 +1911,10 @@ export const testProcessAuditEmail = async (req, res) => {
     const to = req.body?.to || process.env.SMTP_USER || '';
     const recipientName = req.body?.name || 'Process Audit Tester';
     const html = generateEmailTemplate({
-      headerTitle: 'INEL Process Audit Portal Diagnostic',
+      headerTitle: 'Q TRACK Process Audit Diagnostic',
       headerSubtitle: 'Outbound SMTP Verification Test',
       recipientName,
-      greetingMessage: 'This is an automated test notification dispatched from the INEL Process Audit Quality Management Portal to verify outbound email delivery and template formatting.',
+      greetingMessage: 'This is an automated test notification dispatched from the Q TRACK Quality Management Portal to verify outbound email delivery and template formatting.',
       tableData: [
         { label: 'SMTP Host', value: process.env.SMTP_HOST || 'localhost' },
         { label: 'Sender Account', value: process.env.SMTP_USER || 'Environment Config' },
@@ -1927,8 +1927,8 @@ export const testProcessAuditEmail = async (req, res) => {
       to,
       recipientName,
       recipientRole: 'TESTER',
-      subject: '[INEL Process Audit Portal] Test Email Notification',
-      text: 'This is a test notification from INEL Process Audit Quality Management Portal using configured SMTP credentials.',
+      subject: '[Q TRACK Process Audit] Test Email Notification',
+      text: 'This is a test notification from Q TRACK Quality Management Portal using configured SMTP credentials.',
       html,
       moduleType: 'PROCESS_AUDIT',
       referenceNo: 'TEST-PA-001'

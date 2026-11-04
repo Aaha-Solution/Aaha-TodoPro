@@ -198,13 +198,11 @@ export async function sendEmail({
   console.log(`======================================================\r\n`);
 
   const transporter = getTransporter();
-  let defaultPortalName = 'INEL Quality Portal';
-  if (currentModule === 'PROCESS_AUDIT') defaultPortalName = 'INEL Process Audit Portal';
-  else if (currentModule === 'IHLR') defaultPortalName = 'INEL IHLR Portal';
+  const defaultPortalName = 'Q TRACK';
 
   let senderFrom = process.env.SMTP_FROM || (DEFAULT_TRIGGER_EMAIL ? `"${defaultPortalName}" <${DEFAULT_TRIGGER_EMAIL}>` : `"${defaultPortalName}"`);
-  if (currentModule === 'PROCESS_AUDIT' && DEFAULT_TRIGGER_EMAIL) {
-    senderFrom = `"INEL Process Audit Portal" <${DEFAULT_TRIGGER_EMAIL}>`;
+  if (senderFrom) {
+    senderFrom = senderFrom.replace(/INEL (?:IHLR|Process Audit|Quality) Portal/gi, 'Q TRACK');
   }
 
   // Automatically attach INEL logo if referenced in HTML
@@ -1128,7 +1126,7 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
         tableData: tableSummary,
         actionButtonText: 'Review & Sign-Off Incident',
         actionButtonUrl: approvalsUrl,
-        footerNote: 'Please sign off in the INEL Quality Portal.',
+        footerNote: 'Please sign off in the Q TRACK Portal.',
         badgeColor: isClosed ? '#10b981' : '#d97706',
         badgeText: isClosed ? 'CLOSED' : 'AWAITING REVIEW',
       });
@@ -1205,7 +1203,7 @@ export async function verifySmtpConnection({ logToConsole = true } = {}) {
     secure,
     user: user || '(not configured)',
     hasPassword: Boolean(pass && pass.length > 0),
-    from: process.env.SMTP_FROM || `"INEL Quality Portal" <${user}>`
+    from: (process.env.SMTP_FROM ? process.env.SMTP_FROM.replace(/INEL (?:IHLR|Process Audit|Quality) Portal/gi, 'Q TRACK') : `"Q TRACK" <${user}>`)
   };
 
   if (!user || !pass) {
@@ -1270,7 +1268,7 @@ export async function verifySmtpConnection({ logToConsole = true } = {}) {
  */
 export async function sendTestEmail({ to, subject, logToConsole = true } = {}) {
   const target = to || process.env.SMTP_USER || '';
-  const testSubject = subject || `[TEST] INEL Portal Mailer Diagnostic - ${new Date().toLocaleTimeString()}`;
+  const testSubject = subject || `[TEST] Q TRACK Mailer Diagnostic - ${new Date().toLocaleTimeString()}`;
   const timestamp = new Date().toLocaleString();
 
   if (logToConsole) {
@@ -1283,7 +1281,7 @@ export async function sendTestEmail({ to, subject, logToConsole = true } = {}) {
   }
 
   const html = generateEmailTemplate({
-    headerTitle: 'INEL Portal Mail Diagnostic',
+    headerTitle: 'Q TRACK Mail Diagnostic',
     headerSubtitle: 'Outbound SMTP Verification Test',
     recipientName: 'Portal Administrator',
     greetingMessage: 'This is an automated test message dispatched to verify outbound email communications.',
@@ -1303,7 +1301,7 @@ export async function sendTestEmail({ to, subject, logToConsole = true } = {}) {
     recipientName: 'Portal Administrator',
     recipientRole: 'TEST',
     subject: testSubject,
-    text: `INEL Portal Mail Diagnostic Test dispatched at ${timestamp}.`,
+    text: `Q TRACK Mail Diagnostic Test dispatched at ${timestamp}.`,
     html,
     moduleType: 'DIAGNOSTIC',
     referenceNo: 'TEST-MAIL',

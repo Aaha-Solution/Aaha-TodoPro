@@ -1955,10 +1955,10 @@ export const testIhlrEmail = async (req, res) => {
     const to = req.body?.to || process.env.SMTP_USER || '';
     const recipientName = req.body?.name || 'Portal Tester';
     const html = generateEmailTemplate({
-      headerTitle: 'INEL IHLR Portal Diagnostic',
+      headerTitle: 'Q TRACK IHLR Diagnostic',
       headerSubtitle: 'Outbound SMTP Verification Test',
       recipientName,
-      greetingMessage: 'This is an automated test notification dispatched from the INEL IHLR Quality Management Portal to verify outbound email delivery and template formatting.',
+      greetingMessage: 'This is an automated test notification dispatched from the Q TRACK Quality Management Portal to verify outbound email delivery and template formatting.',
       tableData: [
         { label: 'SMTP Host', value: process.env.SMTP_HOST || 'localhost' },
         { label: 'Sender Account', value: process.env.SMTP_USER || 'Environment Config' },
@@ -1971,8 +1971,8 @@ export const testIhlrEmail = async (req, res) => {
       to,
       recipientName,
       recipientRole: 'TESTER',
-      subject: '[INEL IHLR Portal] Test Email Notification',
-      text: 'This is a test notification from INEL IHLR Quality Management Portal using configured SMTP credentials.',
+      subject: '[Q TRACK IHLR] Test Email Notification',
+      text: 'This is a test notification from Q TRACK Quality Management Portal using configured SMTP credentials.',
       html,
       moduleType: 'IHLR',
       referenceNo: 'TEST-001'
