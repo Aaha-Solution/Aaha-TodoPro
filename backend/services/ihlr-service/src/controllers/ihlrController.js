@@ -1312,7 +1312,8 @@ export const updateIhlrRequest = async (req, res) => {
               recipientName: u.name || updated.resp_person || 'Assigned Closer',
               greetingMessage: `Dear ${u.name || 'Team Member'},<br><br>IHLR incident <strong>#${reqNo}</strong> (${updated.model || 'Model'}) has been reassigned to you (${updated.resp}) by <strong>${updated.reviewed_by || 'Quality Admin'}</strong>.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span><br><br>Please review and submit 5-Why root cause analysis and containment actions in the quality portal.`,
               tableData: [
-                { label: 'Request Number', value: reqNo },
+                { label: 'IHLR Number', value: reqNo },
+                { label: 'Created By', value: updated.created_by || 'Quality Requester' },
                 { label: 'Defect / Problem', value: updated.problem || '—' },
                 { label: 'Model', value: updated.model || '—' },
                 { label: 'Department', value: updated.resp || '—' },
@@ -1365,7 +1366,8 @@ export const updateIhlrRequest = async (req, res) => {
               recipientName: updated.created_by || 'Quality Requester',
               greetingMessage: `Dear ${updated.created_by || 'Quality Requester'},<br><br>Your IHLR incident <strong>#${reqNo}</strong> (${updated.model || 'Model'}) has been reassigned to <strong>${updated.resp_person || updated.resp}</strong> (${updated.resp}) by <strong>${updated.reviewed_by || 'Quality Admin'}</strong> for investigation.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
               tableData: [
-                { label: 'Request Number', value: reqNo },
+                { label: 'IHLR Number', value: reqNo },
+                { label: 'Created By', value: updated.created_by || 'Quality Requester' },
                 { label: 'Defect / Problem', value: updated.problem || '—' },
                 { label: 'Model', value: updated.model || '—' },
                 { label: 'Reassigned Closer', value: updated.resp_person || updated.resp || '—' },

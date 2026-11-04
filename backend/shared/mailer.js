@@ -460,9 +460,6 @@ export function generateEmailTemplate({
                     <div style="font-size: 16px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px; line-height: 1.25;">
                       INDIA NIPPON ELECTRICALS LIMITED
                     </div>
-                    <div style="font-size: 11px; color: #94a3b8; margin-top: 3px; font-weight: 500; letter-spacing: 0.2px;">
-                      Enterprise Quality Management &amp; Audit System
-                    </div>
                   </td>
                 </tr>
               </table>
@@ -622,8 +619,14 @@ export async function sendIhlrRequestEmails({
     ? `${shiftDisplay} / ${formattedBatchDate}`
     : shiftDisplay;
 
+  const createdByName = (request.created_by && String(request.created_by).trim())
+    || (creatorUser?.name && String(creatorUser.name).trim())
+    || (creatorName && String(creatorName).trim())
+    || 'Quality Engineer';
+
   const tableSummary = [
     { label: 'IHLR Number', value: reqNo },
+    { label: 'Created By', value: createdByName },
     { label: 'Problem', value: request.problem || '—' },
     { label: 'Model', value: request.model || '—' },
     { label: 'Actual Qty', value: String(request.actual_qty || 1) },
@@ -732,9 +735,14 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
   const allCcEmails = Array.from(new Set(notifyList));
   const ccDisplayStr = allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None';
 
+  const createdByName = (request.created_by && String(request.created_by).trim())
+    || (creatorUser?.name && String(creatorUser.name).trim())
+    || (creatorName && String(creatorName).trim())
+    || 'Quality Engineer';
+
   const tableSummary = [
-    { label: 'Request Number', value: reqNo },
-    { label: 'Created By (Requester)', value: createdByDisplay },
+    { label: 'IHLR Number', value: reqNo },
+    { label: 'Created By', value: createdByName },
     { label: 'CC Recipient(s)', value: ccDisplayStr },
     { label: 'Defect / Model', value: `${request.problem || '—'} (${request.model || '—'})` },
     { label: 'Responsible Dept', value: assignedDept },
