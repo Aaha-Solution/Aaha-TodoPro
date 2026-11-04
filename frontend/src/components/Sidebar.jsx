@@ -152,17 +152,9 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
               <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-md">
                 <img src="/images/logo.png" alt="INEL Logo" className="w-7 h-7 object-contain" />
               </div>
-              <div className="leading-tight">
-                <span className="block text-xs font-bold tracking-tight text-white">
-                  India Nippon
-                </span>
-                <span className="block text-[10px] font-semibold text-slate-300">
-                  Electricals Ltd
-                </span>
-                <span className="block text-[9px] text-slate-400 font-medium mt-0.5">
-                  {isIhlr ? 'In-House Line Rejection' : 'Process Audit Observation'}
-                </span>
-              </div>
+              <span className="text-base font-bold tracking-wider text-white">
+                Q-TRACK
+              </span>
             </div>
 
             <button onClick={closeSidebar} className="p-1 text-slate-400 hover:text-white lg:hidden">

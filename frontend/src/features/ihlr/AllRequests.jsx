@@ -564,18 +564,6 @@ const IhlrAllRequests = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              {/* Top Phase Header Row */}
-              <tr className="text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-200">
-                <th colSpan={8} className="py-2 px-3 bg-amber-100 text-amber-900 border-r border-amber-200">
-                  REQUESTOR (Defect Investigation &amp; 5-Why)
-                </th>
-                <th colSpan={3} className="py-2 px-3 bg-orange-100 text-orange-900 border-r border-orange-200">
-                  CLOSER (Containment &amp; Actions)
-                </th>
-                <th colSpan={3} className="py-2 px-3 bg-slate-100 text-slate-700">
-                  REMARKS &amp; STATUS
-                </th>
-              </tr>
               {/* Detailed Column Header Row - Wrapped cleanly across 2 lines */}
               <tr className="bg-[#f8fafc] border-b border-slate-200 text-[10px] font-bold uppercase tracking-wider text-slate-600">
                 <th className="py-2.5 px-1.5 text-center align-middle whitespace-nowrap">

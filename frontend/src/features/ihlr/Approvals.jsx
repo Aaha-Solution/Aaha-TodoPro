@@ -2713,18 +2713,6 @@ const IhlrApprovals = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
-                  {/* Top Phase Header Row */}
-                  <tr className="text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-200">
-                    <th colSpan={4} className="py-2 px-3 bg-amber-100 text-amber-900 border-r border-amber-200">
-                      REQUESTOR (Defect Investigation &amp; 5-Why)
-                    </th>
-                    <th colSpan={1} className="py-2 px-3 bg-orange-100 text-orange-900 border-r border-orange-200">
-                      CLOSER (Containment &amp; Actions)
-                    </th>
-                    <th colSpan={3} className="py-2 px-3 bg-slate-100 text-slate-700">
-                      REMARKS &amp; STATUS
-                    </th>
-                  </tr>
                   <tr className="bg-[#f8fafc] border-b border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500">
                     <th className="py-3 px-3 text-center w-12">SL NO</th>
                     <th className="py-3 px-3">IHLR REQ NO</th>

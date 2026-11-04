@@ -807,18 +807,6 @@ const AllRequests = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[1250px]">
             <thead>
-              {/* Top Phase Header Row (Matching Analysis Report) */}
-              <tr className="text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-200">
-                <th colSpan={6} className="py-2.5 px-4 bg-amber-100 text-amber-900 border-r border-amber-200">
-                  REQUESTOR (Audit Observation &amp; Defect Details)
-                </th>
-                <th colSpan={2} className="py-2.5 px-4 bg-orange-100 text-orange-900 border-r border-orange-200">
-                  CLOSER (Containment &amp; Corrective Action)
-                </th>
-                <th colSpan={3} className="py-2.5 px-4 bg-slate-100 text-slate-700">
-                  REMARKS &amp; STATUS
-                </th>
-              </tr>
 
               {/* Detailed Column Header Row */}
               <tr className="bg-[#f8fafc] border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
