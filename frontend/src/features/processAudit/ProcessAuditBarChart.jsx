@@ -297,7 +297,7 @@ export const ProcessAuditBarChart = ({
 
   const numItems = chartData.length;
   const slotWidth = numItems > 0 ? innerWidth / numItems : innerWidth;
-  const maxBarWidth = activeTab === 'monthly' ? 38 : 52;
+  const maxBarWidth = activeTab === 'monthly' ? 44 : 54;
   const barWidth = Math.min(slotWidth * 0.65, maxBarWidth);
 
   // Y-axis ticks
@@ -566,20 +566,52 @@ export const ProcessAuditBarChart = ({
                 const centerX = paddingLeft + idx * slotWidth + slotWidth / 2;
                 const isHovered = hoveredBar && hoveredBar.item.key === item.key;
 
-                const subBarWidth = Math.max((barWidth - 4) / 3, 6);
-                const baseY = paddingTop + innerHeight;
+                // Collect only active sub-bars so bars are always centered together
+                const activeBars = [];
+                if (openH > 0) {
+                  activeBars.push({
+                    key: 'open',
+                    count: item.open || 0,
+                    h: openH,
+                    fill: 'url(#pa-grad-open)',
+                    textColor: '#e11d48',
+                    hoverColor: '#be123c',
+                  });
+                }
+                if (progH > 0) {
+                  activeBars.push({
+                    key: 'inProgress',
+                    count: item.inProgress || 0,
+                    h: progH,
+                    fill: 'url(#pa-grad-progress)',
+                    textColor: '#b45309',
+                    hoverColor: '#92400e',
+                  });
+                }
+                if (closedH > 0) {
+                  activeBars.push({
+                    key: 'closed',
+                    count: item.closed || 0,
+                    h: closedH,
+                    fill: 'url(#pa-grad-closed)',
+                    textColor: '#047857',
+                    hoverColor: '#065f46',
+                  });
+                }
 
-                const openH = ((item.open || 0) / maxVal) * innerHeight;
-                const progH = ((item.inProgress || 0) / maxVal) * innerHeight;
-                const closedH = ((item.closed || 0) / maxVal) * innerHeight;
-
+                const numActive = activeBars.length;
                 const maxSubH = Math.max(openH, progH, closedH);
                 const barTopY = item.total > 0 ? baseY - maxSubH : baseY;
 
-                const openX = centerX - barWidth / 2;
-                const progX = openX + subBarWidth + 2;
-                const closedX = progX + subBarWidth + 2;
+                const gap = 3;
+                const subBarW =
+                  numActive === 1
+                    ? Math.max(Math.min(barWidth * 0.45, 18), 12)
+                    : Math.max(Math.floor((barWidth - (numActive - 1) * gap) / numActive), 8);
 
+                const totalGroupW =
+                  numActive > 0 ? numActive * subBarW + (numActive - 1) * gap : 0;
+                const groupStartX = centerX - totalGroupW / 2;
                 return (
                   <g
                     key={item.key || idx}
@@ -608,57 +640,38 @@ export const ProcessAuditBarChart = ({
                       fill="transparent"
                     />
 
-                    {/* Sub-bar: Pending (Rose) */}
-                    {openH > 0 && (
-                      <rect
-                        x={openX}
-                        y={baseY - openH}
-                        width={subBarWidth}
-                        height={openH}
-                        fill="url(#pa-grad-open)"
-                        rx="3"
-                      />
-                    )}
+                    {/* Render active sub-bars centered with individual count per diagram */}
+                    {activeBars.map((bar, bIdx) => {
+                      const barX = groupStartX + bIdx * (subBarW + gap);
+                      const barY = baseY - bar.h;
+                      const barCenterX = barX + subBarW / 2;
 
-                    {/* Sub-bar: Awaiting Review (Amber) */}
-                    {progH > 0 && (
-                      <rect
-                        x={progX}
-                        y={baseY - progH}
-                        width={subBarWidth}
-                        height={progH}
-                        fill="url(#pa-grad-progress)"
-                        rx="3"
-                      />
-                    )}
-
-                    {/* Sub-bar: Closed (Emerald) */}
-                    {closedH > 0 && (
-                      <rect
-                        x={closedX}
-                        y={baseY - closedH}
-                        width={subBarWidth}
-                        height={closedH}
-                        fill="url(#pa-grad-closed)"
-                        rx="3"
-                      />
-                    )}
-
-                    {/* Top Value Counter if total > 0 */}
-                    {item.total > 0 && (
-                      <text
-                        x={centerX}
-                        y={barTopY - 6}
-                        textAnchor="middle"
-                        fill={isHovered ? '#1e293b' : '#64748b'}
-                        fontSize="10"
-                        fontWeight="800"
-                        className="font-mono transition-colors"
-                      >
-                        {item.total}
-                      </text>
-                    )}
-
+                      return (
+                        <g key={bar.key}>
+                          <rect
+                            x={barX}
+                            y={barY}
+                            width={subBarW}
+                            height={bar.h}
+                            fill={bar.fill}
+                            rx="3"
+                          />
+                          {bar.count > 0 && (
+                            <text
+                              x={barCenterX}
+                              y={barY - 5}
+                              textAnchor="middle"
+                              fill={isHovered ? bar.hoverColor : bar.textColor}
+                              fontSize={subBarW < 13 ? '8.5' : '9.5'}
+                              fontWeight="800"
+                              className="font-mono transition-colors pointer-events-none select-none"
+                            >
+                              {bar.count}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
                     {/* Empty Placeholder indicator for zero values */}
                     {item.total === 0 && (
                       <circle

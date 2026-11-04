@@ -208,7 +208,7 @@ export const IhlrBarChart = ({
   const innerHeight = svgHeight - paddingTop - paddingBottom;
 
   const slotWidth = numItems > 0 ? innerWidth / numItems : innerWidth;
-  const maxBarWidth = activeTab === 'monthly' ? 38 : 52;
+  const maxBarWidth = activeTab === 'monthly' ? 44 : 54;
   const barWidth = Math.min(slotWidth * 0.65, maxBarWidth);
 
   // Y-axis ticks
@@ -516,6 +516,8 @@ export const IhlrBarChart = ({
                     count: item.open || 0,
                     h: openH,
                     fill: 'url(#ihlr-grad-open)',
+                    textColor: '#e11d48',
+                    hoverColor: '#be123c',
                   });
                 }
                 if (progH > 0) {
@@ -524,6 +526,8 @@ export const IhlrBarChart = ({
                     count: item.inProgress || 0,
                     h: progH,
                     fill: 'url(#ihlr-grad-progress)',
+                    textColor: '#b45309',
+                    hoverColor: '#92400e',
                   });
                 }
                 if (closedH > 0) {
@@ -532,6 +536,8 @@ export const IhlrBarChart = ({
                     count: item.closed || 0,
                     h: closedH,
                     fill: 'url(#ihlr-grad-closed)',
+                    textColor: '#047857',
+                    hoverColor: '#065f46',
                   });
                 }
 
@@ -545,13 +551,12 @@ export const IhlrBarChart = ({
                 const gap = 3;
                 const subBarW =
                   numActive === 1
-                    ? Math.max(Math.min(barWidth * 0.45, 16), 11)
+                    ? Math.max(Math.min(barWidth * 0.45, 18), 12)
                     : Math.max(Math.floor((barWidth - (numActive - 1) * gap) / numActive), 8);
 
                 const totalGroupW =
                   numActive > 0 ? numActive * subBarW + (numActive - 1) * gap : 0;
                 const groupStartX = centerX - totalGroupW / 2;
-
                 return (
                   <g
                     key={item.key || idx}
@@ -580,39 +585,38 @@ export const IhlrBarChart = ({
                       fill="transparent"
                     />
 
-                    {/* Render active sub-bars centered */}
+                    {/* Render active sub-bars centered with individual count per diagram */}
                     {activeBars.map((bar, bIdx) => {
                       const barX = groupStartX + bIdx * (subBarW + gap);
                       const barY = baseY - bar.h;
+                      const barCenterX = barX + subBarW / 2;
 
                       return (
-                        <rect
-                          key={bar.key}
-                          x={barX}
-                          y={barY}
-                          width={subBarW}
-                          height={bar.h}
-                          fill={bar.fill}
-                          rx="3"
-                        />
+                        <g key={bar.key}>
+                          <rect
+                            x={barX}
+                            y={barY}
+                            width={subBarW}
+                            height={bar.h}
+                            fill={bar.fill}
+                            rx="3"
+                          />
+                          {bar.count > 0 && (
+                            <text
+                              x={barCenterX}
+                              y={barY - 5}
+                              textAnchor="middle"
+                              fill={isHovered ? bar.hoverColor : bar.textColor}
+                              fontSize={subBarW < 13 ? '8.5' : '9.5'}
+                              fontWeight="800"
+                              className="font-mono transition-colors pointer-events-none select-none"
+                            >
+                              {bar.count}
+                            </text>
+                          )}
+                        </g>
                       );
                     })}
-
-                    {/* Top Value Counter if total > 0 (always centered directly on top of the bar group) */}
-                    {item.total > 0 && (
-                      <text
-                        x={centerX}
-                        y={barTopY - 6}
-                        textAnchor="middle"
-                        fill={isHovered ? '#1e293b' : '#64748b'}
-                        fontSize="10"
-                        fontWeight="800"
-                        className="font-mono transition-colors"
-                      >
-                        {item.total}
-                      </text>
-                    )}
-
                     {/* Empty Placeholder indicator for zero values */}
                     {item.total === 0 && (
                       <circle
