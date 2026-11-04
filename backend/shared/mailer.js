@@ -565,9 +565,9 @@ export async function sendIhlrRequestEmails({
 
   // 1. EMAIL TO RAISED PERSON (CREATOR)
   if (creatorEmail && !skipCreator) {
-    const creatorSubject = `[IHLR Confirmation] Defect Request #${reqNo} Successfully Submitted (Pending)`;
+    const creatorSubject = `IHLR analysis and action report - ${reqNo}`;
     const creatorHtml = generateEmailTemplate({
-      headerTitle: `IHLR Defect Report Logged: #${reqNo}`,
+      headerTitle: `IHLR analysis and action report - ${reqNo}`,
       headerSubtitle: '',
       recipientName: '',
       greetingMessage: '',
@@ -594,11 +594,9 @@ export async function sendIhlrRequestEmails({
 
   // 2. EMAIL TO SELECTED PERSON IN FIELD (ASSIGNED USER)
   if (assignedEmail) {
-    const assignedSubject = assignedDept
-      ? `[Action Required] IHLR Rejection #${reqNo} Assigned to You (${assignedDept}) - Pending`
-      : `[Action Required] IHLR Rejection #${reqNo} Assigned to You - Pending`;
+    const assignedSubject = `IHLR analysis and action report - ${reqNo}`;
     const assignedHtml = generateEmailTemplate({
-      headerTitle: `Action Required: IHLR Incident #${reqNo}`,
+      headerTitle: `IHLR analysis and action report - ${reqNo}`,
       headerSubtitle: '',
       recipientName: '',
       greetingMessage: '',
@@ -680,9 +678,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
 
   // 1. Notify Creator (Raised Person / Requester)
   if (creatorEmail) {
-    const subject = isClosed 
-      ? `[IHLR Case Closed] Defect Report #${reqNo} Verified & Closed`
-      : `[Action Required] Closer Completed Countermeasures for #${reqNo} (Awaiting Review)`;
+    const subject = isClosed ? `IHLR analysis and action report - ${reqNo} (Closed)` : `IHLR analysis and action report - ${reqNo} (Awaiting Review)`;
 
     const html = generateEmailTemplate({
       headerTitle: isClosed ? `IHLR Case Closed: #${reqNo}` : `Closer Countermeasure Completed: #${reqNo}`,
@@ -721,9 +717,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
         continue; // avoid duplicate email if creator is this admin
       }
 
-      const adminSubject = isClosed
-        ? `[IHLR Case Closed] Incident #${reqNo} Closed by Quality Team`
-        : `[Admin Action Required] Closer Completed Countermeasures for #${reqNo} (Awaiting Review)`;
+      const adminSubject = isClosed ? `IHLR analysis and action report - ${reqNo} (Closed)` : `IHLR analysis and action report - ${reqNo} (Awaiting Review)`;
 
       const adminHtml = generateEmailTemplate({
         headerTitle: isClosed ? `Case Closed: #${reqNo}` : `Pending Closer Review: #${reqNo}`,
@@ -755,9 +749,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
 
   // 3. Acknowledge to Closer (Assigned Person)
   if (assignedEmail) {
-    const subject = isClosed
-      ? `[IHLR Case Closed] Closer Confirmation: Defect Report #${reqNo} Marked as Closed`
-      : `[IHLR Acknowledgment] Closer Countermeasures Submitted for #${reqNo} (Awaiting Review)`;
+    const subject = isClosed ? `IHLR analysis and action report - ${reqNo} (Closed)` : `IHLR analysis and action report - ${reqNo} (Submitted)`;
 
     const html = generateEmailTemplate({
       headerTitle: isClosed ? `Case Closed & Signed-Off: #${reqNo}` : `Closer Submission Acknowledged: #${reqNo}`,
