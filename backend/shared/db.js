@@ -31,21 +31,6 @@ export const getDbPool = (customConfig = {}) => {
   try {
     pool = mysql.createPool(config);
     pool.query('SET GLOBAL max_allowed_packet = 67108864').catch(() => {}); // 64MB
-
-    const originalQuery = pool.query.bind(pool);
-    pool.query = async (...args) => {
-      try {
-        return await originalQuery(...args);
-      } catch (err) {
-        if (err.code === 'ER_BAD_DB_ERROR' && config.database === 'inel_qtrack') {
-          console.warn('[Database Pool] inel_qtrack not found, falling back to inel_todo...');
-          config.database = 'inel_todo';
-          pool = mysql.createPool(config);
-          return await pool.query(...args);
-        }
-        throw err;
-      }
-    };
   } catch (error) {
     console.warn(`[Database Pool] Initialization warning: ${error.message}`);
   }
