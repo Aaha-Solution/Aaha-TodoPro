@@ -1414,6 +1414,13 @@ const IhlrApprovals = () => {
               </div>
             </div>
 
+            {/* Temporary Countermeasures Section Header */}
+            <div className="pt-2 border-t border-slate-400">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Temporary Countermeasures
+              </span>
+            </div>
+
             {/* Temporary Action Field (Image 1: Action Words) */}
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -1524,7 +1531,7 @@ const IhlrApprovals = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>TEMPORARY TARGET DATE</span>
+                  <span> TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
               </div>
@@ -1568,7 +1575,7 @@ const IhlrApprovals = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>TEMPORARY CLOSED BY</span>
+                  <span> CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
               </div>
@@ -1622,14 +1629,12 @@ const IhlrApprovals = () => {
                   <span>* {closerTemporaryClosedByError}</span>
                 </p>
               ) : (
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  Person executing temporary containment countermeasure.
-                </p>
+               ''
               )}
             </div>
 
             {/* Permanent Fix Section Header */}
-            <div className="pt-2 border-t border-slate-200/90">
+            <div className="pt-2 border-t border-slate-400">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                 Permanent Countermeasures
               </span>
@@ -1744,7 +1749,7 @@ const IhlrApprovals = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>PERMANENT TARGET DATE</span>
+                  <span> TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
               </div>
@@ -1782,7 +1787,7 @@ const IhlrApprovals = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>PERMANENT CLOSED BY</span>
+                  <span> CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
               </div>
@@ -1836,9 +1841,7 @@ const IhlrApprovals = () => {
                   <span>* {closerPermanentClosedByError}</span>
                 </p>
               ) : (
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  Person executing permanent corrective action countermeasure.
-                </p>
+               ''
               )}
             </div>
 
