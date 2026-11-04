@@ -354,10 +354,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     if (!editFormData.four_m || !editFormData.four_m.trim()) {
       newErrors.four_m = '4M Category is required';
     }
-    if (!editFormData.resp || !editFormData.resp.trim()) {
+    const effectiveResp = editFormData.resp || req.resp;
+    const effectiveRespPerson = editFormData.resp_person || req.resp_person;
+    if (!effectiveResp || !String(effectiveResp).trim()) {
       newErrors.resp = 'Responsibility department is required';
     }
-    if (!editFormData.resp_person || getSelectedUsers().length === 0) {
+    if (!effectiveRespPerson || !String(effectiveRespPerson).trim()) {
       newErrors.resp_person = 'Responsibility Person is required';
     }
     if (!editFormData.model || !editFormData.model.trim()) {
@@ -417,14 +419,14 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         shift: editFormData.shift,
         model: editFormData.model.trim(),
         four_m: editFormData.four_m,
-        resp: editFormData.resp,
-        resp_person: editFormData.resp_person,
+        resp: effectiveResp || 'PRODUCTION',
+        resp_person: effectiveRespPerson || '',
         actual_qty: Number(editFormData.actual_qty) || 1,
         problem_detected_at: editFormData.problem_detected_at?.trim() || '',
         received_from: editFormData.received_from?.trim() || '',
         analysis_done_by: editFormData.analysis_done_by?.trim() || '',
-        created_by: editFormData.created_by?.trim() || req.created_by || user?.name || user?.email || 'Admin',
-        created_by_email: editFormData.created_by_email?.trim() || req.created_by_email || user?.email || '',
+        created_by: (req.created_by || editFormData.created_by || user?.name || user?.email || 'Admin').trim(),
+        created_by_email: (req.created_by_email || editFormData.created_by_email || user?.email || '').trim(),
         problem: editFormData.problem.trim(),
         occurrence_cause: editFormData.occurrence_cause?.trim() || '',
         defect_image: finalAttachments.length > 0 ? JSON.stringify(finalAttachments) : '',
@@ -2125,138 +2127,34 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        RESPONSIBILITY (RESP) <span className="text-rose-500">*</span>
+                        RESPONSIBILITY (RESP)
                       </label>
-                      <select
-                        value={editFormData.resp}
-                        onChange={(e) => {
-                          const nextDept = e.target.value;
-                          setEditFormData(prev => ({ ...prev, resp: nextDept, resp_person: '' }));
-                          if (editErrors.resp && nextDept) {
-                            setEditErrors(prev => ({ ...prev, resp: '' }));
-                          }
-                        }}
-                        className={`w-full px-3 py-2 rounded-xl text-xs font-bold text-slate-900 outline-none transition ${editErrors.resp
-                            ? 'border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
-                            : 'bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
-                          }`}
-                      >
-                        <option value="PRODUCTION">PRODUCTION</option>
-                        <option value="QUALITY">QUALITY</option>
-                        <option value="MAINTENANCE">MAINTENANCE</option>
-                        <option value="SCM">SCM</option>
-                        <option value="LOGISTICS">LOGISTICS</option>
-                        <option value="HR">HR</option>
-                      </select>
-                      {editErrors.resp && (
-                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                          <span>* {editErrors.resp}</span>
-                        </p>
-                      )}
+                      <div className="w-full px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-200/70 border border-slate-300/80 cursor-not-allowed select-none">
+                        {editFormData.resp || req.resp || 'PRODUCTION'}
+                      </div>
                     </div>
 
-                    {/* RESPONSIBILITY (PERSON) MULTI-SELECT DROPDOWN */}
+                    {/* RESPONSIBILITY (PERSON) READ-ONLY DISPLAY */}
                     <div className="relative sm:col-span-2" ref={userDropdownRef}>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        USER NAME (BASED ON DEP) <span className="text-rose-500">*</span>
+                        USER NAME (BASED ON DEP)
                       </label>
-                      <div
-                        onClick={() => setIsUserDropdownOpen(prev => !prev)}
-                        className={`w-full min-h-[38px] px-3 py-1.5 rounded-xl text-xs cursor-pointer flex items-center justify-between gap-2 transition ${editErrors.resp_person
-                            ? 'border border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20'
-                            : 'bg-white border border-slate-300 hover:border-slate-400 focus:ring-2 focus:ring-blue-500/20'
-                          }`}
-                      >
-                        <div className="flex items-center gap-1.5 flex-wrap min-w-0 py-0.5">
-                          {getSelectedUsers().length > 0 ? (
-                            getSelectedUsers().map((uName) => (
-                              <span
-                                key={uName}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-800 text-[11px] font-semibold border border-blue-200"
-                              >
-                                <span>{uName}</span>
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleToggleUser(uName);
-                                  }}
-                                  className="text-blue-500 hover:text-blue-800 cursor-pointer ml-0.5"
-                                >
-                                  ×
-                                </span>
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-slate-400 text-xs">Select assigned person(s)...</span>
-                          )}
-                        </div>
-                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
-                      </div>
-                      {editErrors.resp_person && (
-                        <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                          <span>* {editErrors.resp_person}</span>
-                        </p>
-                      )}
-
-                      {/* Dropdown Menu */}
-                      {isUserDropdownOpen && (
-                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                          <div className="p-2 border-b border-slate-100 bg-slate-50/80">
-                            <div className="relative">
-                              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                              <input
-                                type="text"
-                                value={userSearchTerm}
-                                onChange={(e) => setUserSearchTerm(e.target.value)}
-                                placeholder="Search by name..."
-                                className="w-full pl-8 pr-3 py-1 bg-white border border-slate-200 rounded-lg text-xs outline-none"
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-                          </div>
-                          <div className="max-h-48 overflow-y-auto p-1 divide-y divide-slate-50 text-xs">
-                            {getDepartmentUsers(editFormData.resp)
-                              .filter((u) => {
-                                const q = userSearchTerm.toLowerCase();
-                                return (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
-                              })
-                              .map((u) => {
-                                const isChecked = getSelectedUsers().includes(u.name);
-                                return (
-                                  <div
-                                    key={u.id || u.name}
-                                    onClick={() => handleToggleUser(u.name)}
-                                    className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition select-none ${isChecked ? 'bg-blue-50 text-blue-900 font-semibold' : 'hover:bg-slate-50 text-slate-700'
-                                      }`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isChecked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300'}`}>
-                                        {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                                      </div>
-                                      <span>{u.name}</span>
-                                    </div>
-                                    {u.department && <span className="text-[10px] text-slate-400">{u.department}</span>}
-                                  </div>
-                                );
-                              })}
-                            {getDepartmentUsers(editFormData.resp).length === 0 && (
-                              <div className="p-3 text-center text-slate-400 italic text-[11px]">
-                                No registered users found for {editFormData.resp}.
-                              </div>
-                            )}
-                          </div>
-                          <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-[11px]">
-                            <span className="text-slate-500">{getSelectedUsers().length} selected</span>
-                            <button
-                              type="button"
-                              onClick={() => setIsUserDropdownOpen(false)}
-                              className="px-2.5 py-0.5 bg-blue-600 text-white rounded-lg font-bold"
+                      <div className="w-full min-h-[38px] px-3 py-1.5 rounded-xl text-xs bg-slate-200/70 border border-slate-300/80 cursor-not-allowed flex items-center gap-1.5 flex-wrap select-none">
+                        {getSelectedUsers().length > 0 ? (
+                          getSelectedUsers().map((uName) => (
+                            <span
+                              key={uName}
+                              className="inline-flex items-center px-2 py-0.5 rounded-lg bg-white/80 text-slate-700 text-[11px] font-semibold border border-slate-300/80 shadow-2xs"
                             >
-                              Done
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                              <span>{uName}</span>
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-slate-500 font-medium text-xs">
+                            {editFormData.resp_person || req.resp_person || 'No user assigned'}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div>
@@ -2432,19 +2330,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </label>
                       <input
                         type="text"
-                        value={editFormData.created_by}
-                        onKeyDown={(e) => {
-                          if (e.key === ' ' && (!editFormData.created_by || e.target.selectionStart === 0)) {
-                            e.preventDefault();
-                          }
-                        }}
-                        onChange={(e) => {
-                          const val = (e.target.value || '').replace(/^\s+/, '');
-                          setEditFormData(prev => ({ ...prev, created_by: val }));
-                        }}
-                        onBlur={() => setEditFormData(prev => ({ ...prev, created_by: (prev.created_by || '').trim() }))}
-                        placeholder="e.g. Admin"
-                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        readOnly
+                        disabled
+                        value={editFormData.created_by || req.created_by || ''}
+                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-200/70 border border-slate-300/80 cursor-not-allowed select-none outline-none"
                       />
                     </div>
 
@@ -2454,12 +2343,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </label>
                       <input
                         type="email"
-                        value={editFormData.created_by_email || ''}
-                        onChange={(e) => {
-                          setEditFormData(prev => ({ ...prev, created_by_email: e.target.value }));
-                        }}
-                        placeholder="e.g. requester@inel.co.in"
-                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-900 outline-none transition bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        readOnly
+                        disabled
+                        value={editFormData.created_by_email || req.created_by_email || ''}
+                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-200/70 border border-slate-300/80 cursor-not-allowed select-none outline-none"
                       />
                     </div>
                   </div>
