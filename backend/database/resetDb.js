@@ -44,7 +44,7 @@ export async function resetDatabase() {
   await executeStatements(schemaSql, 'SCHEMA');
 
   const [tables] = await pool.query('SHOW TABLES');
-  console.log('[DB Reset] Database reset successful! Active tables in inel_todo:');
+  console.log('[DB Reset] Database reset successful! Active tables in inel_qtrack:');
   console.log(tables.map(t => Object.values(t)[0]));
 
   const [users] = await pool.query('SELECT id, name, email, department, role FROM users');

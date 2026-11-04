@@ -89,4 +89,4 @@ If an individual microservice is restarting or not running, the Gateway returns 
 ---
 
 ## 🗄 Database & Offline Resilience
-Each microservice connects to the MySQL database `inel_todo` via the shared connection pool (`backend/shared/db.js`). If MySQL is offline in a developer's local environment, all services have built-in mock fallbacks so the UI remains fully functional and testable!
+Each microservice connects to the MySQL database `inel_qtrack` via the shared connection pool (`backend/shared/db.js`). If MySQL is offline in a developer's local environment, all services have built-in mock fallbacks so the UI remains fully functional and testable!
