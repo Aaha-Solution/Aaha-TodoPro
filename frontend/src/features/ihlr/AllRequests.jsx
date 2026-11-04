@@ -615,7 +615,7 @@ const IhlrAllRequests = () => {
                   <span className="invisible block">.</span>
                 </th>
                 <th className="py-2.5 px-2 text-right align-middle whitespace-nowrap">
-                  <span className="block">ACTIONS</span>
+                  <span className="block"></span>
                   <span className="invisible block">.</span>
                 </th>
               </tr>

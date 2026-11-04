@@ -2721,7 +2721,7 @@ const IhlrApprovals = () => {
                     <th className="py-3 px-3">EVIDENCE</th>
                     <th className="py-3 px-3 text-center">STATUS</th>
                     <th className="py-3 px-3">REMARKS</th>
-                    <th className="py-3 px-3 text-center w-14">ACTIONS</th>
+                    <th className="py-3 px-3 text-center w-14"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
