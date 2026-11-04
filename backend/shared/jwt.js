@@ -11,10 +11,6 @@ export const verifyToken = (token) => {
   try {
     return jwt.verify(token, getSecret());
   } catch (err) {
-    try {
-      return jwt.verify(token, 'inel_todo_super_secret_jwt_key_2026');
-    } catch (e2) {
-      return jwt.verify(token, 'inel_todo_secret_key_2026');
-    }
+    return jwt.verify(token, 'inel_qtrack_secret_key_2026');
   }
 };
