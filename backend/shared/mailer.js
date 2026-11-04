@@ -372,6 +372,35 @@ export function getStatusBadgeHtml(statusVal) {
 /**
  * Generate standard HTML template for INEL portal emails
  */
+
+/**
+ * Helper to format date into DD-MM-YYYY format
+ */
+export function formatDateDDMMYYYY(dateVal) {
+  if (!dateVal) return '';
+  const str = String(dateVal).trim();
+  const datePart = str.split('T')[0].split(' ')[0].trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    const [yyyy, mm, dd] = datePart.split('-');
+    return `${dd}-${mm}-${yyyy}`;
+  }
+  if (/^\d{2}-\d{2}-\d{4}$/.test(datePart)) {
+    return datePart;
+  }
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(datePart)) {
+    const [dd, mm, yyyy] = datePart.split('/');
+    return `${dd}-${mm}-${yyyy}`;
+  }
+  const d = new Date(dateVal);
+  if (!isNaN(d.getTime())) {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  }
+  return datePart;
+}
+
 export function generateEmailTemplate({
   headerTitle,
   headerSubtitle,
