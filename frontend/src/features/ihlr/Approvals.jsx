@@ -20,7 +20,8 @@ import {
   PenTool,
   Lock,
   Pencil,
-  Clock
+  Clock,
+  Paperclip
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
 import { IhlrAttachmentThumbnail, parseAttachments } from './IhlrAttachmentView';
@@ -1480,9 +1481,10 @@ const IhlrApprovals = () => {
                   type="button"
                   disabled={!canUpdateCloserFields}
                   onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-2xs"
                 >
-                  Choose files
+                  <Paperclip className="w-3.5 h-3.5 rotate-45 text-slate-600 shrink-0" />
+                
                 </button>
                 <span className="text-[11px] text-slate-500 truncate">
                   {newEvidenceFiles.length > 0
@@ -1698,9 +1700,10 @@ const IhlrApprovals = () => {
                   type="button"
                   disabled={!canUpdateCloserFields}
                   onClick={() => fileInputPermanentRef.current && fileInputPermanentRef.current.click()}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-2xs"
                 >
-                  Choose files
+                  <Paperclip className="w-3.5 h-3.5 rotate-45 text-slate-600 shrink-0" />
+               
                 </button>
                 <span className="text-[11px] text-slate-500 truncate">
                   {newPermanentEvidenceFiles.length > 0
