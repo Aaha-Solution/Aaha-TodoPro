@@ -405,7 +405,7 @@ export function generateEmailTemplate({
   recipientName,
   greetingMessage,
   tableData = [],
-  actionButtonText,
+  actionButtonText = 'Go to Q Track',
   actionButtonUrl,
   footerNote,
   badgeColor = '#2563eb',
@@ -509,7 +509,7 @@ export function generateEmailTemplate({
             ? `
           <div style="text-align: center; margin: 28px 0 20px 0;">
             <a href="${actionButtonUrl}" style="background: #2563eb; color: #ffffff; padding: 12px 28px; font-size: 13px; font-weight: 700; text-decoration: none; border-radius: 10px; display: inline-block; box-shadow: 0 2px 8px rgba(37,99,235,0.25);">
-              ${actionButtonText} &rarr;
+              ${(() => { const label = (actionButtonText || 'Go to Q Track').trim(); return (label.includes('→') || label.includes('&rarr;')) ? label : `${label} &rarr;`; })()}
             </a>
           </div>
         `
@@ -644,7 +644,7 @@ export async function sendIhlrRequestEmails({
       recipientName: '',
       greetingMessage: '',
       tableData: tableSummary,
-      actionButtonText: 'View My IHLR Requests',
+      actionButtonText: 'Go to Q Track',
       actionButtonUrl: myRequestsUrl,
       footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: '#f59e0b',
@@ -673,7 +673,7 @@ export async function sendIhlrRequestEmails({
       recipientName: '',
       greetingMessage: '',
       tableData: tableSummary,
-      actionButtonText: 'Open Report & Submit Countermeasure',
+      actionButtonText: 'Go to Q Track',
       actionButtonUrl: approvalsUrl,
       footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: '#f59e0b',
@@ -758,7 +758,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
       recipientName: '',
       greetingMessage: '',
       tableData: tableSummary,
-      actionButtonText: isClosed ? 'Review Full IHLR Report' : 'Complete Pending Remarks & Sign-Off',
+      actionButtonText: 'Go to Q Track',
       actionButtonUrl: approvalsUrl,
       footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: isClosed ? '#10b981' : '#d97706',
@@ -797,7 +797,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
         recipientName: '',
         greetingMessage: '',
         tableData: tableSummary,
-        actionButtonText: 'Review & Sign-Off Incident',
+        actionButtonText: 'Go to Q Track',
         actionButtonUrl: approvalsUrl,
         footerNote: 'This is an auto-generated email. Please do not reply.',
         badgeColor: isClosed ? '#10b981' : '#d97706',
@@ -829,7 +829,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
       recipientName: '',
       greetingMessage: '',
       tableData: tableSummary,
-      actionButtonText: 'View Closer Approvals',
+      actionButtonText: 'Go to Q Track',
       actionButtonUrl: approvalsUrl,
       footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: isClosed ? '#10b981' : '#2563eb',
@@ -948,7 +948,7 @@ export async function sendProcessAuditRequestEmails({
       recipientName: creatorName,
       greetingMessage: `Your Process Audit observation report for <strong>${request.model || request.product}</strong> has been logged into the database and assigned to <strong>${assignedName}</strong> (${assignedDept}) for 5-Why root cause analysis and corrective action.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
       tableData: tableSummary,
-      actionButtonText: 'View Process Audit Requests',
+      actionButtonText: 'Go to Q Track',
       actionButtonUrl: myRequestsUrl,
       footerNote: 'You will receive an alert once the responsible department submits containment action and 5-Why analysis.',
       badgeColor: '#f59e0b',
@@ -977,7 +977,7 @@ export async function sendProcessAuditRequestEmails({
       recipientName: assignedName,
       greetingMessage: `<strong>${creatorName}</strong> has logged a process audit finding and designated you as the responsible owner for containment and 5-Why analysis.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
       tableData: tableSummary,
-      actionButtonText: 'Open Report & Submit Countermeasure',
+      actionButtonText: 'Go to Q Track',
       actionButtonUrl: approvalsUrl,
       footerNote: 'Immediate action required: please inspect the process finding and record corrective containment measures in the portal.',
       badgeColor: '#f59e0b',
@@ -1078,7 +1078,7 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
         ? `Process Audit report <strong>${reqNo}</strong> (${request.model || request.product || 'Process'}) has been signed off and marked as <strong>Closed</strong>.<br><br><strong>Final Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#dcfce7; color:#166534; border-radius:4px;">Closed</span>`
         : `Closer <strong>${assignedName}</strong> (${assignedDept}) has completed the 5-Why root cause analysis and corrective action for audit report <strong>${reqNo}</strong> (${request.model || request.product || 'Report'}).<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Awaiting Review</span><br><br><strong>Action Required:</strong> Please review the containment countermeasure details below and complete the pending fields: <strong>Remarks</strong> &amp; <strong>Status sign-off</strong>.`,
       tableData: tableSummary,
-      actionButtonText: isClosed ? 'Review Full Audit Report' : 'Complete Pending Remarks & Sign-Off',
+      actionButtonText: 'Go to Q Track',
       actionButtonUrl: isClosed ? allRequestsUrl : approvalsUrl,
       footerNote: isClosed ? 'Verification complete in the INEL portal.' : 'Action required: Please enter your review remarks and sign off status in the portal.',
       badgeColor: isClosed ? '#10b981' : '#d97706',
@@ -1124,7 +1124,7 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
           ? `Audit report <strong>${reqNo}</strong> (${request.model || request.product || 'Process'}) has been signed off and marked as <strong>Closed</strong>.<br><br><strong>Final Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#dcfce7; color:#166534; border-radius:4px;">Closed</span>`
           : `Closer <strong>${assignedName}</strong> (${assignedDept}) has completed the 5-Why root cause analysis and corrective action for audit report <strong>${reqNo}</strong> (${request.model || request.product || 'Report'}).<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Awaiting Review</span><br><br><strong>Admin Action Required:</strong> Please review root cause details, provide validation remarks, and finalize the audit status.`,
         tableData: tableSummary,
-        actionButtonText: 'Review & Sign-Off Incident',
+        actionButtonText: 'Go to Q Track',
         actionButtonUrl: approvalsUrl,
         footerNote: 'Please sign off in the Q TRACK Portal.',
         badgeColor: isClosed ? '#10b981' : '#d97706',
@@ -1162,7 +1162,7 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
         ? `You have successfully verified and marked Process Audit Report <strong>${reqNo}</strong> as <strong>Closed</strong>.<br><br><strong>Final Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#dcfce7; color:#166534; border-radius:4px;">Closed</span>`
         : `Thank you <strong>${assignedName}</strong>. Your 5-Why root cause analysis and corrective actions for Process Audit Report <strong>${reqNo}</strong> have been recorded in the quality system.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Awaiting Review</span><br><br>The Auditor (<strong>${creatorName}</strong>) and Quality Admin have been alerted with notifications and email to complete the pending validation remarks and finalize status.`,
       tableData: tableSummary,
-      actionButtonText: 'View Closer Approvals',
+      actionButtonText: 'Go to Q Track',
       actionButtonUrl: approvalsUrl,
       footerNote: 'Thank you for submitting quality containment measures.',
       badgeColor: isClosed ? '#10b981' : '#2563eb',

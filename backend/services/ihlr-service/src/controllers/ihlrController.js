@@ -1320,7 +1320,7 @@ export const updateIhlrRequest = async (req, res) => {
                 { label: 'Reassigned By', value: updated.reviewed_by || 'Quality Admin' },
                 { label: 'Status', value: 'Pending' }
               ],
-              actionButtonText: 'Open Report in Approvals',
+              actionButtonText: 'Go to Q Track',
               actionButtonUrl: 'http://localhost:5173/ihlr/approvals',
               badgeColor: '#f59e0b',
               badgeText: 'PENDING'
@@ -1373,7 +1373,7 @@ export const updateIhlrRequest = async (req, res) => {
                 { label: 'Reassigned By', value: updated.reviewed_by || 'Quality Admin' },
                 { label: 'Status', value: 'Pending' }
               ],
-              actionButtonText: 'View My Requests',
+              actionButtonText: 'Go to Q Track',
               actionButtonUrl: 'http://localhost:5173/ihlr/all-requests',
               badgeColor: '#f59e0b',
               badgeText: 'PENDING'
