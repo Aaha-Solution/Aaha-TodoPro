@@ -1407,14 +1407,7 @@ const IhlrApprovals = () => {
             </div>
 
             {/* Temporary Evidence Attachment (Image 1: Format PPT, JPEG, EXCEL & PDF) */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>TEMPORARY EVIDENCE ATTACHMENT</span>
-                  <span className="text-rose-500 font-bold">*</span>
-                </label>
-              </div>
-
+            <div className="-mt-2">
               {/* Styled File Input Button (matching Image 2) */}
               <div className={`flex items-center gap-2 p-1 rounded-xl transition ${
                 closerEvidenceError ? 'border border-rose-400 bg-rose-50/20 ring-1 ring-rose-400/30' : ''
@@ -1635,10 +1628,8 @@ const IhlrApprovals = () => {
             </div>
 
             {/* 2. Permanent Fix Evidence Attachment */}
-            <div>
-              
-
-              <div className={`flex items-center gap-2  rounded-xl transition ${
+            <div className="-mt-2">
+              <div className={`flex items-center gap-2 rounded-xl transition ${
                 closerPermanentEvidenceError ? 'border border-rose-400 bg-rose-50/20 ring-1 ring-rose-400/30' : ''
               }`}>
                 <button
