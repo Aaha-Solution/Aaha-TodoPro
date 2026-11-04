@@ -346,7 +346,7 @@ export function generateEmailTemplate({
   actionButtonUrl,
   footerNote,
   badgeColor = '#2563eb',
-  badgeText = 'NOTIFICATION',
+  badgeText = '',
   logoUrl,
 }) {
   const resolvedLogo = logoUrl || 'cid:inel-logo';
@@ -399,11 +399,13 @@ export function generateEmailTemplate({
                 </tr>
               </table>
             </td>
+                        ${badgeText ? `
             <td align="right" style="vertical-align: middle;">
               <span style="background: ${badgeColor}; color: #ffffff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; display: inline-block;">
                 ${badgeText}
               </span>
             </td>
+            ` : ''}
           </tr>
         </table>
       </td>
@@ -447,7 +449,7 @@ export function generateEmailTemplate({
         }
 
         <p style="font-size: 12px; color: #64748b; margin: 20px 0 0 0; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 16px;">
-          ${footerNote || 'Please do not reply directly to this automated email. Log in to the INEL portal to submit your containment actions and sign-offs.'}
+          ${footerNote || 'This is an auto-generated email. Please do not reply.'}
         </p>
       </td>
     </tr>
@@ -456,8 +458,7 @@ export function generateEmailTemplate({
     <tr>
       <td style="background: #f8fafc; padding: 20px 32px; text-align: center; border-top: 1px solid #e2e8f0;">
         <p style="font-size: 11px; color: #94a3b8; margin: 0;">
-          &copy; ${new Date().getFullYear()} India Nippon Electricals Limited. All rights reserved.<br/>
-          Automated Notification Dispatcher • Hosur Plant
+          &copy; ${new Date().getFullYear()} India Nippon Electricals Limited. All rights reserved.
         </p>
       </td>
     </tr>
@@ -544,18 +545,19 @@ export async function sendIhlrRequestEmails({
     ? allRequestCc.join(', ')
     : (allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None');
 
+  const shiftDisplay = request.shift
+    ? (String(request.shift).toLowerCase().startsWith('shift') ? request.shift : `Shift ${request.shift}`)
+    : 'Shift 1';
+  const shiftValue = request.batch_date ? `${shiftDisplay} • ${request.batch_date}` : shiftDisplay;
+
   const tableSummary = [
-    { label: 'Request Number', value: reqNo },
-    { label: 'Created By', value: createdByDisplay },
-    { label: 'CC Recipient(s)', value: ccDisplayStr },
-    { label: 'Defect / Problem', value: request.problem },
-    { label: 'Model', value: request.model },
-    { label: 'Detected At', value: request.problem_detected_at || 'Cell Inspection' },
-    { label: 'Shift / Batch Date', value: `Shift ${request.shift || 'I'} • ${request.batch_date || 'Today'}` },
-    { label: '4M Category', value: request.four_m || 'MAN' },
+    { label: 'IHLR Number', value: reqNo },
+    { label: 'Problem', value: request.problem || '—' },
+    { label: 'Model', value: request.model || '—' },
     { label: 'Actual Qty', value: String(request.actual_qty || 1) },
-    { label: 'Target Dept', value: assignedDept },
-    { label: 'Assigned Person(s)', value: allAssignedPersonsDisplay },
+    { label: 'Detected At', value: request.problem_detected_at || 'Cell Inspection' },
+    { label: 'Shift', value: shiftValue },
+    { label: 'Assigned Person', value: allAssignedPersonsDisplay },
     { label: 'Status', value: mailStatus },
   ];
 
@@ -572,9 +574,9 @@ export async function sendIhlrRequestEmails({
       tableData: tableSummary,
       actionButtonText: 'View My IHLR Requests',
       actionButtonUrl: myRequestsUrl,
-      footerNote: 'You will receive an alert once the responsible department submits containment action and why-why analysis.',
+      footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: '#f59e0b',
-      badgeText: 'PENDING',
+      badgeText: '',
     });
 
     results.creator = await sendEmail({
@@ -603,9 +605,9 @@ export async function sendIhlrRequestEmails({
       tableData: tableSummary,
       actionButtonText: 'Open Report & Submit Countermeasure',
       actionButtonUrl: approvalsUrl,
-      footerNote: 'Immediate action required: please inspect the defective batch and record corrective containment measures in the portal.',
+      footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: '#f59e0b',
-      badgeText: 'PENDING ACTION',
+      badgeText: '',
     });
 
     results.assigned = await sendEmail({
@@ -690,9 +692,9 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
       tableData: tableSummary,
       actionButtonText: isClosed ? 'Review Full IHLR Report' : 'Complete Pending Remarks & Sign-Off',
       actionButtonUrl: approvalsUrl,
-      footerNote: isClosed ? 'Verification complete in the INEL portal.' : 'Action required: Please enter your review remarks and sign off status in the portal.',
+      footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: isClosed ? '#10b981' : '#d97706',
-      badgeText: isClosed ? 'CLOSED' : 'AWAITING REVIEW',
+      badgeText: '',
     });
 
     results.creator = await sendEmail({
@@ -731,9 +733,9 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
         tableData: tableSummary,
         actionButtonText: 'Review & Sign-Off Incident',
         actionButtonUrl: approvalsUrl,
-        footerNote: 'Please sign off in the INEL Quality Portal.',
+        footerNote: 'This is an auto-generated email. Please do not reply.',
         badgeColor: isClosed ? '#10b981' : '#d97706',
-        badgeText: isClosed ? 'CLOSED' : 'AWAITING REVIEW',
+        badgeText: '',
       });
 
       const adminRes = await sendEmail({
@@ -765,9 +767,9 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
       tableData: tableSummary,
       actionButtonText: 'View Closer Approvals',
       actionButtonUrl: approvalsUrl,
-      footerNote: 'Thank you for submitting quality containment measures.',
+      footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: isClosed ? '#10b981' : '#2563eb',
-      badgeText: isClosed ? 'CLOSED' : 'AWAITING REVIEW',
+      badgeText: '',
     });
 
     results.assigned = await sendEmail({
