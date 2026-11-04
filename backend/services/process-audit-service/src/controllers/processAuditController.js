@@ -1015,7 +1015,7 @@ export const createRequest = async (req, res) => {
             created.id,
             issueNo,
             `Process Audit Finding Logged: #${issueNo}`,
-            `Your Process Audit observation report for "${created.model || created.product || 'Audit'}" has been logged and assigned to ${assignedNamesDisplay} (${created.department || 'Production'}).`
+            `${issueNo} (${created.model || created.product || 'Audit'}). Request raised by you (${creatorUser.name}) and assigned to ${assignedNamesDisplay}`
           ]
         ).catch((e) => console.warn('[PA Notification A Error]:', e.message));
 
@@ -1032,7 +1032,7 @@ export const createRequest = async (req, res) => {
               created.id,
               issueNo,
               `Action Required: Process Audit #${issueNo} Assigned`,
-              `Process Audit report #${issueNo} (${created.model || 'Process'} - "${created.issue_observation || created.problem || 'Observation'}") has been assigned to you by ${creatorUser.name}. Please inspect and submit root cause action.`
+              `${issueNo} (${created.model || created.product || 'Process'}). Request raised and assigned by ${creatorUser.name} to you (${userItem.name})`
             ]
           ).catch((e) => console.warn('[PA Notification B Error]:', e.message));
         }
@@ -1060,7 +1060,7 @@ export const createRequest = async (req, res) => {
                 created.id,
                 issueNo,
                 `CC Notification: Process Audit #${issueNo}`,
-                `You have been CC'd on Process Audit finding #${issueNo} for "${created.model || created.product || 'Process Audit'}" logged by ${creatorUser.name}.`
+                `${issueNo} (${created.model || created.product || 'Process Audit'}). Request raised and assigned by ${creatorUser.name} to ${assignedNamesDisplay}`
               ]
             ).catch((err) => console.warn('[PA Notifications] Error inserting CC in-app notification:', err.message));
           }
@@ -1472,22 +1472,7 @@ export const updateRequestStatus = async (req, res) => {
             });
           }
 
-          for (const cUser of targetClosers) {
-            await pool.query(
-              `INSERT INTO process_audit_notifications 
-               (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
-               VALUES (?, ?, ?, ?, ?, 'countermeasure_saved', ?, ?, '/process-audit/approvals', 0)`,
-              [
-                cUser.id || null,
-                cUser.name,
-                cUser.email || '',
-                updated.id || id,
-                issueNo,
-                `Closer Submission Acknowledged: #${issueNo}`,
-                `Your 5-Why root cause analysis and corrective action for #${issueNo} (${updated.model || 'Process'}) have been submitted. The Auditor and Quality Admin have been alerted with notification & email to complete the pending validation remarks and status sign-off.`
-              ]
-            ).catch((e) => console.warn('[PA Closer Notif Error]:', e.message));
-          }
+          // Self-acknowledgment notification to closer omitted to prevent notification clutter
 
           // Trigger Closer Email Dispatch to Requester, Quality Admins, and Closer
           try {

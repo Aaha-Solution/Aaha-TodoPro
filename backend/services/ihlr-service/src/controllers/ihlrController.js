@@ -725,7 +725,7 @@ export const createIhlrRequest = async (req, res) => {
             `IHLR Defect Report Logged: #${reqNo}`,
             (() => {
               const d = (created.resp || (assignedUser && assignedUser.department) || '').trim();
-              return `Your IHLR defect observation report for "${created.model}" has been logged and assigned to ${assignedNamesDisplay}${d ? ` (${d})` : ''}.`;
+              return `${reqNo} (${created.model}). Request raised by you (${creatorUser.name}) and assigned to ${assignedNamesDisplay}${d ? ` (${d})` : ''}`;
             })()
           ]
         );
@@ -743,7 +743,7 @@ export const createIhlrRequest = async (req, res) => {
               created.id,
               reqNo,
               `Action Required: IHLR Report #${reqNo} Assigned`,
-              `Defect report #${reqNo} (${created.model} - "${created.problem}") has been assigned to you by ${creatorUser.name}. Please inspect and submit 5-Why root cause countermeasure.`
+              `${reqNo} (${created.model}). Request raised and assigned by ${creatorUser.name} to you (${userItem.name})`
             ]
           );
         }
@@ -772,7 +772,7 @@ export const createIhlrRequest = async (req, res) => {
                 created.id,
                 reqNo,
                 `CC Notification: IHLR Report #${reqNo}`,
-                `You have been CC'd on IHLR rejection report #${reqNo} for "${created.model}" logged by ${creatorUser.name}.`
+                `${reqNo} (${created.model}). Request raised and assigned by ${creatorUser.name} to ${assignedNamesDisplay}`
               ]
             ).catch((err) => console.warn('[IHLR Notifications] Error inserting CC in-app notification:', err.message));
           }
@@ -1589,22 +1589,7 @@ export const updateIhlrRequest = async (req, res) => {
             });
           }
 
-          for (const cUser of targetClosers) {
-            await pool.query(
-              `INSERT INTO ihlr_notifications 
-               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
-               VALUES (?, ?, ?, ?, ?, 'countermeasure_saved', ?, ?, '/ihlr/approvals', 0)`,
-              [
-                cUser.id || null,
-                cUser.name,
-                cUser.email || '',
-                updated.id || id,
-                reqNo,
-                `Closer Submission Acknowledged: #${reqNo}`,
-                `Your 5-Why root cause analysis and corrective action for #${reqNo} (${updated.model || 'Model'}) have been submitted. The Requester and Quality Admin have been alerted with notification & email to complete the pending validation remarks and status sign-off.`
-              ]
-            ).catch((e) => console.warn('[Closer Notif Error]:', e.message));
-          }
+          // Self-acknowledgment notification to closer omitted to prevent notification clutter
 
           // Trigger Closer Email Dispatch to Requester, Quality Admins, and Closer
           try {
@@ -1673,29 +1658,41 @@ export const getIhlrNotifications = async (req, res) => {
 
     let notifRows = [];
     if (pool) {
-      let query = 'SELECT * FROM ihlr_notifications';
+      let query = `
+        SELECT 
+          n.*,
+          r.created_by AS raised_by,
+          r.created_by_email AS raised_by_email,
+          r.resp_person AS assigned_to,
+          r.resp_person_email AS assigned_to_email,
+          r.resp AS department_name,
+          r.model AS request_model,
+          r.problem AS request_problem
+        FROM ihlr_notifications n
+        LEFT JOIN ihlr_requests r ON n.request_id = r.id
+      `;
       const params = [];
       const conditions = [];
 
       if (userId) {
-        conditions.push('user_id = ?');
+        conditions.push('n.user_id = ?');
         params.push(userId);
       }
       if (userName) {
-        conditions.push('LOWER(TRIM(user_name)) = LOWER(TRIM(?))');
+        conditions.push('LOWER(TRIM(n.user_name)) = LOWER(TRIM(?))');
         params.push(userName);
-        conditions.push('FIND_IN_SET(?, REPLACE(LOWER(user_name), ", ", ","))');
+        conditions.push('FIND_IN_SET(?, REPLACE(LOWER(n.user_name), ", ", ","))');
         params.push(userName.toLowerCase());
       }
       if (userEmail) {
-        conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
+        conditions.push('LOWER(TRIM(n.user_email)) = LOWER(TRIM(?))');
         params.push(userEmail);
-        conditions.push('FIND_IN_SET(?, REPLACE(LOWER(user_email), ", ", ","))');
+        conditions.push('FIND_IN_SET(?, REPLACE(LOWER(n.user_email), ", ", ","))');
         params.push(userEmail.toLowerCase());
       }
       if (isAdmin) {
         // For Admin / QAD users: only include notifications addressed to generic admin where user_id IS NULL or 0
-        conditions.push("( (user_id IS NULL OR user_id = 0) AND (LOWER(TRIM(user_name)) LIKE '%admin%' OR LOWER(TRIM(user_email)) LIKE '%admin%' OR type LIKE '%admin%') )");
+        conditions.push("( (n.user_id IS NULL OR n.user_id = 0) AND (LOWER(TRIM(n.user_name)) LIKE '%admin%' OR LOWER(TRIM(n.user_email)) LIKE '%admin%' OR n.type LIKE '%admin%') )");
       }
 
       if (conditions.length > 0) {
@@ -1703,7 +1700,7 @@ export const getIhlrNotifications = async (req, res) => {
       } else if (!isAdmin) {
         return successResponse(res, [], 'IHLR notifications retrieved');
       }
-      query += ' ORDER BY id DESC LIMIT 50';
+      query += ' ORDER BY n.id DESC LIMIT 50';
       const [rows] = await pool.query(query, params).catch(() => [[]]);
       const rawRows = rows || [];
       // Deduplicate so that no user receives duplicate notifications for the same request, type and recipient

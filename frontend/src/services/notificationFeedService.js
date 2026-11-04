@@ -169,6 +169,22 @@ export const fetchIhlrNotificationsFeed = async (user) => {
         // Non-admins only see notifications directly addressed to them
         if (!isAdmin && !isDirectMatch) return;
 
+        // Closer self-acknowledgment notifications are not needed and cause clutter
+        if (
+          n.type === 'countermeasure_saved' ||
+          (n.title && n.title.toLowerCase().includes('closer submission acknowledged'))
+        ) {
+          return;
+        }
+
+        // Closer self-acknowledgment notifications are not needed and cause clutter
+        if (
+          n.type === 'countermeasure_saved' ||
+          (n.title && n.title.toLowerCase().includes('closer submission acknowledged'))
+        ) {
+          return;
+        }
+
         // Personal action & acknowledgment notifications:
         // 'submission_confirmed' ("Your report has been logged"), 'assignment_required' ("assigned to you"),
         // and 'countermeasure_saved' ("Your 5-Why analysis... submitted") are strictly personal to the recipient
@@ -206,8 +222,44 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           (n.title && n.title.toLowerCase().includes('cc notification'));
 
         const notifIdStr = `notif-${n.id}`;
-        const notifMessage = n.message;
         const reqNoKey = n.reqNo || (n.requestId ? (String(n.requestId).startsWith('#') ? n.requestId : `#${n.requestId}`) : '');
+
+        // Resolve matched request to extract creator (raisedBy) and assigned person (assignedTo)
+        const cleanReqId = n.request_id || n.rawId;
+        const cleanReqNo = String(n.req_no || n.reqNo || reqNoKey || '').replace(/^#/, '').trim();
+        const matchedReq = Array.isArray(requests)
+          ? requests.find((r) =>
+              (cleanReqId && Number(r.id) === Number(cleanReqId)) ||
+              (cleanReqNo && String(r.req_no || '').replace(/^#/, '').trim() === cleanReqNo)
+            )
+          : null;
+
+        const raisedBy = n.raised_by || matchedReq?.created_by || n.created_by || '';
+        const assignedTo = n.assigned_to || matchedReq?.resp_person || n.resp_person || '';
+        const assignedBy = matchedReq?.reviewed_by || raisedBy;
+
+        // Format simplified clean message: "<reqNo> (<model>). Request raised and assigned by <Person> to <You/User>"
+        const reqTag = cleanReqNo ? (cleanReqNo.startsWith('IHLR-') ? cleanReqNo : `IHLR-${cleanReqNo}`) : (reqNoKey ? reqNoKey.replace(/^#/, '') : 'IHLR');
+        const modelLabel = n.request_model || matchedReq?.model || n.model || 'Model';
+        const rName = raisedBy || 'Requester';
+        const aName = assignedTo || n.user_name || 'Assigned Person';
+
+        let notifMessage = '';
+        if (isClosedNotif) {
+          notifMessage = `${reqTag} (${modelLabel}). Request verified and closed`;
+        } else if (isPendingSignoff) {
+          notifMessage = `${reqTag} (${modelLabel}). Countermeasures submitted by ${aName} — pending sign-off`;
+        } else if (isConfirmedNotif) {
+          notifMessage = `${reqTag} (${modelLabel}). Request raised by you (${rName}) and assigned to ${aName}`;
+        } else if (isAssignmentNotif) {
+          notifMessage = `${reqTag} (${modelLabel}). Request raised and assigned by ${rName} to you (${aName})`;
+        } else if (isCcNotif) {
+          notifMessage = `${reqTag} (${modelLabel}). Request raised and assigned by ${rName} to ${aName}`;
+        } else if (n.type === 'assigned_to_ihlr' || n.type === 'ihlr_reassigned') {
+          notifMessage = `${reqTag} (${modelLabel}). Request reassigned by ${assignedBy || 'Admin'} to ${aName}`;
+        } else {
+          notifMessage = `${reqTag} (${modelLabel}). Request raised and assigned by ${rName} to ${aName}`;
+        }
 
         // Authoritative read status:
         // Database is the ground truth for persisted notifications.
@@ -276,6 +328,9 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : isCcNotif ? 'INFORMATION' : 'PRODUCTION'),
           title: n.title,
           message: notifMessage,
+          raisedBy,
+          assignedTo,
+          assignedBy,
           timeDisplay: formatStreamDate(n.date),
           createdAt: n.created_at || n.date,
           rawDate: n.created_at || n.date,
@@ -517,6 +572,19 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         const rawReq = n.requestId || n.issue_no || '';
         const reqNoKey = rawReq ? (String(rawReq).startsWith('#') ? rawReq : `#${rawReq}`) : '#PA';
 
+        const cleanPaId = n.request_id || n.rawId;
+        const cleanIssueNo = String(n.issue_no || n.issueNo || n.requestId || '').replace(/^#/, '').trim();
+        const matchedPaReq = Array.isArray(requests)
+          ? requests.find((r) =>
+              (cleanPaId && Number(r.id) === Number(cleanPaId)) ||
+              (cleanIssueNo && String(r.issue_no || '').replace(/^#/, '').trim() === cleanIssueNo)
+            )
+          : null;
+
+        const raisedBy = n.raised_by || matchedPaReq?.creator || matchedPaReq?.created_by || '';
+        const assignedTo = n.assigned_to || matchedPaReq?.closer || matchedPaReq?.executor || matchedPaReq?.resp_person || '';
+        const assignedBy = matchedPaReq?.reviewed_by || raisedBy;
+
         // Authoritative read status
         let isItemRead = false;
         if (n.is_read !== undefined && n.is_read !== null) {
@@ -551,14 +619,28 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         if (isDuplicate) return;
 
         let notifTitle = n.title;
-        let notifMessage = n.message || '';
-        if (notifMessage.includes('TEMPORARY CLOSED BY') || notifMessage.toLowerCase().includes('temporary closed by')) {
-          const reqMatch = Array.isArray(requests)
-            ? requests.find((r) => String(r.id) === String(n.request_id || n.rawId) || String(r.issue_no || '').replace(/^#/, '') === String(n.issue_no || n.requestId || '').replace(/^#/, ''))
-            : null;
-          const realName = reqMatch?.closer_updated_by || reqMatch?.executor || n.user_name || 'Assigned Executor';
-          notifMessage = notifMessage.replace(/TEMPORARY CLOSED BY/gi, realName);
+        const paReqTag = cleanIssueNo ? (cleanIssueNo.startsWith('PA-') ? cleanIssueNo : `PA-${cleanIssueNo}`) : (reqNoKey ? reqNoKey.replace(/^#/, '') : 'PA');
+        const paModelLabel = matchedPaReq?.model || matchedPaReq?.product || 'Process Audit';
+        const paRName = raisedBy || 'Auditor';
+        const paAName = assignedTo || n.user_name || 'Assigned Closer';
+
+        let notifMessage = '';
+        if (isClosedNotif) {
+          notifMessage = `${paReqTag} (${paModelLabel}). Finding verified and closed`;
+        } else if (isPendingSignoff) {
+          notifMessage = `${paReqTag} (${paModelLabel}). Countermeasures submitted by ${paAName} — pending sign-off`;
+        } else if (isConfirmedNotif) {
+          notifMessage = `${paReqTag} (${paModelLabel}). Request raised by you (${paRName}) and assigned to ${paAName}`;
+        } else if (isAssignmentNotif) {
+          notifMessage = `${paReqTag} (${paModelLabel}). Request raised and assigned by ${paRName} to you (${paAName})`;
+        } else if (isCcNotif) {
+          notifMessage = `${paReqTag} (${paModelLabel}). Request raised and assigned by ${paRName} to ${paAName}`;
+        } else if (isReassignedNotif) {
+          notifMessage = `${paReqTag} (${paModelLabel}). Request reassigned by ${assignedBy || 'Admin'} to ${paAName}`;
+        } else {
+          notifMessage = `${paReqTag} (${paModelLabel}). Request raised and assigned by ${paRName} to ${paAName}`;
         }
+
         if (isReassignedNotif && notifTitle && notifTitle.includes('Assigned') && !notifTitle.includes('Reassigned')) {
           notifTitle = notifTitle.replace(/\bAssigned\b/g, 'Reassigned');
         }
@@ -597,6 +679,9 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : isCcNotif ? 'INFORMATION' : 'PRODUCTION'),
           title: notifTitle,
           message: notifMessage,
+          raisedBy,
+          assignedTo,
+          assignedBy,
           timeDisplay: formatStreamDate(n.date || n.time || n.created_at),
           subCategory: 'PROCESS AUDIT OBSERVATION',
           footerFlag: isClosedNotif
