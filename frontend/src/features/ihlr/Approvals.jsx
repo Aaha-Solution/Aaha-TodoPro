@@ -19,7 +19,8 @@ import {
   ChevronDown,
   PenTool,
   Lock,
-  Pencil
+  Pencil,
+  Clock
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
 import { IhlrAttachmentThumbnail, parseAttachments } from './IhlrAttachmentView';
@@ -1041,6 +1042,62 @@ const IhlrApprovals = () => {
     }
   };
 
+  // Action metrics calculation for top cards: Total Assigned, Action Submitted & Pending
+  const isIhlrActionSubmitted = (r) => {
+    if (!r) return false;
+    const status = String(r.status || '').toUpperCase();
+    if (status === 'CLOSED') return true;
+    if (status === 'REJECTED') return false;
+
+    return status !== 'OPEN' && (
+      status === 'IN_PROGRESS' ||
+      status === 'APPROVAL_PENDING' ||
+      status === 'AWAITING_REVIEW' ||
+      status === 'AWAITING REVIEW' || (
+        Boolean((r.temporary_action || r.permanent_fix) && String(r.temporary_action || r.permanent_fix).trim()) &&
+        Boolean(r.temporary_target_date || r.permanent_target_date) &&
+        (Array.isArray(r.prod_why_why) && r.prod_why_why.some((w) => Boolean(w && String(w).trim())))
+      )
+    );
+  };
+
+  const isIhlrActionPending = (r) => {
+    if (!r) return false;
+    const status = String(r.status || '').toUpperCase();
+    if (status === 'CLOSED' || status === 'REJECTED') return false;
+    return !isIhlrActionSubmitted(r);
+  };
+
+  const isAssignedSpecificallyToUser = (r) => {
+    if (!r || !user) return false;
+    const clean = (val) => (val || '').trim().toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s+/i, '');
+    const uName = clean(user.name);
+    const uEmail = clean(user.email);
+    const rPerson = clean(r.resp_person);
+    const rPersonEmail = clean(r.resp_person_email);
+    const personList = rPerson.split(',').map((s) => clean(s)).filter(Boolean);
+    const emailList = rPersonEmail.split(',').map((s) => clean(s)).filter(Boolean);
+
+    if (personList.length > 0 || emailList.length > 0) {
+      return Boolean(
+        (uName && (rPerson === uName || personList.includes(uName))) ||
+        (uEmail && (rPersonEmail === uEmail || emailList.includes(uEmail)))
+      );
+    }
+    const uDept = clean(userDept || user.department);
+    const rDept = clean(r.resp || r.department);
+    return Boolean(rDept && uDept && uDept === rDept);
+  };
+
+  const userActionsList = isAdmin
+    ? requests
+    : requests.filter((r) => isAssignedSpecificallyToUser(r));
+
+  const displayActions = userActionsList.length > 0 ? userActionsList : requests;
+  const totalAssignedCount = displayActions.length;
+  const actionSubmittedCount = displayActions.filter(isIhlrActionSubmitted).length;
+  const pendingCount = displayActions.filter(isIhlrActionPending).length;
+
   // Filter requests
   const filtered = requests.filter((r) => {
     // Restrict visibility for closer non-admins strictly to their assigned requests (not requests they raised)
@@ -1209,7 +1266,7 @@ const IhlrApprovals = () => {
         
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              {isAdmin ? 'IHLR Approvals & Closer Log' : 'My Approvals & Closer Log'}
+              {isAdmin ? 'IHLR Approvals & Closer Log' : 'My Action'}
             </h1>
        
           </div>
@@ -2526,7 +2583,76 @@ const IhlrApprovals = () => {
         {/* RIGHT COLUMN: Filter Bar & Table (Matching Reference Image 2)   */}
         {/* ============================================================== */}
         <div className="lg:col-span-7 xl:col-span-8 space-y-4">
-          
+
+{/* Top Three Static Overview Cards: Total Assigned, Action Submitted & Pending */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Card 1: Total Assigned */}
+            <div className="bg-white rounded-xl py-3 px-3.5 border border-slate-200/90 shadow-2xs select-none">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                  Total Assigned
+                </span>
+                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <ClipboardCheck className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="flex items-baseline justify-between gap-1.5">
+                <span className="text-2xl font-black text-slate-900 font-mono tracking-tight leading-none">
+                  {totalAssignedCount}
+                </span>
+                <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/60 truncate">
+                  {isAdmin ? 'All Plant' : `For ${user?.name || 'You'}`}
+                </span>
+              </div>
+
+            </div>
+
+            {/* Card 2: Action Submitted */}
+            <div className="bg-white rounded-xl py-3 px-3.5 border border-slate-200/90 shadow-2xs select-none">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                  Action Submitted
+                </span>
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="flex items-baseline justify-between gap-1.5">
+                <span className="text-2xl font-black text-emerald-600 font-mono tracking-tight leading-none">
+                  {actionSubmittedCount}
+                </span>
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 truncate">
+                  Submitted
+                </span>
+              </div>
+
+            </div>
+
+            {/* Card 3: Pending */}
+            <div className="bg-white rounded-xl py-3 px-3.5 border border-slate-200/90 shadow-2xs select-none">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                    Pending
+                  </span>
+                </div>
+                <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                  <Clock className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="flex items-baseline justify-between gap-1.5">
+                <span className="text-2xl font-black text-rose-600 font-mono tracking-tight leading-none">
+                  {pendingCount}
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200/60 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                  <span>Action Needed</span>
+                </span>
+              </div>
+
+            </div>
+          </div>
+
           {/* Top Filter and Search Bar (Image 2 Top Row) */}
           <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center gap-3">
             <div className="relative flex-1 w-full">
