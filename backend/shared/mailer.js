@@ -412,17 +412,21 @@ export function generateEmailTemplate({
     <!-- Body Header -->
     <tr>
       <td style="padding: 32px 32px 16px 32px;">
-        <h1 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">
+        <h1 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 16px 0;">
           ${headerTitle}
         </h1>
+        ${headerSubtitle ? `
         <p style="font-size: 13px; color: #64748b; margin: 0 0 20px 0; line-height: 1.5;">
           ${headerSubtitle}
         </p>
+        ` : ''}
 
+        ${(greetingMessage || recipientName) ? `
         <p style="font-size: 14px; color: #334155; margin: 0 0 20px 0; line-height: 1.6;">
-          Dear <strong>${recipientName || 'Team Member'}</strong>,<br/>
-          ${greetingMessage}
+          ${recipientName ? `Dear <strong>${recipientName}</strong>,<br/>` : ''}
+          ${greetingMessage || ''}
         </p>
+        ` : ''}
 
         <!-- Information Table -->
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 24px;">
@@ -562,9 +566,9 @@ export async function sendIhlrRequestEmails({
     const creatorSubject = `[IHLR Confirmation] Defect Request #${reqNo} Successfully Submitted (Pending)`;
     const creatorHtml = generateEmailTemplate({
       headerTitle: `IHLR Defect Report Logged: #${reqNo}`,
-      headerSubtitle: `Your In-House Line Rejection analysis report has been recorded and dispatched for containment.`,
-      recipientName: creatorName,
-      greetingMessage: `Your IHLR defect observation report for <strong>${request.model}</strong> has been logged into the database and assigned to <strong>${allAssignedPersonsDisplay}</strong>${assignedDeptDisplay} for 5-Why root cause countermeasure.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
+      headerSubtitle: '',
+      recipientName: '',
+      greetingMessage: '',
       tableData: tableSummary,
       actionButtonText: 'View My IHLR Requests',
       actionButtonUrl: myRequestsUrl,
@@ -593,9 +597,9 @@ export async function sendIhlrRequestEmails({
       : `[Action Required] IHLR Rejection #${reqNo} Assigned to You - Pending`;
     const assignedHtml = generateEmailTemplate({
       headerTitle: `Action Required: IHLR Incident #${reqNo}`,
-      headerSubtitle: `An in-house line rejection has been assigned to you for investigation and corrective action.`,
-      recipientName: assignedName,
-      greetingMessage: `<strong>${createdByDisplay}</strong> from ${creatorDept} has logged an in-house line rejection and designated you as the responsible owner for containment and 5-Why analysis.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
+      headerSubtitle: '',
+      recipientName: '',
+      greetingMessage: '',
       tableData: tableSummary,
       actionButtonText: 'Open Report & Submit Countermeasure',
       actionButtonUrl: approvalsUrl,
@@ -680,13 +684,9 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
 
     const html = generateEmailTemplate({
       headerTitle: isClosed ? `IHLR Case Closed: #${reqNo}` : `Closer Countermeasure Completed: #${reqNo}`,
-      headerSubtitle: isClosed
-        ? `Defect containment and 5-Why corrective actions have been completed and verified.`
-        : `Closer ${assignedName} (${assignedDept}) has completed 5-Why root cause analysis and corrective action. Ready for review and sign-off.`,
-      recipientName: creatorName,
-      greetingMessage: isClosed
-        ? `Defect observation report <strong>${reqNo}</strong> (${request.model || 'Model'}) has been signed off and marked as <strong>Closed</strong>.<br><br><strong>Final Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#dcfce7; color:#166534; border-radius:4px;">Closed</span>`
-        : `Closer <strong>${assignedName}</strong> (${assignedDept}) has completed the 5-Why root cause analysis and corrective action for defect report <strong>${reqNo}</strong> (${request.model || 'Report'}).<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Awaiting Review</span><br><br><strong>Action Required:</strong> Please review the containment countermeasure details below and complete the pending fields: <strong>Remarks</strong> &amp; <strong>Status sign-off</strong>.`,
+      headerSubtitle: '',
+      recipientName: '',
+      greetingMessage: '',
       tableData: tableSummary,
       actionButtonText: isClosed ? 'Review Full IHLR Report' : 'Complete Pending Remarks & Sign-Off',
       actionButtonUrl: approvalsUrl,
@@ -725,13 +725,9 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
 
       const adminHtml = generateEmailTemplate({
         headerTitle: isClosed ? `Case Closed: #${reqNo}` : `Pending Closer Review: #${reqNo}`,
-        headerSubtitle: isClosed
-          ? `Defect report #${reqNo} has been finalized and closed.`
-          : `Closer ${assignedName} (${assignedDept}) has completed root cause analysis and countermeasures. Ready for validation remarks and status sign-off.`,
-        recipientName: adminName,
-        greetingMessage: isClosed
-          ? `Defect report <strong>${reqNo}</strong> (${request.model || 'Model'}) has been signed off and marked as <strong>Closed</strong>.<br><br><strong>Final Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#dcfce7; color:#166534; border-radius:4px;">Closed</span>`
-          : `Closer <strong>${assignedName}</strong> (${assignedDept}) has completed the 5-Why root cause analysis and corrective action for defect report <strong>${reqNo}</strong> (${request.model || 'Report'}).<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Awaiting Review</span><br><br><strong>Admin Action Required:</strong> Please review root cause details, provide validation remarks, and finalize the incident status.`,
+        headerSubtitle: '',
+        recipientName: '',
+        greetingMessage: '',
         tableData: tableSummary,
         actionButtonText: 'Review & Sign-Off Incident',
         actionButtonUrl: approvalsUrl,
@@ -763,13 +759,9 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
 
     const html = generateEmailTemplate({
       headerTitle: isClosed ? `Case Closed & Signed-Off: #${reqNo}` : `Closer Submission Acknowledged: #${reqNo}`,
-      headerSubtitle: isClosed
-        ? `Your closure sign-off and root cause containment measures have been confirmed in the quality portal.`
-        : `Your 5-Why root cause countermeasures have been successfully submitted (Status: Awaiting Review). Requester and Admin have been alerted to complete the pending fields.`,
-      recipientName: assignedName,
-      greetingMessage: isClosed
-        ? `You have successfully verified and marked IHLR Report <strong>${reqNo}</strong> as <strong>Closed</strong>.<br><br><strong>Final Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#dcfce7; color:#166534; border-radius:4px;">Closed</span>`
-        : `Thank you <strong>${assignedName}</strong>. Your 5-Why root cause analysis and corrective actions for IHLR Report <strong>${reqNo}</strong> have been recorded in the quality system.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Awaiting Review</span><br><br>The Requester (<strong>${creatorName}</strong>) and Quality Admin have been alerted with notifications and email to complete the pending validation remarks and finalize status.`,
+      headerSubtitle: '',
+      recipientName: '',
+      greetingMessage: '',
       tableData: tableSummary,
       actionButtonText: 'View Closer Approvals',
       actionButtonUrl: approvalsUrl,
