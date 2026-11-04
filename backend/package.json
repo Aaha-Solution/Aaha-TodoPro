@@ -1,7 +1,7 @@
 {
   "name": "inel-todo-backend",
   "version": "1.0.0",
-  "description": "India Nippon Electricals Limited - Todo Microservices Backend",
+  "description": "India Nippon Electricals Limited - Q TRACK Microservices Backend",
   "main": "gateway/src/server.js",
   "type": "module",
   "scripts": {

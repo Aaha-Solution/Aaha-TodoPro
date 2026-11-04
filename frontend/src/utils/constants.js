@@ -1,4 +1,4 @@
-export const APP_NAME = "Todo";
+export const APP_NAME = "Q TRACK";
 export const COMPANY_NAME = "India Nippon Electricals Limited";
 
 export const ROLES = {

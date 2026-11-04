@@ -116,12 +116,12 @@ export const Login = () => {
         {/* Logo */}
         <div className="relative z-10 flex items-center gap-[12px]">
           <img src={nipponLogo} alt="Nippon Logo" className="h-[40px] w-auto object-contain select-none" />
-          <span className="font-heading text-[24px] font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">Todo</span>
+          <span className="font-heading text-[24px] font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">Q TRACK</span>
         </div>
 
         {/* Footer */}
         <div className="relative z-10 text-[12px] text-slate-500 font-medium">
-          &copy; {new Date().getFullYear()} Todo Management System. All rights reserved.
+          &copy; {new Date().getFullYear()} Q TRACK Management System. All rights reserved.
         </div>
       </div>
 
@@ -131,7 +131,7 @@ export const Login = () => {
           {/* Logo on mobile/tablet */}
           <div className="flex lg:hidden items-center gap-[12px] mb-[24px] justify-center">
             <img src={nipponLogo} alt="Nippon Logo" className="h-[36px] w-auto object-contain select-none" />
-            <span className="font-heading text-[24px] font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">Todo</span>
+            <span className="font-heading text-[24px] font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">Q TRACK</span>
           </div>
 
           <div className="mb-[24px] px-[8px] sm:px-0 text-center lg:text-left">
@@ -252,7 +252,7 @@ export const Login = () => {
 
           {/* Mobile/Tablet Footer */}
           <div className="block lg:hidden text-center text-[12px] text-slate-400 mt-[32px] pb-[16px]">
-            &copy; {new Date().getFullYear()} Todo Management System. All rights reserved.
+            &copy; {new Date().getFullYear()} Q TRACK Management System. All rights reserved.
           </div>
         </div>
       </div>

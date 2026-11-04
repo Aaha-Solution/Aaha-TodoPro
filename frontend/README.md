@@ -1,9 +1,9 @@
-# India Nippon Electricals Limited - Todo Frontend
+# India Nippon Electricals Limited - Q TRACK Frontend
 
 Built with React, Vite, Tailwind CSS, Redux Toolkit, and React Router.
 
 ## Features
-- **Todo Landing Page** with factory building hero background, enterprise authentication, and custom branding.
+- **Q TRACK Landing Page** with factory building hero background, enterprise authentication, and custom branding.
 - **Operational System Selection Portal** with interactive module cards.
 - **Process Audit Observation** module:
   - **Creator Dashboard**: Metric KPIs and recent production requests.
