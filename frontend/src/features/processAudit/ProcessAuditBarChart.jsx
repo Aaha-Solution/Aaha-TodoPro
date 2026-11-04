@@ -458,44 +458,6 @@ export const ProcessAuditBarChart = ({
           </div>
         </div>
 
-        {/* Quick Analytical Highlights Ribbon */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-3.5 border-t border-slate-100">
-          <div className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Volume</span>
-              <div className="text-lg font-black text-slate-900 font-mono mt-0.5">{totalVolume}</div>
-            </div>
-            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-          </div>
-
-          <div className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Closure Rate</span>
-              <div className="text-lg font-black text-emerald-600 font-mono mt-0.5">{closureRate}%</div>
-            </div>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-          </div>
-
-          <div className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs flex items-center justify-between">
-            <div className="min-w-0 pr-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Peak Category</span>
-              <div className="text-sm font-black text-slate-800 truncate mt-0.5">
-                {peakItem ? `${peakItem.label} (${peakItem.total})` : 'None'}
-              </div>
-            </div>
-            <TrendingUp className="w-4 h-4 text-amber-500 shrink-0" />
-          </div>
-
-          <div className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Review</span>
-              <div className="text-lg font-black text-rose-600 font-mono mt-0.5">
-                {pendingReviewTotal}
-              </div>
-            </div>
-            <Clock className="w-4 h-4 text-amber-500 shrink-0" />
-          </div>
-        </div>
       </div>
 
       {/* SVG Canvas Area */}
