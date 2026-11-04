@@ -1867,7 +1867,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 {/* Permanent Countermeasures Section */}
                 <div className="pt-3 border-t border-slate-200/90 space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    <span className="text-xs font-black text-slate-900 uppercase tracking-wider">
                       Permanent Countermeasures
                     </span>
                   </div>

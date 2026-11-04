@@ -1417,7 +1417,7 @@ const IhlrApprovals = () => {
 
             {/* Temporary Countermeasures Section Header */}
             <div className="pt-2 border-t border-slate-400">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+              <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">
                 Temporary Countermeasures
               </span>
             </div>
@@ -1637,7 +1637,7 @@ const IhlrApprovals = () => {
 
             {/* Permanent Fix Section Header */}
             <div className="pt-2 border-t border-slate-400">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+              <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">
                 Permanent Countermeasures
               </span>
             </div>
