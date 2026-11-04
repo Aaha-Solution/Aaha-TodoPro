@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import DateInput from '../../components/common/DateInput';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
+import { ihlrService } from '../../services/ihlrService';
 
 const STATUS_COLORS = {
   open: {
@@ -49,6 +50,8 @@ const FOUR_M_COLORS = {
 
 export const IhlrBarChart = ({
   stats = {},
+  selectedDept = 'All',
+  selectedStatus = 'All',
   onSelectDepartment,
   onSelectStatus,
   currentYear = new Date().getFullYear(),
@@ -83,6 +86,8 @@ export const IhlrBarChart = ({
 
   const [localStart, setLocalStart] = useState(startDate || activeDefaultStart);
   const [localEnd, setLocalEnd] = useState(endDate || activeDefaultEnd);
+  const [chartStats, setChartStats] = useState(null);
+  const [chartLoading, setChartLoading] = useState(false);
 
   // Synchronize local state with props
   useEffect(() => {
@@ -93,8 +98,56 @@ export const IhlrBarChart = ({
     if (endDate !== undefined) setLocalEnd(endDate);
   }, [endDate]);
 
-  const activeStart = startDate !== undefined ? startDate : localStart;
-  const activeEnd = endDate !== undefined ? endDate : localEnd;
+  // When parent passes updated stats or date range matches parent, reset local chartStats
+  useEffect(() => {
+    if (localStart === startDate && localEnd === endDate) {
+      setChartStats(null);
+    }
+  }, [stats, startDate, endDate, localStart, localEnd]);
+
+  // When local date range differs from parent, fetch independent chart stats without touching top dashboard
+  useEffect(() => {
+    if (localStart === startDate && localEnd === endDate) {
+      return;
+    }
+
+    let isCancelled = false;
+    const fetchChartStats = async () => {
+      setChartLoading(true);
+      try {
+        const filters = {
+          startDate: localStart,
+          endDate: localEnd,
+        };
+        if (selectedDept && selectedDept !== 'All') {
+          filters.resp = selectedDept;
+          filters.filter_dept = selectedDept;
+        }
+        if (selectedStatus && selectedStatus !== 'All') {
+          filters.status = selectedStatus;
+        }
+        const data = await ihlrService.getDashboardStats(filters);
+        if (!isCancelled && data) {
+          setChartStats(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch independent chart stats:', err);
+      } finally {
+        if (!isCancelled) setChartLoading(false);
+      }
+    };
+
+    fetchChartStats();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [localStart, localEnd, selectedDept, selectedStatus, startDate, endDate]);
+
+  const activeStart = localStart;
+  const activeEnd = localEnd;
+
+  const effectiveStats = chartStats || stats || {};
 
   const isDefault12Months = activeStart === activeDefaultStart && activeEnd === activeDefaultEnd;
   const isCurrentYear = activeStart === `${thisYear}-01-01` && activeEnd === `${thisYear}-12-31`;
@@ -102,9 +155,6 @@ export const IhlrBarChart = ({
   const handleDateChange = (newStart, newEnd) => {
     setLocalStart(newStart);
     setLocalEnd(newEnd);
-    if (onDateRangeChange) {
-      onDateRangeChange(newStart, newEnd);
-    }
   };
 
   const handlePreset = (presetKey) => {
@@ -118,7 +168,7 @@ export const IhlrBarChart = ({
   // Extract or compute dataset based on activeTab
   const chartData = useMemo(() => {
     if (activeTab === 'monthly') {
-      const list = stats.monthlyTrend || [];
+      const list = effectiveStats.monthlyTrend || [];
       if (list.length > 0) return list.map(item => ({ key: item.month, label: item.month, ...item }));
       // Fallback rolling 12 months with zeros
       const fallbackMonths = [];
@@ -134,17 +184,17 @@ export const IhlrBarChart = ({
     }
 
     if (activeTab === 'department') {
-      const list = stats.departmentBreakdown || [];
+      const list = effectiveStats.departmentBreakdown || [];
       if (list.length > 0) return list.map(item => ({ key: item.department, label: item.department, ...item }));
       const depts = ['PRODUCTION', 'MAINTENANCE', 'PED', 'MATERIALS', 'MARKETING', 'INCOMING QUALITY', 'QAD'];
       return depts.map(d => ({ key: d, label: d, total: 0, open: 0, inProgress: 0, closed: 0 }));
     }
 
     if (activeTab === 'fourM') {
-      if (stats.fourMDetails && stats.fourMDetails.length > 0) {
-        return stats.fourMDetails.map(item => ({ key: item.category, label: item.category, ...item }));
+      if (effectiveStats.fourMDetails && effectiveStats.fourMDetails.length > 0) {
+        return effectiveStats.fourMDetails.map(item => ({ key: item.category, label: item.category, ...item }));
       }
-      const b = stats.fourMBreakdown || {};
+      const b = effectiveStats.fourMBreakdown || {};
       return [
         { key: 'MAN', label: 'MAN', total: b.MAN || 0, open: b.MAN || 0, inProgress: 0, closed: 0 },
         { key: 'MACHINE', label: 'MACHINE', total: b.MACHINE || 0, open: b.MACHINE || 0, inProgress: 0, closed: 0 },
@@ -154,14 +204,14 @@ export const IhlrBarChart = ({
     }
 
     if (activeTab === 'shift') {
-      const list = stats.shiftBreakdown || [];
+      const list = effectiveStats.shiftBreakdown || [];
       if (list.length > 0) return list.map(item => ({ key: item.shift, label: item.shift, ...item }));
       const shifts = ['Shift 1', 'Shift 2', 'Shift 3', 'General'];
       return shifts.map(s => ({ key: s, label: s, total: 0, open: 0, inProgress: 0, closed: 0 }));
     }
 
     return [];
-  }, [activeTab, stats]);
+  }, [activeTab, effectiveStats]);
 
   // Aggregate metrics
   const totalVolume = useMemo(() => {
@@ -187,11 +237,11 @@ export const IhlrBarChart = ({
 
   // Closure rate
   const closureRate = useMemo(() => {
-    const total = stats.total || totalVolume || 0;
+    const total = effectiveStats.total || totalVolume || 0;
     if (!total) return 0;
-    const closed = stats.closed || chartData.reduce((acc, curr) => acc + (curr.closed || 0), 0);
+    const closed = effectiveStats.closed || chartData.reduce((acc, curr) => acc + (curr.closed || 0), 0);
     return Math.round((closed / total) * 100);
-  }, [stats, totalVolume, chartData]);
+  }, [effectiveStats, totalVolume, chartData]);
 
   // SVG Chart Dimensions
   const numItems = chartData.length;
@@ -527,12 +577,7 @@ export const IhlrBarChart = ({
                       })
                     }
                     onMouseLeave={() => setHoveredBar(null)}
-                    onClick={() => {
-                      if (activeTab === 'department' && onSelectDepartment) {
-                        onSelectDepartment(item.key);
-                      }
-                    }}
-                    className="cursor-pointer transition-all duration-200"
+                    className="transition-all duration-200"
                   >
                     {/* Invisible column hover trigger area (no visible background on hover) */}
                     <rect

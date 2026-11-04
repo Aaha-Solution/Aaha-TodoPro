@@ -577,12 +577,7 @@ const AllRequests = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               All Requests
             </h1>
-            {!canEdit && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-                <Eye className="w-3.5 h-3.5 text-slate-500" />
-                <span>View Only</span>
-              </span>
-            )}
+            
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Comprehensive spreadsheet view of shopfloor process audit observations, root causes, and containment actions.

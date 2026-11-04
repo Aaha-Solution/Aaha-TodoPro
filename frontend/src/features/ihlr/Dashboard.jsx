@@ -538,14 +538,8 @@ const IhlrDashboard = () => {
         endDate={endDate}
         defaultStartDate={defaultStartDate}
         defaultEndDate={defaultEndDate}
-        onDateRangeChange={(newStart, newEnd) => {
-          setStartDate(newStart);
-          setEndDate(newEnd);
-        }}
-        onSelectDepartment={(dept) => {
-          setSelectedDept(dept);
-        }}
-        onSelectStatus={(status) => setSelectedStatus(status)}
+        selectedDept={selectedDept}
+        selectedStatus={selectedStatus}
         currentYear={currentYear}
       />
 

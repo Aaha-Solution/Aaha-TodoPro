@@ -44,6 +44,8 @@ const STATUS_COLORS = {
 export const ProcessAuditBarChart = ({
   stats = {},
   requests = [],
+  selectedDept = 'All',
+  selectedStatus = 'All',
   onSelectDepartment,
   onSelectStatus,
   currentYear = new Date().getFullYear(),
@@ -88,8 +90,8 @@ export const ProcessAuditBarChart = ({
     if (endDate !== undefined) setLocalEnd(endDate);
   }, [endDate]);
 
-  const activeStart = startDate !== undefined ? startDate : localStart;
-  const activeEnd = endDate !== undefined ? endDate : localEnd;
+  const activeStart = localStart;
+  const activeEnd = localEnd;
 
   const isDefault12Months = activeStart === activeDefaultStart && activeEnd === activeDefaultEnd;
   const isCurrentYear = activeStart === `${thisYear}-01-01` && activeEnd === `${thisYear}-12-31`;
@@ -97,9 +99,6 @@ export const ProcessAuditBarChart = ({
   const handleDateChange = (newStart, newEnd) => {
     setLocalStart(newStart);
     setLocalEnd(newEnd);
-    if (onDateRangeChange) {
-      onDateRangeChange(newStart, newEnd);
-    }
   };
 
   const handlePreset = (presetKey) => {
@@ -582,12 +581,7 @@ export const ProcessAuditBarChart = ({
                       })
                     }
                     onMouseLeave={() => setHoveredBar(null)}
-                    onClick={() => {
-                      if (activeTab === 'department' && onSelectDepartment) {
-                        onSelectDepartment(item.key);
-                      }
-                    }}
-                    className="cursor-pointer transition-all duration-200"
+                    className="transition-all duration-200"
                   >
                     {/* Invisible column hover trigger area */}
                     <rect
