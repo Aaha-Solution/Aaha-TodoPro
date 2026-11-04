@@ -14,7 +14,6 @@ import {
   Clock,
   SlidersHorizontal,
   ChevronDown,
-  Sparkles,
   Download
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';

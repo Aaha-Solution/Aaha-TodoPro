@@ -8,7 +8,6 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   Info,
   ChevronRight,
   RotateCcw
@@ -678,7 +677,6 @@ export const ProcessAuditBarChart = ({
                 {/* Header */}
                 <div className="flex items-center justify-between gap-3 pb-1.5 border-b border-slate-700/80">
                   <span className="font-extrabold text-xs text-white uppercase tracking-tight flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-400" />
                     <span>{hoveredBar.item.rawLabel || hoveredBar.item.label || hoveredBar.item.key}</span>
                   </span>
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono">

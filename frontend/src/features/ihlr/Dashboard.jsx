@@ -14,7 +14,6 @@ import {
   Clock,
   SlidersHorizontal,
   ChevronDown,
-  Sparkles,
   Download,
   Lock
 } from 'lucide-react';
