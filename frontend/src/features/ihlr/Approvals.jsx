@@ -1206,27 +1206,14 @@ const IhlrApprovals = () => {
       {/* Top Header & Breadcrumbs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-            <span className="text-blue-600 font-bold uppercase tracking-wider font-mono">IHLR REPOSITORY</span>
-            <span>/</span>
-            <span>Approvals &amp; Closer Management</span>
-          </div>
+        
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {isAdmin ? 'IHLR Approvals & Closer Log' : 'My Approvals & Closer Log'}
             </h1>
-            {!isAdmin && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                Assigned to: <strong>{user?.name || user?.email}</strong>
-              </span>
-            )}
+       
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {isAdmin
-              ? 'Update 5-Why occurrence causes, corrective actions, evidence attachments, and sign off incident closures.'
-              : `Review and submit 5-Why root cause and corrective actions for requests assigned to you (${user?.name || user?.email}).`}
-          </p>
+         
         </div>
       </div>
 
@@ -1426,7 +1413,6 @@ const IhlrApprovals = () => {
                   <span>TEMPORARY EVIDENCE ATTACHMENT</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
-                <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
               </div>
 
               {/* Styled File Input Button (matching Image 2) */}
@@ -1650,15 +1636,9 @@ const IhlrApprovals = () => {
 
             {/* 2. Permanent Fix Evidence Attachment */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>PERMANENT EVIDENCE ATTACHMENT</span>
-                  <span className="text-rose-500 font-bold">*</span>
-                </label>
-                <span className="text-[10px] text-slate-400 font-mono">PPT, JPEG, EXCEL &amp; PDF</span>
-              </div>
+              
 
-              <div className={`flex items-center gap-2 p-1 rounded-xl transition ${
+              <div className={`flex items-center gap-2  rounded-xl transition ${
                 closerPermanentEvidenceError ? 'border border-rose-400 bg-rose-50/20 ring-1 ring-rose-400/30' : ''
               }`}>
                 <button
