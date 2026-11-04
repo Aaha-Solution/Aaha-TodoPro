@@ -3,8 +3,8 @@
 -- Microservices Database Schema & Seed Data
 -- ==============================================================================
 
-CREATE DATABASE IF NOT EXISTS inel_todo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE inel_todo;
+CREATE DATABASE IF NOT EXISTS inel_qtrack CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE inel_qtrack;
 
 -- Clean reset of all existing tables (in dependency order)
 DROP TABLE IF EXISTS email_logs;

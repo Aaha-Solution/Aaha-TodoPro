@@ -72,7 +72,7 @@ export const Login = () => {
       });
 
       const user = res.data?.user || res.user;
-      const token = res.data?.token || res.token || 'todo_jwt_token_sample_2026';
+      const token = res.data?.token || res.token || 'qtrack_jwt_token_sample_2026';
 
       login(user, token);
       sessionStorage.setItem('todo_token', token);

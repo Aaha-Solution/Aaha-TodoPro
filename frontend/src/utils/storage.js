@@ -1,14 +1,16 @@
-const TOKEN_KEY = 'todo_token';
-const USER_KEY = 'todo_user';
+const TOKEN_KEY = 'qtrack_token';
+const USER_KEY = 'qtrack_user';
 
 export const storage = {
   getToken: () => {
     try {
       return (
         sessionStorage.getItem(TOKEN_KEY) ||
+        sessionStorage.getItem('todo_token') ||
         sessionStorage.getItem('4m_todo_token') ||
         sessionStorage.getItem('4m_cms_token') ||
         localStorage.getItem(TOKEN_KEY) ||
+        localStorage.getItem('todo_token') ||
         localStorage.getItem('4m_todo_token') ||
         localStorage.getItem('4m_cms_token')
       );
@@ -20,9 +22,11 @@ export const storage = {
   setToken: (token) => {
     try {
       sessionStorage.setItem(TOKEN_KEY, token);
+      sessionStorage.setItem('todo_token', token);
       sessionStorage.setItem('4m_todo_token', token);
       // Clean up legacy localStorage tokens so login remains session-scoped
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('todo_token');
       localStorage.removeItem('4m_todo_token');
       localStorage.removeItem('4m_cms_token');
     } catch (e) {
@@ -33,9 +37,11 @@ export const storage = {
   removeToken: () => {
     try {
       sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem('todo_token');
       sessionStorage.removeItem('4m_todo_token');
       sessionStorage.removeItem('4m_cms_token');
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('todo_token');
       localStorage.removeItem('4m_todo_token');
       localStorage.removeItem('4m_cms_token');
     } catch (e) {
@@ -47,8 +53,10 @@ export const storage = {
     try {
       const user =
         sessionStorage.getItem(USER_KEY) ||
+        sessionStorage.getItem('todo_user') ||
         sessionStorage.getItem('4m_cms_user') ||
         localStorage.getItem(USER_KEY) ||
+        localStorage.getItem('todo_user') ||
         localStorage.getItem('4m_cms_user');
       return user ? JSON.parse(user) : null;
     } catch {
@@ -59,8 +67,10 @@ export const storage = {
   setUser: (user) => {
     try {
       sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+      sessionStorage.setItem('todo_user', JSON.stringify(user));
       // Remove from localStorage so user session is strictly in sessionStorage
       localStorage.removeItem(USER_KEY);
+      localStorage.removeItem('todo_user');
       localStorage.removeItem('4m_cms_user');
     } catch (e) {
       console.warn('Failed to set user in sessionStorage:', e);
@@ -70,8 +80,10 @@ export const storage = {
   removeUser: () => {
     try {
       sessionStorage.removeItem(USER_KEY);
+      sessionStorage.removeItem('todo_user');
       sessionStorage.removeItem('4m_cms_user');
       localStorage.removeItem(USER_KEY);
+      localStorage.removeItem('todo_user');
       localStorage.removeItem('4m_cms_user');
     } catch (e) {
       console.warn('Failed to remove user:', e);
@@ -83,9 +95,11 @@ export const storage = {
       sessionStorage.clear();
 
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('todo_token');
       localStorage.removeItem('4m_todo_token');
       localStorage.removeItem('4m_cms_token');
       localStorage.removeItem(USER_KEY);
+      localStorage.removeItem('todo_user');
       localStorage.removeItem('4m_cms_user');
       localStorage.removeItem('4m_selected_system');
       clearIhlrDraft();
@@ -111,4 +125,3 @@ export const clearIhlrDraft = () => {
     console.warn('Error clearing IHLR draft:', e);
   }
 };
-

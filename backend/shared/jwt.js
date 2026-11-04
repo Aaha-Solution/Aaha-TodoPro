@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-const getSecret = () => process.env.JWT_SECRET || 'inel_todo_super_secret_jwt_key_2026';
+const getSecret = () => process.env.JWT_SECRET || 'inel_qtrack_super_secret_jwt_key_2026';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 export const generateToken = (payload) => {
@@ -11,6 +11,10 @@ export const verifyToken = (token) => {
   try {
     return jwt.verify(token, getSecret());
   } catch (err) {
-    return jwt.verify(token, 'inel_todo_secret_key_2026');
+    try {
+      return jwt.verify(token, 'inel_todo_super_secret_jwt_key_2026');
+    } catch (e2) {
+      return jwt.verify(token, 'inel_todo_secret_key_2026');
+    }
   }
 };

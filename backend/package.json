@@ -1,5 +1,5 @@
 {
-  "name": "inel-todo-backend",
+  "name": "inel-qtrack-backend",
   "version": "1.0.0",
   "description": "India Nippon Electricals Limited - Q TRACK Microservices Backend",
   "main": "gateway/src/server.js",
