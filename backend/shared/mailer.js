@@ -586,10 +586,14 @@ export async function sendIhlrRequestEmails({
     ? allRequestCc.join(', ')
     : (allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None');
 
-  const shiftDisplay = request.shift
-    ? (String(request.shift).toLowerCase().startsWith('shift') ? request.shift : `Shift ${request.shift}`)
-    : 'Shift 1';
-  const shiftValue = request.batch_date ? `${shiftDisplay} • ${request.batch_date}` : shiftDisplay;
+  const rawShift = String(request.shift || '1').trim();
+  const shiftDisplay = rawShift.toLowerCase().startsWith('shift') || rawShift.toLowerCase().includes('gen')
+    ? rawShift
+    : `Shift ${rawShift}`;
+  const formattedBatchDate = formatDateDDMMYYYY(request.batch_date);
+  const shiftValue = formattedBatchDate
+    ? `${shiftDisplay} / ${formattedBatchDate}`
+    : shiftDisplay;
 
   const tableSummary = [
     { label: 'IHLR Number', value: reqNo },
