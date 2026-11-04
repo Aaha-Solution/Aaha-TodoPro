@@ -2286,9 +2286,6 @@ const IhlrApprovals = () => {
                           )}
                         </div>
                       </div>
-                      <p className="text-[10px] text-slate-500 leading-tight">
-                        Selecting a new department and person will transfer the 5-Why root cause and countermeasure responsibility to them.
-                      </p>
                     </div>
                   )}
                 </div>
@@ -2365,11 +2362,7 @@ const IhlrApprovals = () => {
                     <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
                       <span>* {typeof remarksError === 'string' ? remarksError : (isReassignOpen ? 'Remarks is required to reassign closer.' : 'Remarks is required to save Admin Review and Status Sign-Off.')}</span>
                     </p>
-                  ) : (
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      Provide admin sign-off or review remarks.
-                    </p>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Reviewed By (Manual entry by admin / quality - Text only, references CreateRequest Created By) */}
@@ -2434,11 +2427,7 @@ const IhlrApprovals = () => {
                     <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
                       <span>* {reviewedByError}</span>
                     </p>
-                  ) : (
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      Admin / Quality Engineer reviewing this incident (defaults to logged-in user).
-                    </p>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Status */}
