@@ -357,19 +357,12 @@ const IhlrAllRequests = () => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-            <span className="text-blue-600 font-bold uppercase tracking-wider font-mono">IHLR REPOSITORY</span>
-            <span>/</span>
-            <span>Analysis Reports</span>
-          </div>
+        
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               All Requests
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>Plant-Wide Repository</span>
-            </span>
+          
             {!canEdit && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
                 <Eye className="w-3.5 h-3.5 text-slate-500" />
@@ -377,9 +370,7 @@ const IhlrAllRequests = () => {
               </span>
             )}
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Master repository of in-house line rejections, 5-Why root-causes, and containment actions across all departments.
-          </p>
+         
         </div>
 
         <div className="flex items-center gap-3">

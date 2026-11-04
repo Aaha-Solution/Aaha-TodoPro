@@ -622,33 +622,18 @@ const UserManagement = () => {
       {/* Page Title & Actions Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-            <span 
-              className="hover:text-slate-800 cursor-pointer" 
-              onClick={() => navigate(isIhlr ? '/ihlr/dashboard' : '/process-audit/dashboard')}
-            >
-              {isIhlr ? 'In-House Line Rejection' : 'Process Audit Observation'}
-            </span>
-            <span>/</span>
-            <span className="text-blue-600 font-semibold">User &amp; Access Management</span>
-          </div>
+        
           <div className="flex items-center gap-3">
             <img src="/images/logo.png" alt="INEL Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain shrink-0" />
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
               Enterprise User Management
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Common centralized administration across all manufacturing portals with unified access to all tabs.
-          </p>
+        
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold">
-            <Shield className="w-3.5 h-3.5" />
-            <span>Admin Privileges Active</span>
-          </span>
-
+       
           <button
             onClick={handleExportPdf}
             className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold shadow-2xs hover:shadow-xs transition transform active:scale-95 cursor-pointer"
