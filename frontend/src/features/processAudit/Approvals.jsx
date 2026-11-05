@@ -1641,17 +1641,11 @@ const ProcessAuditApprovals = () => {
       {/* Top Header & Breadcrumbs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-            <span className="text-blue-600 font-bold uppercase tracking-wider font-mono">PROCESS AUDIT REPOSITORY</span>
-            <span>/</span>
-            <span>Approvals &amp; Sign-off Management</span>
-          </div>
+         
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Process Audit Approvals &amp; Sign-off Log
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Update root causes, corrective actions, standardization details, evidence attachments, and sign off audit closures.
-          </p>
+         
         </div>
 
 
@@ -1855,6 +1849,13 @@ const ProcessAuditApprovals = () => {
               </div>
             </div>
 
+            {/* Temporary Countermeasures Section Header */}
+            <div className="pt-2 border-t border-slate-400">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Temporary Countermeasures
+              </span>
+            </div>
+
             {/* Temporary Action Field */}
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -1904,14 +1905,8 @@ const ProcessAuditApprovals = () => {
             </div>
 
             {/* Temporary Evidence Attachment */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>TEMPORARY EVIDENCE ATTACHMENT</span>
-                  <span className="text-rose-500 font-bold">*</span>
-                </label>
-              </div>
-
+            <div className="-mt-2">
+            
               {/* Styled File Input Button */}
               <div className={`flex items-center gap-2 p-1 rounded-xl transition ${evidenceError ? 'border border-rose-400 bg-rose-50/20 ring-1 ring-rose-400/30' : ''
                 }`}>
@@ -1919,9 +1914,10 @@ const ProcessAuditApprovals = () => {
                   type="button"
                   disabled={!canUpdateCloserFields}
                   onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-2xs"
                 >
-                  Choose files
+                  <Paperclip className="w-3.5 h-3.5 rotate-45 text-slate-600 shrink-0" />
+                  <span> </span>
                 </button>
                 <span className="text-[11px] text-slate-500 truncate">
                   {newEvidenceFiles.length > 0
@@ -1972,7 +1968,7 @@ const ProcessAuditApprovals = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>TEMPORARY TARGET DATE</span>
+                  <span> TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
 
@@ -2013,7 +2009,7 @@ const ProcessAuditApprovals = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>TEMPORARY CLOSED BY</span>
+                  <span> CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
               </div>
@@ -2062,16 +2058,14 @@ const ProcessAuditApprovals = () => {
                   <span>* {closerTemporaryClosedByError}</span>
                 </p>
               ) : (
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  Person executing temporary action.
-                </p>
+                ''
               )}
             </div>
 
             {/* Permanent Fix Section Header */}
-            <div className="pt-2 border-t border-slate-200/90">
+            <div className="pt-2 border-t border-slate-400">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                Permanent
+                Permanent Countermeasures
               </span>
             </div>
 
@@ -2124,23 +2118,18 @@ const ProcessAuditApprovals = () => {
             </div>
 
             {/* Permanent Evidence Attachment */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>PERMANENT EVIDENCE ATTACHMENT</span>
-                  <span className="text-rose-500 font-bold">*</span>
-                </label>
-              </div>
-
+            <div className="-mt-2">
+             
               <div className={`flex items-center gap-2 p-1 rounded-xl transition ${closerPermanentEvidenceError ? 'border border-rose-400 bg-rose-50/20 ring-1 ring-rose-400/30' : ''
                 }`}>
                 <button
                   type="button"
                   disabled={!canUpdateCloserFields}
                   onClick={() => fileInputPermanentRef.current && fileInputPermanentRef.current.click()}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-2xs"
                 >
-                  Choose files
+                  <Paperclip className="w-3.5 h-3.5 rotate-45 text-slate-600 shrink-0" />
+                  <span>Choose files</span>
                 </button>
                 <span className="text-[11px] text-slate-500 truncate">
                   {newPermanentEvidenceFiles.length > 0
@@ -2191,7 +2180,7 @@ const ProcessAuditApprovals = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>PERMANENT TARGET DATE</span>
+                  <span> TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
                 {closerTargetDate && (
@@ -2231,7 +2220,7 @@ const ProcessAuditApprovals = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                  <span>PERMANENT CLOSED BY</span>
+                  <span> CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
               </div>
@@ -2280,9 +2269,7 @@ const ProcessAuditApprovals = () => {
                   <span>* {closerPermanentClosedByError}</span>
                 </p>
               ) : (
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  Person confirming permanent action closure (manual entry).
-                </p>
+              ''
               )}
             </div>
 

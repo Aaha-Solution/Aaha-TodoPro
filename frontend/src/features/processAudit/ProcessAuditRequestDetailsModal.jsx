@@ -434,10 +434,12 @@ const ProcessAuditRequestDetailsModal = ({
     if (!editFormData.process_operation || !editFormData.process_operation.trim()) {
       newErrors.process_operation = 'Process / Operation is required';
     }
-    if (!editFormData.department || !editFormData.department.trim()) {
+    const effectiveDept = editFormData.department || req.department || 'PRODUCTION';
+    const effectiveExecutor = editFormData.executor || req.executor || '';
+    if (!effectiveDept || !String(effectiveDept).trim()) {
       newErrors.department = 'Assigned Department is required';
     }
-    if (!editFormData.executor || getSelectedUsers().length === 0) {
+    if (!effectiveExecutor || !String(effectiveExecutor).trim()) {
       newErrors.executor = 'Assigned Executor is required';
     }
     if (!editFormData.issue_observation || !editFormData.issue_observation.trim()) {
@@ -474,8 +476,8 @@ const ProcessAuditRequestDetailsModal = ({
         process_operation: editFormData.process_operation.trim(),
         issue_type: editFormData.issue_type,
         priority: editFormData.priority,
-        department: editFormData.department.trim(),
-        executor: editFormData.executor.trim(),
+        department: (effectiveDept || req.department || 'PRODUCTION').trim(),
+        executor: (effectiveExecutor || req.executor || '').trim(),
         issue_observation: editFormData.issue_observation.trim(),
         comments: editFormData.comments.trim(),
         attachments: finalAttachments,
@@ -1774,133 +1776,48 @@ const ProcessAuditRequestDetailsModal = ({
                     </select>
                   </div>
 
-                  {/* Department & Searchable Multi-User Select */}
+                  {/* Assigned Department - Non-editable */}
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      ASSIGN DEPARTMENT <span className="text-rose-500">*</span>
+                      ASSIGN DEPARTMENT
                     </label>
-                    <select
-                      value={editFormData.department || ''}
-                      onChange={(e) => {
-                        const newDept = e.target.value;
-                        setEditFormData(prev => ({
-                          ...prev,
-                          department: newDept,
-                          executor: prev.department === newDept ? prev.executor : ''
-                        }));
-                        if (editErrors.department && newDept) {
-                          setEditErrors(prev => ({ ...prev, department: '' }));
-                        }
-                      }}
-                      className={`w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 bg-white border outline-none transition cursor-pointer ${editErrors.department
-                          ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 bg-rose-50/20'
-                          : 'border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600'
-                        }`}
-                    >
-                      <option value="">-- Select Department --</option>
-                      {departmentList.map((dept) => (
-                        <option key={dept} value={dept}>
-                          {dept}
-                        </option>
-                      ))}
-                    </select>
-                    {editErrors.department && (
-                      <p className="text-[11px] text-rose-500 font-semibold mt-1">* {editErrors.department}</p>
-                    )}
+                    <div className="w-full px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-200/70 border border-slate-300/80 cursor-not-allowed select-none">
+                      {editFormData.department || req.department || 'PRODUCTION'}
+                    </div>
                   </div>
 
-                  <div className="relative" ref={userDropdownRef}>
+                  {/* Assigned Executor - Non-editable */}
+                  <div className="relative sm:col-span-2">
                     <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      ASSIGNED EXECUTOR <span className="text-rose-500">*</span>
+                      ASSIGNED EXECUTOR
                     </label>
-                    <div
-                      onClick={() => {
-                        if (!editFormData.department) {
-                          setEditErrors(prev => ({ ...prev, department: 'Please select a department first' }));
-                        }
-                        setIsUserDropdownOpen(!isUserDropdownOpen);
-                      }}
-                      className={`w-full min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-medium bg-white border flex items-center justify-between cursor-pointer transition ${editErrors.executor
-                          ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 bg-rose-50/20'
-                          : 'border-slate-300 hover:border-slate-400'
-                        }`}
-                    >
-                      <div className="flex flex-wrap gap-1 max-w-[220px]">
-                        {!editFormData.department ? (
-                          <span className="text-slate-400 italic">Select department first...</span>
-                        ) : getSelectedUsers().length > 0 ? (
-                          getSelectedUsers().map((u, i) => (
-                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md text-[10px] font-bold border border-blue-200">
-                              <span>{u}</span>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleUser(u);
-                                }}
-                                className="hover:text-rose-600 transition cursor-pointer"
-                                title="Remove user"
-                              >
-                                <X className="w-2.5 h-2.5" />
-                              </button>
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-slate-400 italic">Select executor(s)...</span>
-                        )}
-                      </div>
-                      <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
+                    <div className="w-full min-h-[38px] px-3 py-1.5 rounded-xl text-xs bg-slate-200/70 border border-slate-300/80 cursor-not-allowed flex items-center gap-1.5 flex-wrap select-none">
+                      {getSelectedUsers().length > 0 ? (
+                        getSelectedUsers().map((u, i) => (
+                          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-lg bg-white/80 text-slate-700 text-[11px] font-semibold border border-slate-300/80 shadow-2xs">
+                            <span>{u}</span>
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-500 font-medium text-xs">
+                          {editFormData.executor || req.executor || 'No executor assigned'}
+                        </span>
+                      )}
                     </div>
+                  </div>
 
-                    {isUserDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 max-h-56 overflow-y-auto space-y-1">
-                        {!editFormData.department ? (
-                          <div className="text-center py-4 px-2 text-xs text-amber-600 font-medium bg-amber-50 rounded-lg">
-                            Please select a Department from the dropdown above to view available executors
-                          </div>
-                        ) : (
-                          <>
-                            <div className="relative mb-2">
-                              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                              <input
-                                type="text"
-                                value={userSearchTerm}
-                                onChange={(e) => setUserSearchTerm(e.target.value)}
-                                placeholder={`Search ${editFormData.department} users...`}
-                                className="w-full pl-8 pr-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:border-blue-500"
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-
-                            {getDepartmentUsers(editFormData.department)
-                              .filter(u => (u.name || '').toLowerCase().includes(userSearchTerm.toLowerCase()))
-                              .map((u) => {
-                                const isSelected = getSelectedUsers().includes(u.name);
-                                return (
-                                  <div
-                                    key={u.id || u.name}
-                                    onClick={() => handleToggleUser(u.name)}
-                                    className={`px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition ${isSelected ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                                      }`}
-                                  >
-                                    <span>{u.name} ({u.department || editFormData.department})</span>
-                                    {isSelected && <Check className="w-3.5 h-3.5 text-blue-600" />}
-                                  </div>
-                                );
-                              })}
-
-                            {getDepartmentUsers(editFormData.department).filter(u => (u.name || '').toLowerCase().includes(userSearchTerm.toLowerCase())).length === 0 && (
-                              <div className="text-center py-3 text-xs text-slate-400 italic">
-                                No active users found in {editFormData.department}
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
-                    {editErrors.executor && (
-                      <p className="text-[11px] text-rose-500 font-semibold mt-1">* {editErrors.executor}</p>
-                    )}
+                  {/* Created By - Non-editable */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      CREATED BY
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={req.created_by || 'Quality Auditor'}
+                      className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-200/70 border border-slate-300/80 cursor-not-allowed select-none outline-none"
+                    />
                   </div>
                 </div>
               </div>

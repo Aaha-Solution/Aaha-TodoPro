@@ -523,6 +523,12 @@ export const ProcessAuditBarChart = ({
                 const centerX = paddingLeft + idx * slotWidth + slotWidth / 2;
                 const isHovered = hoveredBar && hoveredBar.item.key === item.key;
 
+                const baseY = paddingTop + innerHeight;
+
+                const openH = ((item.open || 0) / maxVal) * innerHeight;
+                const progH = ((item.inProgress || 0) / maxVal) * innerHeight;
+                const closedH = ((item.closed || 0) / maxVal) * innerHeight;
+
                 // Collect only active sub-bars so bars are always centered together
                 const activeBars = [];
                 if (openH > 0) {
@@ -748,10 +754,7 @@ export const ProcessAuditBarChart = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
-          <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span>Hover over any bar to view status details &amp; volume breakdown • Click department to filter</span>
-        </div>
+       
       </div>
     </div>
   );
