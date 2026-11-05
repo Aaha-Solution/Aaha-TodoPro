@@ -748,10 +748,7 @@ export const ProcessAuditBarChart = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
-          <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span>Hover over any bar to view status details &amp; volume breakdown • Click department to filter</span>
-        </div>
+       
       </div>
     </div>
   );

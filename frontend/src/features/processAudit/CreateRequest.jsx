@@ -24,6 +24,7 @@ import {
   Users,
   PenTool,
   Mail,
+  AlertCircle,
 } from 'lucide-react';
 import { processAuditService } from '../../services/processAuditService';
 import { useAuth } from '../../hooks/useAuth';
@@ -201,6 +202,38 @@ const CreateRequest = () => {
   };
 
   const [errors, setErrors] = useState({});
+
+  const MANDATORY_FIELD_LABELS = {
+    date: 'Escalation Date',
+    shift: 'Shift',
+    product: 'Product',
+    model: 'Model',
+    processOperation: 'Process / Operation',
+    issueType: 'Issue Type',
+    priority: 'Priority',
+    issueObservation: 'Issue / Observation',
+    attachments: 'Defect Attachment Evidence',
+    department: 'Department',
+    executor: 'Assign Executor',
+    created_by: 'Created By'
+  };
+
+  const missingErrors = Object.entries(errors)
+    .filter(([key, val]) => Boolean(val))
+    .map(([key, val]) => ({
+      key,
+      label: MANDATORY_FIELD_LABELS[key] || (typeof val === 'string' ? val : key),
+      message: typeof val === 'string' ? val : ''
+    }));
+
+  const scrollToField = (fieldKey) => {
+    const el = document.getElementById(`field-${fieldKey}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const input = el.querySelector('input, select, textarea, [tabindex="0"]');
+      if (input && input.focus) input.focus();
+    }
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dbUsers, setDbUsers] = useState([]);
   const [deptUsers, setDeptUsers] = useState([]);
@@ -602,7 +635,7 @@ const CreateRequest = () => {
     if (e && e.preventDefault) e.preventDefault();
 
     if (!canCreate) {
-      warning('Only members of QAD or Production departments can create new requests.');
+      warning('Only members of QAD or Production departments can raise new NC.');
       return;
     }
 
@@ -739,7 +772,7 @@ const CreateRequest = () => {
         localStorage.removeItem('process_audit_create_request_draft');
       } catch {}
       window.dispatchEvent(new Event('refreshNotifications'));
-      await success(`Request ${savedId} created successfully!`);
+      await success(`Raise NC ${savedId} created successfully!`);
       navigate('/process-audit/all-requests');
     } catch (err) {
       console.error('Failed to save request in DB:', err);
@@ -750,7 +783,7 @@ const CreateRequest = () => {
         localStorage.removeItem(draftKey);
         localStorage.removeItem('process_audit_create_request_draft');
       } catch {}
-      await success(`Request ${formData.requestId} created successfully!`);
+      await success(`Raise NC ${formData.requestId} created successfully!`);
       navigate('/process-audit/all-requests');
     } finally {
       setIsSubmitting(false);
@@ -764,7 +797,7 @@ const CreateRequest = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Create Production Request
+              Raise NC
             </h1>
             <p className="text-xs text-slate-500 mt-1">
               Process Audit Observation • Departmental Access Control
@@ -788,7 +821,7 @@ const CreateRequest = () => {
             <span className="font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 inline-block my-1">
               PRODUCTION
             </span>{' '}
-            departments are authorized to create new production audit requests.
+            departments are authorized to raise new NC.
           </p>
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/70 text-xs text-slate-600 mb-6 max-w-md mx-auto text-left space-y-1.5">
             <div className="flex items-center justify-between">
@@ -811,7 +844,7 @@ const CreateRequest = () => {
               onClick={() => navigate('/process-audit/all-requests')}
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
             >
-              View All Requests
+              View Total NC
             </button>
           </div>
         </div>
@@ -825,30 +858,12 @@ const CreateRequest = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Create Production Request
+            Raise NC
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Initiate a manufacturing process audit and assign operational execution.
-          </p>
+         
         </div>
 
-        {/* Creator Info Pill */}
-        {currentCreator && (
-          <div className="flex items-center gap-2.5 px-3.5 py-2 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
-              {currentCreator.charAt(0).toUpperCase()}
-            </div>
-            <div className="text-left text-xs leading-tight">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-slate-400 font-semibold uppercase">Created By</span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  {currentDept || 'QAD'}
-                </span>
-              </div>
-              <span className="font-bold text-slate-800">{currentCreator}</span>
-            </div>
-          </div>
-        )}
+       
       </div>
 
       {/* Draft Restored Banner */}
@@ -878,9 +893,7 @@ const CreateRequest = () => {
             <FileText className="w-5 h-5 text-slate-700 mt-0.5" />
             <div>
               <h2 className="text-sm font-bold text-slate-900">1. Production Details</h2>
-              <p className="text-xs text-slate-500">
-                Key manufacturing parameters and production line specifications.
-              </p>
+              
             </div>
           </div>
 
@@ -902,7 +915,7 @@ const CreateRequest = () => {
               </div>
 
               {/* Created By (Manual entry by user - Text only) */}
-              <div>
+              <div id="field-created_by">
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                   <span className="flex items-center">
                     <span>CREATED BY</span>
@@ -950,7 +963,7 @@ const CreateRequest = () => {
                 )}
               </div>
 
-              <div>
+              <div id="field-date">
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                   <span className="flex items-center">
                     <span>Escalation Date</span>
@@ -987,7 +1000,7 @@ const CreateRequest = () => {
                 )}
               </div>
 
-              <div>
+              <div id="field-shift">
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                   <span>Shift</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
@@ -1022,7 +1035,7 @@ const CreateRequest = () => {
 
             {/* Row 2 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
+              <div id="field-product">
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                   <span>Product</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
@@ -1059,7 +1072,7 @@ const CreateRequest = () => {
                 )}
               </div>
 
-              <div>
+              <div id="field-model">
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                   <span>Model</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
@@ -1094,7 +1107,7 @@ const CreateRequest = () => {
                 )}
               </div>
 
-              <div>
+              <div id="field-processOperation">
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                   <span>Process / Operation</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
@@ -1129,7 +1142,7 @@ const CreateRequest = () => {
                 )}
               </div>
 
-              <div>
+              <div id="field-issueType">
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                   <span>Issue Type</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
@@ -1162,7 +1175,7 @@ const CreateRequest = () => {
 
             {/* Row 3 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
+              <div id="field-priority">
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                   <span>Priority</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
@@ -1196,7 +1209,7 @@ const CreateRequest = () => {
             </div>
 
             {/* Row 4 - Issue / Observation */}
-            <div>
+            <div id="field-issueObservation">
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                 <span>Issue / Observation</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
@@ -1234,7 +1247,7 @@ const CreateRequest = () => {
         </div>
 
         {/* Section 2: Attachments & Technical Drawings */}
-        <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
+        <div id="field-attachments" className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
           <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
             <Paperclip className="w-5 h-5 text-slate-700 mt-0.5" />
             <div>
@@ -1375,14 +1388,12 @@ const CreateRequest = () => {
             <UserCheck className="w-5 h-5 text-slate-700 mt-0.5" />
             <div>
               <h2 className="text-sm font-bold text-slate-900">3. Assign Executor</h2>
-              <p className="text-xs text-slate-500">
-                Designate the department and technician or supervisor accountable for running this batch.
-              </p>
+            
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            <div id="field-department">
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                 <span>Department</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
@@ -1425,7 +1436,7 @@ const CreateRequest = () => {
               )}
             </div>
 
-            <div className="relative" ref={executorDropdownRef}>
+            <div id="field-executor" className="relative" ref={executorDropdownRef}>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                 <span>Assign Executor</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
@@ -1644,9 +1655,7 @@ const CreateRequest = () => {
                 An automated dispatch and in-app alert will notify all {selectedExecutors.length} executors upon submission.
               </span>
             ) : (
-              <span className="text-slate-400">
-                An automated dispatch and in-app alert will notify the executor upon submission.
-              </span>
+             ''
             )}
           </span>
 
@@ -1847,9 +1856,7 @@ const CreateRequest = () => {
                 <span>4. Comments</span>
                 <span className="text-xs font-normal text-slate-400">(Optional)</span>
               </h2>
-              <p className="text-xs text-slate-500">
-                Provide specific handling precautions, tooling notes, or safety instructions.
-              </p>
+            
             </div>
           </div>
 
@@ -1874,15 +1881,52 @@ const CreateRequest = () => {
           </div>
         </div>
 
-        {/* Bottom Actions Bar */}
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={handleResetForm}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
-          >
-            Clear Form
-          </button>
+        {/* Action Buttons & Missed Mandatory Inputs Area in Red */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-3 border-t border-slate-200/90">
+          {/* Left Area: Missed Mandatory Inputs in Red */}
+          {missingErrors.length > 0 ? (
+            <div className="flex-1 min-w-0 bg-red-50/95 border border-red-300 rounded-2xl p-3 flex items-start gap-2.5 shadow-xs animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <div className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                <AlertCircle className="w-3.5 h-3.5 stroke-[2.5]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-extrabold text-red-700 uppercase tracking-wide">
+                    Missing Mandatory Inputs ({missingErrors.length}):
+                  </span>
+                  <span className="text-[11px] text-red-600 font-medium">
+                    Please complete these fields before submitting:
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {missingErrors.map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => scrollToField(key)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-red-300 text-red-700 hover:bg-red-100 hover:border-red-400 text-xs font-bold shadow-2xs transition cursor-pointer"
+                      title={`Click to jump to ${label}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-600 shrink-0" />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1" />
+          )}
+
+          {/* Action Buttons: Clear Form & Submit */}
+          <div className="flex items-center justify-end gap-3 shrink-0 self-end lg:self-center">
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+            >
+              Clear Form
+            </button>
           <button
             type="submit"
             disabled={isSubmitting}
@@ -1901,7 +1945,8 @@ const CreateRequest = () => {
             )}
           </button>
         </div>
-      </form>
+      </div>
+    </form>
 
       {/* Universal Attachment Preview Modal (Interactive Excel Spreadsheet, PDF, Images) */}
       <AttachmentPreviewModal

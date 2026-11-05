@@ -60,13 +60,13 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
         { name: 'Dashboard', path: `${prefix}/dashboard`, icon: LayoutDashboard },
         { name: 'My Action', path: `${prefix}/approvals`, icon: ClipboardCheck },
         { name: 'My Notifications', path: `${prefix}/notifications`, icon: Bell },
-        { name: 'All Requests', path: `${prefix}/all-requests`, icon: Layers },
-        ...(canCreate ? [{ name: 'Create Request', path: `${prefix}/create-request`, icon: Plus, isAction: true }] : []),
+        { name: isIhlr ? 'All Requests' : 'Total NC', path: `${prefix}/all-requests`, icon: Layers },
+        ...(canCreate ? [{ name: isIhlr ? 'Create Request' : 'Raise NC', path: `${prefix}/create-request`, icon: Plus, isAction: true }] : []),
       ]
     : [
         { name: 'Dashboard', path: `${prefix}/dashboard`, icon: LayoutDashboard },
-        ...(canCreate ? [{ name: 'Create Request', path: `${prefix}/create-request`, icon: Plus, isAction: true }] : []),
-        { name: 'All Requests', path: `${prefix}/all-requests`, icon: Layers },
+        ...(canCreate ? [{ name: isIhlr ? 'Create Request' : 'Raise NC', path: `${prefix}/create-request`, icon: Plus, isAction: true }] : []),
+        { name: isIhlr ? 'All Requests' : 'Total NC', path: `${prefix}/all-requests`, icon: Layers },
         { name: 'My Action', path: `${prefix}/approvals`, icon: ClipboardCheck },
         ...(isAdmin ? [{ name: 'User Management', path: `${prefix}/users`, icon: Users }] : []),
         { name: 'My Notifications', path: `${prefix}/notifications`, icon: Bell },

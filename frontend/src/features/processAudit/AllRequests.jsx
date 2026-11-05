@@ -568,20 +568,19 @@ const AllRequests = () => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-            <span className="text-blue-600 font-bold uppercase tracking-wider font-mono">PROCESS AUDIT REPOSITORY</span>
-            <span>/</span>
-            <span>Analysis Reports</span>
-          </div>
+         
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              All Requests
+              Total NC
             </h1>
-            
+            {!canEdit && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                <Eye className="w-3.5 h-3.5 text-slate-500" />
+                <span>View Only</span>
+              </span>
+            )}
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Comprehensive spreadsheet view of shopfloor process audit observations, root causes, and containment actions.
-          </p>
+          
         </div>
 
         <div className="flex items-center gap-2">
@@ -592,7 +591,7 @@ const AllRequests = () => {
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Create Process Issue</span>
+              <span>Raise NC</span>
             </button>
           )}
         </div>
@@ -782,7 +781,7 @@ const AllRequests = () => {
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-extrabold uppercase tracking-widest text-slate-600 font-mono">
-              PROCESS AUDIT ANALYSIS REPORT
+              PROCESS AUDIT ANALYSIS and Action REPORT
             </span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 font-mono">
               {filteredRequests.length} Records
