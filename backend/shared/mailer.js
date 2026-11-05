@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import pool from './db.js';
+import { getBinaryFile } from './binaryStorage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -200,6 +201,24 @@ export async function sendEmail({
   const transporter = getTransporter();
   const defaultPortalName = 'Q TRACK';
 
+  const formatBodyHtmlForLog = (rawHtml) => {
+    if (!rawHtml) return rawHtml;
+    let formatted = rawHtml;
+    if (formatted.includes('cid:inel-logo')) {
+      formatted = formatted.replace(/src=["']cid:inel-logo["']/g, `src="${getLogoBase64() || 'cid:inel-logo'}"`);
+    }
+    if (formatted.includes('cid:ihlr-defect-evidence')) {
+      const defectAtt = finalAttachments.find((a) => a.cid === 'ihlr-defect-evidence');
+      if (defectAtt && defectAtt.base64Data) {
+        formatted = formatted.replace(/src=["']cid:ihlr-defect-evidence["']/g, `src="${defectAtt.base64Data}"`);
+      } else if (defectAtt && defectAtt.content && Buffer.isBuffer(defectAtt.content)) {
+        const b64 = `data:${defectAtt.contentType || 'image/jpeg'};base64,${defectAtt.content.toString('base64')}`;
+        formatted = formatted.replace(/src=["']cid:ihlr-defect-evidence["']/g, `src="${b64}"`);
+      }
+    }
+    return formatted;
+  };
+
   let senderFrom = process.env.SMTP_FROM || (DEFAULT_TRIGGER_EMAIL ? `"${defaultPortalName}" <${DEFAULT_TRIGGER_EMAIL}>` : `"${defaultPortalName}"`);
   if (senderFrom) {
     senderFrom = senderFrom.replace(/INEL (?:IHLR|Process Audit|Quality) Portal/gi, 'Q TRACK');
@@ -245,7 +264,7 @@ export async function sendEmail({
         recipientEmail: cleanTo,
         subject,
         bodyText: text,
-        bodyHtml: (html && html.includes('cid:inel-logo')) ? html.replace(/src=["']cid:inel-logo["']/g, `src="${getLogoBase64() || 'cid:inel-logo'}"`) : html,
+        bodyHtml: formatBodyHtmlForLog(html),
         deliveryStatus: 'DELIVERED',
         smtpResponse: info.response || info.messageId,
       });
@@ -265,7 +284,7 @@ export async function sendEmail({
         recipientEmail: cleanTo,
         subject,
         bodyText: text,
-        bodyHtml: (html && html.includes('cid:inel-logo')) ? html.replace(/src=["']cid:inel-logo["']/g, `src="${getLogoBase64() || 'cid:inel-logo'}"`) : html,
+        bodyHtml: formatBodyHtmlForLog(html),
         deliveryStatus: 'FAILED',
         errorMessage: sendErr.message,
       });
@@ -284,7 +303,7 @@ export async function sendEmail({
       recipientEmail: cleanTo,
       subject,
       bodyText: text,
-      bodyHtml: (html && html.includes('cid:inel-logo')) ? html.replace(/src=["']cid:inel-logo["']/g, `src="${getLogoBase64() || 'cid:inel-logo'}"`) : html,
+      bodyHtml: formatBodyHtmlForLog(html),
       deliveryStatus: 'DISPATCHED_SIMULATED',
       smtpResponse: 'Simulated dispatch (configure SMTP in .env for live inbox delivery)',
     });
@@ -399,6 +418,246 @@ export function formatDateDDMMYYYY(dateVal) {
   return datePart;
 }
 
+
+/**
+ * Extracts and prepares the first image attachment from requester defect images for email notifications.
+ * Requirement: If the requester added images, attach the image in the email, and in case of multiple
+ * (e.g. two) images, show only the first image in the row in the top right of the email.
+ */
+
+let sharpModule = null;
+async function getSharp() {
+  if (sharpModule) return sharpModule;
+  try {
+    const mod = await import('sharp');
+    sharpModule = mod.default || mod;
+    return sharpModule;
+  } catch {
+    try {
+      const mod = await import('../node_modules/sharp/dist/index.mjs');
+      sharpModule = mod.default || mod;
+      return sharpModule;
+    } catch (e) {
+      console.warn('[Mailer] Sharp module not available for image compression:', e.message);
+      return null;
+    }
+  }
+}
+
+/**
+ * Compresses image buffer from MB to KB if size exceeds 1 MB (1024 * 1024 bytes).
+ * Ensures email attachments and previews stay lightweight and delivery friendly.
+ */
+export async function compressImageBuffer(buffer) {
+  if (!buffer || buffer.length <= 1024 * 1024) {
+    return { buffer, mimeType: 'image/jpeg' };
+  }
+
+  const sharp = await getSharp();
+  if (!sharp) {
+    return { buffer, mimeType: 'image/jpeg' };
+  }
+
+  try {
+    const origMb = (buffer.length / (1024 * 1024)).toFixed(2);
+    let pipeline = sharp(buffer).rotate();
+    const meta = await pipeline.metadata();
+
+    if (meta.width && (meta.width > 1280 || meta.height > 1280)) {
+      pipeline = pipeline.resize({
+        width: 1280,
+        height: 1280,
+        fit: 'inside',
+        withoutEnlargement: true
+      });
+    }
+
+    let compressed = await pipeline
+      .jpeg({ quality: 75, progressive: true, mozjpeg: true })
+      .toBuffer();
+
+    if (compressed.length > 1024 * 1024) {
+      compressed = await sharp(buffer)
+        .rotate()
+        .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 60, progressive: true })
+        .toBuffer();
+    }
+
+    const newKb = (compressed.length / 1024).toFixed(1);
+    console.log(`[Mailer Image Compressor] Successfully compressed image from ${origMb} MB to ${newKb} KB`);
+
+    return {
+      buffer: compressed,
+      mimeType: 'image/jpeg',
+    };
+  } catch (err) {
+    console.warn('[Mailer Image Compressor] Compression failed:', err.message);
+    return { buffer, mimeType: 'image/jpeg' };
+  }
+}
+
+export async function getFirstDefectImageAttachment(request) {
+  if (!request) return null;
+  const raw = request.defect_image || request.attachments;
+  if (!raw) return null;
+
+  let items = [];
+  if (Array.isArray(raw)) {
+    items = raw;
+  } else if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed === '[]' || trimmed === '""' || trimmed === 'null') return null;
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        items = Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        items = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    } else {
+      items = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+  }
+
+  const isImageCandidate = (val) => {
+    if (!val) return false;
+    if (typeof val === 'object') {
+      const type = String(val.type || val.mime_type || val.mimetype || '').toLowerCase();
+      if (type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'gif', 'jfif', 'bmp'].includes(type)) return true;
+      const name = String(val.name || val.filename || val.url || val.path || '').toLowerCase();
+      return /\.(jpe?g|png|webp|gif|jfif|bmp|svg)$/i.test(name);
+    }
+    const str = String(val).toLowerCase();
+    if (str.startsWith('data:image/')) return true;
+    return /\.(jpe?g|png|webp|gif|jfif|bmp|svg)$/i.test(str);
+  };
+
+  // Find the first image in the row (in case of two images, pick the first one)
+  let firstItem = items.find(isImageCandidate);
+  if (!firstItem && items.length > 0) {
+    const candidate = items[0];
+    const candidateId = typeof candidate === 'object' ? (candidate.id || candidate.filename) : candidate;
+    if (candidateId) {
+      firstItem = candidate;
+    }
+  }
+
+  if (!firstItem) return null;
+
+  try {
+    let buffer = null;
+    let mimeType = 'image/jpeg';
+    let filename = 'defect-evidence.jpg';
+
+    if (typeof firstItem === 'object') {
+      filename = firstItem.original_name || firstItem.name || firstItem.filename || 'defect-evidence.jpg';
+      const idOrFilename = firstItem.id || firstItem.filename;
+
+      if (idOrFilename) {
+        const rec = await getBinaryFile(idOrFilename);
+        if (rec && rec.file_data) {
+          buffer = rec.file_data;
+          mimeType = rec.mime_type || mimeType;
+          filename = rec.original_name || rec.filename || filename;
+        }
+      }
+
+      if (!buffer && firstItem.url && firstItem.url.startsWith('data:image/')) {
+        const parts = firstItem.url.split(',');
+        mimeType = parts[0].match(/:(.*?);/)?.[1] || mimeType;
+        buffer = Buffer.from(parts[1], 'base64');
+      }
+
+      if (!buffer && (firstItem.path || firstItem.filename)) {
+        const diskCandidates = [
+          path.resolve(__dirname, '../services/ihlr-service/uploads/attachments', firstItem.filename || ''),
+          path.resolve(__dirname, '../services/ihlr-service/uploads', firstItem.filename || ''),
+          firstItem.path ? path.resolve(firstItem.path) : null
+        ].filter(Boolean);
+        for (const p of diskCandidates) {
+          if (fs.existsSync(p) && fs.statSync(p).isFile()) {
+            buffer = fs.readFileSync(p);
+            break;
+          }
+        }
+      }
+    } else if (typeof firstItem === 'string') {
+      const str = firstItem.trim();
+      if (str.startsWith('data:image/')) {
+        const parts = str.split(',');
+        mimeType = parts[0].match(/:(.*?);/)?.[1] || mimeType;
+        buffer = Buffer.from(parts[1], 'base64');
+      } else {
+        const rec = await getBinaryFile(str);
+        if (rec && rec.file_data) {
+          buffer = rec.file_data;
+          mimeType = rec.mime_type || mimeType;
+          filename = rec.original_name || rec.filename || filename;
+        } else {
+          const diskCandidates = [
+            path.resolve(__dirname, '../services/ihlr-service/uploads/attachments', str),
+            path.resolve(__dirname, '../services/ihlr-service/uploads', str),
+            path.resolve(str)
+          ];
+          for (const p of diskCandidates) {
+            if (fs.existsSync(p) && fs.statSync(p).isFile()) {
+              buffer = fs.readFileSync(p);
+              filename = path.basename(p);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!buffer || buffer.length === 0) return null;
+
+    if (!mimeType.startsWith('image/')) {
+      const ext = path.extname(filename).toLowerCase().replace('.', '');
+      if (['jpg', 'jpeg'].includes(ext)) mimeType = 'image/jpeg';
+      else if (ext === 'png') mimeType = 'image/png';
+      else if (ext === 'webp') mimeType = 'image/webp';
+      else if (ext === 'gif') mimeType = 'image/gif';
+      else if (ext === 'jfif') mimeType = 'image/jpeg';
+      else if (ext === 'svg') mimeType = 'image/svg+xml';
+      else return null;
+    }
+
+    // REQUIREMENT: "incase of image has more than mb to compress to kb and attach in the email"
+    // If the image is greater than 1 MB, compress down to KB before attaching and embedding
+    if (buffer && buffer.length > 1024 * 1024) {
+      try {
+        const compressed = await compressImageBuffer(buffer);
+        if (compressed && compressed.buffer) {
+          buffer = compressed.buffer;
+          mimeType = compressed.mimeType || 'image/jpeg';
+          if (!filename.toLowerCase().endsWith('.jpg') && !filename.toLowerCase().endsWith('.jpeg')) {
+            filename = filename.replace(/\.[^/.]+$/, '') + '.jpg';
+          }
+        }
+      } catch (compErr) {
+        console.warn('[Mailer] Defect image compression warning:', compErr.message);
+      }
+    }
+
+    const cid = 'ihlr-defect-evidence';
+    const base64Data = `data:${mimeType};base64,${buffer.toString('base64')}`;
+
+    return {
+      filename,
+      content: buffer,
+      contentType: mimeType,
+      cid,
+      contentDisposition: 'inline',
+      base64Data,
+    };
+  } catch (err) {
+    console.warn('[Mailer] Error extracting defect image attachment:', err.message);
+    return null;
+  }
+}
+
 export function generateEmailTemplate({
   headerTitle,
   headerSubtitle,
@@ -411,8 +670,10 @@ export function generateEmailTemplate({
   badgeColor = '#2563eb',
   badgeText = '',
   logoUrl,
+  defectImage = null,
 }) {
   const resolvedLogo = logoUrl || 'cid:inel-logo';
+  const defectImageSrc = typeof defectImage === 'object' && defectImage !== null ? defectImage.src : (typeof defectImage === 'string' ? defectImage : null);
   const tableRows = tableData
     .map((item) => {
       const isStatus = String(item.label || '').trim().toLowerCase() === 'status';
@@ -479,9 +740,22 @@ export function generateEmailTemplate({
     <!-- Body Header -->
     <tr>
       <td style="padding: 32px 32px 16px 32px;">
-        <h1 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 16px 0;">
-          ${headerTitle}
-        </h1>
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 16px;">
+          <tr>
+            <td style="vertical-align: middle;">
+              <h1 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.3;">
+                ${headerTitle}
+              </h1>
+            </td>
+            ${defectImageSrc ? `
+            <td align="right" style="vertical-align: middle; padding-left: 14px; width: 100px; text-align: right;">
+              <a href="${actionButtonUrl || '#'}" target="_blank" style="text-decoration: none; display: inline-block;">
+                <img src="${defectImageSrc}" alt="Evidence" width="90" height="70" style="display: block; width: 90px; height: 70px; object-fit: cover; border-radius: 8px; border: 1.5px solid #cbd5e1; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin: 0 0 0 auto;" />
+              </a>
+            </td>
+            ` : ''}
+          </tr>
+        </table>
         ${headerSubtitle ? `
         <p style="font-size: 13px; color: #64748b; margin: 0 0 20px 0; line-height: 1.5;">
           ${headerSubtitle}
@@ -636,6 +910,20 @@ export async function sendIhlrRequestEmails({
     { label: 'Status', value: mailStatus },
   ];
 
+  // Extract defect image (if requestor added images, pick first one in row)
+  const defectImgAtt = await getFirstDefectImageAttachment(request);
+  const emailAttachments = defectImgAtt
+    ? [{
+        filename: defectImgAtt.filename,
+        content: defectImgAtt.content,
+        cid: defectImgAtt.cid,
+        contentType: defectImgAtt.contentType,
+        base64Data: defectImgAtt.base64Data
+      }]
+    : [];
+
+  const defectImageProp = defectImgAtt ? { src: `cid:${defectImgAtt.cid}`, alt: 'Defect Evidence' } : null;
+
   const results = {};
 
   // 1. EMAIL TO RAISED PERSON (CREATOR)
@@ -652,6 +940,7 @@ export async function sendIhlrRequestEmails({
       footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: '#f59e0b',
       badgeText: '',
+      defectImage: defectImageProp,
     });
 
     results.creator = await sendEmail({
@@ -661,6 +950,7 @@ export async function sendIhlrRequestEmails({
       subject: creatorSubject,
       text: `Your IHLR defect request #${reqNo} (${request.model} - "${request.problem}") has been successfully logged (Status: Pending) and assigned to ${allAssignedPersonsDisplay}${assignedDeptDisplay}.`,
       html: creatorHtml,
+      attachments: emailAttachments,
       moduleType: 'IHLR',
       requestId: request.id,
       referenceNo: reqNo,
@@ -681,6 +971,7 @@ export async function sendIhlrRequestEmails({
       footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: '#f59e0b',
       badgeText: '',
+      defectImage: defectImageProp,
     });
 
     results.assigned = await sendEmail({
@@ -690,6 +981,7 @@ export async function sendIhlrRequestEmails({
       subject: assignedSubject,
       text: `IHLR Request #${reqNo} (${request.model} - "${request.problem}") has been assigned to you by ${createdByDisplay} (Status: Pending). Please log in to complete containment analysis.`,
       html: assignedHtml,
+      attachments: emailAttachments,
       moduleType: 'IHLR',
       requestId: request.id,
       referenceNo: reqNo,
@@ -754,6 +1046,20 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
     { label: 'Remarks', value: request.remarks || (isClosed ? 'Closed' : '(Pending validation by Requester/Admin)') }
   ];
 
+  // Extract defect image (if requestor added images, pick first one in row)
+  const defectImgAtt = await getFirstDefectImageAttachment(request);
+  const emailAttachments = defectImgAtt
+    ? [{
+        filename: defectImgAtt.filename,
+        content: defectImgAtt.content,
+        cid: defectImgAtt.cid,
+        contentType: defectImgAtt.contentType,
+        base64Data: defectImgAtt.base64Data
+      }]
+    : [];
+
+  const defectImageProp = defectImgAtt ? { src: `cid:${defectImgAtt.cid}`, alt: 'Defect Evidence' } : null;
+
   const results = { admins: [] };
 
   // 1. Notify Creator (Raised Person / Requester)
@@ -771,6 +1077,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
       footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: isClosed ? '#10b981' : '#d97706',
       badgeText: '',
+      defectImage: defectImageProp,
     });
 
     results.creator = await sendEmail({
@@ -782,6 +1089,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
         ? `Defect report #${reqNo} verified and marked as Closed.`
         : `Action Required: Closer ${assignedName} (${assignedDept}) completed root cause countermeasures for #${reqNo} (Status: Awaiting Review). Please complete remarks and sign off status at: ${approvalsUrl}`,
       html,
+      attachments: emailAttachments,
       moduleType: 'IHLR',
       requestId: request.id,
       referenceNo: reqNo,
@@ -810,6 +1118,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
         footerNote: 'This is an auto-generated email. Please do not reply.',
         badgeColor: isClosed ? '#10b981' : '#d97706',
         badgeText: '',
+      defectImage: defectImageProp,
       });
 
       const adminRes = await sendEmail({
@@ -819,6 +1128,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
         subject: adminSubject,
         text: `Admin Action Required: Closer ${assignedName} completed countermeasures for #${reqNo} (Status: Awaiting Review). Please review and finalize sign-off at: ${approvalsUrl}`,
         html: adminHtml,
+        attachments: emailAttachments,
         moduleType: 'IHLR',
         requestId: request.id,
         referenceNo: reqNo,
@@ -842,6 +1152,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
       footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: isClosed ? '#10b981' : '#2563eb',
       badgeText: '',
+      defectImage: defectImageProp,
     });
 
     results.assigned = await sendEmail({
@@ -853,6 +1164,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
         ? `Defect report #${reqNo} has been marked as Closed. Containment verified.`
         : `Closer Log Acknowledged for #${reqNo} (Status: Awaiting Review). Requester and Admin have been notified to complete pending remarks and status.`,
       html,
+      attachments: emailAttachments,
       moduleType: 'IHLR',
       requestId: request.id,
       referenceNo: reqNo,

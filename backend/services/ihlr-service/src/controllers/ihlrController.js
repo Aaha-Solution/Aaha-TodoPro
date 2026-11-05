@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from '../../../shared/response.js';
 import { IhlrRequest } from '../models/IhlrRequest.js';
 import { saveBinaryFiles, streamBinaryFile } from '../../../shared/binaryStorage.js';
 import pool from '../../../shared/db.js';
-import { sendIhlrRequestEmails, sendIhlrCloserEmails, sendEmail, generateEmailTemplate } from '../../../../shared/mailer.js';
+import { sendIhlrRequestEmails, sendIhlrCloserEmails, sendEmail, generateEmailTemplate, getFirstDefectImageAttachment } from '../../../../shared/mailer.js';
 import { broadcastEvent } from '../../../shared/realtimeNotifier.js';
 
 
@@ -1258,6 +1258,17 @@ export const updateIhlrRequest = async (req, res) => {
 
         // SCENARIO 1: REASSIGNED by Admin to new department or person(s)
         if (isReassigned) {
+          const reassignDefectAtt = await getFirstDefectImageAttachment(updated);
+          const reassignEmailAttachments = reassignDefectAtt
+            ? [{
+                filename: reassignDefectAtt.filename,
+                content: reassignDefectAtt.content,
+                cid: reassignDefectAtt.cid,
+                contentType: reassignDefectAtt.contentType,
+                base64Data: reassignDefectAtt.base64Data
+              }]
+            : [];
+          const reassignDefectImageProp = reassignDefectAtt ? { src: `cid:${reassignDefectAtt.cid}`, alt: 'Defect Evidence' } : null;
           // A. Send in-app notification and email to ALL newly selected assignee(s)
           const newNames = String(updated.resp_person || '').split(',').map((s) => s.trim()).filter(Boolean);
           const targetUsers = [];
@@ -1335,7 +1346,8 @@ export const updateIhlrRequest = async (req, res) => {
               actionButtonText: 'Go to Q Track',
               actionButtonUrl: 'http://localhost:5173/ihlr/approvals',
               badgeColor: '#f59e0b',
-              badgeText: 'PENDING'
+              badgeText: 'PENDING',
+              defectImage: reassignDefectImageProp
             });
 
             try {
@@ -1346,6 +1358,7 @@ export const updateIhlrRequest = async (req, res) => {
                 subject: `[IHLR Action Required] Defect Report Assigned to You: #${reqNo} (Pending)`,
                 text: `Dear ${u.name || 'Team Member'},\n\nIHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to you (${updated.resp}) by ${updated.reviewed_by || 'Quality Admin'}.\n\nStatus: Pending\n\nPlease review and submit 5-Why root cause analysis and containment actions at: http://localhost:5173/ihlr/approvals\n\nThank you,\nQuality Portal`,
                 html: reassignHtml,
+                attachments: reassignEmailAttachments,
                 referenceNo: reqNo,
                 moduleType: 'IHLR'
               }).catch((err) => console.warn('[Reassign Mail Warning]:', err.message));
@@ -1389,7 +1402,8 @@ export const updateIhlrRequest = async (req, res) => {
               actionButtonText: 'Go to Q Track',
               actionButtonUrl: 'http://localhost:5173/ihlr/all-requests',
               badgeColor: '#f59e0b',
-              badgeText: 'PENDING'
+              badgeText: 'PENDING',
+              defectImage: reassignDefectImageProp
             });
 
             try {
@@ -1400,6 +1414,7 @@ export const updateIhlrRequest = async (req, res) => {
                 subject: `[IHLR Case Reassigned] Defect Report #${reqNo} Reassigned to ${updated.resp_person || updated.resp} (Pending)`,
                 text: `Dear ${updated.created_by || 'Quality Requester'},\n\nYour IHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to ${updated.resp_person || updated.resp} (${updated.resp}) by ${updated.reviewed_by || 'Quality Admin'} for root cause investigation.\n\nStatus: Pending\n\nView details: http://localhost:5173/ihlr/all-requests\n\nThank you,\nQuality Portal`,
                 html: reqReassignHtml,
+                attachments: reassignEmailAttachments,
                 referenceNo: reqNo,
                 moduleType: 'IHLR'
               }).catch((err) => console.warn('[Reassign Req Mail Warning]:', err.message));
