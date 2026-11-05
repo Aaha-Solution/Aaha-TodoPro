@@ -732,6 +732,7 @@ const IhlrCreateRequest = () => {
           notify_emails: formData.notify_emails || '',
           qa_why_why: qaWhyWhy,
           defect_image: finalAttachments.length > 0 ? JSON.stringify(finalAttachments) : '',
+          ...(isAdmin ? { is_admin_edit: true, admin_edit: true, skip_notifications: true } : {})
         });
         await success(`IHLR Report #${formData.req_no} requester details updated successfully!`);
         window.dispatchEvent(new Event('refreshNotifications'));

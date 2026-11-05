@@ -430,7 +430,10 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         problem: editFormData.problem.trim(),
         occurrence_cause: editFormData.occurrence_cause?.trim() || '',
         defect_image: finalAttachments.length > 0 ? JSON.stringify(finalAttachments) : '',
-        qa_why_why: Array.isArray(editQaWhyWhy) ? editQaWhyWhy.map((w) => (w || '').trim()) : []
+        qa_why_why: Array.isArray(editQaWhyWhy) ? editQaWhyWhy.map((w) => (w || '').trim()) : [],
+        is_admin_edit: true,
+        admin_edit: true,
+        skip_notifications: true
       };
 
       const result = await ihlrService.updateRequest(req.id, requesterUpdates);

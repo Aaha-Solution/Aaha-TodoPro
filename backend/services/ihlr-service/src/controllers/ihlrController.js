@@ -849,8 +849,8 @@ export const updateIhlrRequest = async (req, res) => {
     const userId = req.user?.id ? String(req.user.id) : (req.body?.user?.id ? String(req.body.user.id) : null);
 
     // Guard: Once closed, only Admin can modify closed records
-    const isClosed = String(existing.status || '').toUpperCase() === 'CLOSED';
-    if (isClosed && !isAdmin) {
+    const isAlreadyClosed = String(existing.status || '').toUpperCase() === 'CLOSED';
+    if (isAlreadyClosed && !isAdmin) {
       return errorResponse(res, 'This incident is closed. Only Admin can modify closed records.', 403);
     }
 
@@ -1081,7 +1081,7 @@ export const updateIhlrRequest = async (req, res) => {
     const newRespDept = safeUpdates.resp !== undefined ? clean(safeUpdates.resp) : prevRespDept;
 
     const isReassigned = Boolean(
-      isAdmin && (
+      isAdmin && !req.body?.is_admin_edit && !req.body?.admin_edit && !req.body?.skip_notifications && !req.body?.skipNotifications && (
         req.body?.is_reassign === true ||
         req.body?.isReassign === true ||
         (safeUpdates.resp_person !== undefined && newRespPerson !== prevRespPerson) ||
@@ -1225,12 +1225,23 @@ export const updateIhlrRequest = async (req, res) => {
 
     const reqNo = updated.req_no || `IHLR-${updated.id || id}`;
 
-    // Trigger In-App Notifications and Email Dispatch
-    if (pool && updated) {
+    const wasAlreadyClosed = String(existing?.status || '').toUpperCase() === 'CLOSED';
+    const isNowClosed = String(updated.status || '').toUpperCase() === 'CLOSED';
+    const isClosed = isNowClosed && !wasAlreadyClosed;
+
+    // Detect if this is an Admin edit of fields (editing requester details, editing closer fields, etc.)
+    const isAdminEdit = Boolean(
+      req.body?.is_admin_edit === true ||
+      req.body?.isAdminEdit === true ||
+      req.body?.admin_edit === true ||
+      req.body?.skip_notifications === true ||
+      req.body?.skipNotifications === true ||
+      (isAdmin && !isReassigned && !isClosed)
+    );
+
+    // Trigger In-App Notifications and Email Dispatch (skipped on admin edits)
+    if (pool && updated && !isAdminEdit) {
       try {
-        const wasAlreadyClosed = String(existing?.status || '').toUpperCase() === 'CLOSED';
-        const isNowClosed = String(updated.status || '').toUpperCase() === 'CLOSED';
-        const isClosed = isNowClosed && !wasAlreadyClosed;
         const closerName = req.user?.name || updated.resp_person || 'Assigned Officer';
         const closerDept = (updated.resp || req.user?.department || '').trim();
 
@@ -1622,9 +1633,17 @@ export const updateIhlrRequest = async (req, res) => {
 
     // Broadcast Realtime WebSocket Event
     broadcastEvent('ihlr:updated', updated);
-    broadcastEvent('notifications:refresh', { module: 'ihlr', action: 'updated', id: updated.id || id, reqNo });
+    if (!isAdminEdit) {
+      broadcastEvent('notifications:refresh', { module: 'ihlr', action: 'updated', id: updated.id || id, reqNo });
+    }
 
-    return successResponse(res, updated, 'IHLR closer log updated successfully. Notifications and emails dispatched to Requester and Admin to complete pending fields.');
+    return successResponse(
+      res,
+      updated,
+      isAdminEdit
+        ? 'IHLR request details updated successfully.'
+        : 'IHLR closer log updated successfully. Notifications and emails dispatched to Requester and Admin to complete pending fields.'
+    );
   } catch (error) {
     return errorResponse(res, error.message, 500);
   }

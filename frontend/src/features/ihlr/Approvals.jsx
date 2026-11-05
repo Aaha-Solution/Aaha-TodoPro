@@ -833,7 +833,8 @@ const IhlrApprovals = () => {
         permanent_closed_by: effectivePermClosedBy || null,
         closer_updated_by: user?.name || user?.email || effectiveTempClosedBy || effectivePermClosedBy || null,
         closer_updated_by_id: user?.id || null,
-        closer_updated_by_email: user?.email || null
+        closer_updated_by_email: user?.email || null,
+        ...(adminEditCloser || isAdmin ? { is_admin_edit: true, admin_edit: true, skip_notifications: true } : {})
       };
 
       // When closer (non-admin) updates their fields, automatically set status to IN_PROGRESS unless already CLOSED
