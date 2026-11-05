@@ -3,7 +3,6 @@ import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import { 
   FileSpreadsheet, 
-  Search, 
   Download, 
   Loader2, 
   AlertCircle, 
@@ -153,7 +152,6 @@ const ExcelViewer = ({ url, filename, file, onAnnotate }) => {
   const [sheets, setSheets] = useState([]);
   const [activeSheet, setActiveSheet] = useState('');
   const [gridData, setGridData] = useState({ headerRow: [], bodyRows: [], colsInfo: [], totalCols: 0 });
-  const [search, setSearch] = useState('');
   const [workbookRef, setWorkbookRef] = useState(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const tableContainerRef = useRef(null);
@@ -302,15 +300,7 @@ const ExcelViewer = ({ url, filename, file, onAnnotate }) => {
 
   const { headerRow, bodyRows, colsInfo } = gridData;
 
-  const filteredRows = search.trim()
-    ? bodyRows.filter((row) =>
-        row.some((cell) =>
-          String(cell.formatted || cell.raw || '')
-            .toLowerCase()
-            .includes(search.toLowerCase().trim())
-        )
-      )
-    : bodyRows;
+  const filteredRows = bodyRows;
 
   return (
     <div className="w-full flex flex-col h-[65vh] rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
@@ -331,16 +321,6 @@ const ExcelViewer = ({ url, filename, file, onAnnotate }) => {
         </div>
 
         <div className="flex items-center gap-2.5 flex-1 max-w-sm justify-end">
-          <div className="relative w-full max-w-[220px]">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search in cells..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-            />
-          </div>
 
           {onAnnotate && (
             <button
@@ -422,8 +402,7 @@ const ExcelViewer = ({ url, filename, file, onAnnotate }) => {
                   className="py-12 text-center text-slate-400"
                 >
                   <TableIcon className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                  <p className="font-semibold text-slate-600">No matching cells found</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Try searching for another keyword</p>
+                  <p className="font-semibold text-slate-600">No data found in worksheet</p>
                 </td>
               </tr>
             ) : (
@@ -434,7 +413,6 @@ const ExcelViewer = ({ url, filename, file, onAnnotate }) => {
                   </td>
                   {row.map((cell, cIdx) => {
                     const textVal = cell.formatted !== undefined && cell.formatted !== null ? cell.formatted : String(cell.raw || '');
-                    const isMatched = search.trim() && textVal.toLowerCase().includes(search.toLowerCase().trim());
                     const alignClass = cell.align === 'right' ? 'text-right' : cell.align === 'center' ? 'text-center' : 'text-left';
                     const isNumeric = cell.type === 'n' || cell.align === 'right';
 
@@ -445,7 +423,7 @@ const ExcelViewer = ({ url, filename, file, onAnnotate }) => {
                         rowSpan={cell.merge?.rowSpan}
                         className={`px-3 py-1.5 border border-slate-200 text-slate-800 whitespace-nowrap max-w-[340px] truncate ${alignClass} ${
                           isNumeric ? 'font-mono' : 'font-sans'
-                        } ${isMatched ? 'bg-amber-100/90 font-bold text-amber-900' : ''}`}
+                        }`}
                         title={textVal}
                       >
                         {textVal !== '' ? textVal : <span className="text-slate-300 select-none">—</span>}
