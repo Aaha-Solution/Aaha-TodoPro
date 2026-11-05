@@ -523,6 +523,12 @@ export const ProcessAuditBarChart = ({
                 const centerX = paddingLeft + idx * slotWidth + slotWidth / 2;
                 const isHovered = hoveredBar && hoveredBar.item.key === item.key;
 
+                const baseY = paddingTop + innerHeight;
+
+                const openH = ((item.open || 0) / maxVal) * innerHeight;
+                const progH = ((item.inProgress || 0) / maxVal) * innerHeight;
+                const closedH = ((item.closed || 0) / maxVal) * innerHeight;
+
                 // Collect only active sub-bars so bars are always centered together
                 const activeBars = [];
                 if (openH > 0) {
