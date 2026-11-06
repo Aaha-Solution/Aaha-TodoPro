@@ -39,6 +39,7 @@ import ExportSelectionModal from '../../components/common/ExportSelectionModal';
 import { exportIhlrToExcel, loadLogoBase64, isImageAttachment, formatReassignmentHistory, getIhlrDisplayStatus } from './ihlrExportUtils';
 import AttachmentChipList from '../../components/common/AttachmentChipList';
 import { resolveAttachmentUrl } from '../../components/common/attachmentUtils';
+import DateInput from '../../components/common/DateInput';
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { formatIhlrShiftDisplay, getIhlrShiftDetails, IHLR_RECEIVED_FROM_OPTIONS } from '../../utils/constants';
@@ -2031,10 +2032,9 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                         INCIDENT DATE <span className="text-rose-500">*</span>
                       </label>
-                      <input
-                        type="date"
-                        max={new Date().toISOString().split('T')[0]}
+                      <DateInput
                         value={editFormData.batch_date}
+                        max={new Date().toISOString().split('T')[0]}
                         onChange={(e) => {
                           const val = e.target.value;
                           const today = new Date().toISOString().split('T')[0];

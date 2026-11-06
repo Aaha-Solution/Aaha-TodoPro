@@ -8,6 +8,7 @@ import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
  * eliminating the OS-dependent MM/DD/YYYY vs DD/MM/YYYY discrepancy.
  * 
  * Automatically synchronizes with standard YYYY-MM-DD for form state and backend storage.
+ * Seamlessly supports iOS Safari (iPhone), Android Mobile, and Desktop browsers.
  */
 const DateInput = ({
   value = '',
@@ -27,7 +28,23 @@ const DateInput = ({
   
   // Display text strictly in DD/MM/YYYY
   const [displayText, setDisplayText] = useState(() => (isoValue ? formatDateDDMMYYYY(isoValue) : ''));
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const hiddenInputRef = useRef(null);
+
+  // Detect touch/mobile devices (iPhone, iPad, Android) to ensure direct native touch hit
+  useEffect(() => {
+    const checkTouch = () => {
+      return (
+        typeof window !== 'undefined' &&
+        (
+          'ontouchstart' in window ||
+          navigator.maxTouchPoints > 0 ||
+          Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+        )
+      );
+    };
+    setIsTouchDevice(checkTouch());
+  }, []);
 
   // Sync internal display when external value changes
   useEffect(() => {
@@ -53,8 +70,10 @@ const DateInput = ({
   const handlePickerChange = (e) => {
     const selectedIso = e.target.value; // 'YYYY-MM-DD'
     if (selectedIso) {
-      if (min && selectedIso < min) return;
-      if (max && selectedIso > max) return;
+      const minIso = min ? parseDateToYYYYMMDD(min) : '';
+      const maxIso = max ? parseDateToYYYYMMDD(max) : '';
+      if (minIso && selectedIso < minIso) return;
+      if (maxIso && selectedIso > maxIso) return;
       setDisplayText(formatDateDDMMYYYY(selectedIso));
       triggerChange(selectedIso);
     } else {
@@ -63,7 +82,7 @@ const DateInput = ({
     }
   };
 
-  // Called when user manually types into the input
+  // Called when user manually types into the input (desktop)
   const handleTextChange = (e) => {
     const raw = e.target.value;
     
@@ -106,14 +125,16 @@ const DateInput = ({
 
       if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
         const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        if (min && iso < min) {
-          const fallback = (value && value >= min) ? value : min;
+        const minIso = min ? parseDateToYYYYMMDD(min) : '';
+        const maxIso = max ? parseDateToYYYYMMDD(max) : '';
+        if (minIso && iso < minIso) {
+          const fallback = (value && value >= minIso) ? value : minIso;
           setDisplayText(formatDateDDMMYYYY(fallback));
           triggerChange(fallback);
           return;
         }
-        if (max && iso > max) {
-          const fallback = (value && value <= max) ? value : max;
+        if (maxIso && iso > maxIso) {
+          const fallback = (value && value <= maxIso) ? value : maxIso;
           setDisplayText(formatDateDDMMYYYY(fallback));
           triggerChange(fallback);
           return;
@@ -140,13 +161,15 @@ const DateInput = ({
           hiddenInputRef.current.showPicker();
         } else {
           hiddenInputRef.current.focus();
-          hiddenInputRef.current.click();
         }
       } catch {
-        hiddenInputRef.current.click();
+        hiddenInputRef.current.focus();
       }
     }
   };
+
+  const parsedMin = min ? parseDateToYYYYMMDD(min) : undefined;
+  const parsedMax = max ? parseDateToYYYYMMDD(max) : undefined;
 
   return (
     <div className="relative flex items-center w-full group">
@@ -161,6 +184,7 @@ const DateInput = ({
         required={required}
         disabled={disabled}
         maxLength={10}
+        readOnly={isTouchDevice}
         className={`${className} pr-10 font-mono tracking-wide`}
         {...props}
       />
@@ -171,24 +195,29 @@ const DateInput = ({
         disabled={disabled}
         onClick={openPicker}
         tabIndex={-1}
-        className="absolute right-2 p-1.5 rounded-lg text-slate-400 group-hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+        className="absolute right-2 p-1.5 rounded-lg text-slate-400 group-hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center pointer-events-none"
         title="Open calendar"
       >
         <Calendar className="w-4 h-4" />
       </button>
 
-      {/* Hidden native date input for the browser calendar dialog */}
+      {/* Native date input:
+          - On touch/mobile (iPhone, iPad, Android): covers the entire input area with opacity-0 so physical touch triggers iOS native date picker wheel.
+          - On desktop: covers the calendar icon on the right so clicking the icon opens the browser picker, while clicking the text area allows manual typing.
+      */}
       <input
         type="date"
         ref={hiddenInputRef}
         value={isoValue}
         onChange={handlePickerChange}
-        min={min}
-        max={max}
+        min={parsedMin}
+        max={parsedMax}
         disabled={disabled}
         tabIndex={-1}
         aria-hidden="true"
-        className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
+        className={`absolute inset-0 opacity-0 cursor-pointer ${
+          isTouchDevice ? 'w-full h-full z-10' : 'left-auto right-1 w-8 h-8 z-10'
+        }`}
       />
     </div>
   );
