@@ -1273,15 +1273,13 @@ const IhlrCreateRequest = () => {
                   <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
                 {formData.resp && getDepartmentUsers(formData.resp).length > 0 && getSelectedUsers().length > 0 && (
-                  <div className="flex items-center gap-2 text-[10px]">
-                    <button
-                      type="button"
-                      onClick={handleClearAllUsers}
-                      className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
-                    >
-                      Clear
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearAllUsers}
+                    className="text-rose-600 hover:text-rose-700 font-semibold text-[10px] hover:underline cursor-pointer"
+                  >
+                    Clear All ({getSelectedUsers().length})
+                  </button>
                 )}
               </div>
 
