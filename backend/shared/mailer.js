@@ -749,9 +749,7 @@ export function generateEmailTemplate({
             </td>
             ${defectImageSrc ? `
             <td align="right" style="vertical-align: middle; padding-left: 14px; width: 100px; text-align: right;">
-              <a href="${actionButtonUrl || '#'}" target="_blank" style="text-decoration: none; display: inline-block;">
-                <img src="${defectImageSrc}" alt="Evidence" width="90" height="70" style="display: block; width: 90px; height: 70px; object-fit: cover; border-radius: 8px; border: 1.5px solid #cbd5e1; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin: 0 0 0 auto;" />
-              </a>
+              <img src="${defectImageSrc}" alt="Evidence" width="90" height="70" style="display: block; width: 90px; height: 70px; object-fit: cover; border-radius: 8px; border: 1.5px solid #cbd5e1; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin: 0 0 0 auto; pointer-events: none; cursor: default;" />
             </td>
             ` : ''}
           </tr>
