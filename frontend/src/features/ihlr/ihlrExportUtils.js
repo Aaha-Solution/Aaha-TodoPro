@@ -711,9 +711,7 @@ export const exportIhlrToPdf = async ({
     format: 'a4'
   });
 
-  const today = new Date().toISOString().slice(0, 10);
-
-  // Top Title and Company Branding with Logo
+  const today = formatDateDDMMYYYY(new Date());// Top Title and Company Branding with Logo
   let textStartX = 24;
   if (logoData) {
     try {

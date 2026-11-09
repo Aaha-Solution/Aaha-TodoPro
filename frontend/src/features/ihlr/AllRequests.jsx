@@ -205,7 +205,7 @@ const IhlrAllRequests = () => {
         setShowExportModal(false);
         return;
       }
-      const today = new Date().toISOString().slice(0, 10);
+      const today = formatDateDDMMYYYY(new Date()).replace(/\//g, '-');
       await exportIhlrToExcel({
         requests,
         fileName: `IHLR_Analysis_Report_${today}.xlsx`,
@@ -226,7 +226,7 @@ const IhlrAllRequests = () => {
         setShowExportModal(false);
         return;
       }
-      const today = new Date().toISOString().slice(0, 10);
+      const today = formatDateDDMMYYYY(new Date()).replace(/\//g, '-');
       await exportIhlrToPdf({
         requests,
         fileName: `IHLR_Analysis_Report_${today}.pdf`,

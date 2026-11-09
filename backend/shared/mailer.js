@@ -399,21 +399,21 @@ export function formatDateDDMMYYYY(dateVal) {
   const datePart = str.split('T')[0].split(' ')[0].trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
     const [yyyy, mm, dd] = datePart.split('-');
-    return `${dd}-${mm}-${yyyy}`;
+    return `${dd}/${mm}/${yyyy}`;
   }
   if (/^\d{2}-\d{2}-\d{4}$/.test(datePart)) {
     return datePart;
   }
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(datePart)) {
     const [dd, mm, yyyy] = datePart.split('/');
-    return `${dd}-${mm}-${yyyy}`;
+    return `${dd}/${mm}/${yyyy}`;
   }
   const d = new Date(dateVal);
   if (!isNaN(d.getTime())) {
     const dd = String(d.getDate()).padStart(2, '0');
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const yyyy = d.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
+    return `${dd}/${mm}/${yyyy}`;
   }
   return datePart;
 }

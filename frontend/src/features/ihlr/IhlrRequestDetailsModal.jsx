@@ -773,7 +773,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
       const reqNo = String(targetReq.req_no || '').startsWith('IHLR-') ? targetReq.req_no : `#${targetReq.req_no}`;
       const safeReqNo = String(targetReq.req_no || 'Report').replace(/[^a-zA-Z0-9_-]/g, '_');
-      const today = new Date().toISOString().slice(0, 10);
+      const today = formatDateDDMMYYYY(new Date()).replace(/\//g, '-');
 
       await exportIhlrToExcel({
         requests: [targetReq],
@@ -1811,60 +1811,69 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   </div>
                 </div>
 
-                {/* 3. Action (Words) */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
-                    <Wrench className="w-4 h-4" />
-                    <span>Temporary Action Taken</span>
+                {/* Temporary Countermeasures Section */}
+                <div className="pt-3 border-t border-slate-200/90 space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                    <span className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                      Temporary Countermeasures
+                    </span>
                   </div>
-                  <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
-                    {request.temporary_action || <span className="text-slate-400 italic">No temporary action recorded.</span>}
-                  </div>
-                </div>
 
-                {/* 4. Evidence Attachment (Format: PPT, JPEG, EXCEL & PDF) */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
-                      <Paperclip className="w-4 h-4" />
-                      <span>Temporary Evidence Attachment(s) ({evidenceAttachments.length})</span>
+                  {/* 1. Temporary Action Taken */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
+                      <Wrench className="w-4 h-4" />
+                      <span>Temporary Action Taken</span>
                     </div>
-                    <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                      {request.temporary_action || <span className="text-slate-400 italic">No temporary action recorded.</span>}
+                    </div>
                   </div>
 
-                  {evidenceAttachments && evidenceAttachments.length > 0 ? (
-                    <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
-                      <AttachmentChipList
-                        attachments={evidenceAttachments}
-                        onPreview={(att) => setPreviewAttachment(att)}
-                        readonly={true}
-                      />
+                  {/* 2. Temporary Evidence Attachment */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
+                        <Paperclip className="w-4 h-4" />
+                        <span>Temporary Evidence Attachment(s) ({evidenceAttachments.length})</span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
                     </div>
-                  ) : (
-                    <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
-                      No temporary evidence attachments uploaded.
-                    </div>
-                  )}
-                </div>
 
-                {/* 5. Target Date & Closed By */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      TEMPORARY TARGET DATE
-                    </span>
-                    <span className="font-mono font-bold text-slate-900 text-sm">
-                      {formatDate(request.temporary_target_date) || '—'}
-                    </span>
+                    {evidenceAttachments && evidenceAttachments.length > 0 ? (
+                      <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
+                        <AttachmentChipList
+                          attachments={evidenceAttachments}
+                          onPreview={(att) => setPreviewAttachment(att)}
+                          readonly={true}
+                        />
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
+                        No temporary evidence attachments uploaded.
+                      </div>
+                    )}
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                    <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      TEMPORARY CLOSED BY
-                    </span>
-                    <span className="font-bold text-slate-900 block text-xs">
-                      {request.temporary_closed_by || req.temporary_closed_by || '—'}
-                    </span>
+                  {/* 3. Temporary Target Date & Closed By */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        TEMPORARY TARGET DATE
+                      </span>
+                      <span className="font-mono font-bold text-slate-900 text-sm">
+                        {formatDate(request.temporary_target_date) || '—'}
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        TEMPORARY CLOSED BY
+                      </span>
+                      <span className="font-bold text-slate-900 block text-xs">
+                        {request.temporary_closed_by || req.temporary_closed_by || '—'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 

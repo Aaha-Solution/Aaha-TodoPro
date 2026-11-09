@@ -1183,7 +1183,7 @@ const IhlrApprovals = () => {
         setShowExportModal(false);
         return;
       }
-      const today = new Date().toISOString().slice(0, 10);
+      const today = formatDateDDMMYYYY(new Date()).replace(/\//g, '-');
       await exportIhlrToExcel({
         requests: filtered,
         fileName: `IHLR_Approvals_Queue_${today}.xlsx`,
@@ -1204,7 +1204,7 @@ const IhlrApprovals = () => {
         setShowExportModal(false);
         return;
       }
-      const today = new Date().toISOString().slice(0, 10);
+      const today = formatDateDDMMYYYY(new Date()).replace(/\//g, '-');
       await exportIhlrToPdf({
         requests: filtered,
         fileName: `IHLR_Approvals_Queue_${today}.pdf`,

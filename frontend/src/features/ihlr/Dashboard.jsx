@@ -196,8 +196,7 @@ const IhlrDashboard = () => {
         setShowExportModal(false);
         return;
       }
-      const today = new Date().toISOString().slice(0, 10);
-      await exportIhlrToExcel({
+      const today = formatDateDDMMYYYY(new Date()).replace(/\//g, '-'); exportIhlrToExcel({
         requests,
         fileName: `IHLR_Dashboard_Report_${today}.xlsx`,
         sheetName: 'IHLR Dashboard'
@@ -221,8 +220,7 @@ const IhlrDashboard = () => {
         setShowExportModal(false);
         return;
       }
-      const today = new Date().toISOString().slice(0, 10);
-      await exportIhlrToPdf({
+      const today = formatDateDDMMYYYY(new Date()).replace(/\//g, '-'); exportIhlrToPdf({
         requests,
         fileName: `IHLR_Dashboard_Report_${today}.pdf`,
         title: 'IHLR Dashboard Summary & Analysis Reports',
