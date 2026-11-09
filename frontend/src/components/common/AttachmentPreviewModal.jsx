@@ -144,13 +144,13 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose, onAnnotate }) => 
               </button>
             )}
 
-            {activeUrl && (
+            {(activeUrl || attachment.url || attachment.file) && (
               <button
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  triggerDirectDownload(activeUrl, attachment.name, attachment.file);
+                  triggerDirectDownload(activeUrl || attachment.url, attachment.name, attachment.file);
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
                 title="Download file directly"
@@ -230,19 +230,8 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose, onAnnotate }) => 
                   {attachment.name}
                 </h4>
                 <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
-                  Microsoft Word documents can be viewed with Microsoft Office, Word Viewer, or downloaded directly for full formatting and editing.
+                  Microsoft Word document. Use the Download option in the top right to view or edit this file.
                 </p>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => triggerDirectDownload(activeUrl || attachment.url, attachment.name, attachment.file)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 transition cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download Word Document</span>
-                </button>
               </div>
             </div>
           ) : /* 5. Fallback File Card */
@@ -258,17 +247,6 @@ const AttachmentPreviewModal = ({ isOpen, attachment, onClose, onAnnotate }) => 
                 <p className="text-xs text-slate-500 mt-1">
                   Format: <span className="font-mono font-bold text-slate-700">{meta.typeLabel}</span>
                 </p>
-              </div>
-
-              <div className="flex items-center justify-center pt-3">
-                <button
-                  type="button"
-                  onClick={() => triggerDirectDownload(activeUrl || attachment.url, attachment.name, attachment.file)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download File</span>
-                </button>
               </div>
             </div>
           )}
