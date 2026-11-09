@@ -698,15 +698,6 @@ export const IhlrBarChart = ({
                   </div>
                 </div>
 
-                {totalVolume > 0 && (
-                  <div className="mt-2 pt-1.5 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
-                    <span>Share of Total:</span>
-                    <span className="font-bold font-mono text-blue-300">
-                      {Math.round(((hoveredBar.item.total || 0) / totalVolume) * 100)}%
-                    </span>
-                  </div>
-                )}
-
                 {/* Pointer arrow pointing directly towards the bar/value */}
                 {showOnRight ? (
                   <div
