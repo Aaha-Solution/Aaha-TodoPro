@@ -12,6 +12,8 @@ export const isImageAttachment = (att) => {
   if (!att) return false;
   if (att.isImage) return true;
   const n = att.name || att.filename || (typeof att === 'string' ? att : '');
+  const url = att.url || (typeof att === 'string' ? att : '') || att.path;
+  if (url && String(url).startsWith('data:image/')) return true;
   const ext = (n.split('.').pop() || '').toLowerCase();
   return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg', 'jfif'].includes(ext);
 };
@@ -1319,8 +1321,10 @@ export const exportProcessAuditToPdf = async ({
   const tableRows = reqList.map((r, idx) => {
     const defectFiles = parseAttachments(r.attachments);
     const imgObj = rowImages[idx];
-    const fileCellText = imgObj?.dataUrl
-      ? (defectFiles.length > 1 ? `\n\n(+${defectFiles.length - 1} more file${defectFiles.length - 1 > 1 ? 's' : ''})` : '')
+    const hasImage = Boolean(imgObj && imgObj.dataUrl);
+    // In case of image, show image only (no overlapping text); otherwise show the text
+    const fileCellText = hasImage
+      ? ''
       : (defectFiles.map((a) => a.name).join(', ') || '—');
 
     const tempEvFiles = parseAttachments(r.temporary_evidence_attachment || r.action_attachments);
@@ -1420,6 +1424,13 @@ export const exportProcessAuditToPdf = async ({
       fillColor: [248, 250, 252] // slate-50
     },
     didParseCell: (data) => {
+      // In case of image, show image only: clear cell text so text never collapses or overlaps with the image
+      if (data.section === 'body' && data.column.index === 7) {
+        const imgObj = rowImages[data.row.index];
+        if (imgObj && imgObj.dataUrl) {
+          data.cell.text = [];
+        }
+      }
       if (data.section === 'body' && data.column.index === 13) {
         const text = String(data.cell.raw || '').toUpperCase();
         if (text.startsWith('CLOSED')) {
