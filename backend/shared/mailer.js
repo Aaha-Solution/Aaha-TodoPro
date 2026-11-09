@@ -10,6 +10,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
+/**
+ * Resolves the frontend base URL from .env
+ */
+export function getFrontendBaseUrl() {
+  return process.env.FRONTEND_URL || (process.env.HOST_IP ? `http://${process.env.HOST_IP}:5173` : 'http://localhost:5173');
+}
+
 export function getLogoPath() {
   const candidatePaths = [
     path.resolve(__dirname, 'assets/logo.png'),
@@ -818,7 +825,7 @@ export async function sendIhlrRequestEmails({
   skipCc = false
 }) {
   const reqNo = request.req_no || `IHLR-${request.id || '1'}`;
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const baseUrl = getFrontendBaseUrl();
   const myRequestsUrl = `${baseUrl}/ihlr/my-requests`;
   const approvalsUrl = `${baseUrl}/ihlr/approvals`;
 
@@ -995,7 +1002,7 @@ export async function sendIhlrRequestEmails({
  */
 export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, assignedUser, adminUsers = [] }) {
   const reqNo = request.req_no || `IHLR-${request.id || '1'}`;
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const baseUrl = getFrontendBaseUrl();
   const reportUrl = `${baseUrl}/ihlr/my-requests`;
   const approvalsUrl = `${baseUrl}/ihlr/approvals`;
 
@@ -1185,7 +1192,7 @@ export async function sendProcessAuditRequestEmails({
   skipCc = false
 }) {
   const reqNo = request.issue_no || (request.id ? `PA-${request.id}` : 'PA-1');
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const baseUrl = getFrontendBaseUrl();
   const myRequestsUrl = `${baseUrl}/process-audit/all-requests`;
   const approvalsUrl = `${baseUrl}/process-audit/approvals`;
 
@@ -1324,7 +1331,7 @@ export async function sendProcessAuditRequestEmails({
  */
 export async function sendProcessAuditCloserEmails({ request, closerUser, creatorUser, assignedUser, adminUsers = [] }) {
   const reqNo = request.issue_no || (request.id ? `PA-${request.id}` : 'PA-1');
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const baseUrl = getFrontendBaseUrl();
   const approvalsUrl = `${baseUrl}/process-audit/approvals`;
   const allRequestsUrl = `${baseUrl}/process-audit/all-requests`;
 

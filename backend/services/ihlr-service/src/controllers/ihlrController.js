@@ -1328,6 +1328,7 @@ export const updateIhlrRequest = async (req, res) => {
               ]
             ).catch((e) => console.warn('[Reassign Notif Error]:', e.message));
 
+            const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
             const reassignHtml = generateEmailTemplate({
               headerTitle: `IHLR Defect Report Assigned: #${reqNo}`,
               headerSubtitle: `Defect report #${reqNo} has been reassigned to you for ${updated.resp || 'Department'}.`,
@@ -1344,7 +1345,7 @@ export const updateIhlrRequest = async (req, res) => {
                 { label: 'Status', value: 'Pending' }
               ],
               actionButtonText: 'Go to Q Track',
-              actionButtonUrl: 'http://localhost:5173/ihlr/approvals',
+              actionButtonUrl: `${baseUrl}/ihlr/approvals`,
               badgeColor: '#f59e0b',
               badgeText: 'PENDING',
               defectImage: reassignDefectImageProp
@@ -1356,7 +1357,7 @@ export const updateIhlrRequest = async (req, res) => {
                 recipientName: u.name || updated.resp_person || 'Assigned Closer',
                 recipientRole: 'ASSIGNED_CLOSER',
                 subject: `[IHLR Action Required] Defect Report Assigned to You: #${reqNo} (Pending)`,
-                text: `Dear ${u.name || 'Team Member'},\n\nIHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to you (${updated.resp}) by ${updated.reviewed_by || 'Quality Admin'}.\n\nStatus: Pending\n\nPlease review and submit 5-Why root cause analysis and containment actions at: http://localhost:5173/ihlr/approvals\n\nThank you,\nQuality Portal`,
+                text: `Dear ${u.name || 'Team Member'},\n\nIHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to you (${updated.resp}) by ${updated.reviewed_by || 'Quality Admin'}.\n\nStatus: Pending\n\nPlease review and submit 5-Why root cause analysis and containment actions at: ${baseUrl}/ihlr/approvals\n\nThank you,\nQuality Portal`,
                 html: reassignHtml,
                 attachments: reassignEmailAttachments,
                 referenceNo: reqNo,
@@ -1384,6 +1385,7 @@ export const updateIhlrRequest = async (req, res) => {
               ]
             ).catch((e) => console.warn('[Reassign Req Notif Error]:', e.message));
 
+            const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
             const reqReassignHtml = generateEmailTemplate({
               headerTitle: `IHLR Case Reassigned: #${reqNo}`,
               headerSubtitle: `Defect report #${reqNo} has been reassigned for root cause investigation.`,
@@ -1400,7 +1402,7 @@ export const updateIhlrRequest = async (req, res) => {
                 { label: 'Status', value: 'Pending' }
               ],
               actionButtonText: 'Go to Q Track',
-              actionButtonUrl: 'http://localhost:5173/ihlr/all-requests',
+              actionButtonUrl: `${baseUrl}/ihlr/all-requests`,
               badgeColor: '#f59e0b',
               badgeText: 'PENDING',
               defectImage: reassignDefectImageProp
@@ -1412,7 +1414,7 @@ export const updateIhlrRequest = async (req, res) => {
                 recipientName: updated.created_by || 'Quality Requester',
                 recipientRole: 'RAISED_PERSON',
                 subject: `[IHLR Case Reassigned] Defect Report #${reqNo} Reassigned to ${updated.resp_person || updated.resp} (Pending)`,
-                text: `Dear ${updated.created_by || 'Quality Requester'},\n\nYour IHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to ${updated.resp_person || updated.resp} (${updated.resp}) by ${updated.reviewed_by || 'Quality Admin'} for root cause investigation.\n\nStatus: Pending\n\nView details: http://localhost:5173/ihlr/all-requests\n\nThank you,\nQuality Portal`,
+                text: `Dear ${updated.created_by || 'Quality Requester'},\n\nYour IHLR incident #${reqNo} (${updated.model || 'Model'}) has been reassigned to ${updated.resp_person || updated.resp} (${updated.resp}) by ${updated.reviewed_by || 'Quality Admin'} for root cause investigation.\n\nStatus: Pending\n\nView details: ${baseUrl}/ihlr/all-requests\n\nThank you,\nQuality Portal`,
                 html: reqReassignHtml,
                 attachments: reassignEmailAttachments,
                 referenceNo: reqNo,
