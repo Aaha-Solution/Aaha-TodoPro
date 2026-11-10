@@ -1,6 +1,6 @@
 import path from 'path';
 import { successResponse, errorResponse } from '../../../shared/response.js';
-import { IhlrRequest } from '../models/IhlrRequest.js';
+import { IhlrRequest, normalizeIhlrStatus } from '../models/IhlrRequest.js';
 import { saveBinaryFiles, streamBinaryFile } from '../../../shared/binaryStorage.js';
 import pool from '../../../shared/db.js';
 import { sendIhlrRequestEmails, sendIhlrCloserEmails, sendEmail, generateEmailTemplate, getFirstDefectImageAttachment } from '../../../../shared/mailer.js';
@@ -693,7 +693,7 @@ export const createIhlrRequest = async (req, res) => {
         permanent_evidence_attachment: data.permanent_evidence_attachment || '',
         permanent_target_date: data.permanent_target_date || null,
         remarks: data.remarks || '',
-        status: data.status || 'OPEN',
+        status: normalizeIhlrStatus(data.status || 'PENDING'),
         created_by: (data.created_by && String(data.created_by).replace(/[0-9]/g, '').trim()) || creatorUser.name,
         created_by_id: creatorUser.id,
         created_by_email: creatorUser.email,
@@ -886,9 +886,10 @@ export const updateIhlrRequest = async (req, res) => {
     // Single-Submission Rule for Closer:
     // Closer user can submit details ONLY ONCE. Only Quality Admin can update multiple times.
     if (!isAdmin && isCloser) {
+      const existingStatusNormalized = normalizeIhlrStatus(existing.status);
       const isAlreadySubmittedByCloser = Boolean(
-        String(existing.status || '').toUpperCase() === 'IN_PROGRESS' ||
-        String(existing.status || '').toUpperCase() === 'CLOSED'
+        existingStatusNormalized === 'AWAITING REVIEW' ||
+        existingStatusNormalized === 'CLOSED'
       );
 
       if (isAlreadySubmittedByCloser) {
@@ -919,6 +920,9 @@ export const updateIhlrRequest = async (req, res) => {
       ];
       for (const k of allowed) {
         if (req.body[k] !== undefined) safeUpdates[k] = req.body[k];
+      }
+      if (safeUpdates.status !== undefined) {
+        safeUpdates.status = normalizeIhlrStatus(safeUpdates.status);
       }
 
       if (req.body.reviewed_by !== undefined) {
@@ -959,10 +963,10 @@ export const updateIhlrRequest = async (req, res) => {
           safeUpdates.closer_updated_by = String(req.body.closer_updated_by || '').replace(/[0-9]/g, '').trim();
         }
 
-        // Automatically transition status to IN_PROGRESS when closer updates their fields
-        const currentStatus = String(existing.status || '').toUpperCase();
+        // Automatically transition status to AWAITING REVIEW when closer updates their fields
+        const currentStatus = normalizeIhlrStatus(existing.status);
         if (currentStatus !== 'CLOSED') {
-          safeUpdates.status = 'IN_PROGRESS';
+          safeUpdates.status = 'AWAITING REVIEW';
         }
       }
     }
@@ -1027,9 +1031,9 @@ export const updateIhlrRequest = async (req, res) => {
       safeUpdates.permanent_target_date !== undefined ||
       safeUpdates.permanent_closed_by !== undefined;
 
-    if (!safeUpdates.status && String(existing.status || '').toUpperCase() === 'OPEN') {
+    if (!safeUpdates.status && normalizeIhlrStatus(existing.status) === 'PENDING') {
       if (hasCloserUpdates) {
-        safeUpdates.status = 'IN_PROGRESS';
+        safeUpdates.status = 'AWAITING REVIEW';
       }
     }
 
@@ -1089,9 +1093,9 @@ export const updateIhlrRequest = async (req, res) => {
       )
     );
 
-    // If Admin reassigns to new assignee/department, always set status to OPEN (Pending for new assignee)
+    // If Admin reassigns to new assignee/department, always set status to PENDING (Pending for new assignee)
     if (isReassigned) {
-      safeUpdates.status = 'OPEN';
+      safeUpdates.status = 'PENDING';
       // Keep existing closer values (5-Why, Action, Evidence, Target Date) intact so the reassigned person can view/edit them
 
       let currentHistory = [];
@@ -1788,8 +1792,9 @@ export const getIhlrNotifications = async (req, res) => {
         });
       }
       const notifications = requests.slice(0, 15).map((r) => {
-        const isClosed = (r.status || '').toUpperCase() === 'CLOSED';
-        const isInProgress = (r.status || '').toUpperCase() === 'IN_PROGRESS';
+        const normStatus = normalizeIhlrStatus(r.status);
+        const isClosed = normStatus === 'CLOSED';
+        const isInProgress = normStatus === 'AWAITING REVIEW';
         let title = 'New IHLR Report Logged';
         let msg = `${String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`} (Model: ${r.model || '—'}) reported with defect "${r.problem || '—'}".`;
 
@@ -1811,7 +1816,7 @@ export const getIhlrNotifications = async (req, res) => {
           date: r.created_at ? new Date(r.created_at).toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent Today',
           created_at: r.created_at,
           raw_date: r.created_at,
-          status: r.status || 'OPEN',
+          status: normStatus,
           read: false,
           link: '/ihlr/approvals'
         };

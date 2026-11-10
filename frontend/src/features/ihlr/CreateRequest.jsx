@@ -149,7 +149,7 @@ const IhlrCreateRequest = () => {
     resp: '',
     resp_person: '',
     notify_emails: '',
-    status: 'OPEN'
+    status: 'PENDING'
   };
 
   const getSavedDraft = () => {
@@ -180,7 +180,7 @@ const IhlrCreateRequest = () => {
         created_by: isOldDefault ? '' : (savedCreatedBy || ''),
         shift: saved.formData.shift || '',
         notify_emails: saved.formData.notify_emails || '',
-        status: 'OPEN'
+        status: 'PENDING'
       };
     }
     return defaultFormData;
@@ -298,7 +298,7 @@ const IhlrCreateRequest = () => {
             resp: r.resp || '',
             resp_person: r.resp_person || '',
             notify_emails: r.notify_emails || '',
-            status: r.status || 'OPEN'
+            status: r.status || 'PENDING'
           });
           setAttachments(parseAttachments(r.defect_image));
           if (Array.isArray(r.qa_why_why) && r.qa_why_why.length > 0) {

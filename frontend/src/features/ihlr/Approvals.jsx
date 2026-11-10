@@ -117,7 +117,7 @@ const IhlrApprovals = () => {
   );
 
   const isSelectedClosed = String(selectedRequest?.status || '').toUpperCase() === 'CLOSED';
-  const isSelectedOpen = String(selectedRequest?.status || '').toUpperCase() === 'OPEN';
+  const isSelectedOpen = ['OPEN', 'PENDING'].includes(String(selectedRequest?.status || '').toUpperCase());
   const incidentDateStr = selectedRequest?.batch_date
     ? parseDateToYYYYMMDD(selectedRequest.batch_date)
     : '';
@@ -837,9 +837,9 @@ const IhlrApprovals = () => {
         ...(adminEditCloser || isAdmin ? { is_admin_edit: true, admin_edit: true, skip_notifications: true } : {})
       };
 
-      // When closer (non-admin) updates their fields, automatically set status to IN_PROGRESS unless already CLOSED
+      // When closer (non-admin) updates their fields, automatically set status to AWAITING REVIEW unless already CLOSED
       if (!isAdmin && (selectedRequest.status || '').toUpperCase() !== 'CLOSED') {
-        payload.status = 'IN_PROGRESS';
+        payload.status = 'AWAITING REVIEW';
       }
 
       if (user) {
@@ -961,7 +961,7 @@ const IhlrApprovals = () => {
         reviewed_by: effectiveReviewer,
         reviewed_by_id: user?.id || null,
         reviewed_by_email: user?.email || null,
-        status: isReassignOpen ? 'OPEN' : (closerStatus || 'CLOSED')
+        status: isReassignOpen ? 'PENDING' : (closerStatus || 'CLOSED')
       };
 
       if (isReassignOpen) {
@@ -1051,7 +1051,7 @@ const IhlrApprovals = () => {
     if (status === 'CLOSED') return true;
     if (status === 'REJECTED') return false;
 
-    return status !== 'OPEN' && (
+    return status !== 'OPEN' && status !== 'PENDING' && (
       status === 'IN_PROGRESS' ||
       status === 'APPROVAL_PENDING' ||
       status === 'AWAITING_REVIEW' ||
@@ -1106,7 +1106,7 @@ const IhlrApprovals = () => {
     if (!isAdmin && !isIhlrRequestAssignedToUser(r, user)) return false;
 
     const isClosed = String(r.status || '').toUpperCase() === 'CLOSED';
-    const isReqOpen = String(r.status || '').toUpperCase() === 'OPEN';
+    const isReqOpen = ['OPEN', 'PENDING'].includes(String(r.status || '').toUpperCase());
     const isCompleted = !isReqOpen && !isClosed && (
       String(r.status || '').toUpperCase() === 'IN_PROGRESS' ||
       String(r.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
@@ -2056,7 +2056,7 @@ const IhlrApprovals = () => {
                           setReassignUserSearch('');
                           setReassignedDept(selectedRequest?.resp || '');
                           setReassignedPerson(selectedRequest?.resp_person || '');
-                          setCloserStatus('OPEN');
+                          setCloserStatus('PENDING');
                         }}
                         title={
                           !selectedRequest
@@ -2452,7 +2452,7 @@ const IhlrApprovals = () => {
                     </label>
                   </div>
                   <select
-                    value={isReassignOpen ? 'OPEN' : closerStatus}
+                    value={isReassignOpen ? 'PENDING' : closerStatus}
                     onChange={(e) => {
                       if (isSelectedClosed || adminEditCloser || isReassignOpen || isCloserDataToBeUpdated) return;
                       setCloserStatus(e.target.value);
@@ -2472,7 +2472,7 @@ const IhlrApprovals = () => {
                     }`}
                   >
                     {isReassignOpen ? (
-                      <option value="OPEN">PENDING (Awaiting Closer)</option>
+                      <option value="PENDING">PENDING (Awaiting Closer)</option>
                     ) : (
                       <>
                         <option value="">Select Status...</option>
@@ -2684,8 +2684,8 @@ const IhlrApprovals = () => {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
               >
                 <option value="All">All Decisions</option>
-                <option value="OPEN">Pending</option>
-                <option value="IN_PROGRESS">Awaiting Review</option>
+                <option value="PENDING">Pending</option>
+                <option value="AWAITING REVIEW">Awaiting Review</option>
                 <option value="CLOSED">Closed</option>
               </select>
             </div>
@@ -2801,7 +2801,7 @@ const IhlrApprovals = () => {
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 CLOSED
                               </span>
-                            ) : (String(r.status || '').toUpperCase() !== 'OPEN' && (
+                            ) : (!['OPEN', 'PENDING'].includes(String(r.status || '').toUpperCase()) && (
                               String(r.status || '').toUpperCase() === 'IN_PROGRESS' ||
                               String(r.status || '').toUpperCase() === 'APPROVAL_PENDING' ||
                               String(r.status || '').toUpperCase() === 'AWAITING_REVIEW' ||

@@ -459,7 +459,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   };
 
   const isSelectedClosed = String(req?.status || '').toUpperCase() === 'CLOSED';
-  const isSelectedOpen = String(req?.status || '').toUpperCase() === 'OPEN';
+  const isSelectedOpen = ['OPEN', 'PENDING'].includes(String(req?.status || '').toUpperCase());
 
   const hasCloserSubmitted = Boolean(
     req && !isSelectedOpen && (
@@ -546,7 +546,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         reviewed_by: effectiveReviewer,
         reviewed_by_id: user?.id || null,
         reviewed_by_email: user?.email || null,
-        status: isReassignOpen ? 'OPEN' : (adminStatus || 'CLOSED')
+        status: isReassignOpen ? 'PENDING' : (adminStatus || 'CLOSED')
       };
 
       if (isReassignOpen) {
@@ -628,7 +628,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     return formatIhlrShiftDisplay(shift, true);
   };
 
-  const isReqOpen = (request?.status || '').toUpperCase() === 'OPEN';
+  const isReqOpen = ['OPEN', 'PENDING'].includes((request?.status || '').toUpperCase());
   const isCompleted = Boolean(
     !isReqOpen && (
       (request?.status || '').toUpperCase() === 'IN_PROGRESS' ||

@@ -498,8 +498,8 @@ const IhlrAllRequests = () => {
                 className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
               >
                 <option value="All">All Statuses</option>
-                <option value="OPEN">Pending</option>
-                <option value="IN_PROGRESS">Awaiting Review</option>
+                <option value="PENDING">Pending</option>
+                <option value="AWAITING REVIEW">Awaiting Review</option>
                 <option value="CLOSED">Closed</option>
               </select>
             </div>
@@ -866,7 +866,7 @@ const IhlrAllRequests = () => {
                 </label>
                 <select
                   disabled={!isAdmin && editingCloser.status === 'CLOSED'}
-                  defaultValue={editingCloser.status}
+                  defaultValue={getIhlrDisplayStatus(editingCloser.status, editingCloser)}
                   id="modal-status-select"
                   className={`w-full px-3 py-2 border rounded-xl font-bold text-slate-900 outline-none ${!isAdmin && editingCloser.status === 'CLOSED'
                       ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed select-none'
@@ -875,15 +875,15 @@ const IhlrAllRequests = () => {
                 >
                   {isAdmin ? (
                     <>
-                      <option value="OPEN">PENDING</option>
-                      <option value="IN_PROGRESS">IN PROGRESS</option>
+                      <option value="PENDING">PENDING</option>
+                      <option value="AWAITING REVIEW">AWAITING REVIEW</option>
                       <option value="CLOSED">CLOSED</option>
                     </>
                   ) : editingCloser.status === 'CLOSED' ? (
                     <option value="CLOSED">CLOSED (FINALIZED)</option>
                   ) : (
                     <>
-                      <option value="IN_PROGRESS">IN PROGRESS</option>
+                      <option value="AWAITING REVIEW">AWAITING REVIEW</option>
                       <option value="CLOSED">CLOSED</option>
                     </>
                   )}

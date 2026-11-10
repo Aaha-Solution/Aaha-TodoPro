@@ -364,7 +364,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
 
         const reqNo = String(r.req_no || '').startsWith('IHLR-') ? r.req_no : `IHLR-${r.req_no || idx + 1}`;
         const isClosed = (r.status || '').toUpperCase() === 'CLOSED';
-        const isInProgress = (r.status || '').toUpperCase() === 'IN_PROGRESS';
+        const isInProgress = ['IN_PROGRESS', 'IN-PROGRESS', 'AWAITING REVIEW', 'AWAITING_REVIEW', 'APPROVAL_PENDING', 'APPROVAL PENDING', 'UNDER_REVIEW'].includes((r.status || '').toUpperCase());
         const dept = (r.resp || r.department || 'PRODUCTION').toUpperCase();
         const fourM = r.four_m ? `4M: ${r.four_m} • ${r.problem_detected_at || 'CELL INSPECTION'}` : '4M: METHOD • PROCESS LINE';
         const formattedDate = formatStreamDate(r.created_at || r.batch_date);

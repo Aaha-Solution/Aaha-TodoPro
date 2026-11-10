@@ -1,12 +1,23 @@
 import pool from '../../../shared/db.js';
 
-const resolveIhlrStatus = (r) => {
-  const currentStatus = String(r.status || '').trim().toUpperCase();
-  if (currentStatus === 'CLOSED') return 'CLOSED';
-  if (currentStatus === 'IN_PROGRESS' || currentStatus === 'IN-PROGRESS') return 'IN_PROGRESS';
-  if (currentStatus === 'OPEN') return 'OPEN';
-  return currentStatus || 'OPEN';
+export const normalizeIhlrStatus = (rawStatus) => {
+  const s = String(rawStatus || '').trim().toUpperCase();
+  if (s === 'CLOSED' || s === 'APPROVED') return 'CLOSED';
+  if (
+    s === 'AWAITING REVIEW' ||
+    s === 'AWAITING_REVIEW' ||
+    s === 'IN_PROGRESS' ||
+    s === 'IN-PROGRESS' ||
+    s === 'APPROVAL_PENDING' ||
+    s === 'APPROVAL PENDING' ||
+    s === 'UNDER_REVIEW'
+  ) {
+    return 'AWAITING REVIEW';
+  }
+  return 'PENDING';
 };
+
+const resolveIhlrStatus = (r) => normalizeIhlrStatus(r?.status);
 
 const safeJsonParse = (val, fallback = []) => {
   if (!val) return fallback;
@@ -19,44 +30,74 @@ const safeJsonParse = (val, fallback = []) => {
 };
 
 let tableVerified = false;
+let ensureColumnsPromise = null;
 const ensureColumns = async () => {
   if (tableVerified || !pool) return;
-  try {
-    const [cols] = await pool.query('SHOW COLUMNS FROM ihlr_requests');
-    const colNames = (cols || []).map(c => c.Field);
-    if (!colNames.includes('reassignment_history')) {
-      await pool.query('ALTER TABLE ihlr_requests ADD COLUMN reassignment_history JSON NULL AFTER remarks').catch(() => {});
+  if (ensureColumnsPromise) return ensureColumnsPromise;
+
+  ensureColumnsPromise = (async () => {
+    try {
+      const [cols] = await pool.query('SHOW COLUMNS FROM ihlr_requests');
+      const colNames = (cols || []).map(c => c.Field);
+      if (!colNames.includes('reassignment_history')) {
+        await pool.query('ALTER TABLE ihlr_requests ADD COLUMN reassignment_history JSON NULL AFTER remarks').catch(() => {});
+      }
+      if (!colNames.includes('closer_updated_by')) {
+        await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_by VARCHAR(100) NULL AFTER permanent_closed_by').catch(() => {});
+      }
+      if (!colNames.includes('closer_updated_by_id')) {
+        await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_by_id INT NULL AFTER closer_updated_by').catch(() => {});
+      }
+      if (!colNames.includes('closer_updated_by_email')) {
+        await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_by_email VARCHAR(150) NULL AFTER closer_updated_by_id').catch(() => {});
+      }
+      if (!colNames.includes('closer_updated_at')) {
+        await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_at TIMESTAMP NULL AFTER closer_updated_by_email').catch(() => {});
+      }
+      if (!colNames.includes('notify_emails')) {
+        await pool.query('ALTER TABLE ihlr_requests ADD COLUMN notify_emails VARCHAR(500) NULL AFTER resp_person_email').catch(() => {});
+      }
+
+      // Migrate status ENUM from ('OPEN', 'IN_PROGRESS', 'CLOSED') to ('PENDING', 'AWAITING REVIEW', 'CLOSED')
+      const statusCol = (cols || []).find(c => c.Field === 'status');
+      const statusType = String(statusCol?.Type || '').toLowerCase();
+      if (statusCol && (statusType.includes("'open'") || statusType.includes("'in_progress'") || !statusType.includes("'awaiting review'") || !statusType.includes("'pending'"))) {
+        await pool.query(
+          "ALTER TABLE ihlr_requests MODIFY COLUMN status ENUM('OPEN', 'IN_PROGRESS', 'PENDING', 'AWAITING REVIEW', 'CLOSED') DEFAULT 'PENDING'"
+        );
+        await pool.query(
+          "UPDATE ihlr_requests SET status = 'PENDING' WHERE id > 0 AND (UPPER(TRIM(CAST(status AS CHAR))) IN ('OPEN', '') OR status IS NULL)"
+        );
+        await pool.query(
+          "UPDATE ihlr_requests SET status = 'AWAITING REVIEW' WHERE id > 0 AND UPPER(TRIM(CAST(status AS CHAR))) IN ('IN_PROGRESS', 'IN-PROGRESS', 'APPROVAL_PENDING', 'APPROVAL PENDING', 'AWAITING_REVIEW', 'UNDER_REVIEW')"
+        );
+        await pool.query(
+          "UPDATE ihlr_requests SET status = 'CLOSED' WHERE id > 0 AND UPPER(TRIM(CAST(status AS CHAR))) IN ('CLOSED', 'APPROVED')"
+        );
+        await pool.query(
+          "ALTER TABLE ihlr_requests MODIFY COLUMN status ENUM('PENDING', 'AWAITING REVIEW', 'CLOSED') DEFAULT 'PENDING'"
+        );
+      }
+      await pool.query('ALTER TABLE ihlr_requests ADD INDEX idx_ihlr_created_by_id (created_by_id)').catch(() => {});
+      await pool.query('ALTER TABLE ihlr_notifications ADD INDEX idx_ihlr_notif_user_id (user_id)').catch(() => {});
+      await pool.query('ALTER TABLE ihlr_notifications ADD INDEX idx_ihlr_notif_email (user_email)').catch(() => {});
+      await pool.query('ALTER TABLE ihlr_notifications ADD INDEX idx_ihlr_notif_read (is_read)').catch(() => {});
+      // Ensure no duplicate req_no exist (resolve duplicate req_no by re-assigning CONCAT('IHLR-', id))
+      await pool.query(`
+        UPDATE ihlr_requests r1
+        JOIN ihlr_requests r2 
+          ON r1.req_no = r2.req_no AND r1.id > r2.id
+        SET r1.req_no = CONCAT('IHLR-', r1.id)
+      `).catch(() => {});
+      tableVerified = true;
+    } catch (err) {
+      console.warn('[IHLR Model] Column verification warning:', err.message);
+    } finally {
+      ensureColumnsPromise = null;
     }
-    if (!colNames.includes('closer_updated_by')) {
-      await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_by VARCHAR(100) NULL AFTER permanent_closed_by').catch(() => {});
-    }
-    if (!colNames.includes('closer_updated_by_id')) {
-      await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_by_id INT NULL AFTER closer_updated_by').catch(() => {});
-    }
-    if (!colNames.includes('closer_updated_by_email')) {
-      await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_by_email VARCHAR(150) NULL AFTER closer_updated_by_id').catch(() => {});
-    }
-    if (!colNames.includes('closer_updated_at')) {
-      await pool.query('ALTER TABLE ihlr_requests ADD COLUMN closer_updated_at TIMESTAMP NULL AFTER closer_updated_by_email').catch(() => {});
-    }
-    if (!colNames.includes('notify_emails')) {
-      await pool.query('ALTER TABLE ihlr_requests ADD COLUMN notify_emails VARCHAR(500) NULL AFTER resp_person_email').catch(() => {});
-    }
-    await pool.query('ALTER TABLE ihlr_requests ADD INDEX idx_ihlr_created_by_id (created_by_id)').catch(() => {});
-    await pool.query('ALTER TABLE ihlr_notifications ADD INDEX idx_ihlr_notif_user_id (user_id)').catch(() => {});
-    await pool.query('ALTER TABLE ihlr_notifications ADD INDEX idx_ihlr_notif_email (user_email)').catch(() => {});
-    await pool.query('ALTER TABLE ihlr_notifications ADD INDEX idx_ihlr_notif_read (is_read)').catch(() => {});
-    // Ensure no duplicate req_no exist (resolve duplicate req_no by re-assigning CONCAT('IHLR-', id))
-    await pool.query(`
-      UPDATE ihlr_requests r1
-      JOIN ihlr_requests r2 
-        ON r1.req_no = r2.req_no AND r1.id > r2.id
-      SET r1.req_no = CONCAT('IHLR-', r1.id)
-    `).catch(() => {});
-    tableVerified = true;
-  } catch (err) {
-    console.warn('[IHLR Model] Column verification warning:', err.message);
-  }
+  })();
+
+  return ensureColumnsPromise;
 };
 
 export const IhlrRequest = {
@@ -125,6 +166,7 @@ export const IhlrRequest = {
   create: async (data) => {
     try {
       if (pool) {
+        await ensureColumns();
         let {
           req_no,
           batch_date,
@@ -148,13 +190,15 @@ export const IhlrRequest = {
           permanent_evidence_attachment = '',
           permanent_target_date = null,
           remarks = '',
-          status = 'OPEN',
+          status = 'PENDING',
           created_by = '',
           created_by_id = null,
           created_by_email = '',
           resp_person_email = '',
           notify_emails = ''
         } = data;
+
+        status = normalizeIhlrStatus(status);
 
         if (!req_no) {
           req_no = (await IhlrRequest.getNextReqNo()) || 'IHLR-1';
@@ -296,6 +340,9 @@ export const IhlrRequest = {
             if (key === 'received_from' && val) {
               const rf = String(val).trim().toUpperCase();
               val = rf === 'D3' ? 'D3' : 'LINE';
+            }
+            if (key === 'status') {
+              val = normalizeIhlrStatus(val);
             }
             values.push(val);
           }

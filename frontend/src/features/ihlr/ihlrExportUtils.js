@@ -157,7 +157,7 @@ export const getIhlrDisplayStatus = (statusOrReq, maybeReq) => {
     return 'CLOSED';
   }
 
-  const isReqOpen = s === 'OPEN';
+  const isReqOpen = s === 'OPEN' || s === 'PENDING';
   const isCompleted = !isReqOpen && (
     s === 'IN_PROGRESS' ||
     s === 'IN-PROGRESS' ||

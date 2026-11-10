@@ -89,7 +89,7 @@ export const ihlrService = {
       }).length;
       const inProgress = scopedStore.filter(r => {
         const s = (r.status || '').toUpperCase();
-        return s === 'IN_PROGRESS' || s === 'IN-PROGRESS';
+        return s === 'IN_PROGRESS' || s === 'IN-PROGRESS' || s === 'AWAITING REVIEW' || s === 'AWAITING_REVIEW' || s === 'APPROVAL_PENDING' || s === 'APPROVAL PENDING' || s === 'UNDER_REVIEW';
       }).length;
       let trendMonths = [];
       const pad = (n) => String(n).padStart(2, '0');
@@ -271,7 +271,15 @@ export const ihlrService = {
         data = data.filter(r => r.four_m === filters.fourM);
       }
       if (filters.status && filters.status !== 'All') {
-        data = data.filter(r => r.status === filters.status);
+        const target = String(filters.status).trim().toUpperCase();
+        data = data.filter(r => {
+          const s = String(r.status || '').trim().toUpperCase();
+          if (target === 'OPEN' || target === 'PENDING') return s === 'OPEN' || s === 'PENDING';
+          if (target === 'IN_PROGRESS' || target === 'AWAITING REVIEW' || target === 'AWAITING_REVIEW') {
+            return s === 'IN_PROGRESS' || s === 'IN-PROGRESS' || s === 'AWAITING REVIEW' || s === 'AWAITING_REVIEW' || s === 'APPROVAL_PENDING' || s === 'APPROVAL PENDING' || s === 'UNDER_REVIEW';
+          }
+          return s === target;
+        });
       }
       if (filters.startDate || filters.endDate) {
         data = data.filter(r => {

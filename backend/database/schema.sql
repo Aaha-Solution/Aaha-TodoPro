@@ -219,7 +219,7 @@ CREATE TABLE ihlr_requests (
   reviewed_by_id INT NULL,
   reviewed_by_email VARCHAR(150) NULL,
   reassignment_history JSON NULL,
-  status ENUM('OPEN', 'IN_PROGRESS', 'CLOSED') DEFAULT 'OPEN',
+  status ENUM('PENDING', 'AWAITING REVIEW', 'CLOSED') DEFAULT 'PENDING',
   created_by VARCHAR(100) NULL,
   created_by_id INT NULL,
   created_by_email VARCHAR(150) NULL,
