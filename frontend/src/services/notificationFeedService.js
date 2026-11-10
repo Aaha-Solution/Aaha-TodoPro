@@ -169,31 +169,16 @@ export const fetchIhlrNotificationsFeed = async (user) => {
         // Non-admins only see notifications directly addressed to them
         if (!isAdmin && !isDirectMatch) return;
 
-        // Closer self-acknowledgment notifications are not needed and cause clutter
-        if (
-          n.type === 'countermeasure_saved' ||
-          (n.title && n.title.toLowerCase().includes('closer submission acknowledged'))
-        ) {
-          return;
-        }
-
-        // Closer self-acknowledgment notifications are not needed and cause clutter
-        if (
-          n.type === 'countermeasure_saved' ||
-          (n.title && n.title.toLowerCase().includes('closer submission acknowledged'))
-        ) {
-          return;
-        }
-
         // Personal action & acknowledgment notifications:
         // 'submission_confirmed' ("Your report has been logged"), 'assignment_required' ("assigned to you"),
-        // and 'countermeasure_saved' ("Your 5-Why analysis... submitted") are strictly personal to the recipient
-        // and MUST NEVER appear in other users' streams (including Admin)
+        // 'countermeasure_saved' ("Closer Submission Acknowledged"), and 'countermeasure_updated' ("Closer Countermeasures Submitted")
+        // are strictly personal to the addressed recipient and MUST NEVER appear in other users' streams (including Admin)
         if (
           (n.type === 'submission_confirmed' ||
             n.type === 'request_created' ||
             n.type === 'assignment_required' ||
             n.type === 'countermeasure_saved' ||
+            n.type === 'countermeasure_updated' ||
             n.type === 'cc_notification') &&
           !isDirectMatch
         ) {
@@ -244,11 +229,18 @@ export const fetchIhlrNotificationsFeed = async (user) => {
         const rName = raisedBy || 'Requester';
         const aName = assignedTo || n.user_name || 'Assigned Person';
 
+        const reqDept = (matchedReq?.resp || matchedReq?.department || n.department || '').trim().toUpperCase();
+        const isAckNotif = n.type === 'countermeasure_saved';
+
         let notifMessage = '';
         if (isClosedNotif) {
           notifMessage = `${reqTag} (${modelLabel}). Request verified and closed`;
         } else if (isPendingSignoff) {
           notifMessage = `${reqTag} (${modelLabel}). Countermeasures submitted by ${aName} — pending sign-off`;
+        } else if (isAckNotif) {
+          notifMessage = `${reqTag} (${modelLabel}). Your closer countermeasures${reqDept ? ` (${reqDept})` : ''} have been submitted — awaiting review`;
+        } else if (isUpdatedNotif) {
+          notifMessage = `${reqTag} (${modelLabel}). Countermeasures submitted by ${matchedReq?.closer_updated_by || aName}${reqDept ? ` (${reqDept})` : ''} — awaiting review`;
         } else if (isConfirmedNotif) {
           notifMessage = `${reqTag} (${modelLabel}). Request raised by you (${rName}) and assigned to ${aName}`;
         } else if (isAssignmentNotif) {
@@ -288,7 +280,8 @@ export const fetchIhlrNotificationsFeed = async (user) => {
             if (isAssignmentNotif && (s.type === 'assignment_required' || s.type === 'approval_required' || s.badgeLabel === 'ACTION REQUIRED')) return true;
             if (isClosedNotif && s.badgeLabel === 'CASE CLOSED') return true;
             if (isPendingSignoff && s.badgeLabel === 'PENDING SIGN-OFF') return true;
-            if (isUpdatedNotif && s.badgeLabel === 'COUNTERMEASURE SUBMITTED') return true;
+            if (isAckNotif && s.badgeLabel === 'SUBMISSION ACKNOWLEDGED') return true;
+            if (!isAckNotif && isUpdatedNotif && s.badgeLabel === 'COUNTERMEASURE SUBMITTED') return true;
             if (isConfirmedNotif && s.badgeLabel === 'REPORT LOGGED') return true;
             if (isCcNotif && s.badgeLabel === 'CC NOTIFICATION') return true;
             if (s.type === n.type && s.title === n.title) return true;
@@ -307,6 +300,8 @@ export const fetchIhlrNotificationsFeed = async (user) => {
             ? 'CASE CLOSED'
             : isPendingSignoff
             ? 'PENDING SIGN-OFF'
+            : isAckNotif
+            ? 'SUBMISSION ACKNOWLEDGED'
             : isUpdatedNotif
             ? 'COUNTERMEASURE SUBMITTED'
             : isConfirmedNotif
@@ -325,7 +320,13 @@ export const fetchIhlrNotificationsFeed = async (user) => {
             : isCcNotif
             ? 'blue'
             : n.accentColor || 'amber',
-          department: n.department || (isClosedNotif ? 'QUALITY VERIFIED' : isPendingSignoff ? 'QUALITY SIGN-OFF' : isCcNotif ? 'INFORMATION' : 'PRODUCTION'),
+          department: isClosedNotif
+            ? 'QUALITY VERIFIED'
+            : isPendingSignoff
+            ? 'QUALITY SIGN-OFF'
+            : isCcNotif
+            ? 'INFORMATION'
+            : reqDept || n.department || 'PRODUCTION',
           title: n.title,
           message: notifMessage,
           raisedBy,

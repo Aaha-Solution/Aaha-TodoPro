@@ -1548,6 +1548,15 @@ export const updateIhlrRequest = async (req, res) => {
 
         } else {
           // SCENARIO 3: CLOSER DETAILS SUBMITTED (5-Why & Action)
+          // Mark prior pending assignment notifications as read for this submitted request
+          await pool.query(
+            `UPDATE ihlr_notifications
+             SET is_read = 1
+             WHERE (request_id = ? OR req_no = ?)
+               AND type IN ('assignment_required', 'approval_required', 'assigned_to_ihlr')`,
+            [updated.id || id, reqNo]
+          ).catch(() => {});
+
           // Notification A: For Raised Person (Requester) to complete pending review
           if (updated.created_by_id || updated.created_by || updated.created_by_email) {
             await pool.query(
@@ -1587,43 +1596,111 @@ export const updateIhlrRequest = async (req, res) => {
             ).catch((e) => console.warn('[Admin Notif Error]:', e.message));
           }
 
-          // Notification C: For Each Closer / Assigned Person Individually (Acknowledgment)
+          // Notification C: For Each Closer / Assigned Person Across Any Department (Acknowledgment & Co-Assignee Update)
           const closerNamesList = (updated.resp_person || closerName || '')
             .split(',')
             .map((s) => s.trim())
             .filter(Boolean);
 
-          const targetClosers = [];
-          if (closerNamesList.length > 0) {
-            const placeholders = closerNamesList.map(() => '?').join(',');
-            const [uRows] = await pool.query(
-              `SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) IN (${placeholders})`,
-              closerNamesList.map((n) => n.toLowerCase())
-            ).catch(() => [[]]);
-            if (uRows && uRows.length > 0) {
-              targetClosers.push(...uRows);
+          const rawTargetClosers = [];
+          const targetDept = (updated.resp || closerDept || '').trim();
+          for (const nameItem of closerNamesList) {
+            let matchedRows = [];
+            if (targetDept) {
+              const [deptRows] = await pool.query(
+                'SELECT id, name, email FROM users WHERE (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?))) AND UPPER(TRIM(department)) = UPPER(TRIM(?)) LIMIT 1',
+                [nameItem, nameItem, targetDept]
+              ).catch(() => [[]]);
+              if (deptRows && deptRows.length > 0) matchedRows = deptRows;
+            }
+            if (!matchedRows || matchedRows.length === 0) {
+              const [anyRows] = await pool.query(
+                'SELECT id, name, email FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1',
+                [nameItem, nameItem]
+              ).catch(() => [[]]);
+              if (anyRows && anyRows.length > 0) matchedRows = anyRows;
+            }
+            if (matchedRows && matchedRows.length > 0) {
+              rawTargetClosers.push(matchedRows[0]);
             }
           }
 
-          // If submitting user is authenticated and not in targetClosers, add them
-          if (req.user?.id && !targetClosers.some(u => String(u.id) === String(req.user.id))) {
-            targetClosers.push({
-              id: req.user.id,
-              name: req.user.name,
-              email: req.user.email
+          // If submitting user is authenticated and not yet listed, add them (works for all departments)
+          if (req.user?.id || req.user?.email || req.user?.name) {
+            rawTargetClosers.push({
+              id: req.user.id || null,
+              name: req.user.name || closerName,
+              email: req.user.email || updated.closer_updated_by_email || ''
             });
           }
 
-          // Fallback if targetClosers is still empty
-          if (targetClosers.length === 0 && (closerName || updated.resp_person)) {
-            targetClosers.push({
+          // Fallback if no user record matched
+          if (rawTargetClosers.length === 0 && (closerName || updated.resp_person)) {
+            rawTargetClosers.push({
               id: null,
               name: closerName || updated.resp_person,
               email: updated.resp_person_email || ''
             });
           }
 
-          // Self-acknowledgment notification to closer omitted to prevent notification clutter
+          // Deduplicate closer recipients by id / email / lowercase name
+          const uniqueClosers = [];
+          for (const candidate of rawTargetClosers) {
+            const cId = candidate?.id ? String(candidate.id) : '';
+            const cEmail = (candidate?.email || '').trim().toLowerCase();
+            const cName = (candidate?.name || '').trim().toLowerCase();
+            const alreadyAdded = uniqueClosers.some((existing) => {
+              const eId = existing?.id ? String(existing.id) : '';
+              const eEmail = (existing?.email || '').trim().toLowerCase();
+              const eName = (existing?.name || '').trim().toLowerCase();
+              return (
+                (cId && eId && cId === eId) ||
+                (cEmail && eEmail && cEmail === eEmail) ||
+                (cName && eName && cName === eName)
+              );
+            });
+            if (!alreadyAdded) uniqueClosers.push(candidate);
+          }
+
+          const submitterId = req.user?.id ? String(req.user.id) : '';
+          const submitterEmail = String(req.user?.email || updated.closer_updated_by_email || '').trim().toLowerCase();
+          const submitterName = String(req.user?.name || closerName || '').trim().toLowerCase();
+          const deptLabel = targetDept || closerDept || '';
+
+          for (const closerTarget of uniqueClosers) {
+            const tId = closerTarget?.id ? String(closerTarget.id) : '';
+            const tEmail = (closerTarget?.email || '').trim().toLowerCase();
+            const tName = (closerTarget?.name || '').trim().toLowerCase();
+            const isSubmitter = Boolean(
+              (submitterId && tId && submitterId === tId) ||
+              (submitterEmail && tEmail && submitterEmail === tEmail) ||
+              (submitterName && tName && submitterName === tName)
+            );
+
+            const notifType = isSubmitter ? 'countermeasure_saved' : 'countermeasure_updated';
+            const notifTitle = isSubmitter
+              ? `Closer Submission Acknowledged: #${reqNo}`
+              : `Closer Countermeasures Submitted: #${reqNo}`;
+            const notifMsg = isSubmitter
+              ? `Thank you ${closerTarget.name || closerName}. Your 5-Why root cause analysis and countermeasures for #${reqNo} (${updated.model || 'Model'})${deptLabel ? ` (${deptLabel})` : ''} have been submitted (Status: Awaiting Review). Requester and Admin have been notified.`
+              : `${closerName}${deptLabel ? ` (${deptLabel})` : ''} submitted 5-Why root cause analysis and countermeasures for #${reqNo} (${updated.model || 'Model'}). Status is now Awaiting Review.`;
+
+            await pool.query(
+              `INSERT INTO ihlr_notifications 
+               (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, '/ihlr/approvals', 0)`,
+              [
+                closerTarget.id || null,
+                closerTarget.name || closerName || 'Assigned Closer',
+                closerTarget.email || '',
+                updated.id || id,
+                reqNo,
+                notifType,
+                notifTitle,
+                notifMsg
+              ]
+            ).catch((e) => console.warn('[Closer Ack Notif Error]:', e.message));
+          }
 
           // Trigger Closer Email Dispatch to Requester, Quality Admins, and Closer
           try {
@@ -1829,11 +1906,12 @@ export const getIhlrNotifications = async (req, res) => {
       const isClosed = n.type === 'case_closed' || n.type === 'closure_confirmed' || n.type === 'closed';
       const isUpdated = n.type === 'countermeasure_updated' || n.type === 'countermeasure_saved';
       const isPendingSignoff = n.type === 'closer_completed_pending_review' || n.type === 'closer_completed_pending_admin_signoff' || n.type === 'pending_requester_signoff';
+      const rowDept = (n.department_name || '').trim().toUpperCase();
 
       let badgeLabel = 'ACTION REQUIRED';
       let accentColor = 'amber';
       let footerFlag = 'ACTION_REQUIRED';
-      let dept = 'PRODUCTION';
+      let dept = rowDept || 'PRODUCTION';
 
       if (isPendingSignoff) {
         badgeLabel = 'PENDING SIGN-OFF';
@@ -1851,10 +1929,10 @@ export const getIhlrNotifications = async (req, res) => {
         footerFlag = 'CASE_CLOSED';
         dept = 'QUALITY VERIFIED';
       } else if (isUpdated) {
-        badgeLabel = 'COUNTERMEASURE SUBMITTED';
+        badgeLabel = n.type === 'countermeasure_saved' ? 'SUBMISSION ACKNOWLEDGED' : 'COUNTERMEASURE SUBMITTED';
         accentColor = 'indigo';
         footerFlag = 'OPERATIONAL_UPDATE';
-        dept = 'PRODUCTION';
+        dept = rowDept || 'PRODUCTION';
       }
 
       return {
