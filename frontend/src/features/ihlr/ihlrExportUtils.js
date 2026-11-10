@@ -826,14 +826,8 @@ export const exportIhlrToPdf = async ({
       statusStr += `\nReviewed: ${r.reviewed_by.trim()}`;
     }
 
-    let actionStr = '—';
-    if (r.temporary_action && r.permanent_fix) {
-      actionStr = `Temp: ${r.temporary_action}\nPerm: ${r.permanent_fix}`;
-    } else if (r.temporary_action || r.action) {
-      actionStr = `Temp: ${r.temporary_action || r.action}`;
-    } else if (r.permanent_fix) {
-      actionStr = `Perm: ${r.permanent_fix}`;
-    }
+    const tempActionText = (r.temporary_action || r.action || '').trim();
+    const actionStr = tempActionText || '—';
 
     let targetDateStr = '—';
     const tempTDate = r.temporary_target_date || r.target_date;
