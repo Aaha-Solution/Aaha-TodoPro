@@ -53,7 +53,7 @@ const UserManagement = () => {
   const dispatch = useDispatch();
   const isIhlr = location.pathname.startsWith('/ihlr');
   const { user: currentAuthUser, login: updateAuthUser, token: currentAuthToken } = useAuth();
-  const { alert: modalAlert, confirm: modalConfirm, error: modalError } = useModal();
+  const { alert: modalAlert, confirm: modalConfirm, error: modalError, warning: modalWarning } = useModal();
   const { users } = useSelector((state) => state.user);
 
   const [search, setSearch] = useState('');
@@ -486,6 +486,10 @@ const UserManagement = () => {
 
   // Export to PDF (.pdf) with Company Logo
   const handleExportPdf = async () => {
+    if (!filteredUsers || filteredUsers.length === 0) {
+      modalWarning('No data available to export. Please adjust your filters or search criteria.', 'No Data Available');
+      return;
+    }
     try {
       const doc = new jsPDF({
         orientation: 'landscape',
