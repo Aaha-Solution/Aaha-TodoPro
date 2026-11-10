@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { getSocket, identifyCurrentUser, disconnectSocket } from '../services/socket';
 import { useAuthContext } from './AuthContext';
 
 const SocketContext = createContext(null);
@@ -6,103 +7,84 @@ const SocketContext = createContext(null);
 export const SocketProvider = ({ children }) => {
   const { user, isAuthenticated } = useAuthContext();
   const [isConnected, setIsConnected] = useState(false);
-  const socketRef = useRef(null);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
+    const socket = getSocket();
+
+    const onConnect = () => {
+      setIsConnected(true);
+      if (user) {
+        identifyCurrentUser(user);
       }
+    };
+
+    const onDisconnect = () => {
       setIsConnected(false);
-      return;
+    };
+
+    if (socket.connected) {
+      setIsConnected(true);
+      if (user) identifyCurrentUser(user);
     }
 
-    let cancelled = false;
-    let teardown = null;
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
 
-    import('../services/socket').then(({ getSocket, identifyCurrentUser }) => {
-      if (cancelled) return;
-      const socket = getSocket();
-      socketRef.current = socket;
+    // Global listener for backend notifications refresh
+    const handleNotificationsRefresh = (data) => {
+      // Dispatches browser-wide event so all listening components (Header bell, notification drawer, tabs) refresh immediately
+      window.dispatchEvent(new CustomEvent('websocketNotification', { detail: data }));
+      window.dispatchEvent(new Event('refreshNotifications'));
+    };
 
-      const onConnect = () => {
-        setIsConnected(true);
-        if (user) {
-          identifyCurrentUser(user);
-        }
-      };
+    const handleIhlrLiveUpdate = (data) => {
+      // Dispatches dedicated IHLR live update event (notifications are refreshed via notifications:refresh)
+      window.dispatchEvent(new CustomEvent('ihlrLiveUpdate', { detail: data }));
+    };
 
-      const onDisconnect = () => {
-        setIsConnected(false);
-      };
+    const handleProcessAuditLiveUpdate = (data) => {
+      // Dispatches dedicated Process Audit live update event
+      window.dispatchEvent(new CustomEvent('processAuditLiveUpdate', { detail: data }));
+    };
 
-      if (socket.connected) {
-        setIsConnected(true);
-        if (user) identifyCurrentUser(user);
-      }
-
-      socket.on('connect', onConnect);
-      socket.on('disconnect', onDisconnect);
-
-      // Global listener for backend notifications refresh
-      const handleNotificationsRefresh = (data) => {
-        window.dispatchEvent(new CustomEvent('websocketNotification', { detail: data }));
-        window.dispatchEvent(new Event('refreshNotifications'));
-      };
-
-      const handleIhlrLiveUpdate = (data) => {
-        window.dispatchEvent(new CustomEvent('ihlrLiveUpdate', { detail: data }));
-      };
-
-      const handleProcessAuditLiveUpdate = (data) => {
-        window.dispatchEvent(new CustomEvent('processAuditLiveUpdate', { detail: data }));
-      };
-
-      socket.on('notifications:refresh', handleNotificationsRefresh);
-      socket.on('ihlr:created', handleIhlrLiveUpdate);
-      socket.on('ihlr:updated', handleIhlrLiveUpdate);
-      socket.on('ihlr:deleted', handleIhlrLiveUpdate);
-      socket.on('process_audit:created', handleProcessAuditLiveUpdate);
-      socket.on('process_audit:updated', handleProcessAuditLiveUpdate);
-      socket.on('process_audit:reassigned', handleProcessAuditLiveUpdate);
-
-      teardown = () => {
-        socket.off('connect', onConnect);
-        socket.off('disconnect', onDisconnect);
-        socket.off('notifications:refresh', handleNotificationsRefresh);
-        socket.off('ihlr:created', handleIhlrLiveUpdate);
-        socket.off('ihlr:updated', handleIhlrLiveUpdate);
-        socket.off('ihlr:deleted', handleIhlrLiveUpdate);
-        socket.off('process_audit:created', handleProcessAuditLiveUpdate);
-        socket.off('process_audit:updated', handleProcessAuditLiveUpdate);
-        socket.off('process_audit:reassigned', handleProcessAuditLiveUpdate);
-      };
-    });
+    socket.on('notifications:refresh', handleNotificationsRefresh);
+    socket.on('ihlr:created', handleIhlrLiveUpdate);
+    socket.on('ihlr:updated', handleIhlrLiveUpdate);
+    socket.on('ihlr:deleted', handleIhlrLiveUpdate);
+    socket.on('process_audit:created', handleProcessAuditLiveUpdate);
+    socket.on('process_audit:updated', handleProcessAuditLiveUpdate);
+    socket.on('process_audit:reassigned', handleProcessAuditLiveUpdate);
 
     return () => {
-      cancelled = true;
-      if (teardown) teardown();
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('notifications:refresh', handleNotificationsRefresh);
+      socket.off('ihlr:created', handleIhlrLiveUpdate);
+      socket.off('ihlr:updated', handleIhlrLiveUpdate);
+      socket.off('ihlr:deleted', handleIhlrLiveUpdate);
+      socket.off('process_audit:created', handleProcessAuditLiveUpdate);
+      socket.off('process_audit:updated', handleProcessAuditLiveUpdate);
+      socket.off('process_audit:reassigned', handleProcessAuditLiveUpdate);
     };
-  }, [isAuthenticated]);
+  }, []);
 
   // Sync user room joins when user profile or authentication changes
   useEffect(() => {
-    if (user && isAuthenticated && socketRef.current?.connected) {
-      import('../services/socket').then(({ identifyCurrentUser }) => {
-        identifyCurrentUser(user);
-      });
+    if (user && isAuthenticated) {
+      identifyCurrentUser(user);
+    } else if (!isAuthenticated) {
+      // optional: do not disconnect immediately if general updates needed, but re-identify
     }
   }, [user, isAuthenticated]);
 
   return (
     <SocketContext.Provider
       value={{
-        socket: socketRef.current,
+        socket: getSocket(),
         isConnected,
-        emit: (event, data) => socketRef.current?.emit(event, data),
-        on: (event, cb) => socketRef.current?.on(event, cb),
-        off: (event, cb) => socketRef.current?.off(event, cb),
+        emit: (event, data) => getSocket().emit(event, data),
+        on: (event, cb) => getSocket().on(event, cb),
+        off: (event, cb) => getSocket().off(event, cb),
       }}
     >
       {children}

@@ -9,44 +9,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    assetsInclude: ['**/*.JPG', '**/*.jpg', '**/*.png', '**/*.PNG', '**/*.webp'],
-    build: {
-      target: 'es2022',
-      cssCodeSplit: true,
-      sourcemap: false,
-      minify: 'esbuild',
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (id.includes('preload-helper') || id.includes('commonjsHelpers')) {
-              return 'vendor-react';
-            }
-            if (!id.includes('node_modules')) return;
-            if (id.includes('react-dom') || id.includes('react-router-dom') || id.includes('/react/') || id.includes('\\react\\')) {
-              return 'vendor-react';
-            }
-            if (id.includes('@reduxjs/toolkit') || id.includes('react-redux') || id.includes('redux')) {
-              return 'vendor-redux';
-            }
-            if (id.includes('exceljs')) {
-              return 'vendor-exceljs';
-            }
-            if (id.includes('jspdf') || id.includes('html2canvas') || id.includes('canvg') || id.includes('dompurify')) {
-              return 'vendor-pdf';
-            }
-            if (id.includes('xlsx')) {
-              return 'vendor-xlsx';
-            }
-            if (id.includes('crypto-js')) {
-              return 'vendor-crypto';
-            }
-            if (id.includes('socket.io') || id.includes('engine.io')) {
-              return 'vendor-socket';
-            }
-          },
-        },
-      },
-    },
+    assetsInclude: ['**/*.JPG', '**/*.jpg', '**/*.png', '**/*.PNG'],
     server: {
       port: 5173,
       host: true,
