@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { storage } from '../utils/storage';
+import { isProductionMode, decryptResponseData } from '../utils/cryptoUtils';
 
 const DEFAULT_GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:5000';
-
 
 /**
  * Dynamically resolves the API Gateway Base URL.
@@ -46,6 +46,15 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // In production (dist build or preview) or when explicit encryption is enabled,
+  // notify backend to AES-encrypt the response data.
+  // In development, responses remain plain JSON for easy network inspection.
+  if (isProductionMode()) {
+    config.headers['X-Client-Env'] = 'production';
+    config.headers['X-Request-Encryption'] = 'true';
+  }
+
   // When sending FormData, remove Content-Type so browser automatically sets multipart/form-data with boundary
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type'];
@@ -56,8 +65,24 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // If response is binary (blob or arraybuffer), pass through as-is
+    if (response.config?.responseType === 'blob' || response.config?.responseType === 'arraybuffer') {
+      return response;
+    }
+
+    // Automatically decrypt AES response payload if encrypted
+    if (response.data) {
+      response.data = decryptResponseData(response.data);
+    }
+    return response;
+  },
   (error) => {
+    // Automatically decrypt error responses if encrypted
+    if (error.response && error.response.data) {
+      error.response.data = decryptResponseData(error.response.data);
+    }
+
     if (error.response && error.response.status === 401) {
       storage.clear();
       // Avoid redirect loops on login page

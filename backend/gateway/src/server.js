@@ -15,7 +15,12 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: '*' }));
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Env', 'X-Request-Encryption', 'Accept'],
+  exposedHeaders: ['Content-Disposition'],
+}));
 
 // Initialize Socket.IO Real-time WebSocket Hub
 const io = new Server(server, {
