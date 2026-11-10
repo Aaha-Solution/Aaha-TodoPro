@@ -1279,37 +1279,8 @@ const ProcessAuditRequestDetailsModal = ({
                 )}
               </div>
 
-              {/* 4. Incident Audit Trail Details */}
-              <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-3">
-                <div className="flex items-center gap-2 text-slate-700 text-xs font-bold uppercase tracking-wider">
-                  <History className="w-4 h-4 text-slate-500" />
-                  <span>Incident Audit Trail Summary</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
-                    <span className="block text-[10px] font-bold uppercase text-slate-400">Created By</span>
-                    <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.created_by || 'Admin'}</span>
-                  </div>
-                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
-                    <span className="block text-[10px] font-bold uppercase text-slate-400">Department</span>
-                    <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.department || '—'}</span>
-                  </div>
-                  <div className="p-2.5 bg-white rounded-xl border border-emerald-200/80 bg-emerald-50/20">
-                    <span className="block text-[10px] font-bold uppercase text-emerald-600">Closer Filled By</span>
-                    <span className="font-bold text-emerald-800 block mt-0.5 truncate" title={closerSubmitter || '—'}>
-                      {closerSubmitter || '—'}
-                    </span>
-                  </div>
-                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
-                    <span className="block text-[10px] font-bold uppercase text-slate-400">Temp Closed By</span>
-                    <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.temporary_closed_by || '—'}</span>
-                  </div>
-                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
-                    <span className="block text-[10px] font-bold uppercase text-slate-400">Perm Closed By</span>
-                    <span className="font-semibold text-slate-800 block mt-0.5 truncate">{req.permanent_closed_by || '—'}</span>
-                  </div>
-                </div>
-              </div>
+             
+           
             </div>
           ) : activeTab === 'closer' ? (
             /* TAB 2: CLOSER DETAILS */
