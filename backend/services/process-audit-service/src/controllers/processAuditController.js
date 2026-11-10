@@ -1659,9 +1659,9 @@ export const reassignRequest = async (req, res) => {
 
           const execHtml = generateEmailTemplate({
             headerTitle: `Action Required: Process Audit #${issueNo} Reassigned`,
-            headerSubtitle: `A process audit finding has been reassigned to you for investigation and corrective action.`,
-            recipientName: u.name || new_executor,
-            greetingMessage: `Process Audit report <strong>${issueNo}</strong> (${updated.model || 'Process'}) has been reassigned to you in <strong>${new_department}</strong> by <strong>${reassignedByName}</strong>.${reasonText ? `<br><br><strong>Reason:</strong> ${reason}` : ''}<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
+            headerSubtitle: '',
+            recipientName: '',
+            greetingMessage: '',
             tableData,
             actionButtonText: 'Go to Q Track',
             actionButtonUrl: `${baseUrl}/process-audit/approvals`,
@@ -1741,9 +1741,9 @@ export const reassignRequest = async (req, res) => {
 
           const creatorHtml = generateEmailTemplate({
             headerTitle: `Process Audit Reassigned: #${issueNo}`,
-            headerSubtitle: `Your process audit observation finding has been reassigned to a new department/executor.`,
-            recipientName: creatorName || 'Quality Requester',
-            greetingMessage: `Your Process Audit observation report <strong>${issueNo}</strong> (${updated.model || 'Process'}) has been reassigned to <strong>${new_executor}</strong> (<strong>${new_department}</strong>) by <strong>${reassignedByName}</strong>.${reasonText ? `<br><br><strong>Reason:</strong> ${reason}` : ''}`,
+            headerSubtitle: '',
+            recipientName: '',
+            greetingMessage: '',
             tableData,
             actionButtonText: 'Go to Q Track',
             actionButtonUrl: `${baseUrl}/process-audit/all-requests`,

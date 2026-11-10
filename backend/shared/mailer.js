@@ -1269,15 +1269,15 @@ export async function sendProcessAuditRequestEmails({
     const creatorSubject = `[Process Audit Confirmation] Observation Finding #${reqNo} Successfully Submitted (Pending)`;
     const creatorHtml = generateEmailTemplate({
       headerTitle: `Process Audit Report Logged: #${reqNo}`,
-      headerSubtitle: `Your process audit observation finding has been recorded and assigned for root cause containment.`,
-      recipientName: creatorName,
-      greetingMessage: `Your Process Audit observation report for <strong>${request.model || request.product}</strong> has been logged into the database and assigned to <strong>${assignedName}</strong> (${assignedDept}) for 5-Why root cause analysis and corrective action.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
+      headerSubtitle: '',
+      recipientName: '',
+      greetingMessage: '',
       tableData: tableSummary,
       actionButtonText: 'Go to Q Track',
       actionButtonUrl: myRequestsUrl,
-      footerNote: 'You will receive an alert once the responsible department submits containment action and 5-Why analysis.',
+      footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: '#f59e0b',
-      badgeText: 'PENDING',
+      badgeText: '',
     });
 
     results.creator = await sendEmail({
@@ -1298,15 +1298,15 @@ export async function sendProcessAuditRequestEmails({
     const assignedSubject = `[Action Required] Process Audit #${reqNo} Assigned to You (${assignedDept}) - Pending`;
     const assignedHtml = generateEmailTemplate({
       headerTitle: `Action Required: Process Audit Finding #${reqNo}`,
-      headerSubtitle: `A process audit finding has been assigned to you for investigation and corrective action.`,
-      recipientName: assignedName,
-      greetingMessage: `<strong>${creatorName}</strong> has logged a process audit finding and designated you as the responsible owner for containment and 5-Why analysis.<br><br><strong>Current Status:</strong> <span style="display:inline-block; padding: 2px 8px; font-weight:700; background:#fef3c7; color:#b45309; border-radius:4px;">Pending</span>`,
+      headerSubtitle: '',
+      recipientName: '',
+      greetingMessage: '',
       tableData: tableSummary,
       actionButtonText: 'Go to Q Track',
       actionButtonUrl: approvalsUrl,
-      footerNote: 'Immediate action required: please inspect the process finding and record corrective containment measures in the portal.',
+      footerNote: 'This is an auto-generated email. Please do not reply.',
       badgeColor: '#f59e0b',
-      badgeText: 'PENDING ACTION',
+      badgeText: '',
     });
 
     results.assigned = await sendEmail({
