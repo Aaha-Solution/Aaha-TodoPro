@@ -780,15 +780,6 @@ const UserManagement = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              <button
-                onClick={handleExportPdf}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-2xs hover:shadow-xs transition transform active:scale-95 cursor-pointer"
-                title="Export filtered users to PDF"
-                id="export-users-pdf-table-btn"
-              >
-                <Download className="w-3.5 h-3.5 text-blue-600" />
-                <span>Export PDF</span>
-              </button>
               <div className="hidden sm:block text-xs text-slate-400">
                 Showing filtered results
               </div>
