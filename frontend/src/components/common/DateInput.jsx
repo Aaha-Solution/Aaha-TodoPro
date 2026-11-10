@@ -28,22 +28,19 @@ const DateInput = ({
   
   // Display text strictly in DD/MM/YYYY
   const [displayText, setDisplayText] = useState(() => (isoValue ? formatDateDDMMYYYY(isoValue) : ''));
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [isMobileTouch, setIsMobileTouch] = useState(false);
   const hiddenInputRef = useRef(null);
 
-  // Detect touch/mobile devices (iPhone, iPad, Android) to ensure direct native touch hit
+  // Detect primary touch devices (phones/tablets) without misclassifying Windows touch laptops using a mouse
   useEffect(() => {
-    const checkTouch = () => {
-      return (
-        typeof window !== 'undefined' &&
-        (
-          'ontouchstart' in window ||
-          navigator.maxTouchPoints > 0 ||
-          Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
-        )
-      );
+    const checkMobileTouch = () => {
+      if (typeof window === 'undefined') return false;
+      if (window.matchMedia) {
+        return window.matchMedia('(pointer: coarse) and (hover: none)').matches;
+      }
+      return 'ontouchstart' in window && navigator.maxTouchPoints > 0;
     };
-    setIsTouchDevice(checkTouch());
+    setIsMobileTouch(checkMobileTouch());
   }, []);
 
   // Sync internal display when external value changes
@@ -153,20 +150,29 @@ const DateInput = ({
     }
   };
 
-  const openPicker = () => {
-    if (disabled) return;
-    if (hiddenInputRef.current) {
-      try {
-        if (typeof hiddenInputRef.current.showPicker === 'function') {
-          hiddenInputRef.current.showPicker();
-        } else {
-          hiddenInputRef.current.focus();
-        }
-      } catch {
+  const openPicker = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (disabled || !hiddenInputRef.current) return;
+    try {
+      if (typeof hiddenInputRef.current.showPicker === 'function') {
+        hiddenInputRef.current.showPicker();
+      } else {
         hiddenInputRef.current.focus();
+        hiddenInputRef.current.click();
       }
+    } catch {
+      hiddenInputRef.current.focus();
+      hiddenInputRef.current.click();
     }
   };
+
+  const supportsShowPicker =
+    typeof HTMLInputElement !== 'undefined' &&
+    typeof HTMLInputElement.prototype.showPicker === 'function';
+  const useButtonTrigger = !isMobileTouch && supportsShowPicker;
 
   const parsedMin = min ? parseDateToYYYYMMDD(min) : undefined;
   const parsedMax = max ? parseDateToYYYYMMDD(max) : undefined;
@@ -184,7 +190,7 @@ const DateInput = ({
         required={required}
         disabled={disabled}
         maxLength={10}
-        readOnly={isTouchDevice}
+        readOnly={isMobileTouch || props.readOnly}
         className={`${className} pr-10 font-mono tracking-wide`}
         {...props}
       />
@@ -195,15 +201,19 @@ const DateInput = ({
         disabled={disabled}
         onClick={openPicker}
         tabIndex={-1}
-        className="absolute right-2 p-1.5 rounded-lg text-slate-400 group-hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center pointer-events-none"
+        aria-label="Open calendar"
+        className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg text-slate-400 group-hover:text-blue-600 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center ${
+          useButtonTrigger ? 'z-20' : 'z-10 pointer-events-none'
+        }`}
         title="Open calendar"
       >
-        <Calendar className="w-4 h-4" />
+        <Calendar className="w-4 h-4 pointer-events-none" />
       </button>
 
       {/* Native date input:
-          - On touch/mobile (iPhone, iPad, Android): covers the entire input area with opacity-0 so physical touch triggers iOS native date picker wheel.
-          - On desktop: covers the calendar icon on the right so clicking the icon opens the browser picker, while clicking the text area allows manual typing.
+          - On modern desktop: sits underneath with pointer-events-none and opens via button onClick -> showPicker().
+          - On mobile touch (or legacy browsers without showPicker): .date-picker-overlay expands the native
+            calendar picker indicator across 100% of the element so tapping anywhere on it opens immediately.
       */}
       <input
         type="date"
@@ -215,8 +225,12 @@ const DateInput = ({
         disabled={disabled}
         tabIndex={-1}
         aria-hidden="true"
-        className={`absolute inset-0 opacity-0 cursor-pointer ${
-          isTouchDevice ? 'w-full h-full z-10' : 'left-auto right-1 w-8 h-8 z-10'
+        className={`date-picker-overlay absolute opacity-0 ${
+          isMobileTouch
+            ? 'inset-0 w-full h-full z-20 cursor-pointer'
+            : useButtonTrigger
+            ? 'right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 z-0 pointer-events-none'
+            : 'right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 z-20 cursor-pointer'
         }`}
       />
     </div>
