@@ -214,6 +214,7 @@ const IhlrAllRequests = () => {
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export to Excel:', err);
+      setShowExportModal(false);
       modalError('Failed to export to Excel: ' + err.message);
     }
   };
@@ -236,6 +237,7 @@ const IhlrAllRequests = () => {
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export to PDF:', err);
+      setShowExportModal(false);
       modalError('Failed to export to PDF: ' + err.message);
     }
   };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Download, 
@@ -6,10 +6,16 @@ import {
   FileSpreadsheet, 
   FileText, 
   Check,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { useModal } from '../../context/ModalContext';
 import { useScrollLock } from '../../hooks/useScrollLock';
+
+const DEFAULT_EXCEL_DESC =
+  'Full structured tabular workbook with individual data columns, parameters, and review status.';
+const DEFAULT_PDF_DESC =
+  'Official document formatted with India Nippon Electricals Limited branding, tables, and page numbers.';
 
 /**
  * Universal Export Selection Modal (Excel .xlsx vs PDF .pdf)
@@ -22,26 +28,50 @@ const ExportSelectionModal = ({
   subtitle = "Choose your preferred download format",
   scopeText = "Current View",
   recordCount = null,
+  loading = false,
+  excelDescription = DEFAULT_EXCEL_DESC,
+  pdfDescription = DEFAULT_PDF_DESC,
   onExportExcel,
   onExportPdf
 }) => {
   useScrollLock(isOpen);
   const [format, setFormat] = useState('excel'); // 'excel' | 'pdf'
+  const [submitting, setSubmitting] = useState(false);
   const { warning: modalWarning } = useModal();
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSubmitting(false);
+    }
+  }, [isOpen]);
+
+  const isBusy = Boolean(loading || submitting);
 
   if (!isOpen) return null;
 
-  const handleDownload = () => {
+  const handleClose = () => {
+    if (!isBusy && onClose) {
+      onClose();
+    }
+  };
+
+  const handleDownload = async () => {
+    if (isBusy) return;
     if (recordCount !== null && recordCount <= 0) {
       if (modalWarning) {
         modalWarning('No data available to export. Cannot download an empty file.', 'No Data Available');
       }
       return;
     }
-    if (format === 'excel') {
-      onExportExcel && onExportExcel();
-    } else {
-      onExportPdf && onExportPdf();
+    try {
+      setSubmitting(true);
+      if (format === 'excel') {
+        await Promise.resolve(onExportExcel && onExportExcel());
+      } else {
+        await Promise.resolve(onExportPdf && onExportPdf());
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -49,7 +79,7 @@ const ExportSelectionModal = ({
     <div 
       className="fixed inset-0 !m-0 !mt-0 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overscroll-contain"
       style={{ zIndex: 99999 }}
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div 
         className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 p-6 space-y-5 animate-in zoom-in-95 duration-200 relative overscroll-contain"
@@ -73,8 +103,9 @@ const ExportSelectionModal = ({
           </div>
           <button
             type="button"
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+            disabled={isBusy}
+            onClick={handleClose}
+            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <X className="w-4 h-4" />
           </button>
@@ -104,8 +135,10 @@ const ExportSelectionModal = ({
         <div className="space-y-3">
           {/* Option 1: Excel (.xlsx) */}
           <div
-            onClick={() => setFormat('excel')}
-            className={`flex items-start gap-3.5 p-4 rounded-2xl border-2 transition cursor-pointer ${
+            onClick={() => !isBusy && setFormat('excel')}
+            className={`flex items-start gap-3.5 p-4 rounded-2xl border-2 transition ${
+              isBusy ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
+            } ${
               format === 'excel'
                 ? 'border-emerald-500 bg-emerald-50/40 shadow-xs'
                 : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -128,15 +161,17 @@ const ExportSelectionModal = ({
                 )}
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Full structured tabular workbook with individual data columns, parameters, and review status.
+                {excelDescription || DEFAULT_EXCEL_DESC}
               </p>
             </div>
           </div>
 
           {/* Option 2: PDF (.pdf) */}
           <div
-            onClick={() => setFormat('pdf')}
-            className={`flex items-start gap-3.5 p-4 rounded-2xl border-2 transition cursor-pointer ${
+            onClick={() => !isBusy && setFormat('pdf')}
+            className={`flex items-start gap-3.5 p-4 rounded-2xl border-2 transition ${
+              isBusy ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
+            } ${
               format === 'pdf'
                 ? 'border-rose-500 bg-rose-50/40 shadow-xs'
                 : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -159,7 +194,7 @@ const ExportSelectionModal = ({
                 )}
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Official document formatted with India Nippon Electricals Limited branding, tables, and page numbers.
+                {pdfDescription || DEFAULT_PDF_DESC}
               </p>
             </div>
           </div>
@@ -169,23 +204,27 @@ const ExportSelectionModal = ({
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+            disabled={isBusy}
+            onClick={handleClose}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             type="button"
+            disabled={isBusy}
             onClick={handleDownload}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-xs font-bold transition shadow-md active:scale-95 cursor-pointer ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-xs font-bold transition shadow-md active:scale-95 cursor-pointer disabled:opacity-75 disabled:cursor-wait ${
               format === 'excel'
                 ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
                 : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
             }`}
           >
-            <Download className="w-4 h-4" />
+            {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             <span>
-              Download {format === 'excel' ? 'Excel (.xlsx)' : 'PDF (.pdf)'}
+              {isBusy
+                ? `Generating ${format === 'excel' ? 'Excel (.xlsx)' : 'PDF (.pdf)'}...`
+                : `Download ${format === 'excel' ? 'Excel (.xlsx)' : 'PDF (.pdf)'}`}
             </span>
           </button>
         </div>

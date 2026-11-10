@@ -785,6 +785,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       modalSuccess(`Exported report #${reqNo} to Excel successfully.`);
     } catch (err) {
       console.error('Failed to export report to Excel:', err);
+      setShowExportModal(false);
       modalError('Failed to export report to Excel: ' + err.message);
     }
   };

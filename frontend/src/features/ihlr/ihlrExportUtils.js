@@ -2,7 +2,8 @@ import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { parseAttachments } from './IhlrAttachmentView';
-import { fetchAttachmentImageBase64, resolveAttachmentUrl } from '../../components/common/attachmentUtils';
+import { fetchAttachmentImageBase64, fetchAttachmentBinary, resolveAttachmentUrl } from '../../components/common/attachmentUtils';
+import { embedOleObjectsInXlsx } from '../../components/common/excelOleUtils';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { formatIhlrShiftDisplay } from '../../utils/constants';
 import nipponLogo from '../../assets/Nippon Logo.png';
@@ -25,8 +26,10 @@ export const isImageAttachment = (att) => {
  */
 export const loadLogoBase64 = async () => {
   const tryFetch = async (url) => {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 4000) : null;
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, controller ? { signal: controller.signal } : undefined);
       if (!res.ok) return null;
       const blob = await res.blob();
       return await new Promise((resolve) => {
@@ -37,26 +40,40 @@ export const loadLogoBase64 = async () => {
       });
     } catch {
       return null;
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   };
 
   const tryCanvas = (url) => {
     return new Promise((resolve) => {
+      let settled = false;
+      const done = (val) => {
+        if (!settled) {
+          settled = true;
+          resolve(val);
+        }
+      };
+      const timer = setTimeout(() => done(null), 4000);
       const img = new Image();
       img.crossOrigin = 'Anonymous';
       img.onload = () => {
+        clearTimeout(timer);
         try {
           const canvas = document.createElement('canvas');
           canvas.width = img.naturalWidth || img.width;
           canvas.height = img.naturalHeight || img.height;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/png'));
+          done(canvas.toDataURL('image/png'));
         } catch {
-          resolve(null);
+          done(null);
         }
       };
-      img.onerror = () => resolve(null);
+      img.onerror = () => {
+        clearTimeout(timer);
+        done(null);
+      };
       img.src = url;
     });
   };
@@ -199,19 +216,20 @@ export const exportIhlrToExcel = async ({
   }
 
   // Parse defect files, temporary evidence files, and permanent evidence files
-  const reqParsedDefectFiles = reqList.map((r) => parseAttachments(r.defect_image));
-  const reqParsedTempFiles = reqList.map((r) => parseAttachments(r.temporary_evidence_attachment || r.evidence_attachment));
-  const reqParsedPermFiles = reqList.map((r) => parseAttachments(r.permanent_evidence_attachment));
+  const reqParsedDefectFiles = reqList.map((r) => parseAttachments(r.defect_image, 'ihlr'));
+  const reqParsedTempFiles = reqList.map((r) => parseAttachments(r.temporary_evidence_attachment || r.evidence_attachment, 'ihlr'));
+  const reqParsedPermFiles = reqList.map((r) => parseAttachments(r.permanent_evidence_attachment, 'ihlr'));
 
   // Determine maximum counts for each evidence category across all exported requests
   const maxDefectCount = Math.max(1, ...reqParsedDefectFiles.map((files) => files.length));
   const maxTempCount = Math.max(1, ...reqParsedTempFiles.map((files) => files.length));
   const maxPermCount = Math.max(1, ...reqParsedPermFiles.map((files) => files.length));
 
-  // Helper to load file metadata and image base64
+  // Helper to load file metadata, image base64, and non-image binary bytes for offline OLE embedding
   const loadFilesData = async (files) => {
     return await Promise.all(
       files.map(async (file) => {
+        const name = file.name || file.filename || (typeof file === 'string' ? file : 'Attachment');
         const isImg = isImageAttachment(file);
         if (isImg) {
           const imgData = await fetchAttachmentImageBase64(file, 'ihlr');
@@ -219,15 +237,18 @@ export const exportIhlrToExcel = async ({
             return {
               isImage: true,
               imgData,
+              fileBytes: null,
               name: file.name || file.filename || 'Evidence Image',
               file
             };
           }
         }
+        const binData = await fetchAttachmentBinary(file, 'ihlr');
         return {
           isImage: false,
           imgData: null,
-          name: file.name || file.filename || (typeof file === 'string' ? file : 'Attachment'),
+          fileBytes: binData?.bytes || null,
+          name: binData?.name || name,
           file
         };
       })
@@ -474,6 +495,9 @@ export const exportIhlrToExcel = async ({
   const reviewedByCol = remarksCol + 1;
   const statusCol = remarksCol + 2;
 
+  const oleItems = [];
+  const rowHeights = [30, 28]; // Header rows 1 & 2
+
   reqList.forEach((r, idx) => {
     const defectList = rowDefectData[idx] || [];
     const tempList = rowTempData[idx] || [];
@@ -489,8 +513,8 @@ export const exportIhlrToExcel = async ({
         const fileItem = fileList[e];
         if (!fileItem) {
           values.push('—');
-        } else if (fileItem.isImage && fileItem.imgData?.base64) {
-          // Thumbnail image will be embedded over this cell
+        } else if ((fileItem.isImage && fileItem.imgData?.base64) || (!fileItem.isImage && fileItem.fileBytes)) {
+          // Thumbnail image or embedded OLE file icon card will be placed over this cell
           values.push('');
         } else {
           values.push(fileItem.name || 'Attachment');
@@ -523,23 +547,23 @@ export const exportIhlrToExcel = async ({
       ...defectValues,
 
       // Trailing Requestor columns
-      (r.why_why?.[0] || r.qa_why_why?.[0] || '').trim() || '—',
-      (r.why_why?.[1] || r.qa_why_why?.[1] || '').trim() || '—',
-      (r.why_why?.[2] || r.qa_why_why?.[2] || '').trim() || '—',
-      (r.why_why?.[3] || r.qa_why_why?.[3] || '').trim() || '—',
-      (r.why_why?.[4] || r.qa_why_why?.[4] || '').trim() || '—',
-      (r.created_by || '').trim() || '—',
+      String(r.why_why?.[0] ?? r.qa_why_why?.[0] ?? '').trim() || '—',
+      String(r.why_why?.[1] ?? r.qa_why_why?.[1] ?? '').trim() || '—',
+      String(r.why_why?.[2] ?? r.qa_why_why?.[2] ?? '').trim() || '—',
+      String(r.why_why?.[3] ?? r.qa_why_why?.[3] ?? '').trim() || '—',
+      String(r.why_why?.[4] ?? r.qa_why_why?.[4] ?? '').trim() || '—',
+      String(r.created_by ?? '').trim() || '—',
       r.created_at ? formatDateDDMMYYYY(r.created_at) : '—',
 
       // Closer before Temp Evidence
-      (r.prod_why_why?.[0] || '').trim() || '—',
-      (r.prod_why_why?.[1] || '').trim() || '—',
-      (r.prod_why_why?.[2] || '').trim() || '—',
-      (r.prod_why_why?.[3] || '').trim() || '—',
-      (r.prod_why_why?.[4] || '').trim() || '—',
-      (r.temporary_action || r.action || '').trim() || '—',
+      String(r.prod_why_why?.[0] ?? '').trim() || '—',
+      String(r.prod_why_why?.[1] ?? '').trim() || '—',
+      String(r.prod_why_why?.[2] ?? '').trim() || '—',
+      String(r.prod_why_why?.[3] ?? '').trim() || '—',
+      String(r.prod_why_why?.[4] ?? '').trim() || '—',
+      String(r.temporary_action ?? r.action ?? '').trim() || '—',
       (r.temporary_target_date || r.target_date) ? formatDateDDMMYYYY(r.temporary_target_date || r.target_date) : '—',
-      (r.temporary_closed_by || r.closer_updated_by || '').trim() || '—',
+      String(r.temporary_closed_by ?? r.closer_updated_by ?? '').trim() || '—',
 
       // Temporary Evidence values
       ...tempValues,
@@ -565,13 +589,14 @@ export const exportIhlrToExcel = async ({
     const displayStatus = getIhlrDisplayStatus(r.status, r);
     const row = worksheet.addRow(rowData);
 
-    const hasAnyImage = [
+    const hasEmbeddedVisual = [
       ...defectList,
       ...tempList,
       ...permList
-    ].some((f) => f.isImage && f.imgData?.base64);
+    ].some((f) => (f.isImage && f.imgData?.base64) || (!f.isImage && f.fileBytes));
 
-    row.height = hasAnyImage ? 56 : (hasReassignments && count > 1 ? Math.max(36, count * 18) : 24);
+    row.height = hasEmbeddedVisual ? 56 : (hasReassignments && count > 1 ? Math.max(36, count * 18) : 24);
+    rowHeights.push(row.height);
 
     row.eachCell((cell) => {
       cell.font = regularFont;
@@ -587,7 +612,7 @@ export const exportIhlrToExcel = async ({
     row.getCell(10).alignment = { vertical: 'middle', horizontal: 'center' }; // ACTUAL REJECTED QTY
     row.getCell(11).alignment = { vertical: 'middle', horizontal: 'center' }; // 4M CATEGORY
 
-    // Helper to configure alignment and download hyperlinks for evidence columns
+    // Helper to configure alignment and offline OLE file embedding (with URL fallback if binary unavailable)
     const configureEvidenceCells = (colStart, maxCount, fileList) => {
       for (let e = 0; e < maxCount; e++) {
         const evCol = colStart + e;
@@ -595,7 +620,14 @@ export const exportIhlrToExcel = async ({
         evCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
 
         const fileItem = fileList[e];
-        if (fileItem && !fileItem.isImage && fileItem.name) {
+        if (fileItem && !fileItem.isImage && fileItem.fileBytes) {
+          oleItems.push({
+            colZero: evCol - 1,
+            rowZero: rowNum - 1,
+            fileName: fileItem.name || 'Attachment',
+            fileBytes: fileItem.fileBytes
+          });
+        } else if (fileItem && !fileItem.isImage && fileItem.name) {
           const fileUrl = resolveAttachmentUrl(fileItem.file, 'ihlr');
           if (fileUrl) {
             evCell.value = {
@@ -666,7 +698,10 @@ export const exportIhlrToExcel = async ({
   const today = new Date().toISOString().slice(0, 10);
   const targetFileName = fileName || `IHLR_Analysis_Report_${today}.xlsx`;
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
+  const finalBuffer = oleItems.length > 0
+    ? await embedOleObjectsInXlsx(buffer, oleItems, { sheetIndex: 1, colWidths, rowHeights })
+    : buffer;
+  const blob = new Blob([finalBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   });
   const downloadUrl = URL.createObjectURL(blob);
@@ -676,7 +711,7 @@ export const exportIhlrToExcel = async ({
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(downloadUrl);
+  setTimeout(() => URL.revokeObjectURL(downloadUrl), 1500);
 };
 
 /**
@@ -697,7 +732,7 @@ export const exportIhlrToPdf = async ({
   // Preload image thumbnails for rows that contain an image
   const rowImages = await Promise.all(
     reqList.map(async (r) => {
-      const defectFiles = parseAttachments(r.defect_image);
+      const defectFiles = parseAttachments(r.defect_image, 'ihlr');
       const firstImg = defectFiles.find(isImageAttachment);
       if (!firstImg) return null;
       return await fetchAttachmentImageBase64(firstImg, 'ihlr');
@@ -818,15 +853,16 @@ export const exportIhlrToPdf = async ({
     if (r.resp) respStr += `\n${r.resp}`;
     if (r.resp_person) respStr += `\n(${r.resp_person})`;
 
-    const occCause = (r.occurrence_cause || r.detailed_observation || r.prod_why_why?.[0] || '').trim() || '—';
+    const occCause = String(r.occurrence_cause ?? r.detailed_observation ?? r.prod_why_why?.[0] ?? '').trim() || '—';
 
     const displayStatus = getIhlrDisplayStatus(r.status, r);
     let statusStr = displayStatus;
-    if (r.reviewed_by && r.reviewed_by.trim()) {
-      statusStr += `\nReviewed: ${r.reviewed_by.trim()}`;
+    const reviewedByStr = String(r.reviewed_by ?? '').trim();
+    if (reviewedByStr) {
+      statusStr += `\nReviewed: ${reviewedByStr}`;
     }
 
-    const tempActionText = (r.temporary_action || r.action || '').trim();
+    const tempActionText = String(r.temporary_action ?? r.action ?? '').trim();
     const actionStr = tempActionText || '—';
 
     let targetDateStr = '—';

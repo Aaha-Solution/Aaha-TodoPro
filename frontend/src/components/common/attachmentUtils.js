@@ -4,6 +4,7 @@
  */
 
 import { getGatewayBaseUrl } from '../../services/api';
+import { storage } from '../../utils/storage';
 export { getGatewayBaseUrl };
 
 /**
@@ -440,6 +441,44 @@ export const triggerDirectDownload = async (url, filename = 'download', file = n
   }
 };
 
+const ATTACHMENT_FETCH_TIMEOUT_MS = 8000;
+
+const shouldAttachAuthHeader = (targetUrl) => {
+  if (!targetUrl || targetUrl.startsWith('blob:') || targetUrl.startsWith('data:')) {
+    return false;
+  }
+  if (targetUrl.startsWith('/') && !targetUrl.startsWith('//')) {
+    return true;
+  }
+  const gatewayBase = getGatewayBaseUrl();
+  if (gatewayBase && targetUrl.startsWith(gatewayBase)) {
+    return true;
+  }
+  if (typeof window !== 'undefined' && window.location?.origin && targetUrl.startsWith(window.location.origin)) {
+    return true;
+  }
+  return false;
+};
+
+const fetchWithAuthAndTimeout = async (url, timeoutMs = ATTACHMENT_FETCH_TIMEOUT_MS) => {
+  const token = shouldAttachAuthHeader(url) ? storage.getToken() : null;
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+  try {
+    const options = {};
+    if (token) {
+      options.headers = { Authorization: `Bearer ${token}` };
+    }
+    if (controller) {
+      options.signal = controller.signal;
+    }
+    return await fetch(url, options);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
 /**
  * Universal helper to load an image attachment as base64 data for embedding in Excel & PDF.
  * Handles in-memory Blobs, data URLs, and remote streaming URLs.
@@ -481,8 +520,12 @@ export const fetchAttachmentImageBase64 = async (att, moduleOverride = 'ihlr') =
   if (!streamUrl) return null;
 
   try {
-    const res = await fetch(streamUrl);
+    const res = await fetchWithAuthAndTimeout(streamUrl);
     if (!res.ok) return null;
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    if (contentType.includes('text/html') || contentType.includes('application/json')) {
+      return null;
+    }
     const blob = await res.blob();
     return await new Promise((resolve) => {
       const reader = new FileReader();
@@ -498,6 +541,76 @@ export const fetchAttachmentImageBase64 = async (att, moduleOverride = 'ihlr') =
     });
   } catch (err) {
     console.warn('Could not fetch attachment image for export:', err);
+    return null;
+  }
+};
+
+/**
+ * Loads raw binary bytes (Uint8Array) for any attachment (PDF, Excel, Word, etc.)
+ * so it can be embedded directly inside exported Excel workbooks for offline / cross-network access.
+ */
+export const fetchAttachmentBinary = async (att, moduleOverride = 'ihlr') => {
+  if (!att) return null;
+  const name = att.name || att.filename || (typeof att === 'string' ? att : 'attachment');
+
+  // Case 1: In-memory File / Blob
+  if (att.file && att.file instanceof Blob) {
+    try {
+      const buf = await att.file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      if (bytes.length === 0) return null;
+      return { bytes, name, mimeType: att.file.type || 'application/octet-stream' };
+    } catch {
+      return null;
+    }
+  }
+
+  // Case 2: Data URL string
+  const rawUrl = att.url || (typeof att === 'string' ? att : '') || att.path;
+  if (typeof rawUrl === 'string' && rawUrl.startsWith('data:')) {
+    try {
+      const commaIdx = rawUrl.indexOf(',');
+      if (commaIdx === -1) return null;
+      const meta = rawUrl.slice(5, commaIdx);
+      const dataPart = rawUrl.slice(commaIdx + 1);
+      const mimeType = meta.split(';')[0] || 'application/octet-stream';
+      let bytes;
+      if (meta.includes(';base64')) {
+        const binaryStr = atob(dataPart);
+        bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+      } else {
+        bytes = new TextEncoder().encode(decodeURIComponent(dataPart));
+      }
+      if (bytes.length === 0) return null;
+      return { bytes, name, mimeType };
+    } catch {
+      return null;
+    }
+  }
+
+  // Case 3: Stream from resolved gateway URL
+  const streamUrl = resolveAttachmentUrl(att, moduleOverride);
+  if (!streamUrl) return null;
+
+  try {
+    const res = await fetchWithAuthAndTimeout(streamUrl);
+    if (!res.ok) return null;
+
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    const isHtmlFile = /\.(html?|xhtml)$/i.test(name);
+    if (!isHtmlFile && (contentType.includes('text/html') || contentType.includes('application/json'))) {
+      return null;
+    }
+
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    if (bytes.length === 0) return null;
+    return { bytes, name, mimeType: contentType || 'application/octet-stream' };
+  } catch (err) {
+    console.warn('Could not fetch attachment binary for export:', err);
     return null;
   }
 };

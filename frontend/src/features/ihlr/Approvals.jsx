@@ -1192,6 +1192,7 @@ const IhlrApprovals = () => {
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export to Excel:', err);
+      setShowExportModal(false);
       modalError('Failed to export to Excel: ' + err.message);
     }
   };
@@ -1214,6 +1215,7 @@ const IhlrApprovals = () => {
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export approvals to PDF:', err);
+      setShowExportModal(false);
       modalError('Failed to export to PDF: ' + err.message);
     }
   };

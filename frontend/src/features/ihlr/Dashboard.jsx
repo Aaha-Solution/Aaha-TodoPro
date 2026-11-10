@@ -196,7 +196,8 @@ const IhlrDashboard = () => {
         setShowExportModal(false);
         return;
       }
-      const today = formatDateDDMMYYYY(new Date()).replace(/\//g, '-'); exportIhlrToExcel({
+      const today = formatDateDDMMYYYY(new Date()).replace(/\//g, '-');
+      await exportIhlrToExcel({
         requests,
         fileName: `IHLR_Dashboard_Report_${today}.xlsx`,
         sheetName: 'IHLR Dashboard'
@@ -204,6 +205,7 @@ const IhlrDashboard = () => {
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export to Excel:', err);
+      setShowExportModal(false);
       modalError('Failed to export to Excel: ' + err.message);
     } finally {
       setExportLoading(false);
@@ -220,7 +222,8 @@ const IhlrDashboard = () => {
         setShowExportModal(false);
         return;
       }
-      const today = formatDateDDMMYYYY(new Date()).replace(/\//g, '-'); exportIhlrToPdf({
+      const today = formatDateDDMMYYYY(new Date()).replace(/\//g, '-');
+      await exportIhlrToPdf({
         requests,
         fileName: `IHLR_Dashboard_Report_${today}.pdf`,
         title: 'IHLR Dashboard Summary & Analysis Reports',
@@ -229,6 +232,7 @@ const IhlrDashboard = () => {
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export to PDF:', err);
+      setShowExportModal(false);
       modalError('Failed to export to PDF: ' + err.message);
     } finally {
       setExportLoading(false);
@@ -564,7 +568,8 @@ const IhlrDashboard = () => {
       {/* Export Format Selection Modal */}
       <ExportSelectionModal
         isOpen={showExportModal}
-        onClose={() => setShowExportModal(false)}
+        loading={exportLoading}
+        onClose={() => !exportLoading && setShowExportModal(false)}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
         title="Export Analysis Report"
