@@ -293,7 +293,7 @@ export const exportIhlrToExcel = async ({
     8,  // 1: SL NO
     14, // 2: REQ NO
     14, // 3: INCIDENT DATE
-    12, // 4: SHIFT
+    30, // 4: SHIFT
     20, // 5: MODEL NAME / PART
     32, // 6: PROBLEM / DEFECT DESCRIPTION
     20, // 7: PROBLEM DETECTED AT

@@ -84,7 +84,7 @@ export const getCurrentIhlrShift = () => {
 export const formatIhlrShiftDisplay = (shiftVal, includeTiming = false) => {
   const details = getIhlrShiftDetails(shiftVal);
   if (details) {
-    return includeTiming ? `${details.name} (${details.timing})` : details.name;
+    return includeTiming ? `${details.name} (${details.timeDisplay})` : details.name;
   }
   const s = String(shiftVal || '').trim();
   if (!s) return '—';

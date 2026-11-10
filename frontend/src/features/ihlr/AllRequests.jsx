@@ -662,7 +662,7 @@ const IhlrAllRequests = () => {
 
                     {/* Shift */}
                     <td className="py-2.5 px-2 text-center whitespace-nowrap align-middle">
-                      <span className="text-[10px] font-bold text-slate-700 font-mono" title={getIhlrShiftDetails(r.shift)?.timing || ''}>
+                      <span className="text-[10px] font-bold text-slate-700 font-mono" title={getIhlrShiftDetails(r.shift)?.timeDisplay || ''}>
                         {formatIhlrShiftDisplay(r.shift)}
                       </span>
                     </td>
