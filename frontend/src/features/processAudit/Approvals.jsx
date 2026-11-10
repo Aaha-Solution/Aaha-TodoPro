@@ -1520,7 +1520,7 @@ const ProcessAuditApprovals = () => {
         format: 'a4'
       });
 
-      const today = new Date().toISOString().slice(0, 10);
+      const today = formatDateDDMMYYYY(new Date());
 
       // Top Title and Company Branding
       doc.setFontSize(16);
@@ -1572,7 +1572,7 @@ const ProcessAuditApprovals = () => {
         alternateRowStyles: { fillColor: [248, 250, 252] }
       });
 
-      doc.save(`Process_Audit_Approvals_Queue_${today}.pdf`);
+      doc.save(`Process_Audit_Approvals_Queue_${today.replace(/\//g, '-')}.pdf`);
       setShowExportModal(false);
     } catch (err) {
       console.error('Failed to export approvals to PDF:', err);

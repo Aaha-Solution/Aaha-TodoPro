@@ -1228,7 +1228,7 @@ export const exportProcessAuditToPdf = async ({
     format: 'a4'
   });
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = formatDateDDMMYYYY(new Date());
   let textStartX = 24;
   if (logoData) {
     try {
@@ -1476,6 +1476,6 @@ export const exportProcessAuditToPdf = async ({
     }
   });
 
-  const targetFileName = fileName || `Process_Audit_Analysis_Report_${today}.pdf`;
+  const targetFileName = fileName || `Process_Audit_Analysis_Report_${today.replace(/\//g, '-')}.pdf`;
   doc.save(targetFileName.endsWith('.pdf') ? targetFileName : `${targetFileName}.pdf`);
 };

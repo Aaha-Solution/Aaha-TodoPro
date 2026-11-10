@@ -38,6 +38,7 @@ import {
 } from '../../redux/slices/userSlice';
 import { userService } from '../../services/userService';
 import { DEPARTMENTS } from '../../utils/constants';
+import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { storage } from '../../utils/storage';
 
 const ROLES = [
@@ -492,7 +493,7 @@ const UserManagement = () => {
         format: 'a4'
       });
 
-      const today = new Date().toISOString().slice(0, 10);
+      const today = formatDateDDMMYYYY(new Date());
 
       // Fetch and embed official INEL logo
       let logoData = null;
@@ -581,7 +582,7 @@ const UserManagement = () => {
         }
       });
 
-      doc.save(`User_Management_Directory_${today}.pdf`);
+      doc.save(`User_Management_Directory_${today.replace(/\//g, '-')}.pdf`);
       showToast(`User directory PDF exported successfully (${filteredUsers.length} records)`);
     } catch (err) {
       console.error('Failed to export users to PDF:', err);

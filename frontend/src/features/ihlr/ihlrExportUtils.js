@@ -951,6 +951,6 @@ export const exportIhlrToPdf = async ({
     }
   });
 
-  const targetFileName = fileName || `IHLR_Analysis_Report_${today}.pdf`;
+  const targetFileName = fileName || `IHLR_Analysis_Report_${today.replace(/\//g, '-')}.pdf`;
   doc.save(targetFileName.endsWith('.pdf') ? targetFileName : `${targetFileName}.pdf`);
 };
