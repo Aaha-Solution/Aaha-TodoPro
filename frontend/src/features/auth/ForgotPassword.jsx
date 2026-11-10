@@ -21,7 +21,7 @@ const ForgotPassword = () => {
     <div className="relative min-h-screen w-full flex items-center justify-center p-4 bg-slate-900">
       <div 
         className="absolute inset-0 bg-cover bg-center opacity-40"
-        style={{ backgroundImage: `url('/images/login-bg.png')` }}
+        style={{ backgroundImage: `url('/images/login-bg.webp')` }}
       />
       <div className="relative z-10 w-full max-w-md bg-white/95 backdrop-blur-xl rounded-[28px] p-8 shadow-2xl border border-white">
         <button

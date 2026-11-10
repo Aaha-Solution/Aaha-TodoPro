@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
-import bgImage from '../../assets/background-image.JPG';
-import nipponLogo from '../../assets/Nippon Logo.png';
+import bgImageDesktop from '../../assets/background-image.webp';
+import bgImageMobile from '../../assets/background-image-mobile.webp';
+import nipponLogo from '../../assets/nippon-logo.webp';
 import {
   Mail,
   Lock,
@@ -101,9 +102,22 @@ export const Login = () => {
 
   return (
     <div
-      className="relative grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] min-h-screen w-full overflow-y-auto lg:overflow-hidden font-sans bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: `url(${bgImage})` }}
+      className="relative grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] min-h-screen w-full overflow-y-auto lg:overflow-hidden font-sans bg-slate-100"
     >
+      {/* Responsive WebP background image for fast LCP */}
+      <picture className="pointer-events-none select-none">
+        <source media="(min-width: 1024px)" srcSet={bgImageDesktop} type="image/webp" />
+        <img
+          src={bgImageMobile}
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+          width="800"
+          height="450"
+          className="absolute inset-0 h-full w-full object-cover object-center z-0"
+        />
+      </picture>
+
       {/* Light overlay backdrop for optimal text readability */}
       <div className="absolute inset-0 bg-transparent z-0 pointer-events-none" />
 
@@ -115,7 +129,7 @@ export const Login = () => {
 
         {/* Logo */}
         <div className="relative z-10 flex items-center gap-[12px]">
-          <img src={nipponLogo} alt="Nippon Logo" className="h-[40px] w-auto object-contain select-none" />
+          <img src={nipponLogo} alt="Nippon Logo" width="40" height="39" decoding="async" className="h-[40px] w-auto object-contain select-none" />
           <span className="font-heading text-[24px] font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">Q TRACK</span>
         </div>
 
@@ -130,7 +144,7 @@ export const Login = () => {
         <div className="w-full max-w-[400px] animate-fade-in-up my-auto lg:my-0">
           {/* Logo on mobile/tablet */}
           <div className="flex lg:hidden items-center gap-[12px] mb-[24px] justify-center">
-            <img src={nipponLogo} alt="Nippon Logo" className="h-[36px] w-auto object-contain select-none" />
+            <img src={nipponLogo} alt="Nippon Logo" width="36" height="35" decoding="async" className="h-[36px] w-auto object-contain select-none" />
             <span className="font-heading text-[24px] font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">Q TRACK</span>
           </div>
 
