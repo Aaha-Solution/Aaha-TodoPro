@@ -159,9 +159,9 @@ const IhlrApprovals = () => {
 
   const isLockedForCloserUser = !isAdmin && (isSelectedClosed || hasCloserSubmitted);
 
-  // Reassign Closer is disabled when no request is selected, or closed, or editing
+  // Reassign Closer is disabled when no request is selected, or closed, or editing, or closer submission is pending
   const isReassignDisabled = Boolean(
-    !selectedRequest || isSelectedClosed || adminEditCloser
+    !selectedRequest || isSelectedClosed || adminEditCloser || isCloserDataToBeUpdated
   );
 
   // Form State for Closer Fields
@@ -907,6 +907,11 @@ const IhlrApprovals = () => {
 
     if (!isAdmin) {
       modalError('Only Quality Admin has permission to update Admin Review and sign off status.');
+      return;
+    }
+
+    if (isCloserDataToBeUpdated && !isReassignOpen) {
+      modalWarning('Action & Target Date required from closer before Admin Sign-Off.');
       return;
     }
 
