@@ -194,14 +194,19 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           (n.title && n.title.toLowerCase().includes('pending sign-off')) ||
           (n.title && n.title.toLowerCase().includes('pending fields'));
         const isUpdatedNotif =
-          ['countermeasure_updated', 'countermeasure_saved'].includes(n.type) ||
-          n.badgeLabel === 'COUNTERMEASURE SUBMITTED';
+          !isPendingSignoff &&
+          (['countermeasure_updated', 'countermeasure_saved'].includes(n.type) ||
+          n.badgeLabel === 'COUNTERMEASURE SUBMITTED');
         const isConfirmedNotif = n.type === 'submission_confirmed';
         const isAssignmentNotif =
-          n.type === 'assignment_required' ||
-          n.type === 'approval_required' ||
-          (n.title && n.title.toLowerCase().includes('action required')) ||
-          (n.title && n.title.toLowerCase().includes('new request assigned'));
+          !isPendingSignoff &&
+          !isClosedNotif &&
+          !isUpdatedNotif &&
+          (n.type === 'assignment_required' ||
+            n.type === 'approval_required' ||
+            n.type === 'qad_action_required' ||
+            (n.title && n.title.toLowerCase().includes('action required') && !n.title.toLowerCase().includes('sign-off')) ||
+            (n.title && n.title.toLowerCase().includes('new request assigned')));
         const isCcNotif =
           n.type === 'cc_notification' ||
           (n.title && n.title.toLowerCase().includes('cc notification'));
@@ -271,19 +276,27 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           isItemRead = savedRead !== null ? savedRead : Boolean(n.read);
         }
 
+        const currentBadgeLabel = isClosedNotif
+          ? 'CASE CLOSED'
+          : isPendingSignoff
+          ? 'PENDING SIGN-OFF'
+          : isAckNotif
+          ? 'SUBMISSION ACKNOWLEDGED'
+          : isUpdatedNotif
+          ? 'COUNTERMEASURE SUBMITTED'
+          : isConfirmedNotif
+          ? 'REPORT LOGGED'
+          : isCcNotif
+          ? 'CC NOTIFICATION'
+          : n.badgeLabel || 'ACTION REQUIRED';
+
         // Deduplicate streamList:
         // 1. By unique notification ID
-        // 2. By request key and event badge (e.g. prevent multiple duplicate CASE CLOSED cards for the same request)
+        // 2. By request key and event badge (prevent duplicate cards for the exact same event/badge, while preserving distinct lifecycle stages like REPORT LOGGED and PENDING SIGN-OFF)
         const isDuplicate = streamList.some((s) => {
           if (s.id === notifIdStr) return true;
           if (reqNoKey && s.reqNo === reqNoKey) {
-            if (isAssignmentNotif && (s.type === 'assignment_required' || s.type === 'approval_required' || s.badgeLabel === 'ACTION REQUIRED')) return true;
-            if (isClosedNotif && s.badgeLabel === 'CASE CLOSED') return true;
-            if (isPendingSignoff && s.badgeLabel === 'PENDING SIGN-OFF') return true;
-            if (isAckNotif && s.badgeLabel === 'SUBMISSION ACKNOWLEDGED') return true;
-            if (!isAckNotif && isUpdatedNotif && s.badgeLabel === 'COUNTERMEASURE SUBMITTED') return true;
-            if (isConfirmedNotif && s.badgeLabel === 'REPORT LOGGED') return true;
-            if (isCcNotif && s.badgeLabel === 'CC NOTIFICATION') return true;
+            if (s.badgeLabel === currentBadgeLabel) return true;
             if (s.type === n.type && s.title === n.title) return true;
           }
           return false;
@@ -296,19 +309,7 @@ export const fetchIhlrNotificationsFeed = async (user) => {
           notifId: n.id,
           rawId: n.rawId,
           reqNo: n.reqNo || (n.requestId ? (String(n.requestId).startsWith('#') ? n.requestId : `#${n.requestId}`) : '#IHLR'),
-          badgeLabel: isClosedNotif
-            ? 'CASE CLOSED'
-            : isPendingSignoff
-            ? 'PENDING SIGN-OFF'
-            : isAckNotif
-            ? 'SUBMISSION ACKNOWLEDGED'
-            : isUpdatedNotif
-            ? 'COUNTERMEASURE SUBMITTED'
-            : isConfirmedNotif
-            ? 'REPORT LOGGED'
-            : isCcNotif
-            ? 'CC NOTIFICATION'
-            : n.badgeLabel || 'ACTION REQUIRED',
+          badgeLabel: currentBadgeLabel,
           accentColor: isClosedNotif
             ? 'emerald'
             : isPendingSignoff

@@ -777,6 +777,39 @@ export const createIhlrRequest = async (req, res) => {
             ).catch((err) => console.warn('[IHLR Notifications] Error inserting CC in-app notification:', err.message));
           }
         }
+
+        // Notification D: For All other Quality Admin / QAD users (so all QAD members see the new report logged and assigned)
+        if (pool) {
+          const [qadUsers] = await pool.query(
+            "SELECT id, name, email FROM users WHERE UPPER(role) = 'ADMIN' OR UPPER(department) = 'QAD'"
+          ).catch(() => [[]]);
+
+          if (qadUsers && qadUsers.length > 0) {
+            for (const qadUser of qadUsers) {
+              // Skip the person who created the request (already got Notification A: submission_confirmed)
+              if (qadUser.id && creatorUser.id && String(qadUser.id) === String(creatorUser.id)) continue;
+              // Skip anyone who is an assigned closer (already got Notification B: assignment_required)
+              if (assignedUsersList.some((u) => u.id && String(u.id) === String(qadUser.id))) continue;
+              // Skip anyone who already got a CC notification
+              if (notifyEmailsList.some((e) => (e || '').toLowerCase() === (qadUser.email || '').toLowerCase())) continue;
+
+              await pool.query(
+                `INSERT INTO ihlr_notifications 
+                 (user_id, user_name, user_email, request_id, req_no, type, title, message, link, is_read) 
+                 VALUES (?, ?, ?, ?, ?, 'assignment_required', ?, ?, '/ihlr/approvals', 0)`,
+                [
+                  qadUser.id,
+                  qadUser.name,
+                  qadUser.email,
+                  created.id,
+                  reqNo,
+                  `Action Required: IHLR Report #${reqNo} Assigned`,
+                  `${reqNo} (${created.model}). Request raised and assigned by ${creatorUser.name} to ${assignedNamesDisplay}`
+                ]
+              ).catch((err) => console.warn('[IHLR Notifications] Error inserting QAD notification:', err.message));
+            }
+          }
+        }
       } catch (notifErr) {
         console.warn('[IHLR Notifications] Error inserting multi-user in-app notifications:', notifErr.message);
       }
