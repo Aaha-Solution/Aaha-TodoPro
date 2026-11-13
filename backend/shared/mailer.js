@@ -8,7 +8,10 @@ import { getBinaryFile } from './binaryStorage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+const rootEnvPath = path.resolve(__dirname, '../.env');
+
+// Single source of truth for email and SMTP configuration
+dotenv.config({ path: rootEnvPath, override: true });
 
 /**
  * Resolves the frontend base URL from .env
@@ -51,6 +54,8 @@ export function getLogoBase64() {
  */
 
 export function getTransporter() {
+  // Always reload latest SMTP configuration directly from root backend/.env
+  dotenv.config({ path: rootEnvPath, override: true });
   const host = process.env.SMTP_HOST || 'localhost';
   const port = Number(process.env.SMTP_PORT) || 465;
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
@@ -64,6 +69,9 @@ export function getTransporter() {
         port,
         secure,
         auth: { user, pass },
+        connectionTimeout: 8000,
+        greetingTimeout: 6000,
+        socketTimeout: 10000,
         tls: {
           ciphers: 'SSLv3',
           rejectUnauthorized: false
@@ -1516,6 +1524,7 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
  * Verify SMTP connection & authentication
  */
 export async function verifySmtpConnection({ logToConsole = true } = {}) {
+  dotenv.config({ path: rootEnvPath, override: true });
   const host = process.env.SMTP_HOST || 'localhost';
   const port = Number(process.env.SMTP_PORT) || 465;
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
