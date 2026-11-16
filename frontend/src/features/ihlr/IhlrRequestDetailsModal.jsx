@@ -671,6 +671,24 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     );
   };
 
+  // Helper to extract natural width & height of an image for aspect-ratio preservation
+  const getImageDimensions = (dataUrl) => {
+    return new Promise((resolve) => {
+      if (!dataUrl || typeof dataUrl !== 'string') return resolve({ width: 800, height: 600 });
+      const img = new Image();
+      img.onload = () => {
+        resolve({
+          width: img.naturalWidth || img.width || 800,
+          height: img.naturalHeight || img.height || 600
+        });
+      };
+      img.onerror = () => {
+        resolve({ width: 800, height: 600 });
+      };
+      img.src = dataUrl;
+    });
+  };
+
   // Helper to fetch an image attachment as base64 for embedding in Excel and PDF
   const fetchAttachmentImageBase64 = async (att) => {
     if (!att) return null;
@@ -681,12 +699,13 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       try {
         return await new Promise((resolve) => {
           const reader = new FileReader();
-          reader.onloadend = () => {
+          reader.onloadend = async () => {
             const dataUrl = reader.result;
             if (typeof dataUrl !== 'string') return resolve(null);
             const parts = dataUrl.split(',');
             const ext = parts[0]?.includes('png') ? 'png' : 'jpeg';
-            resolve({ base64: parts[1], dataUrl, extension: ext, name });
+            const dims = await getImageDimensions(dataUrl);
+            resolve({ base64: parts[1], dataUrl, extension: ext, name, width: dims.width, height: dims.height });
           };
           reader.onerror = () => resolve(null);
           reader.readAsDataURL(att.file);
@@ -701,7 +720,8 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
     if (typeof rawUrl === 'string' && rawUrl.startsWith('data:image')) {
       const parts = rawUrl.split(',');
       const ext = parts[0]?.includes('png') ? 'png' : 'jpeg';
-      return { base64: parts[1], dataUrl: rawUrl, extension: ext, name };
+      const dims = await getImageDimensions(rawUrl);
+      return { base64: parts[1], dataUrl: rawUrl, extension: ext, name, width: dims.width, height: dims.height };
     }
 
     // Case 3: Stream from resolved gateway URL
@@ -714,12 +734,13 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
       const blob = await res.blob();
       return await new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => {
+        reader.onloadend = async () => {
           const dataUrl = reader.result;
           if (typeof dataUrl !== 'string') return resolve(null);
           const parts = dataUrl.split(',');
           const ext = blob.type?.includes('png') ? 'png' : 'jpeg';
-          resolve({ base64: parts[1], dataUrl, extension: ext, name });
+          const dims = await getImageDimensions(dataUrl);
+          resolve({ base64: parts[1], dataUrl, extension: ext, name, width: dims.width, height: dims.height });
         };
         reader.onerror = () => resolve(null);
         reader.readAsDataURL(blob);
@@ -1162,33 +1183,119 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         styles: { fontSize: 8, cellPadding: 3.5, valign: 'middle' }
       });
 
-      // Section 5: EMBEDDED IMAGES IN PDF
+      // Section 5: EMBEDDED IMAGES IN PDF (Optimized aspect ratio, proportional scaling, centering, card framing)
       if (exportImages.length > 0) {
-        let currentY = doc.lastAutoTable.finalY + 15;
+        let currentY = doc.lastAutoTable.finalY + 16;
+        const pageHeight = doc.internal.pageSize.height;
+        const bottomLimit = pageHeight - 40;
+        const contentWidth = 515;
+        const maxImageWidth = 495; // 10pt inner padding inside the 515pt card
+        const maxImageHeight = 195; // Optimized height for clear visibility while fitting up to 3 images per page
 
-        for (const img of exportImages) {
-          if (currentY + 230 > doc.internal.pageSize.height - 40) {
+        // Section Title Banner (matches styling of sections 1 - 4)
+        const sectionHeaderH = 20;
+        // Check if there is enough space on current page for section header + at least one image card (~225pt)
+        if (currentY + sectionHeaderH + 180 > bottomLimit) {
+          doc.addPage();
+          currentY = 40;
+        }
+
+        doc.setFillColor(30, 41, 59); // slate-800
+        doc.rect(40, currentY, contentWidth, sectionHeaderH, 'F');
+        doc.setFontSize(8.5);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text('5. ATTACHED EVIDENCE & DEFECT IMAGES', 48, currentY + 13.5);
+
+        currentY += sectionHeaderH + 10;
+
+        for (let idx = 0; idx < exportImages.length; idx++) {
+          const img = exportImages[idx];
+
+          // Calculate natural aspect ratio
+          const natW = Number(img.width) || 800;
+          const natH = Number(img.height) || 600;
+          const aspectRatio = natW / (natH || 1);
+
+          // Calculate optimized proportional dimensions
+          let renderW = maxImageWidth;
+          let renderH = renderW / aspectRatio;
+
+          if (renderH > maxImageHeight) {
+            renderH = maxImageHeight;
+            renderW = renderH * aspectRatio;
+          }
+          if (renderW > maxImageWidth) {
+            renderW = maxImageWidth;
+            renderH = renderW / aspectRatio;
+          }
+
+          // Round values to avoid floating point rendering artifacts
+          renderW = Math.round(renderW);
+          renderH = Math.round(renderH);
+
+          const itemHeaderH = 18;
+          const cardPadding = 6;
+          const cardH = renderH + (cardPadding * 2);
+          const totalBlockH = itemHeaderH + cardH;
+
+          // Check if this image block overflows the page
+          if (currentY + totalBlockH > bottomLimit) {
             doc.addPage();
             currentY = 40;
           }
 
-          doc.setFillColor(241, 245, 249);
-          doc.rect(40, currentY, 515, 20, 'F');
-          doc.setDrawColor(203, 213, 225);
-          doc.rect(40, currentY, 515, 20, 'S');
+          // 1. Header Bar for the individual image
+          doc.setFillColor(241, 245, 249); // slate-100
+          doc.rect(40, currentY, contentWidth, itemHeaderH, 'F');
+          doc.setDrawColor(203, 213, 225); // slate-300
+          doc.rect(40, currentY, contentWidth, itemHeaderH, 'S');
 
-          doc.setFontSize(8.5);
+          doc.setFontSize(8);
           doc.setFont(undefined, 'bold');
           doc.setTextColor(30, 41, 59);
-          doc.text(`${img.label}: ${img.name}`, 50, currentY + 14);
+
+          // Truncate long filename safely to prevent text overflow
+          const labelPrefix = `${idx + 1}. ${img.label || 'Evidence Image'}: `;
+          const maxTextW = contentWidth - 24;
+          const fullLabelText = `${labelPrefix}${img.name || 'attachment.jpg'}`;
+          const safeLabel = doc.getTextWidth(fullLabelText) > maxTextW
+            ? `${labelPrefix}${String(img.name || '').slice(0, 45)}...`
+            : fullLabelText;
+
+          doc.text(safeLabel, 48, currentY + 12);
+
+          // 2. Card Background Frame spanning full content width (515pt)
+          const cardY = currentY + itemHeaderH;
+          doc.setFillColor(248, 250, 252); // slate-50
+          doc.setDrawColor(226, 232, 240); // slate-200
+          doc.rect(40, cardY, contentWidth, cardH, 'FD');
+
+          // 3. Center the image horizontally inside the 515pt card
+          const imgX = Math.round(40 + (contentWidth - renderW) / 2);
+          const imgY = Math.round(cardY + cardPadding);
 
           try {
-            doc.addImage(img.dataUrl, img.extension.toUpperCase(), 40, currentY + 24, 340, 190);
+            doc.addImage(
+              img.dataUrl,
+              (img.extension || 'JPEG').toUpperCase(),
+              imgX,
+              imgY,
+              renderW,
+              renderH
+            );
+
+            // Subtle border around the image itself
+            doc.setDrawColor(203, 213, 225);
+            doc.rect(imgX, imgY, renderW, renderH, 'S');
           } catch (imgErr) {
             console.warn('Failed to embed image in PDF:', imgErr);
+            doc.setFontSize(8);
+            doc.setTextColor(225, 29, 72);
+            doc.text('Unable to render image preview in PDF document.', 50, cardY + 20);
           }
 
-          currentY += 225;
+          currentY += totalBlockH + 12;
         }
       }
 
