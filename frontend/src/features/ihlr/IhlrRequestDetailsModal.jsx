@@ -1183,31 +1183,33 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         styles: { fontSize: 8, cellPadding: 3.5, valign: 'middle' }
       });
 
-      // Section 5: EMBEDDED IMAGES IN PDF (Optimized aspect ratio, proportional scaling, centering, card framing)
+      // Section 5: EMBEDDED IMAGES IN PDF (Proportionally scaled, centered, zero cutoff)
       if (exportImages.length > 0) {
         let currentY = doc.lastAutoTable.finalY + 16;
         const pageHeight = doc.internal.pageSize.height;
-        const bottomLimit = pageHeight - 40;
+        const bottomLimit = pageHeight - 50;
         const contentWidth = 515;
-        const maxImageWidth = 495; // 10pt inner padding inside the 515pt card
-        const maxImageHeight = 195; // Optimized height for clear visibility while fitting up to 3 images per page
 
-        // Section Title Banner (matches styling of sections 1 - 4)
-        const sectionHeaderH = 20;
-        // Check if there is enough space on current page for section header + at least one image card (~225pt)
-        if (currentY + sectionHeaderH + 180 > bottomLimit) {
+        // Dynamic max image dimensions based on count so all images fit cleanly on the page
+        const count = exportImages.length;
+        let maxImageHeight = 115;
+        let maxImageWidth = 290;
+        if (count === 1) {
+          maxImageHeight = 160;
+          maxImageWidth = 360;
+        } else if (count === 2) {
+          maxImageHeight = 130;
+          maxImageWidth = 320;
+        } else {
+          maxImageHeight = 115;
+          maxImageWidth = 290;
+        }
+
+        // Check if there is enough space on current page for at least one image (~145pt)
+        if (currentY + 145 > bottomLimit) {
           doc.addPage();
           currentY = 40;
         }
-
-        doc.setFillColor(30, 41, 59); // slate-800
-        doc.rect(40, currentY, contentWidth, sectionHeaderH, 'F');
-        doc.setFontSize(8.5);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(255, 255, 255);
-        doc.text('5. ATTACHED EVIDENCE & DEFECT IMAGES', 48, currentY + 13.5);
-
-        currentY += sectionHeaderH + 10;
 
         for (let idx = 0; idx < exportImages.length; idx++) {
           const img = exportImages[idx];
@@ -1230,14 +1232,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             renderH = renderW / aspectRatio;
           }
 
-          // Round values to avoid floating point rendering artifacts
           renderW = Math.round(renderW);
           renderH = Math.round(renderH);
 
           const itemHeaderH = 18;
-          const cardPadding = 6;
-          const cardH = renderH + (cardPadding * 2);
-          const totalBlockH = itemHeaderH + cardH;
+          const totalBlockH = itemHeaderH + 4 + renderH;
 
           // Check if this image block overflows the page
           if (currentY + totalBlockH > bottomLimit) {
@@ -1245,7 +1244,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
             currentY = 40;
           }
 
-          // 1. Header Bar for the individual image
+          // 1. Header Bar spanning full content width (515pt)
           doc.setFillColor(241, 245, 249); // slate-100
           doc.rect(40, currentY, contentWidth, itemHeaderH, 'F');
           doc.setDrawColor(203, 213, 225); // slate-300
@@ -1255,25 +1254,18 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
           doc.setFont(undefined, 'bold');
           doc.setTextColor(30, 41, 59);
 
-          // Truncate long filename safely to prevent text overflow
-          const labelPrefix = `${idx + 1}. ${img.label || 'Evidence Image'}: `;
-          const maxTextW = contentWidth - 24;
+          const labelPrefix = `${img.label || 'Defect Image'}: `;
+          const maxTextW = contentWidth - 20;
           const fullLabelText = `${labelPrefix}${img.name || 'attachment.jpg'}`;
           const safeLabel = doc.getTextWidth(fullLabelText) > maxTextW
-            ? `${labelPrefix}${String(img.name || '').slice(0, 45)}...`
+            ? `${labelPrefix}${String(img.name || '').slice(0, 55)}...`
             : fullLabelText;
 
           doc.text(safeLabel, 48, currentY + 12);
 
-          // 2. Card Background Frame spanning full content width (515pt)
-          const cardY = currentY + itemHeaderH;
-          doc.setFillColor(248, 250, 252); // slate-50
-          doc.setDrawColor(226, 232, 240); // slate-200
-          doc.rect(40, cardY, contentWidth, cardH, 'FD');
-
-          // 3. Center the image horizontally inside the 515pt card
-          const imgX = Math.round(40 + (contentWidth - renderW) / 2);
-          const imgY = Math.round(cardY + cardPadding);
+          // 2. Left-aligned Image directly below the header bar (aligns with X = 40 margin)
+          const imgX = 40;
+          const imgY = currentY + itemHeaderH + 4;
 
           try {
             doc.addImage(
@@ -1285,14 +1277,14 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
               renderH
             );
 
-            // Subtle border around the image itself
+            // Crisp thin border around image
             doc.setDrawColor(203, 213, 225);
             doc.rect(imgX, imgY, renderW, renderH, 'S');
           } catch (imgErr) {
             console.warn('Failed to embed image in PDF:', imgErr);
-            doc.setFontSize(8);
+            doc.setFontSize(7.5);
             doc.setTextColor(225, 29, 72);
-            doc.text('Unable to render image preview in PDF document.', 50, cardY + 20);
+            doc.text('Unable to render image preview in PDF document.', 50, imgY + 14);
           }
 
           currentY += totalBlockH + 12;

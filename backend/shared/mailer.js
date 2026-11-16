@@ -416,12 +416,16 @@ export function formatDateDDMMYYYY(dateVal) {
     const [yyyy, mm, dd] = datePart.split('-');
     return `${dd}/${mm}/${yyyy}`;
   }
+  if (/^\d{4}\/\d{2}\/\d{2}$/.test(datePart)) {
+    const [yyyy, mm, dd] = datePart.split('/');
+    return `${dd}/${mm}/${yyyy}`;
+  }
   if (/^\d{2}-\d{2}-\d{4}$/.test(datePart)) {
-    return datePart;
+    const [dd, mm, yyyy] = datePart.split('-');
+    return `${dd}/${mm}/${yyyy}`;
   }
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(datePart)) {
-    const [dd, mm, yyyy] = datePart.split('/');
-    return `${dd}/${mm}/${yyyy}`;
+    return datePart;
   }
   const d = new Date(dateVal);
   if (!isNaN(d.getTime())) {
@@ -697,9 +701,20 @@ export function generateEmailTemplate({
   const tableRows = tableData
     .map((item) => {
       const isStatus = String(item.label || '').trim().toLowerCase() === 'status';
+      const labelLower = String(item.label || '').toLowerCase();
+      let rawVal = item.value;
+      if (rawVal !== null && rawVal !== undefined && typeof rawVal !== 'object') {
+        const strVal = String(rawVal).trim();
+        if (labelLower.includes('date') || /^\d{4}[-/]\d{2}[-/]\d{2}/.test(strVal) || /^\d{2}-\d{2}-\d{4}$/.test(strVal)) {
+          const formattedDate = formatDateDDMMYYYY(strVal);
+          if (formattedDate) {
+            rawVal = formattedDate;
+          }
+        }
+      }
       const cellContent = isStatus
         ? getStatusBadgeHtml(item.value)
-        : (item.value || '—');
+        : (rawVal || '—');
 
       return `
       <tr>
@@ -1052,6 +1067,9 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
     || (creatorName && String(creatorName).trim())
     || 'Quality Engineer';
 
+  const rawTargetDate = request.target_date || request.permanent_target_date || request.temporary_target_date || request.closed_at || '';
+  const formattedTargetDate = rawTargetDate ? (formatDateDDMMYYYY(rawTargetDate) || rawTargetDate) : 'N/A';
+
   const tableSummary = [
     { label: 'IHLR Number', value: reqNo },
     { label: 'Created By', value: createdByName },
@@ -1061,7 +1079,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
     { label: 'Responsible Closer', value: assignedName },
     { label: 'Occurrence Cause (Why 1)', value: closerWhy1 },
     { label: 'Action Taken', value: request.action || request.temporary_action || request.permanent_fix || 'Containment in progress' },
-    { label: 'Target / Close Date', value: request.target_date || request.permanent_target_date || request.temporary_target_date || 'N/A' },
+    { label: 'Target / Close Date', value: formattedTargetDate },
     { label: 'Status', value: mailStatus },
     { label: 'Remarks', value: request.remarks || (isClosed ? 'Closed' : '(Pending validation by Requester/Admin)') }
   ];
@@ -1386,6 +1404,9 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
   const allCcEmails = Array.from(new Set(notifyList));
   const ccDisplayStr = allCcEmails.length > 0 ? allCcEmails.join(', ') : 'None';
 
+  const rawPaTargetDate = request.permanent_target_date || request.temporary_target_date || request.target_date || request.closed_at || '';
+  const formattedPaTargetDate = rawPaTargetDate ? (formatDateDDMMYYYY(rawPaTargetDate) || rawPaTargetDate) : 'N/A';
+
   const tableSummary = [
     { label: 'Request Number', value: reqNo },
     { label: 'Created By (Auditor)', value: createdByDisplay },
@@ -1395,7 +1416,7 @@ export async function sendProcessAuditCloserEmails({ request, closerUser, creato
     { label: 'Responsible Executor', value: assignedName },
     { label: 'Occurrence Cause (Why 1)', value: closerWhy1 },
     { label: 'Action Taken', value: request.permanent_fix || request.temporary_action || request.corrective_action || 'Containment in progress' },
-    { label: 'Target / Close Date', value: request.permanent_target_date || request.temporary_target_date || request.target_date || 'N/A' },
+    { label: 'Target / Close Date', value: formattedPaTargetDate },
     { label: 'Status', value: mailStatus },
     { label: 'Auditor Remarks', value: request.creator_remark || request.remarks || (isClosed ? 'Closed' : '(Pending validation by Auditor/Admin)') }
   ];
