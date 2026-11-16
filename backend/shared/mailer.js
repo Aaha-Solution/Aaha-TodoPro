@@ -686,9 +686,14 @@ export function generateEmailTemplate({
   badgeText = '',
   logoUrl,
   defectImage = null,
+  defectImageWidth = 220,
+  defectImageHeight = 160,
 }) {
   const resolvedLogo = logoUrl || 'cid:inel-logo';
   const defectImageSrc = typeof defectImage === 'object' && defectImage !== null ? defectImage.src : (typeof defectImage === 'string' ? defectImage : null);
+  const imgWidth = (typeof defectImage === 'object' && defectImage !== null && defectImage.width) ? Number(defectImage.width) : (defectImageWidth || 220);
+  const imgHeight = (typeof defectImage === 'object' && defectImage !== null && defectImage.height) ? Number(defectImage.height) : (defectImageHeight || 160);
+  const tdWidth = imgWidth + 16;
   const tableRows = tableData
     .map((item) => {
       const isStatus = String(item.label || '').trim().toLowerCase() === 'status';
@@ -763,8 +768,10 @@ export function generateEmailTemplate({
               </h1>
             </td>
             ${defectImageSrc ? `
-            <td align="right" style="vertical-align: middle; padding-left: 14px; width: 100px; text-align: right;">
-              <img src="${defectImageSrc}" alt="Evidence" width="90" height="70" style="display: block; width: 90px; height: 70px; object-fit: cover; border-radius: 8px; border: 1.5px solid #cbd5e1; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin: 0 0 0 auto; pointer-events: none; cursor: default;" />
+            <td align="right" style="vertical-align: middle; padding-left: 16px; width: ${tdWidth}px; text-align: right;">
+              <div style="display: inline-block; border-radius: 10px; overflow: hidden; border: 1.5px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.08); background: #f8fafc; line-height: 0;">
+                <img src="${defectImageSrc}" alt="Evidence" width="${imgWidth}" height="${imgHeight}" style="display: block; width: ${imgWidth}px; height: ${imgHeight}px; max-width: ${imgWidth}px; max-height: ${imgHeight}px; object-fit: cover; margin: 0 auto; border: 0;" />
+              </div>
             </td>
             ` : ''}
           </tr>
@@ -935,7 +942,7 @@ export async function sendIhlrRequestEmails({
       }]
     : [];
 
-  const defectImageProp = defectImgAtt ? { src: `cid:${defectImgAtt.cid}`, alt: 'Defect Evidence' } : null;
+  const defectImageProp = defectImgAtt ? { src: `cid:${defectImgAtt.cid}`, alt: 'Defect Evidence', width: 220, height: 160 } : null;
 
   const results = {};
 
@@ -1071,7 +1078,7 @@ export async function sendIhlrCloserEmails({ request, closerUser, creatorUser, a
       }]
     : [];
 
-  const defectImageProp = defectImgAtt ? { src: `cid:${defectImgAtt.cid}`, alt: 'Defect Evidence' } : null;
+  const defectImageProp = defectImgAtt ? { src: `cid:${defectImgAtt.cid}`, alt: 'Defect Evidence', width: 220, height: 160 } : null;
 
   const results = { admins: [] };
 

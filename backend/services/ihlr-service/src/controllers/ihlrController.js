@@ -1305,7 +1305,7 @@ export const updateIhlrRequest = async (req, res) => {
                 base64Data: reassignDefectAtt.base64Data
               }]
             : [];
-          const reassignDefectImageProp = reassignDefectAtt ? { src: `cid:${reassignDefectAtt.cid}`, alt: 'Defect Evidence' } : null;
+          const reassignDefectImageProp = reassignDefectAtt ? { src: `cid:${reassignDefectAtt.cid}`, alt: 'Defect Evidence', width: 220, height: 160 } : null;
           // A. Send in-app notification and email to ALL newly selected assignee(s)
           const newNames = String(updated.resp_person || '').split(',').map((s) => s.trim()).filter(Boolean);
           const targetUsers = [];
