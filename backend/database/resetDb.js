@@ -14,7 +14,7 @@ export async function resetDatabase() {
   const host = process.env.DB_HOST || 'localhost';
   const user = process.env.DB_USER || 'root';
   const password = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '';
-  const port = process.env.DB_PORT ? Number(process.env.DB_PORT) : 3307;
+  const port = process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306;
   const dbName = process.env.DB_NAME || 'inel_qtrack';
 
   console.log('[DB Reset] Starting database reset...');
