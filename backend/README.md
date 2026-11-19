@@ -8,12 +8,12 @@ This backend is architected as an **independent Microservices Architecture** wit
 
 ```
 backend/
-├── gateway/                        # API Gateway (Port 5000 - Proxies to all services)
+├── gateway/                        # API Gateway (Port 4000 - Proxies to all services)
 ├── services/
-│   ├── auth-service/               # Tab: Auth & Enterprise Users Directory (Port 5001)
-│   ├── process-audit-service/      # Tab: Process Audit Observation (Port 5002)
-│   ├── ihlr-service/               # Tab: In-House Line Rejection / Scrap / RCA (Port 5003)
-│   └── tryout-service/             # Tab: Try Out Status / Tool & Die Trials (Port 5004)
+│   ├── auth-service/               # Tab: Auth & Enterprise Users Directory (Port 4001)
+│   ├── process-audit-service/      # Tab: Process Audit Observation (Port 4002)
+│   ├── ihlr-service/               # Tab: In-House Line Rejection / Scrap / RCA (Port 4003)
+│   └── tryout-service/             # Tab: Try Out Status / Tool & Die Trials (Port 4004)
 ├── shared/                         # Shared utilities (DB pool, JWT, responses, error handler)
 ├── database/                       # SQL schemas and seed migrations
 └── package.json                    # Root workspace orchestrator
@@ -23,11 +23,11 @@ backend/
 
 | Developer / Tab Assignment | Microservice Directory | Port | Key Endpoints |
 | :--- | :--- | :--- | :--- |
-| **Unified Entry Point** | `gateway/` | `5000` | Reverse proxy `/api/*` to microservices |
-| **Developer 1 (Auth & Users)** | `services/auth-service/` | `5001` | `/api/auth/login`, `/api/users` (CRUD) |
-| **Developer 2 (Process Audit)** | `services/process-audit-service/` | `5002` | `/api/process-audit/dashboard`, `/requests`, `/notifications` |
-| **Developer 3 (IHLR)** | `services/ihlr-service/` | `5003` | `/api/ihlr/dashboard`, `/line-rejections`, `/scrap` |
-| **Developer 4 (Try Out Status)** | `services/tryout-service/` | `5004` | `/api/tryout-status/dashboard`, `/trials` |
+| **Unified Entry Point** | `gateway/` | `4000` | Reverse proxy `/api/*` to microservices |
+| **Developer 1 (Auth & Users)** | `services/auth-service/` | `4001` | `/api/auth/login`, `/api/users` (CRUD) |
+| **Developer 2 (Process Audit)** | `services/process-audit-service/` | `4002` | `/api/process-audit/dashboard`, `/requests`, `/notifications` |
+| **Developer 3 (IHLR)** | `services/ihlr-service/` | `4003` | `/api/ihlr/dashboard`, `/line-rejections`, `/scrap` |
+| **Developer 4 (Try Out Status)** | `services/tryout-service/` | `4004` | `/api/tryout-status/dashboard`, `/trials` |
 
 ---
 
@@ -76,13 +76,13 @@ npm run dev
 ---
 
 ## 🌐 Frontend Compatibility (Zero Configuration Changes Required)
-The **API Gateway** listens on **Port 5000**, which matches the default frontend API base URL (`http://localhost:5000/api`). 
+The **API Gateway** listens on **Port 4000**, which matches the default frontend API base URL (`http://localhost:4000/api`). 
 Frontend developers do not need to change any API URLs:
-- `/api/auth/*` &rarr; routed to `http://localhost:5001`
-- `/api/users/*` &rarr; routed to `http://localhost:5001`
-- `/api/process-audit/*` &rarr; routed to `http://localhost:5002`
-- `/api/ihlr/*` &rarr; routed to `http://localhost:5003`
-- `/api/tryout-status/*` &rarr; routed to `http://localhost:5004`
+- `/api/auth/*` &rarr; routed to `http://localhost:4001`
+- `/api/users/*` &rarr; routed to `http://localhost:4001`
+- `/api/process-audit/*` &rarr; routed to `http://localhost:4002`
+- `/api/ihlr/*` &rarr; routed to `http://localhost:4003`
+- `/api/tryout-status/*` &rarr; routed to `http://localhost:4004`
 
 If an individual microservice is restarting or not running, the Gateway returns a graceful JSON `503 Service Unavailable` explaining which microservice is offline, preventing frontend crash loops.
 

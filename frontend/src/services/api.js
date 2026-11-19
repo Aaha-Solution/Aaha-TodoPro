@@ -2,7 +2,7 @@ import axios from 'axios';
 import { storage } from '../utils/storage';
 import { isProductionMode, decryptResponseData } from '../utils/cryptoUtils';
 
-const DEFAULT_GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:5000';
+const DEFAULT_GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:4000';
 
 /**
  * Dynamically resolves the API Gateway Base URL.

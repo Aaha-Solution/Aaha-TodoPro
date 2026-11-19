@@ -6,7 +6,7 @@ let socket = null;
 
 /**
  * Initializes and returns the singleton Socket.IO client instance.
- * Automatically targets the current network/localhost Gateway (Port 5000).
+ * Automatically targets the current network/localhost Gateway (Port 4000).
  */
 export const getSocket = () => {
   if (!socket) {

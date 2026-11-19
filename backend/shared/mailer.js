@@ -17,7 +17,7 @@ dotenv.config({ path: rootEnvPath, override: true });
  * Resolves the frontend base URL from .env
  */
 export function getFrontendBaseUrl() {
-  return process.env.FRONTEND_URL || (process.env.HOST_IP ? `http://${process.env.HOST_IP}:5173` : 'http://localhost:5173');
+  return process.env.FRONTEND_URL || (process.env.HOST_IP ? `http://${process.env.HOST_IP}:3000` : 'http://localhost:3000');
 }
 
 export function getLogoPath() {

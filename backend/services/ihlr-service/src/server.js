@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
 
 const app = express();
-const PORT = process.env.PORT || 5003;
+const PORT = process.env.PORT || 4003;
 
 app.use(cors({ origin: '*' }));
 app.use(express.json());

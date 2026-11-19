@@ -13,7 +13,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 4000;
 
 app.use(cors({
   origin: '*',
@@ -96,11 +96,11 @@ app.get('/api/health', (req, res) => {
     service: 'INEL API Gateway',
     timestamp: new Date().toISOString(),
     routes: {
-      auth: process.env.AUTH_SERVICE_URL || 'http://localhost:5001',
-      users: process.env.AUTH_SERVICE_URL || 'http://localhost:5001',
-      processAudit: process.env.PROCESS_AUDIT_SERVICE_URL || 'http://localhost:5002',
-      ihlr: process.env.IHLR_SERVICE_URL || 'http://localhost:5003',
-      tryoutStatus: process.env.TRYOUT_SERVICE_URL || 'http://localhost:5004',
+      auth: process.env.AUTH_SERVICE_URL || 'http://localhost:4001',
+      users: process.env.AUTH_SERVICE_URL || 'http://localhost:4001',
+      processAudit: process.env.PROCESS_AUDIT_SERVICE_URL || 'http://localhost:4002',
+      ihlr: process.env.IHLR_SERVICE_URL || 'http://localhost:4003',
+      tryoutStatus: process.env.TRYOUT_SERVICE_URL || 'http://localhost:4004',
     }
   });
 });
@@ -117,55 +117,55 @@ const proxyErrorHandler = (serviceName) => (err, req, res) => {
   }
 };
 
-const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:5001';
-const processAuditServiceUrl = process.env.PROCESS_AUDIT_SERVICE_URL || 'http://localhost:5002';
-const ihlrServiceUrl = process.env.IHLR_SERVICE_URL || 'http://localhost:5003';
-const tryoutServiceUrl = process.env.TRYOUT_SERVICE_URL || 'http://localhost:5004';
+const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:4001';
+const processAuditServiceUrl = process.env.PROCESS_AUDIT_SERVICE_URL || 'http://localhost:4002';
+const ihlrServiceUrl = process.env.IHLR_SERVICE_URL || 'http://localhost:4003';
+const tryoutServiceUrl = process.env.TRYOUT_SERVICE_URL || 'http://localhost:4004';
 
-// 1. Auth & User Management Service (:5001)
+// 1. Auth & User Management Service (:4001)
 app.use(
   createProxyMiddleware({
     target: authServiceUrl,
     changeOrigin: true,
     pathFilter: ['/api/auth', '/api/users'],
     on: {
-      error: proxyErrorHandler('Auth & User Service (Port 5001)'),
+      error: proxyErrorHandler('Auth & User Service (Port 4001)'),
     },
   })
 );
 
-// 2. Process Audit Service (:5002)
+// 2. Process Audit Service (:4002)
 app.use(
   createProxyMiddleware({
     target: processAuditServiceUrl,
     changeOrigin: true,
     pathFilter: '/api/process-audit',
     on: {
-      error: proxyErrorHandler('Process Audit Service (Port 5002)'),
+      error: proxyErrorHandler('Process Audit Service (Port 4002)'),
     },
   })
 );
 
-// 3. IHLR Service (:5003)
+// 3. IHLR Service (:4003)
 app.use(
   createProxyMiddleware({
     target: ihlrServiceUrl,
     changeOrigin: true,
     pathFilter: '/api/ihlr',
     on: {
-      error: proxyErrorHandler('IHLR Service (Port 5003)'),
+      error: proxyErrorHandler('IHLR Service (Port 4003)'),
     },
   })
 );
 
-// 4. Try Out Status Service (:5004)
+// 4. Try Out Status Service (:4004)
 app.use(
   createProxyMiddleware({
     target: tryoutServiceUrl,
     changeOrigin: true,
     pathFilter: '/api/tryout-status',
     on: {
-      error: proxyErrorHandler('Try Out Status Service (Port 5004)'),
+      error: proxyErrorHandler('Try Out Status Service (Port 4004)'),
     },
   })
 );

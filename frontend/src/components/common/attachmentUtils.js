@@ -89,7 +89,7 @@ export const resolveAttachmentUrl = (rawAtt, moduleOverride = '') => {
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     try {
       const u = new URL(trimmed);
-      if (u.port === '5000' || u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+      if (u.port === '4000' || u.port === '5000' || u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
         const gw = new URL(gatewayBase);
         u.protocol = gw.protocol;
         u.host = gw.host;

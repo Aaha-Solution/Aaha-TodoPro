@@ -1365,7 +1365,7 @@ export const updateIhlrRequest = async (req, res) => {
               ]
             ).catch((e) => console.warn('[Reassign Notif Error]:', e.message));
 
-            const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
             const reassignHtml = generateEmailTemplate({
               headerTitle: `IHLR Defect Report Assigned: #${reqNo}`,
               headerSubtitle: `Defect report #${reqNo} has been reassigned to you for ${updated.resp || 'Department'}.`,
@@ -1422,7 +1422,7 @@ export const updateIhlrRequest = async (req, res) => {
               ]
             ).catch((e) => console.warn('[Reassign Req Notif Error]:', e.message));
 
-            const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
             const reqReassignHtml = generateEmailTemplate({
               headerTitle: `IHLR Case Reassigned: #${reqNo}`,
               headerSubtitle: `Defect report #${reqNo} has been reassigned for root cause investigation.`,

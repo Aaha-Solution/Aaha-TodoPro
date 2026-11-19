@@ -1645,7 +1645,7 @@ export const reassignRequest = async (req, res) => {
         ).catch((e) => console.warn('[PA Reassign Notif Error]:', e.message));
 
         try {
-          const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+          const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
           const tableData = [
             { label: 'Request Number', value: issueNo },
             { label: 'Product / Model', value: `${updated.product || '—'} (${updated.model || '—'})` },
@@ -1727,7 +1727,7 @@ export const reassignRequest = async (req, res) => {
         ).catch((e) => console.warn('[PA Reassign Req Notif Error]:', e.message));
 
         try {
-          const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+          const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
           const tableData = [
             { label: 'Request Number', value: issueNo },
             { label: 'Product / Model', value: `${updated.product || '—'} (${updated.model || '—'})` },

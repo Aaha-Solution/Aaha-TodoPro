@@ -17,4 +17,4 @@ Built with React, Vite, Tailwind CSS, Redux Toolkit, and React Router.
 npm install
 npm run dev
 ```
-Open `http://localhost:5173`
+Open `http://localhost:3000`

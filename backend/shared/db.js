@@ -18,6 +18,7 @@ export const getDbPool = (customConfig = {}) => {
 
   const config = {
     host: customConfig.host || process.env.DB_HOST || 'localhost',
+    port: customConfig.port || (process.env.DB_PORT ? Number(process.env.DB_PORT) : 3307),
     user: customConfig.user || process.env.DB_USER || 'root',
     password: customConfig.password !== undefined ? customConfig.password : (process.env.DB_PASSWORD !== undefined && process.env.DB_PASSWORD !== '' ? process.env.DB_PASSWORD : ''),
     database: targetDb,

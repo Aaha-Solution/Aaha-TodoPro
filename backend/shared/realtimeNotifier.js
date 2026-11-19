@@ -1,12 +1,12 @@
 /**
  * Realtime Event Dispatcher for INEL Microservices
- * Sends broadcast events to the API Gateway WebSocket Hub (Port 5000)
+ * Sends broadcast events to the API Gateway WebSocket Hub (Port 4000)
  */
 
 export const broadcastEvent = async (event, data = {}, room = null) => {
   if (!event) return;
   try {
-    const gatewayUrl = (process.env.GATEWAY_URL || 'http://127.0.0.1:5000').replace(/\/+$/, '');
+    const gatewayUrl = (process.env.GATEWAY_URL || 'http://127.0.0.1:4000').replace(/\/+$/, '');
     const response = await fetch(`${gatewayUrl}/api/internal/broadcast`, {
       method: 'POST',
       headers: {
