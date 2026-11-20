@@ -1,7 +1,13 @@
 import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { parseAttachments, resolveAttachmentUrl, fetchAttachmentImageBase64 } from '../../components/common/attachmentUtils';
+import {
+  parseAttachments,
+  resolveAttachmentUrl,
+  fetchAttachmentImageBase64,
+  fetchAttachmentBinary
+} from '../../components/common/attachmentUtils';
+import { embedOleObjectsInXlsx } from '../../components/common/excelOleUtils';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import nipponLogo from '../../assets/Nippon Logo.png';
 
@@ -286,19 +292,20 @@ export const exportProcessAuditToExcel = async ({
   }
 
   // Parse defect/observation files, temporary evidence files, and permanent evidence files
-  const reqParsedDefectFiles = reqList.map((r) => parseAttachments(r.attachments));
-  const reqParsedTempFiles = reqList.map((r) => parseAttachments(r.temporary_evidence_attachment || r.action_attachments));
-  const reqParsedPermFiles = reqList.map((r) => parseAttachments(r.permanent_evidence_attachment));
+  const reqParsedDefectFiles = reqList.map((r) => parseAttachments(r.attachments, 'process-audit'));
+  const reqParsedTempFiles = reqList.map((r) => parseAttachments(r.temporary_evidence_attachment || r.action_attachments, 'process-audit'));
+  const reqParsedPermFiles = reqList.map((r) => parseAttachments(r.permanent_evidence_attachment, 'process-audit'));
 
   // Determine maximum counts for each evidence category across all exported requests
   const maxDefectCount = Math.max(1, ...reqParsedDefectFiles.map((files) => files.length));
   const maxTempCount = Math.max(1, ...reqParsedTempFiles.map((files) => files.length));
   const maxPermCount = Math.max(1, ...reqParsedPermFiles.map((files) => files.length));
 
-  // Helper to load file metadata and image base64
+  // Helper to load file metadata, image base64, and non-image binary bytes for offline OLE embedding
   const loadFilesData = async (files) => {
     return await Promise.all(
       files.map(async (file) => {
+        const name = file.name || file.filename || (typeof file === 'string' ? file : 'Attachment');
         const isImg = isImageAttachment(file);
         if (isImg) {
           const imgData = await fetchAttachmentImageBase64(file, 'process-audit');
@@ -306,15 +313,18 @@ export const exportProcessAuditToExcel = async ({
             return {
               isImage: true,
               imgData,
+              fileBytes: null,
               name: file.name || file.filename || 'Evidence Image',
               file
             };
           }
         }
+        const binData = await fetchAttachmentBinary(file, 'process-audit');
         return {
           isImage: false,
           imgData: null,
-          name: file.name || file.filename || (typeof file === 'string' ? file : 'Attachment'),
+          fileBytes: binData?.bytes || null,
+          name: binData?.name || name,
           file
         };
       })
@@ -560,6 +570,9 @@ export const exportProcessAuditToExcel = async ({
   const statusCol = reviewedByCol + 1;
   const closedAtCol = statusCol + 1;
 
+  const oleItems = [];
+  const rowHeights = [30, 28]; // Header rows 1 & 2
+
   reqList.forEach((r, idx) => {
     const defectList = rowDefectData[idx] || [];
     const tempList = rowTempData[idx] || [];
@@ -575,7 +588,8 @@ export const exportProcessAuditToExcel = async ({
         const fileItem = fileList[e];
         if (!fileItem) {
           values.push('—');
-        } else if (fileItem.isImage && fileItem.imgData?.base64) {
+        } else if ((fileItem.isImage && fileItem.imgData?.base64) || (!fileItem.isImage && fileItem.fileBytes)) {
+          // Thumbnail image or embedded OLE file icon card will be placed over this cell
           values.push('');
         } else {
           values.push(fileItem.name || 'Attachment');
@@ -659,13 +673,14 @@ export const exportProcessAuditToExcel = async ({
 
     const row = worksheet.addRow(rowData);
 
-    const hasAnyImage = [
+    const hasEmbeddedVisual = [
       ...defectList,
       ...tempList,
       ...permList
-    ].some((f) => f.isImage && f.imgData?.base64);
+    ].some((f) => (f.isImage && f.imgData?.base64) || (!f.isImage && f.fileBytes));
 
-    row.height = hasAnyImage ? 56 : (hasReassignments && count > 1 ? Math.max(36, count * 18) : 24);
+    row.height = hasEmbeddedVisual ? 56 : (hasReassignments && count > 1 ? Math.max(36, count * 18) : 24);
+    rowHeights.push(row.height);
 
     row.eachCell((cell) => {
       cell.font = regularFont;
@@ -699,7 +714,7 @@ export const exportProcessAuditToExcel = async ({
       });
     }
 
-    // Configure Hyperlinks for non-image files or fallback
+    // Helper to configure alignment and offline OLE file embedding (with URL fallback if binary unavailable)
     const configureEvidenceCells = (startCol, maxCount, fileList) => {
       for (let e = 0; e < maxCount; e++) {
         const fileItem = fileList[e];
@@ -707,12 +722,14 @@ export const exportProcessAuditToExcel = async ({
         const evCell = row.getCell(cellCol);
         evCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
 
-        if (!fileItem) {
-          evCell.value = '—';
-          evCell.font = { name: 'Arial', size: 9, color: { argb: 'FF94A3B8' } };
-        } else if (fileItem.isImage && fileItem.imgData?.base64) {
-          evCell.value = '';
-        } else {
+        if (fileItem && !fileItem.isImage && fileItem.fileBytes) {
+          oleItems.push({
+            colZero: cellCol - 1,
+            rowZero: rowNum - 1,
+            fileName: fileItem.name || 'Attachment',
+            fileBytes: fileItem.fileBytes
+          });
+        } else if (fileItem && !fileItem.isImage && fileItem.name) {
           const fileUrl = resolveAttachmentUrl(fileItem.file || fileItem, 'process-audit');
           if (fileUrl) {
             evCell.value = {
@@ -773,7 +790,10 @@ export const exportProcessAuditToExcel = async ({
   const today = new Date().toISOString().slice(0, 10);
   const targetFileName = fileName || `Process_Audit_Analysis_Report_${today}.xlsx`;
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
+  const finalBuffer = oleItems.length > 0
+    ? await embedOleObjectsInXlsx(buffer, oleItems, { sheetIndex: 1, colWidths, rowHeights })
+    : buffer;
+  const blob = new Blob([finalBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   });
   const downloadUrl = URL.createObjectURL(blob);
@@ -783,7 +803,7 @@ export const exportProcessAuditToExcel = async ({
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(downloadUrl);
+  setTimeout(() => URL.revokeObjectURL(downloadUrl), 1500);
 };
 
 /**
