@@ -92,6 +92,11 @@ const AllRequests = () => {
       setSearch(String(target).replace(/^#/, '').trim());
       setShowFilters(true);
     }
+    if (location.state) {
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (_) {}
+    }
   }, [location.state?.search, queryRequestId, location.key]);
   const [selectedShift, setSelectedShift] = useState('All Shifts');
   const [selectedStage, setSelectedStage] = useState('All Stages');
@@ -377,29 +382,6 @@ const AllRequests = () => {
     };
   }, []);
 
-  // Deep-linking from notification or URL query (?requestId=14)
-  useEffect(() => {
-    const target = location.state?.highlightReq || location.state?.search || queryRequestId;
-    if (target && requests.length > 0) {
-      const cleanTarget = String(target).trim().toLowerCase().replace(/^#/, '');
-      const match = requests.find((r) => {
-        const cleanReq = String(r.issue_no || '').trim().toLowerCase().replace(/^#/, '');
-        return (
-          cleanReq === cleanTarget ||
-          cleanReq === `pa-${cleanTarget}` ||
-          cleanTarget === `pa-${cleanReq}` ||
-          String(r.id) === cleanTarget ||
-          String(r.id) === cleanTarget.replace(/^pa-/, '')
-        );
-      });
-      if (match) {
-        setActiveModalRequest(match);
-        try {
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } catch (_) {}
-      }
-    }
-  }, [location.state, queryRequestId, requests, location.key]);
 
   const canUserAccessRequest = (req, user, isAdmin) => {
     if (isAdmin) return true;
