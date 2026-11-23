@@ -472,6 +472,53 @@ export const getNotifications = async (req, res) => {
     const userDept = (req.query.department || req.user?.department || '').trim().toUpperCase();
     const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN' || userDept === 'QAD' || userName.toLowerCase().includes('admin');
 
+    // Auto-sync for QAD/Admin users if they are missing notifications for active requests
+    if (isAdmin && (userId || userName || userEmail)) {
+      const targetUserId = userId || 0;
+      const [missingReqs] = await pool.query(`
+        SELECT r.id, r.issue_no, r.model, r.product, r.created_by, r.executor
+        FROM process_audit_requests r
+        WHERE r.status NOT IN ('Closed', 'closed')
+          AND NOT EXISTS (
+            SELECT 1 FROM process_audit_notifications n
+            WHERE n.request_id = r.id AND (
+              (n.user_id IS NOT NULL AND n.user_id = ?) OR
+              (LOWER(TRIM(n.user_name)) = LOWER(TRIM(?))) OR
+              (? != '' AND LOWER(TRIM(n.user_email)) = LOWER(TRIM(?)))
+            )
+          )
+      `, [targetUserId, userName, userEmail, userEmail]).catch(() => [[]]);
+
+      if (missingReqs && missingReqs.length > 0) {
+        for (const reqItem of missingReqs) {
+          const reqTag = reqItem.issue_no || `PA-${reqItem.id}`;
+          const isCreator = reqItem.created_by && reqItem.created_by.toLowerCase() === userName.toLowerCase();
+          const notifType = isCreator ? 'submission_confirmed' : 'assignment_required';
+          const notifTitle = isCreator ? `Process Audit Finding Logged: #${reqTag}` : `Action Required: Process Audit #${reqTag} Assigned`;
+          const notifMsg = isCreator
+            ? `${reqTag} (${reqItem.model || reqItem.product || 'Audit'}). Request raised by you (${userName}) and assigned to ${reqItem.executor || 'Assigned Lead'}`
+            : `${reqTag} (${reqItem.model || reqItem.product || 'Process'}). Request raised by ${reqItem.created_by || 'Auditor'} and assigned to ${reqItem.executor || 'Assigned Lead'}`;
+          const notifLink = isCreator ? '/process-audit/all-requests' : '/process-audit/approvals';
+
+          await pool.query(`
+            INSERT INTO process_audit_notifications
+            (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+          `, [
+            userId,
+            userName,
+            userEmail,
+            reqItem.id,
+            reqTag,
+            notifType,
+            notifTitle,
+            notifMsg,
+            notifLink
+          ]).catch(() => {});
+        }
+      }
+    }
+
     // Auto-sync fallback: only insert if NO notification of any type exists for this request
     await pool.query(`
       INSERT INTO process_audit_notifications (user_name, user_id, user_email, request_id, issue_no, type, title, message, link)
@@ -497,29 +544,40 @@ export const getNotifications = async (req, res) => {
     `).catch(() => {});
 
     let notifRows = [];
-    let query = `SELECT * FROM process_audit_notifications`;
+    let query = `
+      SELECT 
+        n.*,
+        r.created_by AS raised_by,
+        r.created_by_email AS raised_by_email,
+        r.executor AS assigned_to,
+        r.department AS department_name,
+        r.model AS request_model,
+        r.issue_observation AS request_problem
+      FROM process_audit_notifications n
+      LEFT JOIN process_audit_requests r ON n.request_id = r.id
+    `;
     const params = [];
     const conditions = [];
 
     if (userId) {
-      conditions.push('user_id = ?');
+      conditions.push('n.user_id = ?');
       params.push(userId);
     }
     if (userName) {
-      conditions.push('LOWER(TRIM(user_name)) = LOWER(TRIM(?))');
+      conditions.push('LOWER(TRIM(n.user_name)) = LOWER(TRIM(?))');
       params.push(userName);
-      conditions.push('FIND_IN_SET(?, REPLACE(LOWER(user_name), ", ", ","))');
+      conditions.push('FIND_IN_SET(?, REPLACE(LOWER(n.user_name), ", ", ","))');
       params.push(userName.toLowerCase());
     }
     if (userEmail) {
-      conditions.push('LOWER(TRIM(user_email)) = LOWER(TRIM(?))');
+      conditions.push('LOWER(TRIM(n.user_email)) = LOWER(TRIM(?))');
       params.push(userEmail);
-      conditions.push('FIND_IN_SET(?, REPLACE(LOWER(user_email), ", ", ","))');
+      conditions.push('FIND_IN_SET(?, REPLACE(LOWER(n.user_email), ", ", ","))');
       params.push(userEmail.toLowerCase());
     }
     if (isAdmin) {
       // For Admin / QAD users: only include notifications addressed to generic admin where user_id IS NULL or 0
-      conditions.push("( (user_id IS NULL OR user_id = 0) AND (LOWER(TRIM(user_name)) LIKE '%admin%' OR LOWER(TRIM(user_email)) LIKE '%admin%' OR type LIKE '%admin%') )");
+      conditions.push("( (n.user_id IS NULL OR n.user_id = 0) AND (LOWER(TRIM(n.user_name)) LIKE '%admin%' OR LOWER(TRIM(n.user_email)) LIKE '%admin%' OR n.type LIKE '%admin%') )");
     }
 
     if (conditions.length > 0) {
@@ -528,7 +586,7 @@ export const getNotifications = async (req, res) => {
       return successResponse(res, [], 'Process Audit notifications retrieved');
     }
 
-    query += ` ORDER BY id DESC LIMIT 50`;
+    query += ` ORDER BY n.id DESC LIMIT 50`;
 
     const [rows] = await pool.query(query, params).catch(() => [[]]);
     const rawRows = rows || [];
@@ -544,7 +602,12 @@ export const getNotifications = async (req, res) => {
 
     // Also include synthetic recent request stream if notifications table is empty
     if (notifRows.length === 0) {
-      let requests = (await ProcessAuditRequest.getAll()) || [];
+      let requests = [];
+      try {
+        requests = (await ProcessAuditRequest.findAll()) || [];
+      } catch (reqErr) {
+        console.warn('[Process Audit Notifications] Fallback requests fetch warning:', reqErr.message);
+      }
       if (!isAdmin) {
         if (!userName && !userId && !userEmail) {
           return successResponse(res, [], 'Process Audit notifications retrieved');
@@ -1063,6 +1126,39 @@ export const createRequest = async (req, res) => {
                 `${issueNo} (${created.model || created.product || 'Process Audit'}). Request raised and assigned by ${creatorUser.name} to ${assignedNamesDisplay}`
               ]
             ).catch((err) => console.warn('[PA Notifications] Error inserting CC in-app notification:', err.message));
+          }
+        }
+
+        // Notification D: For All other Quality Admin / QAD users (so all QAD members see the new report logged and assigned)
+        if (pool) {
+          const [qadUsers] = await pool.query(
+            "SELECT id, name, email FROM users WHERE UPPER(role) = 'ADMIN' OR UPPER(department) = 'QAD'"
+          ).catch(() => [[]]);
+
+          if (qadUsers && qadUsers.length > 0) {
+            for (const qadUser of qadUsers) {
+              // Skip the person who created the request (already got Notification A: submission_confirmed)
+              if (qadUser.id && creatorUser.id && String(qadUser.id) === String(creatorUser.id)) continue;
+              // Skip anyone who is an assigned closer (already got Notification B: assignment_required)
+              if (assignedUsersList.some((u) => u.id && String(u.id) === String(qadUser.id))) continue;
+              // Skip anyone who already got a CC notification
+              if (notifyEmailsList.some((e) => (e || '').toLowerCase() === (qadUser.email || '').toLowerCase())) continue;
+
+              await pool.query(
+                `INSERT INTO process_audit_notifications 
+                 (user_id, user_name, user_email, request_id, issue_no, type, title, message, link, is_read) 
+                 VALUES (?, ?, ?, ?, ?, 'assignment_required', ?, ?, '/process-audit/approvals', 0)`,
+                [
+                  qadUser.id,
+                  qadUser.name,
+                  qadUser.email,
+                  created.id,
+                  issueNo,
+                  `Action Required: Process Audit #${issueNo} Assigned`,
+                  `${issueNo} (${created.model || created.product || 'Process'}). Request raised by ${creatorUser.name} and assigned to ${assignedNamesDisplay}`
+                ]
+              ).catch((err) => console.warn('[PA Notifications] Error inserting QAD notification:', err.message));
+            }
           }
         }
       } catch (notifErr) {

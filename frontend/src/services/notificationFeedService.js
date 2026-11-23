@@ -734,10 +734,27 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
         const accentColor = isClosed ? 'emerald' : 'amber';
         const footerFlag = isClosed ? 'CASE_CLOSED' : 'ACTION_REQUIRED';
 
-        const savedRead = getReadOverride('process-audit', resolvedUser, `req-${r.id || idx}`) ?? getReadOverride('process-audit', resolvedUser, reqNo);
+        const reqCardId = `pa-req-${r.id || idx}`;
+        const overrides = getReadOverrides('process-audit', resolvedUser);
+        let isReqRead = isClosed ? true : false;
+        if (overrides[reqCardId] !== undefined) {
+          isReqRead = overrides[reqCardId];
+        } else if (overrides[`req-${r.id}`] !== undefined) {
+          isReqRead = overrides[`req-${r.id}`];
+        } else if (overrides[reqNo] !== undefined) {
+          isReqRead = overrides[reqNo];
+        } else if (overrides[`#${r.id}`] !== undefined) {
+          isReqRead = overrides[`#${r.id}`];
+        } else {
+          const savedRead =
+            getReadOverride('process-audit', resolvedUser, reqCardId) ??
+            getReadOverride('process-audit', resolvedUser, `req-${r.id || idx}`) ??
+            getReadOverride('process-audit', resolvedUser, reqNo);
+          if (savedRead !== null) isReqRead = savedRead;
+        }
 
         streamList.push({
-          id: `pa-req-${r.id || idx}`,
+          id: reqCardId,
           rawId: r.id,
           reqNo,
           badgeLabel,
@@ -746,9 +763,11 @@ export const fetchProcessAuditNotificationsFeed = async (user) => {
           title: `Audit Request ${r.issue_no || r.id}`,
           message: `Request #${r.issue_no || r.id} (${r.model || 'Process'}) - "${r.issue_observation || r.problem || 'Audit observation'}".`,
           timeDisplay: formatStreamDate(r.created_at || r.escalation_date),
+          createdAt: r.created_at || r.escalation_date,
+          rawDate: r.created_at || r.escalation_date,
           subCategory: 'PROCESS AUDIT OBSERVATION',
           footerFlag,
-          read: savedRead !== null ? savedRead : false,
+          read: isReqRead,
           type: r.status || 'info',
           link: isClosed ? '/process-audit/all-requests' : '/process-audit/approvals',
         });
@@ -809,6 +828,8 @@ export const markAllNotificationsReadForTab = async (tab, userName, user = null,
           user_name: userName || resolvedUser?.name,
           user_id: resolvedUser?.id,
           user_email: resolvedUser?.email,
+          role: resolvedUser?.role,
+          department: resolvedUser?.department,
         };
 
   if (Array.isArray(allIds) && allIds.length > 0) {
