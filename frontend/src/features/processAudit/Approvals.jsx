@@ -273,6 +273,24 @@ const ProcessAuditApprovals = () => {
     return list.map(normalizeAttachment).filter(Boolean);
   };
 
+  const renderPriorityValue = (priority) => {
+    if (!priority) return <span className="text-slate-400 font-normal">—</span>;
+    const p = String(priority).toLowerCase();
+    if (p === 'critical') {
+      return <span className="text-purple-700 font-bold text-xs">Critical</span>;
+    }
+    if (p === 'high') {
+      return <span className="text-amber-700 font-bold text-xs">High</span>;
+    }
+    if (p === 'medium') {
+      return <span className="text-amber-600 font-semibold text-xs">Medium</span>;
+    }
+    if (p === 'low') {
+      return <span className="text-emerald-600 font-semibold text-xs">Low</span>;
+    }
+    return <span className="text-slate-700 font-medium text-xs">{priority}</span>;
+  };
+
   const renderPriorityBadge = (priority) => {
     if (!priority) return <span className="text-slate-400 font-normal">—</span>;
     const p = String(priority).toLowerCase();
@@ -1335,6 +1353,8 @@ const ProcessAuditApprovals = () => {
     const creator = String(r.created_by || r.creator || '').toLowerCase();
     const prod = String(r.product || r.production || '').toLowerCase();
     const obs = String(r.issue_observation || r.problem || '').toLowerCase();
+    const issueType = String(r.issue_type || '').toLowerCase();
+    const priority = String(r.priority || '').toLowerCase();
     const remarks = String(r.creator_remark || r.remarks || '').toLowerCase();
     const q = search.trim().toLowerCase();
     const cleanQ = q.replace(/^#/, '').trim();
@@ -1353,6 +1373,8 @@ const ProcessAuditApprovals = () => {
       creator.includes(q) ||
       prod.includes(q) ||
       obs.includes(q) ||
+      issueType.includes(q) ||
+      priority.includes(q) ||
       remarks.includes(q);
 
     const s = (r.status || 'Pending').toLowerCase();
@@ -1472,6 +1494,8 @@ const ProcessAuditApprovals = () => {
           'PRODUCT': r.product || '—',
           'STAGE / MODEL': r.model || r.stage || '—',
           'LINE / OPERATION': r.process_operation || r.line || '—',
+          'ISSUE TYPE': r.issue_type || '—',
+          'PRIORITY': r.priority || '—',
           'AUDIT OBSERVATION': r.issue_observation || r.problem || '—',
           'EXECUTOR': r.executor || '—',
           'ROOT CAUSE': r.root_cause || '—',
@@ -1536,14 +1560,15 @@ const ProcessAuditApprovals = () => {
       doc.text(`Generated: ${today} | Total Records: ${filtered.length} | Status Filter: ${selectedStatus}`, 40, 68);
 
       const tableHeaders = [
-        ['SL', 'REQ NO', 'DATE', 'OBSERVATION & STAGE', 'EXECUTOR', 'ROOT CAUSE', 'ACTION', 'TARGET DATE', 'STATUS']
+        ['SL', 'REQ NO', 'DATE', 'ISSUE TYPE', 'PRIORITY', 'EXECUTOR', 'ROOT CAUSE', 'ACTION', 'TARGET DATE', 'STATUS']
       ];
 
       const tableRows = filtered.map((r, idx) => [
         idx + 1,
         r.issue_no || (r.id ? `PA-${r.id}` : `#${r.id}`),
         r.escalation_date || r.created_at ? formatDateDDMMYYYY(r.escalation_date || r.created_at) : '—',
-        `${r.issue_observation || r.problem || '—'}\n(${r.model || r.stage || '—'} - ${r.process_operation || r.line || '—'})`,
+        r.issue_type || '—',
+        r.priority || '—',
         r.executor || '—',
         r.root_cause || '—',
         r.corrective_action || r.action || '—',
@@ -3125,7 +3150,7 @@ const ProcessAuditApprovals = () => {
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search by req no, problem, or remarks..."
+                placeholder="Search by req no, issue type, priority, or remarks..."
                 value={search}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium transition"
@@ -3178,9 +3203,9 @@ const ProcessAuditApprovals = () => {
                     <th className="py-3 px-3 text-center w-12">SL NO</th>
                     <th className="py-3 px-3">AUDIT REQ NO</th>
                     <th className="py-3 px-3">REQUESTED DATE</th>
-                    <th className="py-3 px-4">PROBLEM &amp; MODEL</th>
+                    <th className="py-3 px-3">ISSUE TYPE</th>
+                    <th className="py-3 px-3">PRIORITY</th>
                     <th className="py-3 px-3">EVIDENCE</th>
-                    <th className="py-3 px-3">ACTION &amp; EVIDENCE</th>
                     <th className="py-3 px-3 text-center">STATUS</th>
                     <th className="py-3 px-3">REMARKS</th>
                     <th className="py-3 px-3 text-center w-14">ACTIONS</th>
@@ -3271,13 +3296,13 @@ const ProcessAuditApprovals = () => {
                               ? formatDateDDMMYYYY(r.escalation_date || r.created_at)
                               : '—'}
                           </td>
-                          <td className="py-3.5 px-4">
-                            <div className="font-semibold text-slate-900 truncate max-w-[180px]" title={problemText}>
-                              {problemText}
-                            </div>
-                            <div className="text-[11px] text-slate-500 truncate max-w-[180px]" title={modelText}>
-                              {modelText}
-                            </div>
+                          <td className="py-3.5 px-3 whitespace-nowrap">
+                            <span className="font-medium text-slate-800" title={r.issue_type || '—'}>
+                              {r.issue_type || '—'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-3 whitespace-nowrap">
+                            {renderPriorityValue(r.priority)}
                           </td>
                           {/* Column 5: AUDIT REQUEST EVIDENCE */}
                           <td className="py-3.5 px-3 cursor-default" onClick={(e) => e.stopPropagation()}>
@@ -3285,32 +3310,7 @@ const ProcessAuditApprovals = () => {
                               rawAttachment={auditEvidence}
                             />
                           </td>
-                          {/* Column 6: CLOSER ACTION & EVIDENCE */}
-                          <td className="py-3.5 px-3 cursor-default" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex flex-col gap-1 max-w-[160px]">
-                              {closerActionText ? (
-                                <div className="text-[11px] font-medium text-slate-800 line-clamp-2">
-                                  {}
-                                </div>
-                              ) : (
-                                <span className="inline-block text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 w-fit">
-                                  Pending
-                                </span>
-                              )}
-                              {closerFilledBy && (
-                                <div className="text-[10px] text-emerald-700 truncate" title={`Filled by: ${closerFilledBy}`}>
-                                  <span className="font-medium text-emerald-600">By: </span>
-                                  <span className="font-bold">{closerFilledBy}</span>
-                                </div>
-                              )}
-                              {closerEvidence && (
-                                <div className="mt-0.5">
-                                  <AttachmentThumbnail rawAttachment={closerEvidence} />
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          {/* Column 7: STATUS */}
+                          {/* Column 6: STATUS */}
                           <td className="py-3.5 px-3 text-center whitespace-nowrap">
                             {isClosed ? (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
