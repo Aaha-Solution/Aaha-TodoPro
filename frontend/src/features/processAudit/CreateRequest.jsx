@@ -33,6 +33,7 @@ import AttachmentPreviewModal from '../../components/common/AttachmentPreviewMod
 import ImageAnnotationModal from '../../components/common/ImageAnnotationModal';
 import DateInput from '../../components/common/DateInput';
 import { storage } from '../../utils/storage';
+import { PROCESS_AUDIT_SHIFTS } from '../../utils/constants';
 
 const DEFAULT_DEPARTMENTS = [
   'QAD',
@@ -1020,10 +1021,11 @@ const CreateRequest = () => {
                   }`}
                 >
                   <option value="">Select Shift</option>
-                  <option value="Morning (06:30 - 03:00)">Morning (06:30 - 03:00)</option>
-                  <option value="Evening (03:00 - 11:30)">Evening (03:00 - 11:30)</option>
-                  <option value="Night (11:30 - 06:00)">Night (11:30 - 06:00)</option>
-                  <option value="General (08:30 - 05:00)">General (08:30 - 05:00)</option>
+                  {PROCESS_AUDIT_SHIFTS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
                 </select>
                 {errors.shift && (
                   <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">

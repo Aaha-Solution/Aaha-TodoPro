@@ -35,6 +35,7 @@ import {
 } from './processAuditExportUtils';
 import DateInput from '../../components/common/DateInput';
 import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
+import { PROCESS_AUDIT_SHIFTS, formatProcessAuditShiftDisplay, getProcessAuditShiftDetails } from '../../utils/constants';
 import { storage } from '../../utils/storage';
 import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
 import { useScrollLock } from '../../hooks/useScrollLock';
@@ -432,7 +433,10 @@ const AllRequests = () => {
 
     const matchesShift =
       selectedShift === 'All Shifts' ||
-      String(req.shift || '').toLowerCase().includes(selectedShift.toLowerCase());
+      String(req.shift || '').toLowerCase().includes(selectedShift.toLowerCase()) ||
+      (selectedShift === 'Shift 1' && (req.shift || '').toLowerCase().includes('morn')) ||
+      (selectedShift === 'Shift 2' && (req.shift || '').toLowerCase().includes('even')) ||
+      (selectedShift === 'Shift 3' && (req.shift || '').toLowerCase().includes('night'));
 
     const matchesStage =
       selectedStage === 'All Stages' ||
@@ -668,10 +672,11 @@ const AllRequests = () => {
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
                 >
                   <option value="All Shifts">All Shifts</option>
-                  <option value="Morning">Morning</option>
-                  <option value="Evening">Evening</option>
-                  <option value="Night">Night</option>
-                  <option value="General">General</option>
+                  {PROCESS_AUDIT_SHIFTS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -891,8 +896,11 @@ const AllRequests = () => {
                           {dateStr}
                         </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[10px] font-bold text-slate-600 font-mono">
-                            {r.shift || 'General'}
+                          <span
+                            className="text-[10px] font-bold text-slate-600 font-mono"
+                            title={getProcessAuditShiftDetails(r.shift)?.timeDisplay || ''}
+                          >
+                            {formatProcessAuditShiftDisplay(r.shift) || 'General'}
                           </span>
                         </div>
                       </td>

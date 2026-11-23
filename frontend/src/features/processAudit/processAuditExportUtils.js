@@ -9,6 +9,7 @@ import {
 } from '../../components/common/attachmentUtils';
 import { embedOleObjectsInXlsx } from '../../components/common/excelOleUtils';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
+import { formatProcessAuditShiftDisplay } from '../../utils/constants';
 import nipponLogo from '../../assets/Nippon Logo.png';
 
 /**
@@ -619,7 +620,7 @@ export const exportProcessAuditToExcel = async ({
       idx + 1,
       reqNo,
       escDate,
-      r.shift || '—',
+      formatProcessAuditShiftDisplay(r.shift) || '—',
       r.product || '—',
       r.model || r.stage || '—',
       r.process_operation || r.line || '—',
@@ -923,7 +924,7 @@ export const exportProcessAuditToPdf = async ({
           { content: 'Escalation Date:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
           escDate,
           { content: 'Work Shift:', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
-          r.shift || 'Shift 1'
+          formatProcessAuditShiftDisplay(r.shift) || 'Shift 1'
         ],
         [
           { content: 'Product :', styles: { fontStyle: 'bold', textColor: [71, 85, 105], fillColor: [248, 250, 252] } },
@@ -1390,7 +1391,7 @@ export const exportProcessAuditToPdf = async ({
     return [
       idx + 1,
       reqNo,
-      `${escDate}\n${r.shift || 'Shift 1'}`,
+      `${escDate}\n${formatProcessAuditShiftDisplay(r.shift) || 'Shift 1'}`,
       `${r.product || '—'}\n${r.model || r.stage || '—'}`,
       r.process_operation || r.line || '—',
       r.issue_observation || r.problem || '—',

@@ -15,7 +15,7 @@ import {
 import DateInput from '../../components/common/DateInput';
 import { formatDateDDMMYYYY } from '../../utils/dateUtils';
 import { getProcessAuditDisplayStatus } from './processAuditExportUtils';
-import { formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
+import { formatProcessAuditShiftDisplay, getProcessAuditShiftDetails } from '../../utils/constants';
 
 const STATUS_COLORS = {
   open: {
@@ -118,10 +118,10 @@ export const ProcessAuditBarChart = ({
 
   const normalizeShift = (val) => {
     const s = String(val || '').toLowerCase().trim();
-    if (s.includes('night') || s.includes('3') || s === 'iii') return 'Night (Shift 3)';
-    if (s.includes('even') || s.includes('2') || s === 'ii') return 'Evening (Shift 2)';
-    if (s.includes('morn') || s.includes('1') || s === 'i') return 'Morning (Shift 1)';
     if (s.includes('gen')) return 'General';
+    if (s.includes('1') || s === 'i' || s.includes('morn')) return 'Shift 1';
+    if (s.includes('2') || s === 'ii' || s.includes('even')) return 'Shift 2';
+    if (s.includes('3') || s === 'iii' || s.includes('night')) return 'Shift 3';
     return 'General';
   };
 
@@ -226,13 +226,13 @@ export const ProcessAuditBarChart = ({
     }
 
     if (activeTab === 'shift') {
-      const shiftList = ['Morning (Shift 1)', 'Evening (Shift 2)', 'Night (Shift 3)', 'General'];
+      const shiftList = ['Shift 1', 'Shift 2', 'Shift 3', 'General'];
       if (hasRequests) {
         return shiftList.map((shiftName) => {
           const sReqs = requests.filter((r) => normalizeShift(r.shift) === shiftName);
           return {
             key: shiftName,
-            label: shiftName.replace(' (Shift ', '\nS').replace(')', ''),
+            label: shiftName,
             rawLabel: shiftName,
             total: sReqs.length,
             open: sReqs.filter((r) => getStatusCategory(r) === 'open').length,
@@ -242,7 +242,10 @@ export const ProcessAuditBarChart = ({
         });
       }
       if (stats.shiftBreakdown && stats.shiftBreakdown.length > 0) {
-        return stats.shiftBreakdown.map((item) => ({ key: item.shift, label: item.shift, ...item }));
+        return stats.shiftBreakdown.map((item) => {
+          const norm = normalizeShift(item.shift);
+          return { key: norm, label: norm, ...item, shift: norm };
+        });
       }
       return shiftList.map((s) => ({ key: s, label: s, total: 0, open: 0, inProgress: 0, closed: 0 }));
     }

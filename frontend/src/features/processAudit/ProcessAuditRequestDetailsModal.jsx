@@ -41,6 +41,7 @@ import { parseAttachments, resolveAttachmentUrl } from '../../components/common/
 import { exportProcessAuditToExcel, exportProcessAuditToPdf, formatReassignmentHistory, resolveAuditorEmail } from './processAuditExportUtils';
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
+import { PROCESS_AUDIT_SHIFTS, formatProcessAuditShiftDisplay, getProcessAuditShiftDetails } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
 import { useScrollLock } from '../../hooks/useScrollLock';
 import { processAuditService } from '../../services/processAuditService';
@@ -1044,7 +1045,7 @@ const ProcessAuditRequestDetailsModal = ({
                       </div>
                     )}
                     <div className="text-[10px] text-slate-400 font-mono">
-                      {escDate || '—'} ({req.shift || 'Shift 1'})
+                      {escDate || '—'} ({formatProcessAuditShiftDisplay(req.shift) || 'Shift 1'})
                     </div>
                   </div>
 
@@ -1642,14 +1643,13 @@ const ProcessAuditRequestDetailsModal = ({
                       }}
                       className="w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-900 bg-white border border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition"
                     >
-                      <option value="Morning (06:30 - 03:00)">Morning (06:30 - 03:00)</option>
-                      <option value="Evening (03:00 - 11:30)">Evening (03:00 - 11:30)</option>
-                      <option value="Night (11:30 - 06:00)">Night (11:30 - 06:00)</option>
-                      <option value="General (08:30 - 05:00)">General (08:30 - 05:00)</option>
-                      <option value="Shift 1">Shift 1 (06:30 AM - 03:00 PM)</option>
-                      <option value="Shift 2">Shift 2 (03:00 PM - 11:30 PM)</option>
-                      <option value="Shift 3">Shift 3 (11:30 PM - 06:30 AM)</option>
-                      {editFormData.shift && !['Shift 1', 'Shift 2', 'Shift 3', 'Morning (06:30 - 03:00)', 'Evening (03:00 - 11:30)', 'Night (11:30 - 06:00)', 'General (08:30 - 05:00)'].includes(editFormData.shift) && (
+                      <option value="">Select Shift</option>
+                      {PROCESS_AUDIT_SHIFTS.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.label}
+                        </option>
+                      ))}
+                      {editFormData.shift && !PROCESS_AUDIT_SHIFTS.some(s => s.id === editFormData.shift) && (
                         <option value={editFormData.shift}>{editFormData.shift}</option>
                       )}
                     </select>
@@ -1926,7 +1926,12 @@ const ProcessAuditRequestDetailsModal = ({
                       SHIFT
                     </span>
                     <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                      <strong className="text-slate-800 font-semibold">{req.shift || 'Shift 1'}</strong>
+                      <strong className="text-slate-800 font-semibold">{formatProcessAuditShiftDisplay(req.shift) || 'Shift 1'}</strong>
+                      {getProcessAuditShiftDetails(req.shift)?.timeDisplay && (
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-mono font-medium border border-blue-100">
+                          {getProcessAuditShiftDetails(req.shift).timeDisplay}
+                        </span>
+                      )}
                     </div>
                   </div>
 

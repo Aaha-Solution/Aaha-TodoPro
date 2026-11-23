@@ -26,7 +26,7 @@ import DateInput from '../../components/common/DateInput';
 import { useAuth } from '../../hooks/useAuth';
 import { useModal } from '../../context/ModalContext';
 import { formatDateDDMMYYYY, parseDateToYYYYMMDD } from '../../utils/dateUtils';
-import { DEPARTMENTS, formatIhlrShiftDisplay, getIhlrShiftDetails } from '../../utils/constants';
+import { DEPARTMENTS, formatProcessAuditShiftDisplay, getProcessAuditShiftDetails } from '../../utils/constants';
 import ProcessAuditRequestDetailsModal from './ProcessAuditRequestDetailsModal';
 
 const ProcessAuditDashboard = () => {

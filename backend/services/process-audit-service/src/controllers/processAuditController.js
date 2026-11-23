@@ -312,13 +312,13 @@ export const getDashboardMetrics = async (req, res) => {
     // 3. Shift Breakdown
     const normalizeShift = (val) => {
       const s = String(val || '').toLowerCase().trim();
-      if (s.includes('night') || s.includes('3') || s === 'iii') return 'Night (Shift 3)';
-      if (s.includes('even') || s.includes('2') || s === 'ii') return 'Evening (Shift 2)';
-      if (s.includes('morn') || s.includes('1') || s === 'i') return 'Morning (Shift 1)';
       if (s.includes('gen')) return 'General';
+      if (s.includes('1') || s === 'i' || s.includes('morn')) return 'Shift 1';
+      if (s.includes('2') || s === 'ii' || s.includes('even')) return 'Shift 2';
+      if (s.includes('3') || s === 'iii' || s.includes('night')) return 'Shift 3';
       return 'General';
     };
-    const shiftList = ['Morning (Shift 1)', 'Evening (Shift 2)', 'Night (Shift 3)', 'General'];
+    const shiftList = ['Shift 1', 'Shift 2', 'Shift 3', 'General'];
     const shiftBreakdown = shiftList.map(shiftName => {
       const sReqs = (chartRows || []).filter(r => normalizeShift(r.shift) === shiftName);
       return {
@@ -860,7 +860,7 @@ export const getNextId = async (req, res) => {
 
 export const getAllRequests = async (req, res) => {
   try {
-    const { created_by, created_by_id, executor, user, role, scope, is_dashboard, all, department } = req.query;
+    const { created_by, created_by_id, executor, user, role, scope, is_dashboard, all, department, shift } = req.query;
 
     const authHeader = req.headers.authorization;
     let tokenUser = null;
@@ -887,6 +887,10 @@ export const getAllRequests = async (req, res) => {
 
     if (effectiveDept) {
       filters.department = effectiveDept;
+    }
+
+    if (shift && shift !== 'All') {
+      filters.shift = shift;
     }
 
     const isMyRequestsScope = scope === 'my' || scope === 'my_requests' || req.query.my === 'true';

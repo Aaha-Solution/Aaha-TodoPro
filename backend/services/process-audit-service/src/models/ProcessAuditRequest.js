@@ -448,6 +448,23 @@ export const ProcessAuditRequest = {
       params.push(filters.department);
     }
 
+    // Filter by shift
+    if (filters.shift && filters.shift !== 'All') {
+      const s = String(filters.shift).trim().toLowerCase();
+      if (s.includes('1') || s === 'i' || s.includes('morn')) {
+        conditions.push(`(LOWER(r.shift) LIKE '%1%' OR LOWER(r.shift) LIKE '%morn%')`);
+      } else if (s.includes('2') || s === 'ii' || s.includes('even')) {
+        conditions.push(`(LOWER(r.shift) LIKE '%2%' OR LOWER(r.shift) LIKE '%even%')`);
+      } else if (s.includes('3') || s === 'iii' || s.includes('night')) {
+        conditions.push(`(LOWER(r.shift) LIKE '%3%' OR LOWER(r.shift) LIKE '%night%')`);
+      } else if (s.includes('gen')) {
+        conditions.push(`LOWER(r.shift) LIKE '%gen%'`);
+      } else {
+        conditions.push(`LOWER(TRIM(r.shift)) = LOWER(TRIM(?))`);
+        params.push(filters.shift);
+      }
+    }
+
     if (conditions.length > 0) {
       query += ` WHERE ` + conditions.join(' AND ');
     }

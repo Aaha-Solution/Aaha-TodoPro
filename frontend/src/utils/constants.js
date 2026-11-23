@@ -66,6 +66,57 @@ export const getIhlrShiftDetails = (shiftVal) => {
   return null;
 };
 
+export const PROCESS_AUDIT_SHIFTS = [
+  {
+    id: 'Shift 1',
+    name: 'Shift 1',
+    timing: '06:30 - 15:00',
+    timeDisplay: '06:30 AM - 03:00 PM',
+    label: 'Shift 1 (06:30 AM - 03:00 PM)'
+  },
+  {
+    id: 'Shift 2',
+    name: 'Shift 2',
+    timing: '15:00 - 23:30',
+    timeDisplay: '03:00 PM - 11:30 PM',
+    label: 'Shift 2 (03:00 PM - 11:30 PM)'
+  },
+  {
+    id: 'Shift 3',
+    name: 'Shift 3',
+    timing: '23:30 - 06:00',
+    timeDisplay: '11:30 PM - 06:00 AM',
+    label: 'Shift 3 (11:30 PM - 06:00 AM)'
+  },
+  {
+    id: 'General',
+    name: 'General',
+    timing: '08:30 - 17:00',
+    timeDisplay: '08:30 AM - 05:00 PM',
+    label: 'General (08:30 AM - 05:00 PM)'
+  }
+];
+
+export const getProcessAuditShiftDetails = (shiftVal) => {
+  if (!shiftVal) return null;
+  const s = String(shiftVal).trim().toLowerCase();
+  if (s.includes('gen')) return PROCESS_AUDIT_SHIFTS[3];
+  if (s.includes('1') || s === 'i' || s.includes('morn')) return PROCESS_AUDIT_SHIFTS[0];
+  if (s.includes('2') || s === 'ii' || s.includes('even')) return PROCESS_AUDIT_SHIFTS[1];
+  if (s.includes('3') || s === 'iii' || s.includes('night')) return PROCESS_AUDIT_SHIFTS[2];
+  return null;
+};
+
+export const formatProcessAuditShiftDisplay = (shiftVal, includeTiming = false) => {
+  const details = getProcessAuditShiftDetails(shiftVal);
+  if (details) {
+    return includeTiming ? `${details.name} (${details.timeDisplay})` : details.name;
+  }
+  const s = String(shiftVal || '').trim();
+  if (!s) return '—';
+  return s.toLowerCase().startsWith('shift') || s.toLowerCase().includes('gen') ? s : `Shift ${s}`;
+};
+
 export const getCurrentIhlrShift = () => {
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
