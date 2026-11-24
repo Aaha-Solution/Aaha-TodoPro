@@ -67,6 +67,21 @@ const IhlrCreateRequest = () => {
   const [annotatingItem, setAnnotatingItem] = useState(null);
   const [errors, setErrors] = useState({});
 
+  // Responsive screen width handling for mobile, tablet, and desktop
+  const [screenWidth, setScreenWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+
+  useEffect(() => {
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = screenWidth < 768;
+  const isTablet = screenWidth >= 768 && screenWidth < 1024;
+  const isDesktop = screenWidth >= 1024;
+
   const MANDATORY_FIELD_LABELS = {
     batch_date: 'Incident Date',
     shift: 'Shift',
@@ -808,54 +823,117 @@ const IhlrCreateRequest = () => {
   }
 
   return (
-    <div className="space-y-6 w-full pb-16">
+    <div
+      className="space-y-6 w-full pb-16"
+      style={{
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        overflowX: 'hidden',
+        paddingBottom: isMobile ? '32px' : '64px',
+        boxSizing: 'border-box'
+      }}
+    >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          justifyContent: 'space-between',
+          gap: isMobile ? '12px' : '16px',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
+        }}
+      >
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1
+            className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+            style={{
+              fontSize: isMobile ? '22px' : isTablet ? '26px' : '30px',
+              lineHeight: isMobile ? '28px' : isTablet ? '32px' : '36px',
+              fontWeight: 800,
+              color: '#0f172a',
+              letterSpacing: '-0.025em',
+              margin: 0
+            }}
+          >
             {isEditMode ? `Edit Requester Details (${formData.req_no})` : 'Create IHLR Analysis Report'}
           </h1>
-
         </div>
-
-
       </div>
 
       {hasRestoredDraft && (
-        <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50/90 border border-blue-200/90 rounded-xl text-xs text-blue-800 shadow-2xs">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+        <div
+          className="flex items-center justify-between px-4 py-2.5 bg-blue-50/90 border border-blue-200/90 rounded-xl text-xs text-blue-800 shadow-2xs"
+          style={{
+            padding: '10px 14px',
+            borderRadius: '10px',
+            fontSize: '11px',
+            boxSizing: 'border-box',
+            maxWidth: '100%',
+            minWidth: 0
+          }}
+        >
+          <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" style={{ width: '8px', height: '8px', borderRadius: '9999px', backgroundColor: '#2563eb' }} />
             <span><strong>Draft Restored:</strong> Your form inputs were preserved across tab switching.</span>
           </div>
           <button
             type="button"
             onClick={handleResetForm}
             className="text-xs text-blue-700 hover:text-red-600 font-semibold underline ml-3 cursor-pointer shrink-0 transition"
+            style={{ fontSize: '11px', cursor: 'pointer' }}
           >
             Discard Draft
           </button>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-6">
+      <form onSubmit={handleSubmit} noValidate className="space-y-6" style={{ width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
         {/* Section 1: Requestor & Incident Information */}
-        <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs space-y-5">
-          <div className="flex items-start gap-3 pb-4 border-b border-slate-100">
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <FileText className="w-4 h-4" />
+        <div
+          className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs space-y-5"
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: isMobile ? '14px' : '16px',
+            padding: isMobile ? '16px' : isTablet ? '20px' : '28px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
+          <div className="flex items-start gap-3 pb-4 border-b border-slate-100" style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center" style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#fffbeb', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FileText className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide" style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: 700, textTransform: 'uppercase', color: '#0f172a', margin: 0 }}>
                 1. Requestor &amp; Line Defect Details
               </h2>
-
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
+              gap: isMobile ? '12px' : '16px',
+              width: '100%',
+              maxWidth: '100%',
+              minWidth: 0,
+              boxSizing: 'border-box'
+            }}
+          >
             {/* Req No */}
-            <div>
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+            <div style={{ minWidth: 0 }}>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>Req No (Auto-Generated)</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
@@ -863,13 +941,20 @@ const IhlrCreateRequest = () => {
                 type="text"
                 readOnly
                 value={formData.req_no}
-                className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl font-mono font-bold text-slate-700 focus:outline-none cursor-not-allowed select-none"
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box'
+                }}
+                className="w-full bg-slate-100 border border-slate-200 font-mono font-bold text-slate-700 focus:outline-none cursor-not-allowed select-none"
               />
             </div>
 
             {/* Created By (Manual entry by user - Text only) */}
-            <div id="field-created_by">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center justify-between">
+            <div id="field-created_by" style={{ minWidth: 0 }}>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center justify-between" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span className="flex items-center">
                   <span>Created By</span>
                   <span className="text-slate-400 font-normal lowercase ml-1.5 text-[10px]">(optional)</span>
@@ -882,6 +967,13 @@ const IhlrCreateRequest = () => {
                 type="text"
                 placeholder={`e.g. Leave empty to attach ${getLoggedInUserName()}`}
                 value={formData.created_by || ''}
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box'
+                }}
                 onKeyDown={(e) => {
                   if (e.key === ' ' && (!formData.created_by || e.target.selectionStart === 0)) {
                     e.preventDefault();
@@ -903,21 +995,21 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 onBlur={() => setFormData((prev) => ({ ...prev, created_by: (prev.created_by || '').trim() }))}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition ${errors.created_by
+                className={`w-full border text-slate-900 outline-none font-semibold transition ${errors.created_by
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                   : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.created_by && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {errors.created_by}</span>
                 </p>
               )}
             </div>
 
             {/* Incident Date */}
-            <div id="field-batch_date">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center justify-between">
+            <div id="field-batch_date" style={{ minWidth: 0 }}>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center justify-between" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span className="flex items-center">
                   <span>Incident Date</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
@@ -927,6 +1019,13 @@ const IhlrCreateRequest = () => {
               <DateInput
                 value={formData.batch_date}
                 max={getTodayDateInput()}
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box'
+                }}
                 onChange={(e) => {
                   const val = e.target.value;
                   const today = getTodayDateInput();
@@ -937,33 +1036,40 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, batch_date: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition ${errors.batch_date
+                className={`w-full border text-slate-900 outline-none font-medium transition ${errors.batch_date
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                   : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.batch_date && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {errors.batch_date}</span>
                 </p>
               )}
             </div>
 
             {/* Shift */}
-            <div id="field-shift">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+            <div id="field-shift" style={{ minWidth: 0 }}>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>Shift</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <select
                 value={formData.shift}
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box'
+                }}
                 onChange={(e) => {
                   setFormData({ ...formData, shift: e.target.value });
                   if (errors.shift && e.target.value) {
                     setErrors((prev) => ({ ...prev, shift: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition cursor-pointer ${errors.shift
+                className={`w-full border text-slate-900 outline-none font-medium transition cursor-pointer ${errors.shift
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                   : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
@@ -976,15 +1082,15 @@ const IhlrCreateRequest = () => {
                 ))}
               </select>
               {errors.shift && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {errors.shift}</span>
                 </p>
               )}
             </div>
 
             {/* Model */}
-            <div id="field-model">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+            <div id="field-model" style={{ minWidth: 0 }}>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>Model Name / Part</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
@@ -992,6 +1098,13 @@ const IhlrCreateRequest = () => {
                 type="text"
                 placeholder="e.g. OLS LONG ARM"
                 value={formData.model}
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box'
+                }}
                 onKeyDown={(e) => {
                   if (e.key === ' ' && (!formData.model || e.target.selectionStart === 0)) {
                     e.preventDefault();
@@ -1005,21 +1118,28 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 onBlur={() => setFormData((prev) => ({ ...prev, model: (prev.model || '').trim() }))}
-                className={`w-full px-3 py-2 border rounded-xl font-semibold text-slate-900 outline-none transition ${errors.model
+                className={`w-full border font-semibold text-slate-900 outline-none transition ${errors.model
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                   : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.model && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {errors.model}</span>
                 </p>
               )}
             </div>
 
             {/* Problem Description */}
-            <div id="field-problem" className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+            <div
+              id="field-problem"
+              className="sm:col-span-2"
+              style={{
+                gridColumn: isMobile ? '1 / -1' : isTablet ? '1 / -1' : 'span 2 / span 2',
+                minWidth: 0
+              }}
+            >
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>Problem / Defect Description</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
@@ -1027,6 +1147,13 @@ const IhlrCreateRequest = () => {
                 type="text"
                 placeholder="e.g. Low voltage / Improper sensor solder"
                 value={formData.problem}
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box'
+                }}
                 onKeyDown={(e) => {
                   if (e.key === ' ' && (!formData.problem || e.target.selectionStart === 0)) {
                     e.preventDefault();
@@ -1040,21 +1167,21 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 onBlur={() => setFormData((prev) => ({ ...prev, problem: (prev.problem || '').trim() }))}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-semibold transition ${errors.problem
+                className={`w-full border text-slate-900 outline-none font-semibold transition ${errors.problem
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                   : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.problem && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {errors.problem}</span>
                 </p>
               )}
             </div>
 
             {/* Problem Detected At */}
-            <div id="field-problem_detected_at">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+            <div id="field-problem_detected_at" style={{ minWidth: 0 }}>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>Problem Detected At</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
@@ -1062,6 +1189,13 @@ const IhlrCreateRequest = () => {
                 type="text"
                 placeholder="e.g. Final Testing"
                 value={formData.problem_detected_at}
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box'
+                }}
                 onKeyDown={(e) => {
                   if (e.key === ' ' && (!formData.problem_detected_at || e.target.selectionStart === 0)) {
                     e.preventDefault();
@@ -1075,33 +1209,40 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 onBlur={() => setFormData((prev) => ({ ...prev, problem_detected_at: (prev.problem_detected_at || '').trim() }))}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none transition ${errors.problem_detected_at
+                className={`w-full border text-slate-900 outline-none transition ${errors.problem_detected_at
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                   : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.problem_detected_at && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {errors.problem_detected_at}</span>
                 </p>
               )}
             </div>
 
             {/* Received From */}
-            <div id="field-received_from">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+            <div id="field-received_from" style={{ minWidth: 0 }}>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>Received From (Line/D3)</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <select
                 value={formData.received_from}
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box'
+                }}
                 onChange={(e) => {
                   setFormData({ ...formData, received_from: e.target.value });
                   if (errors.received_from && e.target.value) {
                     setErrors((prev) => ({ ...prev, received_from: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition cursor-pointer ${errors.received_from
+                className={`w-full border text-slate-900 outline-none font-medium transition cursor-pointer ${errors.received_from
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                   : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
@@ -1117,15 +1258,15 @@ const IhlrCreateRequest = () => {
                 )}
               </select>
               {errors.received_from && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {errors.received_from}</span>
                 </p>
               )}
             </div>
 
             {/* Analysis Done By */}
-            <div id="field-analysis_done_by">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+            <div id="field-analysis_done_by" style={{ minWidth: 0 }}>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>Analysis Done By</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
@@ -1133,6 +1274,13 @@ const IhlrCreateRequest = () => {
                 type="text"
                 placeholder="e.g. GURU"
                 value={formData.analysis_done_by}
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box'
+                }}
                 onKeyDown={(e) => {
                   if (e.key === ' ' && (!formData.analysis_done_by || e.target.selectionStart === 0)) {
                     e.preventDefault();
@@ -1154,21 +1302,21 @@ const IhlrCreateRequest = () => {
                   }
                 }}
                 onBlur={() => setFormData((prev) => ({ ...prev, analysis_done_by: (prev.analysis_done_by || '').trim() }))}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-medium transition ${errors.analysis_done_by
+                className={`w-full border text-slate-900 outline-none font-medium transition ${errors.analysis_done_by
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                   : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.analysis_done_by && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {errors.analysis_done_by}</span>
                 </p>
               )}
             </div>
 
             {/* Actual Quantity */}
-            <div id="field-actual_qty">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+            <div id="field-actual_qty" style={{ minWidth: 0 }}>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>Actual Rejected Qty</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
@@ -1177,39 +1325,53 @@ const IhlrCreateRequest = () => {
                 min="1"
                 placeholder="e.g. 1"
                 value={formData.actual_qty}
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box'
+                }}
                 onChange={(e) => {
                   setFormData({ ...formData, actual_qty: e.target.value });
                   if (errors.actual_qty && e.target.value && Number(e.target.value) > 0) {
                     setErrors((prev) => ({ ...prev, actual_qty: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-mono transition ${errors.actual_qty
+                className={`w-full border text-slate-900 outline-none font-mono transition ${errors.actual_qty
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                   : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
               />
               {errors.actual_qty && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {errors.actual_qty}</span>
                 </p>
               )}
             </div>
 
             {/* 4M Category */}
-            <div id="field-four_m">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+            <div id="field-four_m" style={{ minWidth: 0 }}>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>4M Category</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <select
                 value={formData.four_m}
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box'
+                }}
                 onChange={(e) => {
                   setFormData({ ...formData, four_m: e.target.value });
                   if (errors.four_m && e.target.value) {
                     setErrors((prev) => ({ ...prev, four_m: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-bold transition cursor-pointer ${errors.four_m
+                className={`w-full border text-slate-900 outline-none font-bold transition cursor-pointer ${errors.four_m
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                   : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
@@ -1221,20 +1383,34 @@ const IhlrCreateRequest = () => {
                 <option value="MATERIAL">MATERIAL</option>
               </select>
               {errors.four_m && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {errors.four_m}</span>
                 </p>
               )}
             </div>
 
             {/* Responsibility (Department) */}
-            <div id="field-resp" className="sm:col-span-1 lg:col-span-2">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center">
+            <div
+              id="field-resp"
+              className="sm:col-span-1 lg:col-span-2"
+              style={{
+                gridColumn: isMobile ? '1 / -1' : isTablet ? 'span 1 / span 1' : 'span 2 / span 2',
+                minWidth: 0
+              }}
+            >
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>Responsibility (Resp)</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
               <select
                 value={formData.resp}
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box'
+                }}
                 onChange={(e) => {
                   const val = e.target.value;
                   setFormData({ ...formData, resp: val, resp_person: '' });
@@ -1244,7 +1420,7 @@ const IhlrCreateRequest = () => {
                     setErrors((prev) => ({ ...prev, resp: false }));
                   }
                 }}
-                className={`w-full px-3 py-2 border rounded-xl text-slate-900 outline-none font-bold cursor-pointer transition ${errors.resp
+                className={`w-full border text-slate-900 outline-none font-bold cursor-pointer transition ${errors.resp
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                   : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
@@ -1259,16 +1435,24 @@ const IhlrCreateRequest = () => {
                 <option value="INCOMING QUALITY">INCOMING QUALITY</option>
               </select>
               {errors.resp && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {errors.resp}</span>
                 </p>
               )}
             </div>
 
             {/* Responsible Person(s) / User Name based on Department - Multi-Select */}
-            <div id="field-resp_person" className="relative sm:col-span-1 lg:col-span-2" ref={userDropdownRef}>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center">
+            <div
+              id="field-resp_person"
+              className="relative sm:col-span-1 lg:col-span-2"
+              ref={userDropdownRef}
+              style={{
+                gridColumn: isMobile ? '1 / -1' : isTablet ? 'span 1 / span 1' : 'span 2 / span 2',
+                minWidth: 0
+              }}
+            >
+              <div className="flex items-center justify-between mb-1" style={{ marginBottom: '4px' }}>
+                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center" style={{ fontSize: '11px' }}>
                   <span>User Name (Based on Dep)</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
@@ -1277,6 +1461,7 @@ const IhlrCreateRequest = () => {
                     type="button"
                     onClick={handleClearAllUsers}
                     className="text-rose-600 hover:text-rose-700 font-semibold text-[10px] hover:underline cursor-pointer"
+                    style={{ fontSize: '10px' }}
                   >
                     Clear All ({getSelectedUsers().length})
                   </button>
@@ -1290,7 +1475,14 @@ const IhlrCreateRequest = () => {
                     setIsUserDropdownOpen((prev) => !prev);
                   }
                 }}
-                className={`w-full min-h-[42px] px-3 py-2 border rounded-xl text-xs font-medium transition flex items-center justify-between gap-2 ${errors.resp_person
+                style={{
+                  minHeight: '38px',
+                  borderRadius: '10px',
+                  padding: '6px 12px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  boxSizing: 'border-box'
+                }}
+                className={`w-full border font-medium transition flex items-center justify-between gap-2 ${errors.resp_person
                   ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20 cursor-pointer'
                   : !formData.resp
                     ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
@@ -1301,7 +1493,7 @@ const IhlrCreateRequest = () => {
                         : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-800 cursor-pointer'
                   }`}
               >
-                <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
+                <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0" style={{ gap: '6px' }}>
                   {!formData.resp ? (
                     <span className="text-slate-400 font-normal">Select Department First</span>
                   ) : getDepartmentUsers(formData.resp).length === 0 ? (
@@ -1313,6 +1505,7 @@ const IhlrCreateRequest = () => {
                       <span
                         key={userName}
                         className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-semibold"
+                        style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px' }}
                       >
                         <span className="truncate max-w-[140px]">{userName}</span>
                         <button
@@ -1321,7 +1514,7 @@ const IhlrCreateRequest = () => {
                           className="p-0.5 hover:bg-blue-200/60 rounded text-blue-600 hover:text-blue-900 transition cursor-pointer"
                           title={`Remove ${userName}`}
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-3 h-3" style={{ width: '12px', height: '12px' }} />
                         </button>
                       </span>
                     ))
@@ -1330,18 +1523,19 @@ const IhlrCreateRequest = () => {
 
                 <div className="flex items-center gap-1.5 shrink-0 text-slate-400">
                   {getSelectedUsers().length > 0 && (
-                    <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-md text-[10px] font-bold">
+                    <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-md text-[10px] font-bold" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>
                       {getSelectedUsers().length}
                     </span>
                   )}
                   <ChevronDown
                     className={`w-4 h-4 transition-transform duration-200 ${isUserDropdownOpen ? 'rotate-180 text-blue-600' : ''
                       }`}
+                    style={{ width: '16px', height: '16px' }}
                   />
                 </div>
               </div>
               {errors.resp_person && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {errors.resp_person}</span>
                 </p>
               )}
@@ -1358,25 +1552,34 @@ const IhlrCreateRequest = () => {
 
               {/* Dropdown Menu */}
               {isUserDropdownOpen && formData.resp && getDepartmentUsers(formData.resp).length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div
+                  className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                  style={{
+                    borderRadius: '14px',
+                    marginTop: '6px',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box'
+                  }}
+                >
                   {/* Search box inside dropdown if more than 2 options */}
                   {getDepartmentUsers(formData.resp).length > 2 && (
-                    <div className="p-2 border-b border-slate-100 bg-slate-50/70">
+                    <div className="p-2 border-b border-slate-100 bg-slate-50/70" style={{ padding: '8px' }}>
                       <div className="relative">
-                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" style={{ width: '14px', height: '14px', left: '10px' }} />
                         <input
                           type="text"
                           value={userSearchTerm}
                           onChange={(e) => setUserSearchTerm(e.target.value)}
                           placeholder="Search user by name..."
-                          className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          style={{ height: '34px', fontSize: '12px', paddingLeft: '32px', paddingRight: '12px', borderRadius: '8px' }}
+                          className="w-full bg-white border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           onClick={(e) => e.stopPropagation()}
                         />
                       </div>
                     </div>
                   )}
 
-                  <div className="max-h-56 overflow-y-auto p-1.5 divide-y divide-slate-50">
+                  <div className="max-h-56 overflow-y-auto p-1.5 divide-y divide-slate-50" style={{ maxHeight: '224px', padding: '6px' }}>
                     {getDepartmentUsers(formData.resp)
                       .filter((u) => {
                         const q = userSearchTerm.toLowerCase();
@@ -1392,27 +1595,29 @@ const IhlrCreateRequest = () => {
                               ? 'bg-blue-50/80 text-blue-900 font-semibold'
                               : 'hover:bg-slate-50 text-slate-700'
                               }`}
+                            style={{ padding: '8px 12px', borderRadius: '10px' }}
                           >
-                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2" style={{ gap: '10px' }}>
                               <div
                                 className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${isChecked
                                   ? 'bg-blue-600 border-blue-600 text-white'
                                   : 'border-slate-300 bg-white'
                                   }`}
+                                style={{ width: '16px', height: '16px', borderRadius: '4px' }}
                               >
-                                {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                                {isChecked && <Check className="w-3 h-3 stroke-[3]" style={{ width: '12px', height: '12px' }} />}
                               </div>
                               <div className="min-w-0">
-                                <div className="text-xs truncate">{u.name}</div>
+                                <div className="text-xs truncate" style={{ fontSize: '12px' }}>{u.name}</div>
                                 {u.email && (
-                                  <div className="text-[10px] text-slate-400 truncate">
+                                  <div className="text-[10px] text-slate-400 truncate" style={{ fontSize: '10px' }}>
                                     {u.email}
                                   </div>
                                 )}
                               </div>
                             </div>
                             {isChecked && (
-                              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider shrink-0">
+                              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider shrink-0" style={{ fontSize: '10px' }}>
                                 Selected
                               </span>
                             )}
@@ -1422,14 +1627,15 @@ const IhlrCreateRequest = () => {
                   </div>
 
                   {/* Dropdown footer */}
-                  <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs">
-                    <span className="text-[11px] text-slate-500">
+                  <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs" style={{ padding: '8px 12px', fontSize: '12px' }}>
+                    <span className="text-[11px] text-slate-500" style={{ fontSize: '11px' }}>
                       {getSelectedUsers().length} of {getDepartmentUsers(formData.resp).length} selected
                     </span>
                     <button
                       type="button"
                       onClick={() => setIsUserDropdownOpen(false)}
                       className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer"
+                      style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '12px' }}
                     >
                       Done
                     </button>
@@ -1439,10 +1645,17 @@ const IhlrCreateRequest = () => {
             </div>
 
             {/* Optional Notify / CC Emails across all departments - Multi-Select with Search */}
-            <div className="relative sm:col-span-2 lg:col-span-4" ref={notifyEmailDropdownRef}>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-indigo-600" />
+            <div
+              className="relative sm:col-span-2 lg:col-span-4"
+              ref={notifyEmailDropdownRef}
+              style={{
+                gridColumn: '1 / -1',
+                minWidth: 0
+              }}
+            >
+              <div className="flex items-center justify-between mb-1" style={{ marginBottom: '4px' }}>
+                <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5" style={{ fontSize: '11px' }}>
+                  <Mail className="w-3.5 h-3.5 text-indigo-600" style={{ width: '14px', height: '14px' }} />
                   <span>Notify / CC Emails (All Users)</span>
                   <span className="text-[10px] font-semibold text-slate-400 lowercase italic tracking-normal">(optional)</span>
                 </label>
@@ -1451,6 +1664,7 @@ const IhlrCreateRequest = () => {
                     type="button"
                     onClick={handleClearAllNotifyEmails}
                     className="text-rose-600 hover:text-rose-700 font-semibold text-[10px] hover:underline cursor-pointer"
+                    style={{ fontSize: '10px' }}
                   >
                     Clear All ({getSelectedNotifyEmails().length})
                   </button>
@@ -1460,12 +1674,19 @@ const IhlrCreateRequest = () => {
               {/* Multi-Select Trigger Box */}
               <div
                 onClick={() => setIsNotifyEmailDropdownOpen((prev) => !prev)}
-                className={`w-full min-h-[42px] px-3 py-2 border rounded-xl text-xs font-medium transition flex items-center justify-between gap-2 cursor-pointer ${isNotifyEmailDropdownOpen
+                style={{
+                  minHeight: '38px',
+                  borderRadius: '10px',
+                  padding: '6px 12px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  boxSizing: 'border-box'
+                }}
+                className={`w-full border font-medium transition flex items-center justify-between gap-2 cursor-pointer ${isNotifyEmailDropdownOpen
                     ? 'bg-white border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs'
                     : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-800'
                   }`}
               >
-                <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
+                <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0" style={{ gap: '6px' }}>
                   {getSelectedNotifyEmails().length === 0 ? (
                     <span className="text-slate-400 font-normal">
                       Select optional user email(s) across all departments to notify / CC...
@@ -1480,9 +1701,10 @@ const IhlrCreateRequest = () => {
                         <span
                           key={email}
                           className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-semibold"
+                          style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px' }}
                           title={displayName}
                         >
-                          <Mail className="w-3 h-3 text-indigo-500 shrink-0" />
+                          <Mail className="w-3 h-3 text-indigo-500 shrink-0" style={{ width: '12px', height: '12px' }} />
                           <span className="truncate max-w-[200px]">
                             {matched?.name ? `${matched.name} (${email})` : email}
                           </span>
@@ -1492,7 +1714,7 @@ const IhlrCreateRequest = () => {
                             className="p-0.5 hover:bg-indigo-200/60 rounded text-indigo-600 hover:text-indigo-900 transition cursor-pointer"
                             title={`Remove ${email}`}
                           >
-                            <X className="w-3 h-3" />
+                            <X className="w-3 h-3" style={{ width: '12px', height: '12px' }} />
                           </button>
                         </span>
                       );
@@ -1502,36 +1724,46 @@ const IhlrCreateRequest = () => {
 
                 <div className="flex items-center gap-1.5 shrink-0 text-slate-400">
                   {getSelectedNotifyEmails().length > 0 && (
-                    <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-md text-[10px] font-bold">
+                    <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-md text-[10px] font-bold" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>
                       {getSelectedNotifyEmails().length}
                     </span>
                   )}
                   <ChevronDown
                     className={`w-4 h-4 transition-transform duration-200 ${isNotifyEmailDropdownOpen ? 'rotate-180 text-indigo-600' : ''
                       }`}
+                    style={{ width: '16px', height: '16px' }}
                   />
                 </div>
               </div>
 
               {/* Dropdown Menu */}
               {isNotifyEmailDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div
+                  className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                  style={{
+                    borderRadius: '14px',
+                    marginTop: '6px',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box'
+                  }}
+                >
                   {/* Search box inside dropdown */}
-                  <div className="p-2 border-b border-slate-100 bg-slate-50/70">
+                  <div className="p-2 border-b border-slate-100 bg-slate-50/70" style={{ padding: '8px' }}>
                     <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" style={{ width: '14px', height: '14px', left: '10px' }} />
                       <input
                         type="text"
                         value={notifyEmailSearchTerm}
                         onChange={(e) => setNotifyEmailSearchTerm(e.target.value)}
                         placeholder="Search user by email, name, or department..."
-                        className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        style={{ height: '34px', fontSize: '12px', paddingLeft: '32px', paddingRight: '12px', borderRadius: '8px' }}
+                        className="w-full bg-white border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         onClick={(e) => e.stopPropagation()}
                       />
                     </div>
                   </div>
 
-                  <div className="max-h-60 overflow-y-auto p-1.5 divide-y divide-slate-50">
+                  <div className="max-h-60 overflow-y-auto p-1.5 divide-y divide-slate-50" style={{ maxHeight: '240px', padding: '6px' }}>
                     {getAllAvailableUsersWithEmail()
                       .filter((u) => {
                         const q = notifyEmailSearchTerm.trim().toLowerCase();
@@ -1553,32 +1785,34 @@ const IhlrCreateRequest = () => {
                                 ? 'bg-indigo-50/80 text-indigo-900 font-semibold'
                                 : 'hover:bg-slate-50 text-slate-700'
                               }`}
+                            style={{ padding: '8px 12px', borderRadius: '10px' }}
                           >
-                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2" style={{ gap: '10px' }}>
                               <div
                                 className={`w-4 h-4 rounded border flex items-center justify-center transition shrink-0 ${isChecked
                                     ? 'bg-indigo-600 border-indigo-600 text-white'
                                     : 'border-slate-300 bg-white'
                                   }`}
+                                style={{ width: '16px', height: '16px', borderRadius: '4px' }}
                               >
-                                {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                                {isChecked && <Check className="w-3 h-3 stroke-[3]" style={{ width: '12px', height: '12px' }} />}
                               </div>
                               <div className="min-w-0">
-                                <div className="text-xs font-medium text-slate-800 flex items-center gap-1.5 truncate">
+                                <div className="text-xs font-medium text-slate-800 flex items-center gap-1.5 truncate" style={{ fontSize: '12px' }}>
                                   <span>{u.name}</span>
                                   {u.department && (
-                                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 font-normal">
+                                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 font-normal" style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px' }}>
                                       {u.department}
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[11px] text-indigo-600 font-mono truncate">
+                                <div className="text-[11px] text-indigo-600 font-mono truncate" style={{ fontSize: '11px' }}>
                                   {u.email}
                                 </div>
                               </div>
                             </div>
                             {isChecked && (
-                              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider shrink-0">
+                              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider shrink-0" style={{ fontSize: '10px' }}>
                                 Selected
                               </span>
                             )}
@@ -1596,21 +1830,22 @@ const IhlrCreateRequest = () => {
                         (u.department || '').toLowerCase().includes(q)
                       );
                     }).length === 0 && (
-                        <div className="p-4 text-center text-xs text-slate-400">
+                        <div className="p-4 text-center text-xs text-slate-400" style={{ padding: '16px', fontSize: '12px' }}>
                           No user emails found matching "{notifyEmailSearchTerm}"
                         </div>
                       )}
                   </div>
 
                   {/* Dropdown footer */}
-                  <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs">
-                    <span className="text-[11px] text-slate-500">
+                  <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs" style={{ padding: '8px 12px', fontSize: '12px' }}>
+                    <span className="text-[11px] text-slate-500" style={{ fontSize: '11px' }}>
                       {getSelectedNotifyEmails().length} of {getAllAvailableUsersWithEmail().length} emails selected
                     </span>
                     <button
                       type="button"
                       onClick={() => setIsNotifyEmailDropdownOpen(false)}
                       className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold cursor-pointer"
+                      style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '12px' }}
                     >
                       Done
                     </button>
@@ -1622,16 +1857,31 @@ const IhlrCreateRequest = () => {
         </div>
 
         {/* Section 2: Defect Evidence / Attachment Upload */}
-        <div id="field-attachments" className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
-          <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
-            <Paperclip className="w-5 h-5 text-slate-700 mt-0.5" />
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center">
-                <span>2. Defect Evidence / Attachment Upload (Images, PDF, Word, Excel, PPT, JPEG)</span>
+        <div
+          id="field-attachments"
+          className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs"
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: isMobile ? '14px' : '16px',
+            padding: isMobile ? '16px' : isTablet ? '20px' : '28px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
+          <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100" style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '12px', marginBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0" style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Paperclip className="w-4 h-4 text-blue-600" style={{ width: '16px', height: '16px' }} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center flex-wrap gap-1" style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: 700, textTransform: 'uppercase', color: '#0f172a', margin: 0 }}>
+                <span>2. Defect Evidence Upload</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </h2>
-              <p className="text-xs text-slate-500">
-                Upload defect evidence
+              <p className="text-xs text-slate-500" style={{ fontSize: '11px', margin: '2px 0 0 0', color: '#64748b' }}>
+                Upload defect evidence (Images, PDF, Word, Excel, PPT)
               </p>
             </div>
           </div>
@@ -1640,7 +1890,13 @@ const IhlrCreateRequest = () => {
           <label
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer transition-colors ${errors.attachments
+            style={{
+              padding: isMobile ? '16px 12px' : '24px',
+              borderRadius: '14px',
+              boxSizing: 'border-box',
+              width: '100%'
+            }}
+            className={`border-2 border-dashed rounded-2xl text-center flex flex-col items-center justify-center cursor-pointer transition-colors ${errors.attachments
               ? 'border-rose-400 bg-rose-50/30 hover:bg-rose-50/50'
               : 'border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-slate-50'
               }`}
@@ -1652,27 +1908,41 @@ const IhlrCreateRequest = () => {
               onChange={handleFileUpload}
               className="hidden"
             />
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${errors.attachments ? 'bg-rose-100 text-rose-600' : 'bg-blue-50 text-blue-600'
-              }`}>
-              <UploadCloud className="w-5 h-5" />
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${errors.attachments ? 'bg-rose-100 text-rose-600' : 'bg-blue-50 text-blue-600'
+              }`}
+              style={{ width: '40px', height: '40px', borderRadius: '9999px', marginBottom: '8px' }}
+            >
+              <UploadCloud className="w-5 h-5" style={{ width: '20px', height: '20px' }} />
             </div>
-            <p className="text-xs font-semibold text-slate-800">
-              Drag & drop files here or <span className="text-blue-600 underline">browse</span>
+            <p className="text-xs font-semibold text-slate-800" style={{ fontSize: '12px' }}>
+              Drag &amp; drop files here or <span className="text-blue-600 underline">browse</span>
             </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">
+            <p className="text-[11px] text-slate-400 mt-0.5" style={{ fontSize: '11px', marginTop: '2px' }}>
               Supports Images, PDF, Word, Excel (.xlsx, .xls, .csv), and PowerPoint (Max 25MB per file) • Select multiple files
             </p>
           </label>
 
           {errors.attachments && (
-            <p className="text-[11px] text-rose-500 font-semibold mt-1.5 flex items-center gap-1">
+            <p className="text-[11px] text-rose-500 font-semibold mt-1.5 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '6px' }}>
               <span>* {errors.attachments}</span>
             </p>
           )}
 
           {/* Attached Files List */}
           {attachments.length > 0 && (
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div
+              className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))',
+                gap: '12px',
+                marginTop: '16px',
+                maxWidth: '100%',
+                minWidth: 0,
+                boxSizing: 'border-box'
+              }}
+            >
               {attachments.map((file, idx) => {
                 const meta = getFileMeta(file);
                 const IconComponent = meta.icon;
@@ -1680,40 +1950,47 @@ const IhlrCreateRequest = () => {
                   <div
                     key={idx}
                     onClick={() => setPreviewAttachment(file)}
-                    className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs hover:border-blue-400 hover:shadow-xs transition cursor-pointer group"
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      minWidth: 0,
+                      boxSizing: 'border-box'
+                    }}
+                    className="flex items-center justify-between bg-white border border-slate-200 rounded-xl shadow-2xs hover:border-blue-400 hover:shadow-xs transition cursor-pointer group"
                     title="Click to preview file"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2" style={{ gap: '10px' }}>
                       {file.isImage && file.url ? (
-                        <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-slate-200 bg-slate-50 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-slate-200 bg-slate-50 flex items-center justify-center" style={{ width: '32px', height: '32px', borderRadius: '8px' }}>
                           <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
                         </div>
                       ) : (
-                        <div className={`w-8 h-8 rounded-lg shrink-0 border flex items-center justify-center font-bold text-[10px] ${meta.badgeBg}`}>
-                          <IconComponent className="w-4 h-4" />
+                        <div className={`w-8 h-8 rounded-lg shrink-0 border flex items-center justify-center font-bold text-[10px] ${meta.badgeBg}`} style={{ width: '32px', height: '32px', borderRadius: '8px', fontSize: '10px' }}>
+                          <IconComponent className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
                         </div>
                       )}
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-blue-600 transition" title={file.name}>
+                        <div className="flex items-center gap-1.5" style={{ gap: '6px' }}>
+                          <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-blue-600 transition" style={{ fontSize: '12px' }} title={file.name}>
                             {file.name}
                           </p>
                           {file.isAnnotated && (
                             <span
                               className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 rounded-full"
+                              style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '9999px' }}
                               title="Contains drawing annotations (circle, arrows, lines, sketches)"
                             >
                               Annotated
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-[10px] text-slate-400" style={{ fontSize: '10px' }}>
                           {file.type} • {file.size} • {file.date}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0" style={{ gap: '4px' }}>
                       {/* Annotate - ONLY for image files */}
                       {(file.isImage || ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'BMP', 'SVG', 'JFIF'].includes((file.type || file.name?.split('.').pop() || '').toUpperCase())) && (
                         <button
@@ -1723,17 +2000,19 @@ const IhlrCreateRequest = () => {
                             setAnnotatingItem({ attachment: file, index: idx });
                           }}
                           className="px-2 py-1 rounded-lg text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                          style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px' }}
                           title="Annotate image"
                         >
-                          <PenTool className="w-3 h-3 text-amber-600" />
+                          <PenTool className="w-3 h-3 text-amber-600" style={{ width: '12px', height: '12px' }} />
                           <span className="hidden sm:inline">Annotate</span>
                         </button>
                       )}
                       <span
                         className="p-1.5 rounded-lg text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-50 transition"
+                        style={{ padding: '6px', borderRadius: '6px' }}
                         title="Preview file"
                       >
-                        <Eye className="w-3.5 h-3.5" />
+                        <Eye className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
                       </span>
                       <button
                         type="button"
@@ -1742,9 +2021,10 @@ const IhlrCreateRequest = () => {
                           removeAttachment(idx);
                         }}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                        style={{ padding: '6px', borderRadius: '6px' }}
                         title="Remove file"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
                       </button>
                     </div>
                   </div>
@@ -1755,39 +2035,62 @@ const IhlrCreateRequest = () => {
         </div>
 
         {/* Section 3: QA Why-Why Analysis */}
-        <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs space-y-4">
-          <div className="flex items-start gap-3 pb-4 border-b border-slate-100">
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <ShieldAlert className="w-4 h-4" />
+        <div
+          className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs space-y-4"
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: isMobile ? '14px' : '16px',
+            padding: isMobile ? '16px' : isTablet ? '20px' : '28px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
+          <div className="flex items-start gap-3 pb-4 border-b border-slate-100" style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0" style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#fffbeb', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ShieldAlert className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
             </div>
-            <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1" style={{ minWidth: 0 }}>
               <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide" style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: 700, textTransform: 'uppercase', color: '#0f172a', margin: 0 }}>
                     3. Problem Cause Why-Why Analysis
                   </h2>
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1">
-                    <span>W1, W2 & W3 Mandatory</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full flex items-center gap-1" style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '9999px' }}>
+                    <span>W1, W2 &amp; W3 Mandatory</span>
                     <span className="text-red-500 font-bold">*</span>
                   </span>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500" style={{ fontSize: '11px', margin: '2px 0 0 0', color: '#64748b' }}>
                   5-Why investigation path to isolate root failure.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {qaWhyWhy.map((val, idx) => {
               const isMandatory = idx < 3;
               const errorKey = `w${idx + 1}`;
               const hasError = isMandatory && Boolean(errors[errorKey]);
               return (
-                <div key={idx} id={`field-w${idx + 1}`} className="space-y-1">
-                  <div className="flex items-center gap-3">
+                <div key={idx} id={`field-w${idx + 1}`} className="space-y-1" style={{ minWidth: 0 }}>
+                  <div className="flex items-center gap-3" style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                     <span
-                      className={`w-8 h-8 rounded-xl font-mono font-bold text-xs flex items-center justify-center shrink-0 border transition ${isMandatory
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxSizing: 'border-box'
+                      }}
+                      className={`font-mono font-bold border transition ${isMandatory
                         ? hasError
                           ? 'bg-rose-50 border-rose-300 text-rose-700'
                           : 'bg-amber-100/80 border-amber-300 text-amber-800'
@@ -1800,6 +2103,14 @@ const IhlrCreateRequest = () => {
                       type="text"
                       placeholder={`Why #${idx + 1} cause...${isMandatory ? ' (Mandatory)' : ''}`}
                       value={val}
+                      style={{
+                        height: '38px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        padding: '0 12px',
+                        minWidth: 0,
+                        boxSizing: 'border-box'
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === ' ' && (!val || e.target.selectionStart === 0)) {
                           e.preventDefault();
@@ -1807,14 +2118,14 @@ const IhlrCreateRequest = () => {
                       }}
                       onChange={(e) => handleQaWhyChange(idx, e.target.value)}
                       onBlur={() => handleQaWhyBlur(idx)}
-                      className={`flex-1 px-3 py-2 border rounded-xl text-xs text-slate-900 outline-none transition ${hasError
+                      className={`flex-1 border text-slate-900 outline-none transition ${hasError
                         ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                         : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500'
                         }`}
                     />
                   </div>
                   {hasError && (
-                    <p className="text-[11px] text-rose-500 font-semibold pl-11 flex items-center gap-1">
+                    <p className="text-[11px] text-rose-500 font-semibold pl-11 flex items-center gap-1" style={{ fontSize: '11px', paddingLeft: '42px', marginTop: '4px' }}>
                       <span>* {errors[errorKey]}</span>
                     </p>
                   )}
@@ -1825,32 +2136,56 @@ const IhlrCreateRequest = () => {
         </div>
 
         {/* Action Buttons & Missed Mandatory Inputs Area in Red */}
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-3 border-t border-slate-200/90">
+        <div
+          className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-3 border-t border-slate-200/90"
+          style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'stretch' : 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            paddingTop: '16px',
+            borderTop: '1px solid #e2e8f0',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
           {/* Left Area: Missed Mandatory Inputs in Red */}
           {missingErrors.length > 0 ? (
-            <div className="flex-1 min-w-0 bg-red-50/95 border border-red-300 rounded-2xl p-3 flex items-start gap-2.5 shadow-xs animate-in fade-in slide-in-from-bottom-2 duration-150">
-              <div className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                <AlertCircle className="w-3.5 h-3.5 stroke-[2.5]" />
+            <div
+              className="flex-1 min-w-0 bg-red-50/95 border border-red-300 rounded-2xl p-3 flex items-start gap-2.5 shadow-xs animate-in fade-in slide-in-from-bottom-2 duration-150"
+              style={{
+                borderRadius: '12px',
+                padding: isMobile ? '10px 12px' : '12px 14px',
+                maxWidth: '100%',
+                minWidth: 0,
+                boxSizing: 'border-box'
+              }}
+            >
+              <div className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs" style={{ width: '24px', height: '24px', borderRadius: '6px' }}>
+                <AlertCircle className="w-3.5 h-3.5 stroke-[2.5]" style={{ width: '14px', height: '14px' }} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-extrabold text-red-700 uppercase tracking-wide">
+                  <span className="text-xs font-extrabold text-red-700 uppercase tracking-wide" style={{ fontSize: '11px', fontWeight: 800 }}>
                     Missing Mandatory Inputs ({missingErrors.length}):
                   </span>
-                  <span className="text-[11px] text-red-600 font-medium">
+                  <span className="text-[11px] text-red-600 font-medium" style={{ fontSize: '11px' }}>
                     Please complete these fields before submitting:
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                <div className="flex flex-wrap items-center gap-1.5 mt-2" style={{ gap: '6px', marginTop: '8px' }}>
                   {missingErrors.map(({ key, label }) => (
                     <button
                       key={key}
                       type="button"
                       onClick={() => scrollToField(key)}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-red-300 text-red-700 hover:bg-red-100 hover:border-red-400 text-xs font-bold shadow-2xs transition cursor-pointer"
+                      style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px' }}
                       title={`Click to jump to ${label}`}
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-600 shrink-0" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-600 shrink-0" style={{ width: '6px', height: '6px', borderRadius: '9999px', backgroundColor: '#dc2626' }} />
                       <span>{label}</span>
                     </button>
                   ))}
@@ -1858,31 +2193,67 @@ const IhlrCreateRequest = () => {
               </div>
             </div>
           ) : (
-            <div className="flex-1" />
+            <div className="flex-1" style={{ flex: 1 }} />
           )}
 
           {/* Action Buttons: Clear Form & Submit */}
-          <div className="flex items-center justify-end gap-3 shrink-0 self-end lg:self-center">
+          <div
+            className="flex items-center justify-end gap-3 shrink-0 self-end lg:self-center"
+            style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column-reverse' : 'row',
+              alignItems: 'center',
+              justifyContent: isMobile ? 'stretch' : 'flex-end',
+              gap: '10px',
+              width: isMobile ? '100%' : 'auto',
+              boxSizing: 'border-box'
+            }}
+          >
             <button
               type="button"
               onClick={handleResetForm}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+              style={{
+                height: '42px',
+                padding: '0 16px',
+                borderRadius: '10px',
+                fontSize: '12px',
+                fontWeight: 600,
+                width: isMobile ? '100%' : 'auto',
+                boxSizing: 'border-box',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
             >
               Clear Form
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 disabled:opacity-50 cursor-pointer"
+              style={{
+                height: '42px',
+                padding: '0 24px',
+                borderRadius: '10px',
+                fontSize: '12px',
+                fontWeight: 700,
+                width: isMobile ? '100%' : 'auto',
+                boxSizing: 'border-box',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition transform active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               {isEditMode ? (
                 <>
-                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  <Check className="w-4 h-4 stroke-[2.5]" style={{ width: '16px', height: '16px' }} />
                   <span>{submitting ? 'Updating...' : 'Update Requester Details'}</span>
                 </>
               ) : (
                 <>
-                  <Send className="w-4 h-4" />
+                  <Send className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
                   <span>{submitting ? 'Submitting...' : 'Submit'}</span>
                 </>
               )}
