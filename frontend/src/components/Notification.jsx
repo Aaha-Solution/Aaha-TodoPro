@@ -179,7 +179,7 @@ const Notification = () => {
             {notifications.length === 0 ? (
               <p className="p-6 text-center text-xs text-slate-400">No notifications in stream</p>
             ) : (
-              notifications.slice(0, 1).map((item) => {
+              notifications.slice(0, 6).map((item) => {
                 const badgeColor =
                   item.accentColor === 'emerald'
                     ? 'bg-emerald-600'

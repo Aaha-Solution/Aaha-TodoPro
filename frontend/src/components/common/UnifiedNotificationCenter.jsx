@@ -278,19 +278,47 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
         }}
       >
         <div>
-          <h1
-            className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <h1
+              className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+              style={{
+                fontSize: isMobile ? '22px' : isTablet ? '26px' : '30px',
+                lineHeight: isMobile ? '28px' : isTablet ? '32px' : '36px',
+                fontWeight: 800,
+                color: '#0f172a',
+                letterSpacing: '-0.025em',
+                margin: 0
+              }}
+            >
+              {isIhlr ? 'IHLR Notifications Centre' : 'Process Audit Notifications Centre'}
+            </h1>
+            <span
+              style={{
+                padding: '2px 8px',
+                borderRadius: '6px',
+                fontSize: '10px',
+                fontWeight: 800,
+                fontFamily: 'monospace',
+                backgroundColor: isIhlr ? '#eef2ff' : '#eff6ff',
+                color: isIhlr ? '#4338ca' : '#1d4ed8',
+                border: isIhlr ? '1px solid #c7d2fe' : '1px solid #bfdbfe'
+              }}
+            >
+              {isIhlr ? 'IHLR DEFECT STREAM' : 'PROCESS AUDIT STREAM'}
+            </span>
+          </div>
+          <p
             style={{
-              fontSize: isMobile ? '22px' : isTablet ? '26px' : '30px',
-              lineHeight: isMobile ? '28px' : isTablet ? '32px' : '36px',
-              fontWeight: 800,
-              color: '#0f172a',
-              letterSpacing: '-0.025em',
-              margin: 0
+              fontSize: isMobile ? '12px' : '13px',
+              color: '#64748b',
+              marginTop: '4px',
+              marginBottom: 0
             }}
           >
-            Notifications Centre
-          </h1>
+            {isIhlr
+              ? 'Real-time alert feed for line defect reports, containment actions, and sign-offs.'
+              : 'Real-time alert feed for audit observations, containment actions, and sign-off requests.'}
+          </p>
         </div>
 
         {/* Mark All Read */}
@@ -346,18 +374,28 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
         }}
       >
         {/* Filter Pills */}
-        <div className="flex items-center gap-2 flex-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div
+          className="flex items-center gap-2"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            width: isMobile ? '100%' : 'auto'
+          }}
+        >
           <button
             type="button"
             onClick={() => setActiveFilterTab('ALL')}
             style={{
-              height: '34px',
-              padding: '0 14px',
-              borderRadius: '9999px',
+              flex: isMobile ? 1 : 'none',
+              height: '38px',
+              padding: isMobile ? '0 12px' : '0 16px',
+              borderRadius: '10px',
               fontSize: '12px',
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '6px'
             }}
             className={`transition cursor-pointer ${activeFilterTab === 'ALL'
@@ -383,13 +421,15 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
             type="button"
             onClick={() => setActiveFilterTab('UNREAD')}
             style={{
-              height: '34px',
-              padding: '0 14px',
-              borderRadius: '9999px',
+              flex: isMobile ? 1 : 'none',
+              height: '38px',
+              padding: isMobile ? '0 12px' : '0 16px',
+              borderRadius: '10px',
               fontSize: '12px',
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '6px'
             }}
             className={`transition cursor-pointer ${activeFilterTab === 'UNREAD'
@@ -417,7 +457,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
           className="relative"
           style={{
             position: 'relative',
-            width: isMobile ? '100%' : '280px',
+            width: isMobile ? '100%' : '300px',
             minWidth: 0,
             boxSizing: 'border-box'
           }}
@@ -436,7 +476,7 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
               fontSize: isMobile ? '13px' : '12px',
               boxSizing: 'border-box'
             }}
-            className="w-full bg-white border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            className="w-full bg-white border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
           />
           {searchTerm && (
             <button
