@@ -1303,6 +1303,9 @@ const IhlrApprovals = () => {
       className="space-y-6 w-full pb-16"
       style={{
         width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        overflowX: 'hidden',
         paddingBottom: isMobile ? '32px' : '64px',
         boxSizing: 'border-box'
       }}
@@ -1316,7 +1319,11 @@ const IhlrApprovals = () => {
           alignItems: isMobile ? 'flex-start' : 'center',
           justifyContent: 'space-between',
           gap: isMobile ? '12px' : '16px',
-          marginBottom: isMobile ? '14px' : '20px'
+          marginBottom: isMobile ? '14px' : '20px',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
         }}
       >
         <div>
@@ -1344,13 +1351,16 @@ const IhlrApprovals = () => {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            padding: '4px',
+            gap: isMobile ? '4px' : '6px',
+            padding: isMobile ? '3px' : '4px',
             backgroundColor: '#f1f5f9',
             borderRadius: '12px',
             marginBottom: '16px',
             border: '1px solid #e2e8f0',
-            width: isMobile ? '100%' : 'fit-content'
+            width: isMobile ? '100%' : 'fit-content',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+            overflow: 'hidden'
           }}
         >
           <button
@@ -1358,8 +1368,8 @@ const IhlrApprovals = () => {
             onClick={() => setMobileTab('queue')}
             style={{
               flex: isMobile ? 1 : 'none',
-              padding: isMobile ? '8px 10px' : '8px 16px',
-              fontSize: '12px',
+              padding: isMobile ? '7px 4px' : '8px 16px',
+              fontSize: isMobile ? '11px' : '12px',
               fontWeight: 700,
               borderRadius: '8px',
               border: 'none',
@@ -1369,21 +1379,23 @@ const IhlrApprovals = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
+              gap: isMobile ? '4px' : '6px',
               boxShadow: mobileTab === 'queue' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.15s ease'
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+              minWidth: 0
             }}
           >
-            <ClipboardCheck style={{ width: '14px', height: '14px' }} />
-            <span>Queue ({filtered.length})</span>
+            <ClipboardCheck style={{ width: '13px', height: '13px', flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Queue ({filtered.length})</span>
           </button>
           <button
             type="button"
             onClick={() => setMobileTab('form')}
             style={{
               flex: isMobile ? 1 : 'none',
-              padding: isMobile ? '8px 10px' : '8px 16px',
-              fontSize: '12px',
+              padding: isMobile ? '7px 4px' : '8px 16px',
+              fontSize: isMobile ? '11px' : '12px',
               fontWeight: 700,
               borderRadius: '8px',
               border: 'none',
@@ -1393,15 +1405,16 @@ const IhlrApprovals = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
+              gap: isMobile ? '4px' : '6px',
               boxShadow: mobileTab === 'form' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.15s ease'
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+              minWidth: 0
             }}
           >
-            <FileCheck style={{ width: '14px', height: '14px' }} />
-            <span>
-              Closer Form
-              {selectedRequest ? ` (${String(selectedRequest.req_no).startsWith('IHLR-') ? selectedRequest.req_no : `#${selectedRequest.req_no}`})` : ''}
+            <FileCheck style={{ width: '13px', height: '13px', flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {isMobile ? 'Closer Form' : `Closer Form${selectedRequest ? ` (${String(selectedRequest.req_no).startsWith('IHLR-') ? selectedRequest.req_no : `#${selectedRequest.req_no}`})` : ''}`}
             </span>
           </button>
           <button
@@ -1409,8 +1422,8 @@ const IhlrApprovals = () => {
             onClick={() => setMobileTab('all')}
             style={{
               flex: isMobile ? 1 : 'none',
-              padding: isMobile ? '8px 10px' : '8px 16px',
-              fontSize: '12px',
+              padding: isMobile ? '7px 4px' : '8px 16px',
+              fontSize: isMobile ? '11px' : '12px',
               fontWeight: 700,
               borderRadius: '8px',
               border: 'none',
@@ -1420,12 +1433,14 @@ const IhlrApprovals = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
+              gap: isMobile ? '4px' : '6px',
               boxShadow: mobileTab === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.15s ease'
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+              minWidth: 0
             }}
           >
-            <span>View Both</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>View Both</span>
           </button>
         </div>
       )}
@@ -1438,7 +1453,10 @@ const IhlrApprovals = () => {
           gridTemplateColumns: isDesktop ? 'repeat(12, minmax(0, 1fr))' : '1fr',
           gap: isMobile ? '16px' : isTablet ? '20px' : '24px',
           alignItems: 'start',
-          width: '100%'
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
         }}
       >
         
@@ -1460,7 +1478,9 @@ const IhlrApprovals = () => {
             border: '1px solid #e2e8f0',
             boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
             boxSizing: 'border-box',
-            width: '100%'
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0
           }}
         >
           
@@ -3098,7 +3118,9 @@ const IhlrApprovals = () => {
             order: isDesktop ? 2 : 1,
             display: !isDesktop && mobileTab === 'form' ? 'none' : 'block',
             boxSizing: 'border-box',
-            width: '100%'
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0
           }}
         >
 
@@ -3109,7 +3131,11 @@ const IhlrApprovals = () => {
               display: 'grid',
               gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
               gap: isMobile ? '10px' : '12px',
-              marginBottom: isMobile ? '12px' : '16px'
+              marginBottom: isMobile ? '12px' : '16px',
+              width: '100%',
+              maxWidth: '100%',
+              minWidth: 0,
+              boxSizing: 'border-box'
             }}
           >
             {/* Card 1: Total Assigned */}
@@ -3220,10 +3246,13 @@ const IhlrApprovals = () => {
               alignItems: 'center',
               gap: isMobile ? '10px' : '12px',
               marginBottom: isMobile ? '12px' : '16px',
-              boxSizing: 'border-box'
+              boxSizing: 'border-box',
+              width: '100%',
+              maxWidth: '100%',
+              minWidth: 0
             }}
           >
-            <div className="relative flex-1 w-full" style={{ position: 'relative', width: '100%', flex: 1 }}>
+            <div className="relative flex-1 w-full" style={{ position: 'relative', width: '100%', flex: 1, minWidth: 0 }}>
               <Search
                 className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none"
                 style={{ width: '16px', height: '16px', position: 'absolute', left: '14px', top: '11px', color: '#94a3b8', pointerEvents: 'none' }}
@@ -3270,7 +3299,7 @@ const IhlrApprovals = () => {
               )}
             </div>
 
-            <div className="w-full sm:w-44" style={{ width: isMobile ? '100%' : isTablet ? '160px' : '176px', flexShrink: 0 }}>
+            <div className="w-full sm:w-44" style={{ width: isMobile ? '100%' : isTablet ? '160px' : '176px', flexShrink: 0, minWidth: 0 }}>
               <select
                 value={selectedStatus}
                 onChange={(e) => {
@@ -3337,7 +3366,10 @@ const IhlrApprovals = () => {
               border: '1px solid #e2e8f0',
               boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
               overflow: 'hidden',
-              width: '100%'
+              width: '100%',
+              maxWidth: '100%',
+              minWidth: 0,
+              boxSizing: 'border-box'
             }}
           >
             <div
@@ -3345,16 +3377,19 @@ const IhlrApprovals = () => {
               style={{
                 overflowX: 'auto',
                 WebkitOverflowScrolling: 'touch',
-                width: '100%'
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                display: 'block'
               }}
             >
               <table
-                className="w-full text-left border-collapse min-w-[700px]"
+                className="w-full text-left border-collapse"
                 style={{
                   width: '100%',
                   textAlign: 'left',
                   borderCollapse: 'collapse',
-                  minWidth: isMobile ? '640px' : isTablet ? '680px' : '700px'
+                  minWidth: isMobile ? '560px' : isTablet ? '680px' : '700px'
                 }}
               >
                 <thead>

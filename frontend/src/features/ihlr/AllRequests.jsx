@@ -374,6 +374,9 @@ const IhlrAllRequests = () => {
       className="space-y-6 w-full pb-16"
       style={{
         width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        overflowX: 'hidden',
         paddingBottom: isMobile ? '32px' : '64px',
         boxSizing: 'border-box'
       }}
@@ -772,7 +775,10 @@ const IhlrAllRequests = () => {
           border: '1px solid #e2e8f0',
           boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
           overflow: 'hidden',
-          width: '100%'
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
         }}
       >
         <div
@@ -784,10 +790,14 @@ const IhlrAllRequests = () => {
             flexDirection: isMobile ? 'column' : 'row',
             alignItems: isMobile ? 'flex-start' : 'center',
             justifyContent: 'space-between',
-            gap: isMobile ? '10px' : '12px'
+            gap: isMobile ? '10px' : '12px',
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
           }}
         >
-          <div className="flex items-center gap-2 flex-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="flex items-center gap-2 flex-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
             <span className="text-xs font-extrabold uppercase tracking-widest text-slate-600 font-mono" style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', fontFamily: 'monospace' }}>
               IHLR ANALYSIS AND ACTION REPORT
             </span>
