@@ -76,6 +76,21 @@ const ProcessAuditDashboard = () => {
   const [endDate, setEndDate] = useState(defaultEndDate);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Responsive screen width handling for mobile, tablet, and desktop
+  const [screenWidth, setScreenWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+
+  useEffect(() => {
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = screenWidth < 768;
+  const isTablet = screenWidth >= 768 && screenWidth < 1024;
+  const isDesktop = screenWidth >= 1024;
+
   const isDefaultRange = startDate === defaultStartDate && endDate === defaultEndDate;
   const isDefaultDept = selectedDept === 'All';
   const hasActiveFilters = !isDefaultDept || selectedStatus !== 'All' || !isDefaultRange;
@@ -399,36 +414,95 @@ const ProcessAuditDashboard = () => {
   };
 
   return (
-    <div className="space-y-6 w-full pb-12">
+    <div
+      className="space-y-6 w-full pb-12"
+      style={{
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        overflowX: 'hidden',
+        paddingBottom: isMobile ? '32px' : '48px',
+        boxSizing: 'border-box'
+      }}
+    >
       {/* Page Title & Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          justifyContent: 'space-between',
+          gap: isMobile ? '12px' : '16px',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
+        }}
+      >
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-            <span className="text-blue-600 font-bold uppercase tracking-wider font-mono">PROCESS AUDIT PORTAL</span>
-            <span>/</span>
-            <span>Overview Dashboard</span>
-            <span>/</span>
-            <span className="font-bold text-slate-700">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', marginBottom: '4px', flexWrap: 'wrap' }}>
+            <span className="text-blue-600 font-bold uppercase tracking-wider font-mono" style={{ color: '#2563eb', fontWeight: 700, fontFamily: 'monospace', letterSpacing: '0.05em' }}>PROCESS AUDIT PORTAL</span>
+            <span style={{ color: '#94a3b8' }}>/</span>
+            <span style={{ color: '#64748b' }}>Overview Dashboard</span>
+            <span style={{ color: '#94a3b8' }}>/</span>
+            <span className="font-bold text-slate-700" style={{ fontWeight: 700, color: '#334155' }}>
               {isDefaultRange
                 ? 'Last 12 Months Data'
                 : `Timeline Data (${startDate ? formatDateDDMMYYYY(startDate) : 'Start'} → ${endDate ? formatDateDDMMYYYY(endDate) : 'End'})`}
             </span>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h1
+              className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+              style={{
+                fontSize: isMobile ? '22px' : isTablet ? '26px' : '30px',
+                lineHeight: isMobile ? '28px' : isTablet ? '32px' : '36px',
+                fontWeight: 800,
+                color: '#0f172a',
+                letterSpacing: '-0.025em',
+                margin: 0
+              }}
+            >
               Process Audit Analysis Dashboard
             </h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div
+          className="flex items-center gap-3"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: isMobile ? '8px' : '12px',
+            width: isMobile ? '100%' : 'auto',
+            flexDirection: isMobile ? 'column' : 'row'
+          }}
+        >
           <button
             onClick={handleOpenExportModal}
             className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 hover:border-slate-300 rounded-xl text-xs font-bold shadow-2xs hover:shadow-xs transition transform active:scale-95 cursor-pointer"
             id="dashboard-export-btn"
             title="Export filtered Process Audit reports to Excel or PDF"
+            style={{
+              width: isMobile ? '100%' : 'auto',
+              height: '38px',
+              padding: '0 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              borderRadius: '10px',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e2e8f0',
+              color: '#334155',
+              fontSize: isMobile ? '13px' : '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxSizing: 'border-box'
+            }}
           >
-            <Download className="w-4 h-4 text-blue-600" />
+            <Download className="w-4 h-4 text-blue-600" style={{ width: '16px', height: '16px', color: '#2563eb' }} />
             <span>Export View</span>
           </button>
 
@@ -436,8 +510,25 @@ const ProcessAuditDashboard = () => {
             <button
               onClick={() => navigate('/process-audit/create-request')}
               className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
+              style={{
+                width: isMobile ? '100%' : 'auto',
+                height: '38px',
+                padding: '0 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                borderRadius: '10px',
+                backgroundColor: '#2563eb',
+                border: 'none',
+                color: '#ffffff',
+                fontSize: isMobile ? '13px' : '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
               <span>Raise NC</span>
             </button>
           )}
@@ -445,24 +536,70 @@ const ProcessAuditDashboard = () => {
       </div>
 
       {/* Ultra-Modern Filter Toolbar */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-sm transition-all duration-300 relative overflow-hidden">
+      <div
+        className="bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-sm transition-all duration-300 relative overflow-hidden"
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: isMobile ? '14px' : '16px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          position: 'relative',
+          overflow: 'hidden',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
+        }}
+      >
         {/* Subtle accent highlight at top edge */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 via-indigo-500 to-sky-400" />
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 via-indigo-500 to-sky-400" style={{ height: '2px', position: 'absolute', top: 0, left: 0, right: 0 }} />
 
-        <div className="p-4 sm:p-5 space-y-3.5">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div
+          className="p-4 sm:p-5 space-y-3.5"
+          style={{
+            padding: isMobile ? '14px 16px' : '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: isMobile ? '10px' : '14px',
+            boxSizing: 'border-box'
+          }}
+        >
+          <div
+            className="flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+            style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: isMobile ? 'flex-start' : 'center',
+              justifyContent: 'space-between',
+              gap: isMobile ? '10px' : '16px',
+              width: '100%'
+            }}
+          >
             {/* Header with gradient badge */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 ring-4 ring-blue-50 shrink-0">
-                <SlidersHorizontal className="w-4 h-4" />
+            <div className="flex items-center gap-3" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div
+                className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 ring-4 ring-blue-50 shrink-0"
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  flexShrink: 0
+                }}
+              >
+                <SlidersHorizontal className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
               </div>
               <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-sm font-black uppercase tracking-tight text-slate-800">
+                <div className="flex items-center gap-2 flex-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h2 className="text-sm font-black uppercase tracking-tight text-slate-800" style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: 900, textTransform: 'uppercase', color: '#1e293b', margin: 0 }}>
                     Filter Observations
                   </h2>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
-                    <Calendar className="w-3 h-3 text-blue-600" />
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '2px 10px', borderRadius: '9999px', fontSize: '10px', fontWeight: 800, backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
+                    <Calendar className="w-3 h-3 text-blue-600" style={{ width: '12px', height: '12px', color: '#2563eb' }} />
                     <span>{isDefaultRange ? 'Last 12 Months Data' : hasActiveFilters ? 'Active Custom Filter' : 'All Data'}</span>
                   </span>
                   <button
@@ -474,13 +611,19 @@ const ProcessAuditDashboard = () => {
                         : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90 hover:border-slate-300'
                     }`}
                     title={showFilters ? 'Hide filter controls' : 'Show filter controls'}
+                    style={{
+                      height: '32px',
+                      padding: '0 12px',
+                      borderRadius: '8px',
+                      fontSize: isMobile ? '11px' : '12px'
+                    }}
                   >
-                    <Filter className="w-3.5 h-3.5" />
+                    <Filter className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
                     <span>{showFilters ? 'Hide Filters' : 'Filter'}</span>
                     {hasActiveFilters && !showFilters && (
                       <span className="w-2 h-2 rounded-full bg-blue-500 ring-2 ring-white" />
                     )}
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`} style={{ width: '14px', height: '14px' }} />
                   </button>
                 </div>
               </div>
@@ -488,12 +631,28 @@ const ProcessAuditDashboard = () => {
 
             {/* Filter Controls Row */}
             {showFilters && (
-              <div className="flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div
+                className="flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: isMobile ? '10px' : '12px',
+                  width: isMobile ? '100%' : 'auto'
+                }}
+              >
                 {/* Department Dropdown */}
-                <div className="min-w-[190px] flex-1 sm:flex-initial">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                <div
+                  className="min-w-[190px] flex-1 sm:flex-initial"
+                  style={{
+                    width: isMobile ? '100%' : 'auto',
+                    minWidth: isMobile ? '100%' : '190px',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1 flex items-center justify-between" style={{ fontSize: '10px', marginBottom: '4px' }}>
+                    <span className="flex items-center gap-1.5" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Building2 className="w-3.5 h-3.5 text-blue-600" style={{ width: '14px', height: '14px', color: '#2563eb' }} />
                       <span>Department</span>
                     </span>
                     {!isAdmin && userDept && (
@@ -506,7 +665,15 @@ const ProcessAuditDashboard = () => {
                     <select
                       value={selectedDept}
                       onChange={(e) => setSelectedDept(e.target.value)}
-                      className="w-full appearance-none pl-3.5 pr-8 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200/90 hover:border-slate-300 focus:border-blue-500 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer"
+                      style={{
+                        height: '38px',
+                        padding: '0 32px 0 12px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        width: '100%',
+                        boxSizing: 'border-box'
+                      }}
+                      className="w-full appearance-none bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200/90 hover:border-slate-300 focus:border-blue-500 text-xs font-semibold text-slate-800 shadow-2xs focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer"
                     >
                       <option value="All">All Departments</option>
                       {departmentOptions.map((dept) => (
@@ -515,36 +682,57 @@ const ProcessAuditDashboard = () => {
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ width: '16px', height: '16px' }} />
                   </div>
                 </div>
 
                 {/* Status Dropdown */}
-                <div className="min-w-[170px] flex-1 sm:flex-initial">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <div
+                  className="min-w-[170px] flex-1 sm:flex-initial"
+                  style={{
+                    width: isMobile ? '100%' : 'auto',
+                    minWidth: isMobile ? '100%' : '170px',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5" style={{ fontSize: '10px', marginBottom: '4px' }}>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" style={{ width: '14px', height: '14px', color: '#059669' }} />
                     <span>Status</span>
                   </label>
                   <div className="relative">
                     <select
                       value={selectedStatus}
                       onChange={(e) => setSelectedStatus(e.target.value)}
-                      className="w-full appearance-none pl-3.5 pr-8 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200/90 hover:border-slate-300 focus:border-blue-500 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer"
+                      style={{
+                        height: '38px',
+                        padding: '0 32px 0 12px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        width: '100%',
+                        boxSizing: 'border-box'
+                      }}
+                      className="w-full appearance-none bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200/90 hover:border-slate-300 focus:border-blue-500 text-xs font-semibold text-slate-800 shadow-2xs focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer"
                     >
                       <option value="All">All Statuses</option>
                       <option value="PENDING">Pending</option>
                       <option value="IN_PROGRESS">Awaiting Review</option>
                       <option value="CLOSED">Closed</option>
                     </select>
-                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ width: '16px', height: '16px' }} />
                   </div>
                 </div>
 
                 {/* Date Range Cluster */}
-                <div className="flex-1 sm:flex-initial">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                <div
+                  className="flex-1 sm:flex-initial"
+                  style={{
+                    width: isMobile ? '100%' : 'auto',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1 flex items-center justify-between" style={{ fontSize: '10px', marginBottom: '4px' }}>
+                    <span className="flex items-center gap-1.5" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Calendar className="w-3.5 h-3.5 text-indigo-600" style={{ width: '14px', height: '14px', color: '#4f46e5' }} />
                       <span>Timeline Range</span>
                     </span>
                     {isDefaultRange && (
@@ -553,22 +741,34 @@ const ProcessAuditDashboard = () => {
                       </span>
                     )}
                   </label>
-                  <div className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/70 focus-within:bg-white border border-slate-200/90 focus-within:border-blue-500 rounded-xl p-1 shadow-2xs focus-within:ring-4 focus-within:ring-blue-500/10 transition-all">
-                    <div className="w-[135px]">
+                  <div
+                    className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/70 focus-within:bg-white border border-slate-200/90 focus-within:border-blue-500 rounded-xl p-1 shadow-2xs focus-within:ring-4 focus-within:ring-blue-500/10 transition-all"
+                    style={{
+                      height: '38px',
+                      borderRadius: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      boxSizing: 'border-box',
+                      width: isMobile ? '100%' : 'auto'
+                    }}
+                  >
+                    <div style={{ width: isMobile ? 'auto' : '135px', flex: isMobile ? 1 : 'none', minWidth: 0 }}>
                       <DateInput
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                         placeholder="From Date"
                         className="w-full px-2 py-1 text-xs font-semibold text-slate-800 bg-transparent border-0 focus:ring-0 outline-none placeholder:text-slate-400"
+                        style={{ fontSize: isMobile ? '13px' : '12px' }}
                       />
                     </div>
                     <span className="text-slate-400 text-xs font-bold px-0.5 select-none">→</span>
-                    <div className="w-[135px]">
+                    <div style={{ width: isMobile ? 'auto' : '135px', flex: isMobile ? 1 : 'none', minWidth: 0 }}>
                       <DateInput
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
                         placeholder="To Date"
                         className="w-full px-2 py-1 text-xs font-semibold text-slate-800 bg-transparent border-0 focus:ring-0 outline-none placeholder:text-slate-400"
+                        style={{ fontSize: isMobile ? '13px' : '12px' }}
                       />
                     </div>
                   </div>
@@ -576,14 +776,22 @@ const ProcessAuditDashboard = () => {
 
                 {/* Reset Button */}
                 {hasActiveFilters && (
-                  <div className="self-end pb-0.5">
+                  <div className="self-end pb-0.5" style={{ width: isMobile ? '100%' : 'auto' }}>
                     <button
                       type="button"
                       onClick={handleResetFilters}
                       className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/90 border border-rose-200/90 rounded-xl transition-all active:scale-95 cursor-pointer shadow-2xs"
                       title="Clear all active filters"
+                      style={{
+                        height: '38px',
+                        width: isMobile ? '100%' : 'auto',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '10px'
+                      }}
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
+                      <RotateCcw className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
                       <span>Reset</span>
                     </button>
                   </div>
@@ -596,23 +804,51 @@ const ProcessAuditDashboard = () => {
       </div>
 
       {/* KPI Cards Row (Static Overview Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile
+            ? '1fr'
+            : isTablet
+            ? 'repeat(2, minmax(0, 1fr))'
+            : 'repeat(4, minmax(0, 1fr))',
+          gap: isMobile ? '12px' : '16px'
+        }}
+      >
         {kpis.map((kpi, index) => {
           const Icon = kpi.icon;
           return (
             <div
               key={index}
               className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs select-none"
+              style={{
+                backgroundColor: '#ffffff',
+                borderRadius: isMobile ? '14px' : '16px',
+                padding: isMobile ? '16px' : '20px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                boxSizing: 'border-box'
+              }}
             >
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{kpi.title}</span>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.iconBg}`}>
-                  <Icon className="w-5 h-5" />
+              <div className="flex items-center justify-between mb-4" style={{ marginBottom: isMobile ? '10px' : '14px' }}>
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider" style={{ fontSize: isMobile ? '11px' : '12px' }}>{kpi.title}</span>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.iconBg}`} style={{ width: '36px', height: '36px', borderRadius: '10px' }}>
+                  <Icon className="w-5 h-5" style={{ width: '18px', height: '18px' }} />
                 </div>
               </div>
               <div>
-                <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">{kpi.value}</span>
-                <p className={`text-[11px] mt-1 font-semibold ${kpi.subtitleColor || 'text-slate-400'}`}>{kpi.subtitle}</p>
+                <span
+                  className="text-3xl font-black text-slate-900 font-mono tracking-tight"
+                  style={{
+                    fontSize: isMobile ? '28px' : '32px',
+                    fontWeight: 900,
+                    lineHeight: 1
+                  }}
+                >
+                  {kpi.value}
+                </span>
+                <p className={`text-[11px] mt-1 font-semibold ${kpi.subtitleColor || 'text-slate-400'}`} style={{ fontSize: '11px', marginTop: '4px' }}>{kpi.subtitle}</p>
               </div>
             </div>
           );
@@ -630,6 +866,9 @@ const ProcessAuditDashboard = () => {
         selectedDept={selectedDept}
         selectedStatus={selectedStatus}
         currentYear={currentYear}
+        isMobile={isMobile}
+        isTablet={isTablet}
+        isDesktop={isDesktop}
       />
 
       {/* Complete Inspection & Admin Edit Modal */}

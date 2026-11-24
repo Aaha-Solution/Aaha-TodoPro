@@ -54,11 +54,28 @@ export const ProcessAuditBarChart = ({
   defaultStartDate,
   defaultEndDate,
   onDateRangeChange,
+  isMobile: propIsMobile,
+  isTablet: propIsTablet,
+  isDesktop: propIsDesktop,
 }) => {
   // Dimension view tab: 'monthly' | 'department' | 'issueType' | 'shift'
   const [activeTab, setActiveTab] = useState('monthly');
   // Hovered bar anchor: { item, idx, centerX, barTopY }
   const [hoveredBar, setHoveredBar] = useState(null);
+
+  const [internalWidth, setInternalWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+
+  useEffect(() => {
+    const handleResize = () => setInternalWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = propIsMobile !== undefined ? propIsMobile : internalWidth < 768;
+  const isTablet = propIsTablet !== undefined ? propIsTablet : (internalWidth >= 768 && internalWidth < 1024);
+  const isDesktop = propIsDesktop !== undefined ? propIsDesktop : internalWidth >= 1024;
 
   const now = new Date();
   const pad = (n) => String(n).padStart(2, '0');
@@ -312,15 +329,44 @@ export const ProcessAuditBarChart = ({
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all duration-300">
       {/* Top Header & Tab Controls */}
-      <div className="p-4 sm:p-5 border-b border-slate-100/90 bg-gradient-to-r from-slate-50/70 via-white to-blue-50/20">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div
+        className="p-4 sm:p-5 border-b border-slate-100/90 bg-gradient-to-r from-slate-50/70 via-white to-blue-50/20"
+        style={{
+          padding: isMobile ? '14px 16px' : '20px',
+          borderBottom: '1px solid #f1f5f9',
+          boxSizing: 'border-box',
+          width: '100%'
+        }}
+      >
+        <div
+          className="flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+          style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            justifyContent: 'space-between',
+            gap: isMobile ? '12px' : '16px',
+            width: '100%'
+          }}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-blue-600 to-sky-500 text-white flex items-center justify-center shadow-md shadow-blue-500/20 ring-4 ring-blue-50 shrink-0">
-              <BarChart3 className="w-5 h-5" />
+            <div
+              className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-blue-600 to-sky-500 text-white flex items-center justify-center shadow-md shadow-blue-500/20 ring-4 ring-blue-50 shrink-0"
+              style={{ width: '36px', height: '36px', borderRadius: '10px' }}
+            >
+              <BarChart3 className="w-5 h-5" style={{ width: '18px', height: '18px' }} />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                <h2
+                  className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2"
+                  style={{
+                    fontSize: isMobile ? '14px' : '16px',
+                    fontWeight: 800,
+                    color: '#0f172a',
+                    margin: 0
+                  }}
+                >
                   <span>Process Audit Observation Trends</span>
                 </h2>
               </div>
@@ -328,54 +374,93 @@ export const ProcessAuditBarChart = ({
           </div>
 
           {/* Dimension Selector Tabs */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center bg-slate-100/80 p-1 rounded-xl border border-slate-200/80 text-xs font-bold text-slate-600">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            style={{
+              width: isMobile ? '100%' : 'auto',
+              maxWidth: '100%',
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              minWidth: 0
+            }}
+          >
+            <div
+              className="flex items-center bg-slate-100/80 p-1 rounded-xl border border-slate-200/80 text-xs font-bold text-slate-600"
+              style={{
+                width: isMobile ? '100%' : 'auto',
+                maxWidth: '100%',
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                minWidth: 0,
+                display: 'flex'
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setActiveTab('monthly')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0 outline-none select-none ${
                   activeTab === 'monthly'
                     ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
                     : 'hover:text-slate-900 hover:bg-slate-200/50'
                 }`}
+                style={{
+                  padding: isMobile ? '6px 8px' : '6px 12px',
+                  fontSize: isMobile ? '11px' : '12px',
+                  borderRadius: '7px'
+                }}
               >
-                <Calendar className="w-3.5 h-3.5" />
+                <Calendar className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
                 <span>Monthly</span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('department')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0 outline-none select-none ${
                   activeTab === 'department'
                     ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
                     : 'hover:text-slate-900 hover:bg-slate-200/50'
                 }`}
+                style={{
+                  padding: isMobile ? '6px 8px' : '6px 12px',
+                  fontSize: isMobile ? '11px' : '12px',
+                  borderRadius: '7px'
+                }}
               >
-                <Building2 className="w-3.5 h-3.5" />
+                <Building2 className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
                 <span>Department</span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('issueType')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0 outline-none select-none ${
                   activeTab === 'issueType'
                     ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
                     : 'hover:text-slate-900 hover:bg-slate-200/50'
                 }`}
+                style={{
+                  padding: isMobile ? '6px 8px' : '6px 12px',
+                  fontSize: isMobile ? '11px' : '12px',
+                  borderRadius: '7px'
+                }}
               >
-                <Layers className="w-3.5 h-3.5" />
+                <Layers className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
                 <span>Issue Type</span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('shift')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0 outline-none select-none ${
                   activeTab === 'shift'
                     ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
                     : 'hover:text-slate-900 hover:bg-slate-200/50'
                 }`}
+                style={{
+                  padding: isMobile ? '6px 8px' : '6px 12px',
+                  fontSize: isMobile ? '11px' : '12px',
+                  borderRadius: '7px'
+                }}
               >
-                <Clock className="w-3.5 h-3.5" />
+                <Clock className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
                 <span>Shift</span>
               </button>
             </div>
@@ -383,11 +468,23 @@ export const ProcessAuditBarChart = ({
         </div>
 
         {/* Embedded Date Range Filter Bar for Bar Diagram (Matching IHLR Style) */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mt-3.5 pt-3.5 border-t border-slate-100/90">
+        <div
+          className="flex flex-col md:flex-row md:items-center justify-between gap-3 mt-3.5 pt-3.5 border-t border-slate-100/90"
+          style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            justifyContent: 'space-between',
+            gap: isMobile ? '10px' : '12px',
+            marginTop: '14px',
+            paddingTop: '14px',
+            borderTop: '1px solid #f1f5f9'
+          }}
+        >
           {/* Quick Presets */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1">
-              <Calendar className="w-3 h-3 text-indigo-500" />
+          <div className="flex flex-wrap items-center gap-1.5" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1" style={{ fontSize: '10px', color: '#94a3b8' }}>
+              <Calendar className="w-3 h-3 text-indigo-500" style={{ width: '12px', height: '12px', color: '#6366f1' }} />
               <span>Timeline:</span>
             </span>
 
@@ -399,6 +496,12 @@ export const ProcessAuditBarChart = ({
                   ? 'bg-blue-600 text-white shadow-xs font-extrabold'
                   : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900'
               }`}
+              style={{
+                height: '28px',
+                padding: '0 10px',
+                borderRadius: '6px',
+                fontSize: isMobile ? '11px' : '12px'
+              }}
             >
               Last 12 Months
             </button>
@@ -411,29 +514,57 @@ export const ProcessAuditBarChart = ({
                   ? 'bg-blue-600 text-white shadow-xs font-extrabold'
                   : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900'
               }`}
+              style={{
+                height: '28px',
+                padding: '0 10px',
+                borderRadius: '6px',
+                fontSize: isMobile ? '11px' : '12px'
+              }}
             >
               Year {thisYear}
             </button>
           </div>
 
           {/* Custom Date Range Pickers Cluster */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/80 focus-within:bg-white border border-slate-200/90 focus-within:border-blue-500 rounded-xl p-1 shadow-2xs focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-              <div className="w-[135px]">
+          <div
+            className="flex items-center gap-2 flex-wrap"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flexWrap: 'wrap',
+              width: isMobile ? '100%' : 'auto'
+            }}
+          >
+            <div
+              className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/80 focus-within:bg-white border border-slate-200/90 focus-within:border-blue-500 rounded-xl p-1 shadow-2xs focus-within:ring-2 focus-within:ring-blue-500/20 transition-all"
+              style={{
+                height: '34px',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                width: isMobile ? '100%' : 'auto',
+                boxSizing: 'border-box'
+              }}
+            >
+              <div style={{ width: isMobile ? 'auto' : '135px', flex: isMobile ? 1 : 'none', minWidth: 0 }}>
                 <DateInput
                   value={activeStart}
                   onChange={(e) => handleDateChange(e.target.value, activeEnd)}
                   placeholder="From Date"
                   className="w-full px-1.5 py-0.5 text-xs font-semibold text-slate-800 bg-transparent border-0 focus:ring-0 outline-none"
+                  style={{ fontSize: isMobile ? '12px' : '12px' }}
                 />
               </div>
-              <span className="text-slate-400 text-xs font-bold px-0.5 select-none">→</span>
-              <div className="w-[135px]">
+              <span className="text-slate-400 text-xs font-bold px-0.5 select-none" style={{ fontSize: '12px', color: '#94a3b8' }}>→</span>
+              <div style={{ width: isMobile ? 'auto' : '135px', flex: isMobile ? 1 : 'none', minWidth: 0 }}>
                 <DateInput
                   value={activeEnd}
                   onChange={(e) => handleDateChange(activeStart, e.target.value)}
                   placeholder="To Date"
                   className="w-full px-1.5 py-0.5 text-xs font-semibold text-slate-800 bg-transparent border-0 focus:ring-0 outline-none"
+                  style={{ fontSize: isMobile ? '12px' : '12px' }}
                 />
               </div>
             </div>
@@ -444,13 +575,19 @@ export const ProcessAuditBarChart = ({
                 onClick={() => handleDateChange(activeDefaultStart, activeDefaultEnd)}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer shadow-2xs"
                 title="Reset date filter to Last 12 Months"
+                style={{
+                  height: '34px',
+                  padding: '0 10px',
+                  borderRadius: '8px',
+                  fontSize: '11px'
+                }}
               >
-                <RotateCcw className="w-3 h-3" />
+                <RotateCcw className="w-3 h-3" style={{ width: '12px', height: '12px' }} />
                 <span>Reset</span>
               </button>
             )}
 
-            <span className="text-[11px] font-semibold text-slate-500 font-mono hidden sm:inline">
+            <span className="text-[11px] font-semibold text-slate-500 font-mono hidden sm:inline" style={{ fontSize: '11px', color: '#64748b' }}>
               ({formatDateDDMMYYYY(activeStart)} - {formatDateDDMMYYYY(activeEnd)})
             </span>
           </div>
@@ -459,22 +596,49 @@ export const ProcessAuditBarChart = ({
       </div>
 
       {/* SVG Canvas Area */}
-      <div className="p-4 sm:p-6 relative select-none">
+      <div
+        className="p-4 sm:p-6 relative select-none"
+        style={{
+          padding: isMobile ? '12px' : '20px',
+          position: 'relative',
+          userSelect: 'none',
+          width: '100%',
+          overflowX: 'auto',
+          boxSizing: 'border-box'
+        }}
+      >
         {totalVolume === 0 ? (
-          <div className="py-14 flex flex-col items-center justify-center text-center">
-            <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
-              <BarChart3 className="w-7 h-7" />
+          <div className="py-14 flex flex-col items-center justify-center text-center" style={{ padding: isMobile ? '32px 16px' : '48px 20px' }}>
+            <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3" style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: '#f1f5f9', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+              <BarChart3 className="w-7 h-7" style={{ width: '24px', height: '24px' }} />
             </div>
-            <h3 className="text-sm font-bold text-slate-700">No Process Audit Data for Current Filter</h3>
-            <p className="text-xs text-slate-400 max-w-sm mt-1">
+            <h3 className="text-sm font-bold text-slate-700" style={{ fontSize: '14px', fontWeight: 700, color: '#334155' }}>No Process Audit Data for Current Filter</h3>
+            <p className="text-xs text-slate-400 max-w-sm mt-1" style={{ fontSize: '12px', color: '#94a3b8', maxWidth: '380px', marginTop: '4px' }}>
               Adjust your timeline or department filters above to explore shopfloor audit observation patterns and corrective actions.
             </p>
           </div>
         ) : (
-          <div className="relative w-full overflow-x-auto">
+          <div
+            className="relative w-full overflow-x-auto"
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: '100%',
+              minWidth: 0,
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              boxSizing: 'border-box'
+            }}
+          >
             <svg
               viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-              className="w-full h-auto min-w-[620px] overflow-visible"
+              className="w-full h-auto overflow-visible"
+              style={{
+                width: '100%',
+                height: 'auto',
+                minWidth: isMobile ? '560px' : '620px',
+                overflow: 'visible'
+              }}
             >
               {/* Defs for Gradients & Drop Shadows */}
               <defs>
