@@ -20,6 +20,18 @@ const Notification = () => {
   const location = useLocation();
   const { user } = useAuth();
 
+  const [screenWidth, setScreenWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+
+  useEffect(() => {
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = screenWidth < 768;
+
   const isIhlr = location.pathname.startsWith('/ihlr');
   const tabMode = isIhlr ? 'ihlr' : 'process-audit';
 
@@ -54,7 +66,11 @@ const Notification = () => {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   const handleItemClick = async (item) => {
@@ -107,12 +123,27 @@ const Notification = () => {
 
       {open && (
         <div
-          className="absolute right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+          className={`bg-white rounded-2xl shadow-2xl border border-slate-100 py-3 animate-in fade-in slide-in-from-top-2 duration-150 ${
+            isMobile ? 'fixed' : 'absolute right-0 mt-2'
+          }`}
           style={{
-            maxWidth: 'calc(100vw - 24px)',
-            width: '360px',
-            right: 0,
-            boxSizing: 'border-box'
+            zIndex: 99999,
+            boxSizing: 'border-box',
+            ...(isMobile
+              ? {
+                  top: '68px',
+                  left: '12px',
+                  right: '12px',
+                  width: 'calc(100vw - 24px)',
+                  maxWidth: '380px',
+                  marginLeft: 'auto',
+                  marginRight: 'auto'
+                }
+              : {
+                  width: '360px',
+                  maxWidth: 'calc(100vw - 24px)',
+                  right: 0
+                })
           }}
         >
           <div className="px-4 pb-2.5 flex items-center justify-between border-b border-slate-100">
