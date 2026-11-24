@@ -187,6 +187,20 @@ const ProcessAuditApprovals = () => {
   // Export State
   const [showExportModal, setShowExportModal] = useState(false);
 
+  // Responsive Screen Width & Breakpoint Hook
+  const [screenWidth, setScreenWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+  useEffect(() => {
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  const isMobile = screenWidth < 768;
+  const isTablet = screenWidth >= 768 && screenWidth < 1024;
+  const isDesktop = screenWidth >= 1024;
+  const [mobileTab, setMobileTab] = useState('all');
+
   const fileInputRef = useRef(null);
   const fileInputPermanentRef = useRef(null);
 
@@ -746,6 +760,9 @@ const ProcessAuditApprovals = () => {
       return;
     }
     setSelectedRequest(req);
+    if (mobileTab === 'queue') {
+      setMobileTab('form');
+    }
     if (!keepEditMode || String(req?.status || '').toUpperCase().includes('CLOSE')) {
       setAdminEditCloser(false);
     }
@@ -1662,27 +1679,182 @@ const ProcessAuditApprovals = () => {
   } = formatReassignmentHistory(selectedRequest?.reassignment_history);
 
   return (
-    <div className="space-y-6 w-full pb-16">
+    <div
+      className="space-y-6 w-full pb-16"
+      style={{
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        overflowX: 'hidden',
+        paddingBottom: isMobile ? '32px' : '64px',
+        boxSizing: 'border-box'
+      }}
+    >
       {/* Top Header & Breadcrumbs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          justifyContent: 'space-between',
+          gap: isMobile ? '12px' : '16px',
+          marginBottom: isMobile ? '14px' : '20px',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
+        }}
+      >
         <div>
-         
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Process Audit Approvals &amp; Sign-off Log
-          </h1>
-         
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1
+              className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+              style={{
+                fontSize: isMobile ? '22px' : isTablet ? '26px' : '30px',
+                lineHeight: isMobile ? '28px' : isTablet ? '32px' : '36px',
+                fontWeight: 800,
+                color: '#0f172a',
+                letterSpacing: '-0.025em',
+                margin: 0
+              }}
+            >
+              {isAdmin ? 'Process Audit Approvals & Sign-off Log' : 'My Action'}
+            </h1>
+          </div>
         </div>
-
-
       </div>
 
+      {/* Mobile / Tablet View Switcher (Only visible when screen width is under 1024px) */}
+      {!isDesktop && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: isMobile ? '4px' : '6px',
+            padding: isMobile ? '3px' : '4px',
+            backgroundColor: '#f1f5f9',
+            borderRadius: '12px',
+            marginBottom: '16px',
+            border: '1px solid #e2e8f0',
+            width: isMobile ? '100%' : 'fit-content',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+            overflow: 'hidden'
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setMobileTab('queue')}
+            style={{
+              flex: isMobile ? 1 : 'none',
+              padding: isMobile ? '7px 4px' : '8px 16px',
+              fontSize: isMobile ? '11px' : '12px',
+              fontWeight: 700,
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: mobileTab === 'queue' ? '#2563eb' : 'transparent',
+              color: mobileTab === 'queue' ? '#ffffff' : '#64748b',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: isMobile ? '4px' : '6px',
+              boxShadow: mobileTab === 'queue' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+              minWidth: 0
+            }}
+          >
+            <ClipboardCheck style={{ width: '13px', height: '13px', flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Queue ({filtered.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('form')}
+            style={{
+              flex: isMobile ? 1 : 'none',
+              padding: isMobile ? '7px 4px' : '8px 16px',
+              fontSize: isMobile ? '11px' : '12px',
+              fontWeight: 700,
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: mobileTab === 'form' ? '#2563eb' : 'transparent',
+              color: mobileTab === 'form' ? '#ffffff' : '#64748b',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: isMobile ? '4px' : '6px',
+              boxShadow: mobileTab === 'form' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+              minWidth: 0
+            }}
+          >
+            <FileCheck style={{ width: '13px', height: '13px', flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {isMobile ? 'Sign-off Form' : `Sign-off Form${selectedRequest ? ` (${selectedRequest.issue_no || (selectedRequest.id ? `PA-${selectedRequest.id}` : `#${selectedRequest.id}`)})` : ''}`}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('all')}
+            style={{
+              flex: isMobile ? 1 : 'none',
+              padding: isMobile ? '7px 4px' : '8px 16px',
+              fontSize: isMobile ? '11px' : '12px',
+              fontWeight: 700,
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: mobileTab === 'all' ? '#2563eb' : 'transparent',
+              color: mobileTab === 'all' ? '#ffffff' : '#64748b',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: isMobile ? '4px' : '6px',
+              boxShadow: mobileTab === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+              minWidth: 0
+            }}
+          >
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>View Both</span>
+          </button>
+        </div>
+      )}
+
       {/* Main Two-Column Split Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div
+        className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isDesktop ? 'repeat(12, minmax(0, 1fr))' : '1fr',
+          gap: isMobile ? '16px' : isTablet ? '20px' : '24px',
+          alignItems: 'start',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
+        }}
+      >
 
         {/* ============================================================== */}
         {/* LEFT COLUMN: Update Closer / Sign-off Log Form (Matching IHLR)  */}
         {/* ============================================================== */}
-        <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-5 sticky top-4">
+        <div
+          className="lg:col-span-5 xl:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-5 sticky top-4"
+          style={{
+            display: !isDesktop && mobileTab === 'queue' ? 'none' : 'block',
+            padding: isMobile ? '16px' : isTablet ? '20px' : '24px',
+            borderRadius: isMobile ? '14px' : '16px',
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
 
           {/* Card Title */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -3073,10 +3245,28 @@ const ProcessAuditApprovals = () => {
         {/* ============================================================== */}
         {/* RIGHT COLUMN: Filter Bar & Table                              */}
         {/* ============================================================== */}
-        <div className="lg:col-span-7 xl:col-span-8 space-y-4">
+        <div
+          className="lg:col-span-7 xl:col-span-8 space-y-4"
+          style={{
+            display: !isDesktop && mobileTab === 'form' ? 'none' : 'block',
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
 
-{/* Top Three Static Overview Cards: Total Assigned, Action Submitted & Pending */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Top Three Static Overview Cards: Total Assigned, Action Submitted & Pending */}
+          <div
+            className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
+              gap: isMobile ? '10px' : '12px',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}
+          >
             {/* Card 1: Total Assigned */}
             <div className="bg-white rounded-xl py-3 px-3.5 border border-slate-200/90 shadow-2xs select-none">
               <div className="flex items-center justify-between mb-1">
@@ -3145,8 +3335,20 @@ const ProcessAuditApprovals = () => {
           </div>
 
           {/* Top Filter and Search Bar */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center gap-3">
-            <div className="relative flex-1 w-full">
+          <div
+            className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center gap-3"
+            style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: isMobile ? 'stretch' : 'center',
+              gap: isMobile ? '10px' : '12px',
+              padding: isMobile ? '14px' : '16px',
+              width: '100%',
+              maxWidth: '100%',
+              boxSizing: 'border-box'
+            }}
+          >
+            <div className="relative flex-1 w-full" style={{ width: '100%' }}>
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
               <input
                 type="text"
@@ -3154,6 +3356,11 @@ const ProcessAuditApprovals = () => {
                 value={search}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium transition"
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: '12px'
+                }}
               />
               {search && (
                 <button
@@ -3167,7 +3374,7 @@ const ProcessAuditApprovals = () => {
               )}
             </div>
 
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:w-48" style={{ width: isMobile ? '100%' : '180px' }}>
               <select
                 value={selectedStatus}
                 onChange={(e) => {
@@ -3175,6 +3382,11 @@ const ProcessAuditApprovals = () => {
                   setCurrentPage(1);
                 }}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: '12px'
+                }}
               >
                 <option value="All">All Decisions</option>
                 <option value="Pending">Pending</option>
@@ -3183,11 +3395,15 @@ const ProcessAuditApprovals = () => {
               </select>
             </div>
 
-
             <button
               onClick={handleOpenExportModal}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow transition transform active:scale-95 cursor-pointer shrink-0"
               id="approvals-export-view-btn"
+              style={{
+                width: isMobile ? '100%' : 'auto',
+                height: '38px',
+                borderRadius: '10px'
+              }}
             >
               <Download className="w-3.5 h-3.5" />
               <span>Export View</span>
@@ -3195,20 +3411,42 @@ const ProcessAuditApprovals = () => {
           </div>
 
           {/* Table Container */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[700px]">
+          <div
+            className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden"
+            style={{
+              width: '100%',
+              maxWidth: '100%',
+              borderRadius: isMobile ? '14px' : '16px',
+              boxSizing: 'border-box'
+            }}
+          >
+            <div
+              className="overflow-x-auto"
+              style={{
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                width: '100%',
+                maxWidth: '100%'
+              }}
+            >
+              <table
+                className="w-full text-left border-collapse min-w-[700px]"
+                style={{
+                  minWidth: isMobile ? '650px' : isTablet ? '750px' : '100%',
+                  width: '100%'
+                }}
+              >
                 <thead>
                   <tr className="bg-[#f8fafc] border-b border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                    <th className="py-3 px-3 text-center w-12">SL NO</th>
-                    <th className="py-3 px-3">AUDIT REQ NO</th>
-                    <th className="py-3 px-3">REQUESTED DATE</th>
-                    <th className="py-3 px-3">ISSUE TYPE</th>
-                    <th className="py-3 px-3">PRIORITY</th>
-                    <th className="py-3 px-3">EVIDENCE</th>
-                    <th className="py-3 px-3 text-center">STATUS</th>
-                    <th className="py-3 px-3">REMARKS</th>
-                    <th className="py-3 px-3 text-center w-14">ACTIONS</th>
+                    <th className="py-3 px-3 text-center w-12" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900, textAlign: 'center', width: '48px' }}>SL NO</th>
+                    <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>AUDIT REQ NO</th>
+                    <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>REQUESTED DATE</th>
+                    <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>ISSUE TYPE</th>
+                    <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>PRIORITY</th>
+                    <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>EVIDENCE</th>
+                    <th className="py-3 px-3 text-center" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900, textAlign: 'center' }}>STATUS</th>
+                    <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>REMARKS</th>
+                    <th className="py-3 px-3 text-center w-14" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900, textAlign: 'center', width: '56px' }}>ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
@@ -3273,10 +3511,10 @@ const ProcessAuditApprovals = () => {
                               : 'hover:bg-slate-50/80'
                             }`}
                         >
-                          <td className="py-3.5 px-3 text-center font-mono text-[11px] text-slate-500">
+                          <td className="py-3.5 px-3 text-center font-mono text-[11px] text-slate-500" style={{ padding: isMobile ? '10px 8px' : '14px 12px', textAlign: 'center' }}>
                             {startIndex + idx + 1}
                           </td>
-                          <td className="py-3.5 px-3 font-mono font-bold text-blue-600 whitespace-nowrap">
+                          <td className="py-3.5 px-3 font-mono font-bold text-blue-600 whitespace-nowrap" style={{ padding: isMobile ? '10px 8px' : '14px 12px' }}>
                             <div>{displayId}</div>
                             {(() => {
                               const { hasReassignments, count } = formatReassignmentHistory(r.reassignment_history);
@@ -3291,27 +3529,27 @@ const ProcessAuditApprovals = () => {
                               );
                             })()}
                           </td>
-                          <td className="py-3.5 px-3 whitespace-nowrap text-slate-600 font-mono text-[11px]">
+                          <td className="py-3.5 px-3 whitespace-nowrap text-slate-600 font-mono text-[11px]" style={{ padding: isMobile ? '10px 8px' : '14px 12px' }}>
                             {r.escalation_date || r.created_at
                               ? formatDateDDMMYYYY(r.escalation_date || r.created_at)
                               : '—'}
                           </td>
-                          <td className="py-3.5 px-3 whitespace-nowrap">
+                          <td className="py-3.5 px-3 whitespace-nowrap" style={{ padding: isMobile ? '10px 8px' : '14px 12px' }}>
                             <span className="font-medium text-slate-800" title={r.issue_type || '—'}>
                               {r.issue_type || '—'}
                             </span>
                           </td>
-                          <td className="py-3.5 px-3 whitespace-nowrap">
+                          <td className="py-3.5 px-3 whitespace-nowrap" style={{ padding: isMobile ? '10px 8px' : '14px 12px' }}>
                             {renderPriorityValue(r.priority)}
                           </td>
                           {/* Column 5: AUDIT REQUEST EVIDENCE */}
-                          <td className="py-3.5 px-3 cursor-default" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-3.5 px-3 cursor-default" onClick={(e) => e.stopPropagation()} style={{ padding: isMobile ? '10px 8px' : '14px 12px' }}>
                             <AttachmentThumbnail
                               rawAttachment={auditEvidence}
                             />
                           </td>
                           {/* Column 6: STATUS */}
-                          <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                          <td className="py-3.5 px-3 text-center whitespace-nowrap" style={{ padding: isMobile ? '10px 8px' : '14px 12px', textAlign: 'center' }}>
                             {isClosed ? (
                               <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 CLOSED
@@ -3335,11 +3573,11 @@ const ProcessAuditApprovals = () => {
                             )}
                           </td>
                           {/* Column 8: REMARKS */}
-                          <td className="py-3.5 px-3 text-slate-600 truncate max-w-[150px]" title={remarksText}>
+                          <td className="py-3.5 px-3 text-slate-600 truncate max-w-[150px]" title={remarksText} style={{ padding: isMobile ? '10px 8px' : '14px 12px', maxWidth: isMobile ? '100px' : '150px' }}>
                             {remarksText}
                           </td>
                           {/* Column 9: ACTIONS */}
-                          <td className="py-3.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-3.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()} style={{ padding: isMobile ? '10px 8px' : '14px 12px', textAlign: 'center' }}>
                             <div className="flex items-center justify-center gap-1.5">
                               <button
                                 type="button"
@@ -3349,6 +3587,13 @@ const ProcessAuditApprovals = () => {
                                 }}
                                 className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
                                 title="View Full Report"
+                                style={{
+                                  minWidth: '32px',
+                                  minHeight: '32px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
@@ -3364,8 +3609,18 @@ const ProcessAuditApprovals = () => {
             </div>
 
             {/* Pagination Controls */}
-            <div className="p-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-4 text-xs text-slate-600">
-              <div className="flex items-center gap-2">
+            <div
+              className="p-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-4 text-xs text-slate-600"
+              style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+                justifyContent: isMobile ? 'center' : 'flex-end',
+                gap: isMobile ? '10px' : '16px',
+                padding: isMobile ? '12px 14px' : '14px 16px'
+              }}
+            >
+              <div className="flex items-center gap-2" style={{ justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
                 <span>Rows per page:</span>
                 <select
                   value={rowsPerPage}
@@ -3380,19 +3635,26 @@ const ProcessAuditApprovals = () => {
                 </select>
               </div>
 
-              <div className="font-mono text-[11px] text-slate-500">
+              <div className="font-mono text-[11px] text-slate-500" style={{ textAlign: isMobile ? 'center' : 'right' }}>
                 {totalRecords === 0
                   ? '0–0 of 0'
                   : `${startIndex + 1}–${endIndex} of ${totalRecords}`}
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1" style={{ justifyContent: isMobile ? 'center' : 'flex-end' }}>
                 <button
                   type="button"
                   disabled={currentPage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                   className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
                   title="Previous Page"
+                  style={{
+                    minWidth: '32px',
+                    minHeight: '32px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -3402,6 +3664,13 @@ const ProcessAuditApprovals = () => {
                   onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                   className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
                   title="Next Page"
+                  style={{
+                    minWidth: '32px',
+                    minHeight: '32px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
