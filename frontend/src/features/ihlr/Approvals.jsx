@@ -21,7 +21,8 @@ import {
   Lock,
   Pencil,
   Clock,
-  Paperclip
+  Paperclip,
+  ArrowLeft
 } from 'lucide-react';
 import { ihlrService } from '../../services/ihlrService';
 import { IhlrAttachmentThumbnail, parseAttachments } from './IhlrAttachmentView';
@@ -223,6 +224,26 @@ const IhlrApprovals = () => {
   const [showExportModal, setShowExportModal] = useState(false);
 
   const fileInputRef = useRef(null);
+  const formSectionRef = useRef(null);
+  const queueSectionRef = useRef(null);
+
+  // Responsive screen width handling for mobile, tablet, and desktop
+  const [screenWidth, setScreenWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+
+  useEffect(() => {
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = screenWidth < 768;
+  const isTablet = screenWidth >= 768 && screenWidth < 1024;
+  const isDesktop = screenWidth >= 1024;
+
+  // View tab for mobile / tablet screens: 'all' (stacked), 'queue', or 'form'
+  const [mobileTab, setMobileTab] = useState('all');
 
   // Fetch users for department-based reassignment
   useEffect(() => {
@@ -422,6 +443,16 @@ const IhlrApprovals = () => {
     }
     setSuccessMessage('');
     setErrorMessage('');
+
+    if (!isDesktop) {
+      if (mobileTab === 'queue') {
+        setMobileTab('form');
+      } else if (mobileTab === 'all') {
+        setTimeout(() => {
+          formSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+      }
+    }
 
     // 5-Why Occurrence Cause
     const whyArray = Array.isArray(req.prod_why_why) ? req.prod_why_why : [];
@@ -1268,42 +1299,224 @@ const IhlrApprovals = () => {
   });
 
   return (
-    <div className="space-y-6 w-full pb-16">
+    <div
+      className="space-y-6 w-full pb-16"
+      style={{
+        width: '100%',
+        paddingBottom: isMobile ? '32px' : '64px',
+        boxSizing: 'border-box'
+      }}
+    >
       {/* Top Header & Breadcrumbs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          justifyContent: 'space-between',
+          gap: isMobile ? '12px' : '16px',
+          marginBottom: isMobile ? '14px' : '20px'
+        }}
+      >
         <div>
-        
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1
+              className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+              style={{
+                fontSize: isMobile ? '22px' : isTablet ? '26px' : '30px',
+                lineHeight: isMobile ? '28px' : isTablet ? '32px' : '36px',
+                fontWeight: 800,
+                color: '#0f172a',
+                letterSpacing: '-0.025em',
+                margin: 0
+              }}
+            >
               {isAdmin ? 'IHLR Approvals & Closer Log' : 'My Action'}
             </h1>
-       
           </div>
-         
         </div>
       </div>
 
+      {/* Mobile / Tablet View Switcher (Only visible when screen width is under 1024px) */}
+      {!isDesktop && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px',
+            backgroundColor: '#f1f5f9',
+            borderRadius: '12px',
+            marginBottom: '16px',
+            border: '1px solid #e2e8f0',
+            width: isMobile ? '100%' : 'fit-content'
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setMobileTab('queue')}
+            style={{
+              flex: isMobile ? 1 : 'none',
+              padding: isMobile ? '8px 10px' : '8px 16px',
+              fontSize: '12px',
+              fontWeight: 700,
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: mobileTab === 'queue' ? '#2563eb' : 'transparent',
+              color: mobileTab === 'queue' ? '#ffffff' : '#64748b',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              boxShadow: mobileTab === 'queue' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <ClipboardCheck style={{ width: '14px', height: '14px' }} />
+            <span>Queue ({filtered.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('form')}
+            style={{
+              flex: isMobile ? 1 : 'none',
+              padding: isMobile ? '8px 10px' : '8px 16px',
+              fontSize: '12px',
+              fontWeight: 700,
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: mobileTab === 'form' ? '#2563eb' : 'transparent',
+              color: mobileTab === 'form' ? '#ffffff' : '#64748b',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              boxShadow: mobileTab === 'form' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <FileCheck style={{ width: '14px', height: '14px' }} />
+            <span>
+              Closer Form
+              {selectedRequest ? ` (${String(selectedRequest.req_no).startsWith('IHLR-') ? selectedRequest.req_no : `#${selectedRequest.req_no}`})` : ''}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('all')}
+            style={{
+              flex: isMobile ? 1 : 'none',
+              padding: isMobile ? '8px 10px' : '8px 16px',
+              fontSize: '12px',
+              fontWeight: 700,
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: mobileTab === 'all' ? '#2563eb' : 'transparent',
+              color: mobileTab === 'all' ? '#ffffff' : '#64748b',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              boxShadow: mobileTab === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>View Both</span>
+          </button>
+        </div>
+      )}
+
       {/* Main Two-Column Split Layout (Matching Reference Image 2) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div
+        className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isDesktop ? 'repeat(12, minmax(0, 1fr))' : '1fr',
+          gap: isMobile ? '16px' : isTablet ? '20px' : '24px',
+          alignItems: 'start',
+          width: '100%'
+        }}
+      >
         
         {/* ============================================================== */}
         {/* LEFT COLUMN: Update Closer Log Form (Fields from Image 1)       */}
         {/* ============================================================== */}
-        <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-5 sticky top-4">
+        <div
+          ref={formSectionRef}
+          className="lg:col-span-5 xl:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-5 sticky top-4"
+          style={{
+            gridColumn: isDesktop ? 'span 5 / span 5' : 'auto',
+            order: isDesktop ? 1 : 2,
+            display: !isDesktop && mobileTab === 'queue' ? 'none' : 'block',
+            padding: isMobile ? '16px' : isTablet ? '20px' : '24px',
+            borderRadius: isMobile ? '14px' : '16px',
+            position: isDesktop ? 'sticky' : 'static',
+            top: isDesktop ? '16px' : 'auto',
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+            boxSizing: 'border-box',
+            width: '100%'
+          }}
+        >
           
           {/* Card Title */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-2xs">
-                <FileCheck className="w-4 h-4" />
+          <div
+            className="flex items-center justify-between pb-3 border-b border-slate-100"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingBottom: '12px',
+              marginBottom: '16px',
+              borderBottom: '1px solid #f1f5f9'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '10px',
+                  backgroundColor: '#eff6ff',
+                  color: '#2563eb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                }}
+              >
+                <FileCheck style={{ width: '16px', height: '16px' }} />
               </div>
-              <h2 className="text-sm font-bold text-slate-900">
+              <h2
+                style={{
+                  fontSize: isMobile ? '13px' : '14px',
+                  fontWeight: 700,
+                  color: '#0f172a',
+                  margin: 0
+                }}
+              >
                 Update Closer Log
               </h2>
             </div>
             {selectedRequest && (
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span
+                  style={{
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontFamily: 'monospace',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    backgroundColor: '#eff6ff',
+                    color: '#1d4ed8',
+                    border: '1px solid #bfdbfe'
+                  }}
+                >
                   {String(selectedRequest.req_no).startsWith('IHLR-') ? selectedRequest.req_no : `#${selectedRequest.req_no}`}
                 </span>
               </div>
@@ -1325,12 +1538,12 @@ const IhlrApprovals = () => {
           )}
 
           {/* Form Fields */}
-          <form onSubmit={handleSaveCloser} className="space-y-4 text-xs">
+          <form onSubmit={handleSaveCloser} className="space-y-4 text-xs" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '12px' : '16px' }}>
             
             {/* 1. Request Reference Fields (Disabled grey boxes, as in Image 2) */}
-            <div className="space-y-3">
+            <div className="space-y-3" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#334155', marginBottom: '4px', display: 'block' }}>
                   IHLR REQ NO <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -1338,17 +1551,30 @@ const IhlrApprovals = () => {
                   readOnly
                   disabled
                   value={selectedRequest ? (String(selectedRequest.req_no).startsWith('IHLR-') ? selectedRequest.req_no : `#${selectedRequest.req_no}`) : ''}
-                  placeholder="Click a row on the right to select"
+                  placeholder={!isDesktop ? "Select a request from queue" : "Click a row on the right to select"}
                   className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-not-allowed select-none outline-none"
+                  style={{
+                    width: '100%',
+                    height: isMobile ? '38px' : '36px',
+                    padding: '0 14px',
+                    backgroundColor: '#f1f5f9',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    color: '#334155',
+                    fontWeight: 600,
+                    fontSize: isMobile ? '13px' : '12px',
+                    cursor: 'not-allowed',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
             </div>
 
             {/* Separator */}
-            <div className="pt-2 border-t border-slate-100">
-              <div className="flex items-center justify-between mb-2">
+            <div className="pt-2 border-t border-slate-100" style={{ paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
+              <div className="flex items-center justify-between mb-2" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1.5" style={{ fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#b45309' }}>
                     <span>Occurrence Cause (5-Why Analysis)</span>
                   </span>
                 </div>
@@ -1356,15 +1582,16 @@ const IhlrApprovals = () => {
 
               {/* Admin Edit Mode Alert Banner */}
               {isAdmin && selectedRequest && adminEditCloser && (
-                <div className="mb-2.5 p-2 px-3 rounded-lg bg-amber-50/90 border border-amber-200/90 text-amber-900 text-xs flex items-center justify-between animate-in fade-in">
-                  <div className="flex items-center gap-1.5">
-                    <Pencil className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="text-[11px] font-semibold">Admin Edit Active: Closer fields unlocked for editing.</span>
+                <div className="mb-2.5 p-2 px-3 rounded-lg bg-amber-50/90 border border-amber-200/90 text-amber-900 text-xs flex items-center justify-between animate-in fade-in" style={{ padding: '8px 12px', borderRadius: '8px', marginBottom: '10px' }}>
+                  <div className="flex items-center gap-1.5" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Pencil className="w-3.5 h-3.5 text-amber-600 shrink-0" style={{ width: '14px', height: '14px', color: '#d97706', flexShrink: 0 }} />
+                    <span className="text-[11px] font-semibold" style={{ fontSize: '11px', fontWeight: 600 }}>Admin Edit Active: Closer fields unlocked for editing.</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setAdminEditCloser(false)}
                     className="text-[10px] font-bold text-amber-700 hover:text-amber-900 underline cursor-pointer shrink-0 ml-2"
+                    style={{ fontSize: '10px', fontWeight: 700, color: '#b45309', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
                   >
                     Lock
                   </button>
@@ -1372,15 +1599,15 @@ const IhlrApprovals = () => {
               )}
 
               {/* 5-Whys Stacked Inputs (Image 1: W1 to W5) */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {['W1', 'W2', 'W3', 'W4', 'W5'].map((label, idx) => {
                   const isMandatory = idx < 3;
                   const errorKey = `w${idx + 1}`;
                   const hasError = isMandatory && Boolean(closerWhyErrors[errorKey]);
                   return (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-8 shrink-0 text-[11px] font-black font-mono ${hasError ? 'text-rose-700' : 'text-rose-600'}`}>
+                    <div key={idx} className="space-y-1" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '8px', width: '100%' }}>
+                        <span className={`w-8 shrink-0 text-[11px] font-black font-mono ${hasError ? 'text-rose-700' : 'text-rose-600'}`} style={{ width: '32px', flexShrink: 0, fontSize: '11px', fontWeight: 900, fontFamily: 'monospace', color: hasError ? '#be123c' : '#e11d48' }}>
                           {label}:{isMandatory && <span className="text-red-500 font-bold ml-0.5">*</span>}
                         </span>
                         <input
@@ -1396,7 +1623,7 @@ const IhlrApprovals = () => {
                           onBlur={() => handleWhyBlur(idx)}
                           placeholder={
                             !selectedRequest
-                              ? 'Select request on right'
+                              ? (!isDesktop ? 'Select request from queue' : 'Select request on right')
                               : isSelectedClosed
                               ? 'Incident is closed (Read-only)'
                               : canUpdateCloserFields
@@ -1410,10 +1637,18 @@ const IhlrApprovals = () => {
                               ? 'bg-rose-50/20 border border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
                               : 'bg-white border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                           }`}
+                          style={{
+                            width: '100%',
+                            height: isMobile ? '36px' : '32px',
+                            fontSize: isMobile ? '13px' : '12px',
+                            padding: '0 10px',
+                            borderRadius: '8px',
+                            boxSizing: 'border-box'
+                          }}
                         />
                       </div>
                       {hasError && (
-                        <p className="text-[11px] text-rose-500 font-semibold pl-10 flex items-center gap-1">
+                        <p className="text-[11px] text-rose-500 font-semibold pl-10 flex items-center gap-1" style={{ fontSize: '11px', paddingLeft: '40px' }}>
                           <span>* Why {idx + 1} ({label}) is mandatory. Please enter occurrence cause.</span>
                         </p>
                       )}
@@ -1424,16 +1659,16 @@ const IhlrApprovals = () => {
             </div>
 
             {/* Temporary Countermeasures Section Header */}
-            <div className="pt-2 border-t border-slate-400">
-              <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">
+            <div className="pt-2 border-t border-slate-400" style={{ paddingTop: '8px', borderTop: '1px solid #94a3b8' }}>
+              <span className="text-xs font-black text-slate-900 uppercase tracking-wider block" style={{ fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0f172a', display: 'block' }}>
                 Temporary Countermeasures
               </span>
             </div>
 
             {/* Temporary Action Field (Image 1: Action Words) */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <div className="flex items-center justify-between mb-1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#334155' }}>
                   <span>TEMPORARY ACTION</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
@@ -1457,7 +1692,7 @@ const IhlrApprovals = () => {
                 onBlur={() => setCloserAction((prev) => (prev || '').trim())}
                 placeholder={
                   !selectedRequest
-                    ? 'Click a row on the right to select'
+                    ? (!isDesktop ? 'Select a request from queue' : 'Click a row on the right to select')
                     : isSelectedClosed
                     ? 'Incident is closed (Read-only)'
                     : canUpdateCloserFields
@@ -1471,30 +1706,54 @@ const IhlrApprovals = () => {
                     ? 'border border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
                     : 'border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                 }`}
+                style={{
+                  width: '100%',
+                  minHeight: isMobile ? '64px' : '58px',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  lineHeight: '18px',
+                  resize: 'none',
+                  boxSizing: 'border-box'
+                }}
               />
               {closerActionError && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {closerActionError}</span>
                 </p>
               )}
             </div>
 
             {/* Temporary Evidence Attachment (Image 1: Format PPT, JPEG, EXCEL & PDF) */}
-            <div className="-mt-2">
+            <div className="-mt-2" style={{ marginTop: '-4px' }}>
               {/* Styled File Input Button (matching Image 2) */}
               <div className={`flex items-center gap-2 p-1 rounded-xl transition ${
                 closerEvidenceError ? 'border border-rose-400 bg-rose-50/20 ring-1 ring-rose-400/30' : ''
-              }`}>
+              }`} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px' }}>
                 <button
                   type="button"
                   disabled={!canUpdateCloserFields}
                   onClick={() => fileInputRef.current && fileInputRef.current.click()}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-2xs"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    height: '32px',
+                    padding: '0 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#f8fafc',
+                    color: '#334155',
+                    fontWeight: 700,
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    flexShrink: 0
+                  }}
                 >
-                  <Paperclip className="w-3.5 h-3.5 rotate-45 text-slate-600 shrink-0" />
-                
+                  <Paperclip className="w-3.5 h-3.5 rotate-45 text-slate-600 shrink-0" style={{ width: '14px', height: '14px' }} />
                 </button>
-                <span className="text-[11px] text-slate-500 truncate">
+                <span className="text-[11px] text-slate-500 truncate" style={{ fontSize: '11px', color: '#64748b' }}>
                   {newEvidenceFiles.length > 0
                     ? `${newEvidenceFiles.length} file(s) selected`
                     : existingEvidence.length > 0
@@ -1511,13 +1770,13 @@ const IhlrApprovals = () => {
                 />
               </div>
               {closerEvidenceError && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {closerEvidenceError}</span>
                 </p>
               )}
 
               {/* Existing and newly attached chips */}
-              <div className="mt-2 space-y-1">
+              <div className="mt-2 space-y-1" style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {existingEvidence.length > 0 && (
                   <AttachmentChipList
                     attachments={existingEvidence}
@@ -1539,8 +1798,8 @@ const IhlrApprovals = () => {
 
             {/* Temporary Target Date */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <div className="flex items-center justify-between mb-1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#334155' }}>
                   <span> TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
@@ -1573,9 +1832,17 @@ const IhlrApprovals = () => {
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                 }`}
+                style={{
+                  width: '100%',
+                  height: isMobile ? '38px' : '36px',
+                  padding: '0 12px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  boxSizing: 'border-box'
+                }}
               />
               {closerTargetDateError && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {typeof closerTargetDateError === 'string' ? closerTargetDateError : 'Temporary Target Date is required.'}</span>
                 </p>
               )}
@@ -1583,8 +1850,8 @@ const IhlrApprovals = () => {
 
             {/* Temporary Closed By (TEM CLOSED BY) */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <div className="flex items-center justify-between mb-1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#334155' }}>
                   <span> CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
@@ -1594,7 +1861,7 @@ const IhlrApprovals = () => {
                 disabled={!canUpdateCloserFields}
                 placeholder={
                   !selectedRequest
-                    ? 'Click a row on the right to select'
+                    ? (!isDesktop ? 'Select a request from queue' : 'Click a row on the right to select')
                     : isSelectedClosed
                     ? 'Incident is closed (Read-only)'
                     : canUpdateCloserFields
@@ -1633,9 +1900,18 @@ const IhlrApprovals = () => {
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                 }`}
+                style={{
+                  width: '100%',
+                  height: isMobile ? '38px' : '36px',
+                  padding: '0 12px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  fontWeight: 600,
+                  boxSizing: 'border-box'
+                }}
               />
               {closerTemporaryClosedByError ? (
-                <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '2px' }}>
                   <span>* {closerTemporaryClosedByError}</span>
                 </p>
               ) : (
@@ -1644,16 +1920,16 @@ const IhlrApprovals = () => {
             </div>
 
             {/* Permanent Fix Section Header */}
-            <div className="pt-2 border-t border-slate-400">
-              <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">
+            <div className="pt-2 border-t border-slate-400" style={{ paddingTop: '8px', borderTop: '1px solid #94a3b8' }}>
+              <span className="text-xs font-black text-slate-900 uppercase tracking-wider block" style={{ fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0f172a', display: 'block' }}>
                 Permanent Countermeasures
               </span>
             </div>
 
             {/* 1. Permanent Action */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <div className="flex items-center justify-between mb-1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#334155' }}>
                   <span>PERMANENT ACTION</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
@@ -1677,7 +1953,7 @@ const IhlrApprovals = () => {
                 onBlur={() => setCloserPermanentFix((prev) => (prev || '').trim())}
                 placeholder={
                   !selectedRequest
-                    ? 'Click a row on the right to select'
+                    ? (!isDesktop ? 'Select a request from queue' : 'Click a row on the right to select')
                     : isSelectedClosed
                     ? 'Incident is closed (Read-only)'
                     : canUpdateCloserFields
@@ -1691,29 +1967,53 @@ const IhlrApprovals = () => {
                     ? 'border border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
                     : 'border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                 }`}
+                style={{
+                  width: '100%',
+                  minHeight: isMobile ? '64px' : '58px',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  lineHeight: '18px',
+                  resize: 'none',
+                  boxSizing: 'border-box'
+                }}
               />
               {closerPermanentFixError && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {closerPermanentFixError}</span>
                 </p>
               )}
             </div>
 
             {/* 2. Permanent Fix Evidence Attachment */}
-            <div className="-mt-2">
+            <div className="-mt-2" style={{ marginTop: '-4px' }}>
               <div className={`flex items-center gap-2 rounded-xl transition ${
                 closerPermanentEvidenceError ? 'border border-rose-400 bg-rose-50/20 ring-1 ring-rose-400/30' : ''
-              }`}>
+              }`} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px' }}>
                 <button
                   type="button"
                   disabled={!canUpdateCloserFields}
                   onClick={() => fileInputPermanentRef.current && fileInputPermanentRef.current.click()}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-2xs"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    height: '32px',
+                    padding: '0 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#f8fafc',
+                    color: '#334155',
+                    fontWeight: 700,
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    flexShrink: 0
+                  }}
                 >
-                  <Paperclip className="w-3.5 h-3.5 rotate-45 text-slate-600 shrink-0" />
-               
+                  <Paperclip className="w-3.5 h-3.5 rotate-45 text-slate-600 shrink-0" style={{ width: '14px', height: '14px' }} />
                 </button>
-                <span className="text-[11px] text-slate-500 truncate">
+                <span className="text-[11px] text-slate-500 truncate" style={{ fontSize: '11px', color: '#64748b' }}>
                   {newPermanentEvidenceFiles.length > 0
                     ? `${newPermanentEvidenceFiles.length} file(s) selected`
                     : existingPermanentEvidence.length > 0
@@ -1730,13 +2030,13 @@ const IhlrApprovals = () => {
                 />
               </div>
               {closerPermanentEvidenceError && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {closerPermanentEvidenceError}</span>
                 </p>
               )}
 
               {/* Existing and newly attached chips for permanent evidence */}
-              <div className="mt-2 space-y-1">
+              <div className="mt-2 space-y-1" style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {existingPermanentEvidence.length > 0 && (
                   <AttachmentChipList
                     attachments={existingPermanentEvidence}
@@ -1758,8 +2058,8 @@ const IhlrApprovals = () => {
 
             {/* 3. Permanent Fix Target Date */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <div className="flex items-center justify-between mb-1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#334155' }}>
                   <span> TARGET DATE</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
@@ -1786,9 +2086,17 @@ const IhlrApprovals = () => {
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                 }`}
+                style={{
+                  width: '100%',
+                  height: isMobile ? '38px' : '36px',
+                  padding: '0 12px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  boxSizing: 'border-box'
+                }}
               />
               {closerPermanentTargetDateError && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '4px' }}>
                   <span>* {typeof closerPermanentTargetDateError === 'string' ? closerPermanentTargetDateError : 'Permanent Target Date cannot be before Temporary Target Date.'}</span>
                 </p>
               )}
@@ -1796,8 +2104,8 @@ const IhlrApprovals = () => {
 
             {/* Permanent Closed By (PERM CLOSED BY) */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <div className="flex items-center justify-between mb-1" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#334155' }}>
                   <span> CLOSED BY</span>
                   <span className="text-rose-500 font-bold">*</span>
                 </label>
@@ -1807,7 +2115,7 @@ const IhlrApprovals = () => {
                 disabled={!canUpdateCloserFields}
                 placeholder={
                   !selectedRequest
-                    ? 'Click a row on the right to select'
+                    ? (!isDesktop ? 'Select a request from queue' : 'Click a row on the right to select')
                     : isSelectedClosed
                     ? 'Incident is closed (Read-only)'
                     : canUpdateCloserFields
@@ -1846,9 +2154,18 @@ const IhlrApprovals = () => {
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20'
                     : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                 }`}
+                style={{
+                  width: '100%',
+                  height: isMobile ? '38px' : '36px',
+                  padding: '0 12px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  fontWeight: 600,
+                  boxSizing: 'border-box'
+                }}
               />
               {closerPermanentClosedByError ? (
-                <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
+                <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1" style={{ fontSize: '11px', marginTop: '2px' }}>
                   <span>* {closerPermanentClosedByError}</span>
                 </p>
               ) : (
@@ -1857,37 +2174,74 @@ const IhlrApprovals = () => {
             </div>
 
             {/* Dedicated Closer Submit Button */}
-            <div className="pt-1">
+            <div className="pt-1" style={{ paddingTop: '4px' }}>
               {!selectedRequest ? (
                 <button
                   type="button"
                   disabled
                   className="w-full py-2.5 px-4 rounded-xl border border-blue-200/80 bg-blue-50/50 text-blue-400 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs"
+                  style={{
+                    width: '100%',
+                    minHeight: isMobile ? '44px' : '40px',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    fontWeight: 700,
+                    boxSizing: 'border-box'
+                  }}
                 >
                   Select an Action to Update
                 </button>
               ) : isSelectedClosed ? (
-                <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <div
+                  className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                  style={{
+                    width: '100%',
+                    minHeight: isMobile ? '44px' : '40px',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    fontWeight: 700,
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" style={{ width: '16px', height: '16px' }} />
                   <span>Incident Closed — Updates Locked</span>
                 </div>
               ) : isAdmin ? (
                 adminEditCloser ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button
                       type="button"
                       onClick={handleSaveCloser}
                       disabled={isSavingCloser || isSavingAdmin}
                       className="flex-1 py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition transform active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      style={{
+                        flex: 1,
+                        minHeight: isMobile ? '44px' : '40px',
+                        padding: '10px 16px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        fontWeight: 700,
+                        backgroundColor: '#d97706',
+                        color: '#ffffff',
+                        border: 'none',
+                        cursor: (isSavingCloser || isSavingAdmin) ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        boxSizing: 'border-box'
+                      }}
                     >
                       {isSavingCloser ? (
                         <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" style={{ width: '16px', height: '16px' }} />
                           <span>Saving Closer Log...</span>
                         </>
                       ) : (
                         <>
-                          <Save className="w-4 h-4" />
+                          <Save className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
                           <span>Save Closer Changes</span>
                         </>
                       )}
@@ -1900,8 +2254,20 @@ const IhlrApprovals = () => {
                       }}
                       className="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-600 font-bold text-xs transition cursor-pointer"
                       title="Cancel Editing"
+                      style={{
+                        minHeight: isMobile ? '44px' : '40px',
+                        padding: '0 14px',
+                        borderRadius: '10px',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxSizing: 'border-box'
+                      }}
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
                     </button>
                   </div>
                 ) : (
@@ -1912,19 +2278,58 @@ const IhlrApprovals = () => {
                       setIsReassignOpen(false);
                     }}
                     className="w-full py-2.5 px-4 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 font-bold text-xs shadow-2xs hover:shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                    style={{
+                      width: '100%',
+                      minHeight: isMobile ? '44px' : '40px',
+                      padding: '10px 16px',
+                      borderRadius: '10px',
+                      border: '1px solid #fcd34d',
+                      backgroundColor: '#fffbeb',
+                      color: '#78350f',
+                      fontSize: isMobile ? '13px' : '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxSizing: 'border-box'
+                    }}
                   >
-                    <Pencil className="w-3.5 h-3.5 text-amber-600" />
+                    <Pencil className="w-3.5 h-3.5 text-amber-600" style={{ width: '14px', height: '14px', color: '#d97706' }} />
                     <span>Edit Closer Fields</span>
                   </button>
                 )
               ) : hasCloserSubmitted ? (
-                <div className="w-full py-2.5 px-4 rounded-xl border border-blue-200 bg-blue-50/90 text-blue-900 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                <div
+                  className="w-full py-2.5 px-4 rounded-xl border border-blue-200 bg-blue-50/90 text-blue-900 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                  style={{
+                    width: '100%',
+                    minHeight: isMobile ? '44px' : '40px',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    fontWeight: 700,
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <CheckCircle2 className="w-4 h-4 text-blue-600" style={{ width: '16px', height: '16px' }} />
                   <span>Closer Details Submitted</span>
                 </div>
               ) : !canUpdateCloserFields ? (
-                <div className="w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-slate-500" />
+                <div
+                  className="w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-slate-100 text-slate-600 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                  style={{
+                    width: '100%',
+                    minHeight: isMobile ? '44px' : '40px',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    fontWeight: 700,
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <ShieldAlert className="w-4 h-4 text-slate-500" style={{ width: '16px', height: '16px' }} />
                   <span>Read Only Access — Assigned Closer or Admin Only</span>
                 </div>
               ) : (
@@ -1933,15 +2338,32 @@ const IhlrApprovals = () => {
                   onClick={handleSaveCloser}
                   disabled={isSavingCloser || isSavingAdmin}
                   className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition transform active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    width: '100%',
+                    minHeight: isMobile ? '44px' : '40px',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    fontSize: isMobile ? '13px' : '12px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    border: 'none',
+                    cursor: (isSavingCloser || isSavingAdmin) ? 'not-allowed' : 'pointer',
+                    boxSizing: 'border-box'
+                  }}
                 >
                   {isSavingCloser ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" style={{ width: '16px', height: '16px' }} />
                       <span>Submitting Action...</span>
                     </>
                   ) : (
                     <>
-                      <Save className="w-4 h-4" />
+                      <Save className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
                       <span>Submit Action</span>
                     </>
                   )}
@@ -2337,7 +2759,7 @@ const IhlrApprovals = () => {
                     onBlur={() => setCloserRemarks((prev) => (prev || '').trim())}
                     placeholder={
                       !selectedRequest
-                        ? 'Click a row on the right to select'
+                        ? (!isDesktop ? 'Select a request from queue' : 'Click a row on the right to select')
                         : isSelectedClosed
                         ? 'Incident is closed. Remarks are finalized (Read-Only).'
                         : adminEditCloser
@@ -2353,6 +2775,16 @@ const IhlrApprovals = () => {
                         ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-800'
                         : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
                     }`}
+                    style={{
+                      width: '100%',
+                      minHeight: isMobile ? '64px' : '58px',
+                      padding: '8px 12px',
+                      borderRadius: '10px',
+                      fontSize: isMobile ? '13px' : '12px',
+                      lineHeight: '18px',
+                      resize: 'none',
+                      boxSizing: 'border-box'
+                    }}
                   />
                   {isSelectedClosed ? (
                     <p className="text-[10px] text-emerald-700 font-medium mt-0.5">
@@ -2394,7 +2826,7 @@ const IhlrApprovals = () => {
                     disabled={!selectedRequest || isSelectedClosed || adminEditCloser || (isCloserDataToBeUpdated && !isReassignOpen)}
                     placeholder={
                       !selectedRequest
-                        ? 'Click a row on the right to select'
+                        ? (!isDesktop ? 'Select a request from queue' : 'Click a row on the right to select')
                         : isSelectedClosed
                         ? 'Incident is closed (Read-Only)'
                         : `e.g. Leave empty to attach ${getLoggedInUserName()}`
@@ -2430,6 +2862,15 @@ const IhlrApprovals = () => {
                         ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-800'
                         : 'border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800'
                     }`}
+                    style={{
+                      width: '100%',
+                      height: isMobile ? '38px' : '36px',
+                      padding: '0 12px',
+                      borderRadius: '10px',
+                      fontSize: isMobile ? '13px' : '12px',
+                      fontWeight: 600,
+                      boxSizing: 'border-box'
+                    }}
                   />
                   {reviewedByError ? (
                     <p className="text-[11px] text-rose-500 font-semibold mt-0.5 flex items-center gap-1">
@@ -2475,6 +2916,15 @@ const IhlrApprovals = () => {
                         ? 'bg-white border-slate-200 text-emerald-700 cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'
                         : 'bg-white border-slate-200 text-slate-600 cursor-pointer focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                     }`}
+                    style={{
+                      width: '100%',
+                      height: isMobile ? '38px' : '36px',
+                      padding: '0 12px',
+                      borderRadius: '10px',
+                      fontSize: isMobile ? '13px' : '12px',
+                      fontWeight: 700,
+                      boxSizing: 'border-box'
+                    }}
                   >
                     {isReassignOpen ? (
                       <option value="PENDING">PENDING (Awaiting Closer)</option>
@@ -2521,18 +2971,38 @@ const IhlrApprovals = () => {
                 </div>
 
                 {/* Dedicated Admin Actions Submit Button */}
-                <div className="pt-1">
+                <div className="pt-1" style={{ paddingTop: '4px' }}>
                   {!selectedRequest ? (
                     <button
                       type="button"
                       disabled
                       className="w-full py-2.5 px-4 rounded-xl border border-indigo-200/80 bg-indigo-50/50 text-indigo-400 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs"
+                      style={{
+                        width: '100%',
+                        minHeight: isMobile ? '44px' : '40px',
+                        padding: '10px 16px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        fontWeight: 700,
+                        boxSizing: 'border-box'
+                      }}
                     >
                       Select an Action to Review
                     </button>
                   ) : isSelectedClosed ? (
-                    <div className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <div
+                      className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs select-none text-center shadow-2xs flex items-center justify-center gap-2"
+                      style={{
+                        width: '100%',
+                        minHeight: isMobile ? '44px' : '40px',
+                        padding: '10px 16px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        fontWeight: 700,
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" style={{ width: '16px', height: '16px' }} />
                       <span>Incident Fully Validated &amp; Closed — Updates Locked</span>
                     </div>
                   ) : adminEditCloser ? (
@@ -2541,8 +3011,17 @@ const IhlrApprovals = () => {
                       disabled
                       className="w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
                       title="Admin Sign-Off disabled while editing closer fields"
+                      style={{
+                        width: '100%',
+                        minHeight: isMobile ? '44px' : '40px',
+                        padding: '10px 16px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        fontWeight: 700,
+                        boxSizing: 'border-box'
+                      }}
                     >
-                      <Lock className="w-4 h-4 text-slate-400" />
+                      <Lock className="w-4 h-4 text-slate-400" style={{ width: '16px', height: '16px' }} />
                       <span>Sign-Off Locked (Closer Edit Active)</span>
                     </button>
                   ) : isCloserDataToBeUpdated && !isReassignOpen ? (
@@ -2551,8 +3030,17 @@ const IhlrApprovals = () => {
                       disabled
                       className="w-full py-2.5 px-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 font-bold text-xs cursor-not-allowed select-none text-center shadow-2xs flex items-center justify-center gap-2"
                       title="Action & Target Date required before Admin Sign-Off"
+                      style={{
+                        width: '100%',
+                        minHeight: isMobile ? '44px' : '40px',
+                        padding: '10px 16px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        fontWeight: 700,
+                        boxSizing: 'border-box'
+                      }}
                     >
-                      <Lock className="w-4 h-4 text-amber-600" />
+                      <Lock className="w-4 h-4 text-amber-600" style={{ width: '16px', height: '16px' }} />
                       <span>Sign-Off Locked (Closer Pending)</span>
                     </button>
                   ) : (
@@ -2561,15 +3049,32 @@ const IhlrApprovals = () => {
                       onClick={handleSaveAdmin}
                       disabled={isSavingAdmin || isSavingCloser}
                       className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition transform active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        width: '100%',
+                        minHeight: isMobile ? '44px' : '40px',
+                        padding: '10px 16px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        fontWeight: 700,
+                        backgroundColor: '#4f46e5',
+                        color: '#ffffff',
+                        border: 'none',
+                        cursor: (isSavingAdmin || isSavingCloser) ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        boxSizing: 'border-box'
+                      }}
                     >
                       {isSavingAdmin ? (
                         <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" style={{ width: '16px', height: '16px' }} />
                           <span>{isReassignOpen ? 'Reassigning Incident...' : 'Saving Admin Sign-Off...'}</span>
                         </>
                       ) : (
                         <>
-                          <CheckCircle2 className="w-4 h-4" />
+                          <CheckCircle2 className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
                           <span>{isReassignOpen ? 'Confirm & Reassign Closer' : 'Save Admin Review & Status Sign-Off'}</span>
                         </>
                       )}
@@ -2585,101 +3090,187 @@ const IhlrApprovals = () => {
         {/* ============================================================== */}
         {/* RIGHT COLUMN: Filter Bar & Table (Matching Reference Image 2)   */}
         {/* ============================================================== */}
-        <div className="lg:col-span-7 xl:col-span-8 space-y-4">
+        <div
+          ref={queueSectionRef}
+          className="lg:col-span-7 xl:col-span-8 space-y-4"
+          style={{
+            gridColumn: isDesktop ? 'span 7 / span 7' : 'auto',
+            order: isDesktop ? 2 : 1,
+            display: !isDesktop && mobileTab === 'form' ? 'none' : 'block',
+            boxSizing: 'border-box',
+            width: '100%'
+          }}
+        >
 
-{/* Top Three Static Overview Cards: Total Assigned, Action Submitted & Pending */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Top Three Static Overview Cards: Total Assigned, Action Submitted & Pending */}
+          <div
+            className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
+              gap: isMobile ? '10px' : '12px',
+              marginBottom: isMobile ? '12px' : '16px'
+            }}
+          >
             {/* Card 1: Total Assigned */}
-            <div className="bg-white rounded-xl py-3 px-3.5 border border-slate-200/90 shadow-2xs select-none">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
+            <div
+              className="bg-white rounded-xl py-3 px-3.5 border border-slate-200/90 shadow-2xs select-none"
+              style={{
+                backgroundColor: '#ffffff',
+                borderRadius: '12px',
+                padding: isMobile ? '12px 14px' : '12px 14px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                userSelect: 'none'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Total Assigned
                 </span>
-                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <ClipboardCheck className="w-4 h-4" />
+                <div style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <ClipboardCheck style={{ width: '16px', height: '16px' }} />
                 </div>
               </div>
-              <div className="flex items-baseline justify-between gap-1.5">
-                <span className="text-2xl font-black text-slate-900 font-mono tracking-tight leading-none">
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '6px' }}>
+                <span style={{ fontSize: isMobile ? '22px' : '24px', fontWeight: 900, color: '#0f172a', fontFamily: 'monospace', lineHeight: 1 }}>
                   {totalAssignedCount}
                 </span>
-                <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/60 truncate">
+                <span style={{ fontSize: '10px', fontWeight: 600, color: '#1d4ed8', backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(191,219,254,0.6)' }}>
                   {isAdmin ? 'All Plant' : 'For You'}
                 </span>
               </div>
-
             </div>
 
             {/* Card 2: Action Submitted */}
-            <div className="bg-white rounded-xl py-3 px-3.5 border border-slate-200/90 shadow-2xs select-none">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
+            <div
+              className="bg-white rounded-xl py-3 px-3.5 border border-slate-200/90 shadow-2xs select-none"
+              style={{
+                backgroundColor: '#ffffff',
+                borderRadius: '12px',
+                padding: isMobile ? '12px 14px' : '12px 14px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                userSelect: 'none'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Action Submitted
                 </span>
-                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-4 h-4" />
+                <div style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <CheckCircle2 style={{ width: '16px', height: '16px' }} />
                 </div>
               </div>
-              <div className="flex items-baseline justify-between gap-1.5">
-                <span className="text-2xl font-black text-emerald-600 font-mono tracking-tight leading-none">
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '6px' }}>
+                <span style={{ fontSize: isMobile ? '22px' : '24px', fontWeight: 900, color: '#059669', fontFamily: 'monospace', lineHeight: 1 }}>
                   {actionSubmittedCount}
                 </span>
-                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 truncate">
+                <span style={{ fontSize: '10px', fontWeight: 600, color: '#047857', backgroundColor: '#ecfdf5', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(167,243,208,0.6)' }}>
                   Submitted
                 </span>
               </div>
-
             </div>
 
             {/* Card 3: Pending */}
-            <div className="bg-white rounded-xl py-3 px-3.5 border border-slate-200/90 shadow-2xs select-none">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">
+            <div
+              className="bg-white rounded-xl py-3 px-3.5 border border-slate-200/90 shadow-2xs select-none"
+              style={{
+                backgroundColor: '#ffffff',
+                borderRadius: '12px',
+                padding: isMobile ? '12px 14px' : '12px 14px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                userSelect: 'none'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Pending
                   </span>
                 </div>
-                <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                  <Clock className="w-4 h-4" />
+                <div style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: '#fff1f2', color: '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Clock style={{ width: '16px', height: '16px' }} />
                 </div>
               </div>
-              <div className="flex items-baseline justify-between gap-1.5">
-                <span className="text-2xl font-black text-rose-600 font-mono tracking-tight leading-none">
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '6px' }}>
+                <span style={{ fontSize: isMobile ? '22px' : '24px', fontWeight: 900, color: '#e11d48', fontFamily: 'monospace', lineHeight: 1 }}>
                   {pendingCount}
                 </span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200/60 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 600, color: '#be123c', backgroundColor: '#fff1f2', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(254,205,211,0.6)', flexShrink: 0 }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '9999px', backgroundColor: '#f43f5e' }} />
                   <span>Action Needed</span>
                 </span>
               </div>
-
             </div>
           </div>
 
           {/* Top Filter and Search Bar (Image 2 Top Row) */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center gap-3">
-            <div className="relative flex-1 w-full">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+          <div
+            className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center gap-3"
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: isMobile ? '14px' : '16px',
+              padding: isMobile ? '12px' : '14px 16px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: 'center',
+              gap: isMobile ? '10px' : '12px',
+              marginBottom: isMobile ? '12px' : '16px',
+              boxSizing: 'border-box'
+            }}
+          >
+            <div className="relative flex-1 w-full" style={{ position: 'relative', width: '100%', flex: 1 }}>
+              <Search
+                className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none"
+                style={{ width: '16px', height: '16px', position: 'absolute', left: '14px', top: '11px', color: '#94a3b8', pointerEvents: 'none' }}
+              />
               <input
                 type="text"
                 placeholder="Search by req no, problem, or remarks..."
                 value={search}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium transition"
+                style={{
+                  width: '100%',
+                  height: '38px',
+                  paddingLeft: '36px',
+                  paddingRight: '36px',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  color: '#0f172a',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => handleSearchChange('')}
                   className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition cursor-pointer"
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '9px',
+                    padding: '2px',
+                    borderRadius: '9999px',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    cursor: 'pointer'
+                  }}
                   title="Clear search"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X style={{ width: '14px', height: '14px', color: '#94a3b8' }} />
                 </button>
               )}
             </div>
 
-            <div className="w-full sm:w-44">
+            <div className="w-full sm:w-44" style={{ width: isMobile ? '100%' : isTablet ? '160px' : '176px', flexShrink: 0 }}>
               <select
                 value={selectedStatus}
                 onChange={(e) => {
@@ -2687,6 +3278,20 @@ const IhlrApprovals = () => {
                   setCurrentPage(1);
                 }}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                style={{
+                  width: '100%',
+                  height: '38px',
+                  padding: '0 12px',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  fontWeight: 600,
+                  color: '#1e293b',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  boxSizing: 'border-box'
+                }}
               >
                 <option value="All">All Decisions</option>
                 <option value="PENDING">Pending</option>
@@ -2699,26 +3304,75 @@ const IhlrApprovals = () => {
               onClick={handleOpenExportModal}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow transition transform active:scale-95 cursor-pointer shrink-0"
               id="approvals-export-view-btn"
+              style={{
+                width: isMobile ? '100%' : 'auto',
+                height: '38px',
+                padding: '0 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                borderRadius: '10px',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                fontSize: isMobile ? '13px' : '12px',
+                fontWeight: 700,
+                border: 'none',
+                cursor: 'pointer',
+                flexShrink: 0,
+                boxSizing: 'border-box'
+              }}
             >
-              <Download className="w-3.5 h-3.5" />
+              <Download style={{ width: '14px', height: '14px' }} />
               <span>Export View</span>
             </button>
           </div>
 
           {/* Table Container */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[700px]">
+          <div
+            className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden"
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: isMobile ? '14px' : '16px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              overflow: 'hidden',
+              width: '100%'
+            }}
+          >
+            <div
+              className="overflow-x-auto"
+              style={{
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                width: '100%'
+              }}
+            >
+              <table
+                className="w-full text-left border-collapse min-w-[700px]"
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  borderCollapse: 'collapse',
+                  minWidth: isMobile ? '640px' : isTablet ? '680px' : '700px'
+                }}
+              >
                 <thead>
-                  <tr className="bg-[#f8fafc] border-b border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                    <th className="py-3 px-3 text-center w-12">SL NO</th>
-                    <th className="py-3 px-3">IHLR REQ NO</th>
-                    <th className="py-3 px-3">REQUESTED DATE</th>
-                    <th className="py-3 px-4">PROBLEM &amp; MODEL</th>
-                    <th className="py-3 px-3">EVIDENCE</th>
-                    <th className="py-3 px-3 text-center">STATUS</th>
-                    <th className="py-3 px-3">REMARKS</th>
-                    <th className="py-3 px-3 text-center w-14"></th>
+                  <tr
+                    className="bg-[#f8fafc] border-b border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500"
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      borderBottom: '1px solid #e2e8f0'
+                    }}
+                  >
+                    <th className="py-3 px-3 text-center w-12" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900, textAlign: 'center', width: '48px' }}>SL NO</th>
+                    <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>IHLR REQ NO</th>
+                    <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>REQUESTED DATE</th>
+                    <th className="py-3 px-4" style={{ padding: isMobile ? '10px 8px' : '12px 16px', fontSize: '10px', fontWeight: 900 }}>PROBLEM &amp; MODEL</th>
+                    <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>EVIDENCE</th>
+                    <th className="py-3 px-3 text-center" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900, textAlign: 'center' }}>STATUS</th>
+                    <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>REMARKS</th>
+                    <th className="py-3 px-3 text-center w-14" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900, textAlign: 'center', width: '56px' }}></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
@@ -2753,21 +3407,25 @@ const IhlrApprovals = () => {
                               ? 'bg-blue-50/80 border-l-4 border-l-blue-600 font-medium'
                               : 'hover:bg-slate-50/80'
                           }`}
+                          style={{
+                            cursor: 'pointer',
+                            backgroundColor: isSelected ? 'rgba(239, 246, 255, 0.8)' : undefined
+                          }}
                         >
-                          <td className="py-3.5 px-3 text-center font-mono text-[11px] text-slate-500">
+                          <td className="py-3.5 px-3 text-center font-mono text-[11px] text-slate-500" style={{ padding: isMobile ? '10px 8px' : '14px 12px', textAlign: 'center' }}>
                             {startIndex + idx + 1}
                           </td>
-                          <td className="py-3.5 px-3 font-mono font-bold text-blue-600 whitespace-nowrap">
+                          <td className="py-3.5 px-3 font-mono font-bold text-blue-600 whitespace-nowrap" style={{ padding: isMobile ? '10px 8px' : '14px 12px' }}>
                             {String(r.req_no).startsWith('IHLR-') ? r.req_no : `#${r.req_no}`}
                           </td>
-                          <td className="py-3.5 px-3 whitespace-nowrap text-slate-600 font-mono text-[11px]">
+                          <td className="py-3.5 px-3 whitespace-nowrap text-slate-600 font-mono text-[11px]" style={{ padding: isMobile ? '10px 8px' : '14px 12px' }}>
                             {formatDateDDMMYYYY(r.batch_date)}
                           </td>
-                          <td className="py-3.5 px-4">
-                            <div className="font-semibold text-slate-900 truncate max-w-[180px]" title={r.problem}>
+                          <td className="py-3.5 px-4" style={{ padding: isMobile ? '10px 8px' : '14px 16px' }}>
+                            <div className="font-semibold text-slate-900 truncate max-w-[180px]" title={r.problem} style={{ maxWidth: isMobile ? '140px' : '180px' }}>
                               {r.problem}
                             </div>
-                            <div className="text-[11px] text-slate-500 truncate max-w-[180px]" title={r.model}>
+                            <div className="text-[11px] text-slate-500 truncate max-w-[180px]" title={r.model} style={{ maxWidth: isMobile ? '140px' : '180px' }}>
                               {r.model}
                             </div>
                             {r.resp_person && (() => {
@@ -2779,6 +3437,7 @@ const IhlrApprovals = () => {
                                     isReassigned ? 'text-purple-700 font-medium' : 'text-slate-500'
                                   }`}
                                   title={`${isReassigned ? 'Reassigned' : 'Assigned'}: ${r.resp_person}${isReassigned && reassignInfo.count > 1 ? ` (${reassignInfo.count} times)` : ''}`}
+                                  style={{ maxWidth: isMobile ? '140px' : '180px' }}
                                 >
                                   <span className={`font-semibold ${isReassigned ? 'text-purple-700' : 'text-slate-400'}`}>
                                     {isReassigned ? 'Reassigned: ' : 'Assigned: '}
@@ -2790,20 +3449,20 @@ const IhlrApprovals = () => {
                               );
                             })()}
                             {(r.closer_updated_by || r.temporary_closed_by || r.permanent_closed_by) && (
-                              <div className="text-[10px] text-emerald-700 mt-0.5 truncate max-w-[180px]" title={`Closer filled by: ${r.closer_updated_by || r.temporary_closed_by || r.permanent_closed_by}`}>
+                              <div className="text-[10px] text-emerald-700 mt-0.5 truncate max-w-[180px]" title={`Closer filled by: ${r.closer_updated_by || r.temporary_closed_by || r.permanent_closed_by}`} style={{ maxWidth: isMobile ? '140px' : '180px' }}>
                                 <span className="font-medium text-emerald-600">Filled by: </span>
                                 <span className="font-bold text-emerald-800">{r.closer_updated_by || r.temporary_closed_by || r.permanent_closed_by}</span>
                               </div>
                             )}
                           </td>
-                          <td className="py-3.5 px-3">
+                          <td className="py-3.5 px-3" style={{ padding: isMobile ? '10px 8px' : '14px 12px' }}>
                             <IhlrAttachmentThumbnail
                               rawAttachment={r.temporary_evidence_attachment || r.permanent_evidence_attachment || r.defect_image}
                             />
                           </td>
-                          <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                          <td className="py-3.5 px-3 text-center whitespace-nowrap" style={{ padding: isMobile ? '10px 8px' : '14px 12px', textAlign: 'center' }}>
                             {String(r.status || '').toUpperCase() === 'CLOSED' ? (
-                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200" style={{ padding: '2px 10px', borderRadius: '9999px', fontSize: '10px', fontWeight: 700 }}>
                                 CLOSED
                               </span>
                             ) : (!['OPEN', 'PENDING'].includes(String(r.status || '').toUpperCase()) && (
@@ -2816,20 +3475,20 @@ const IhlrApprovals = () => {
                                 (Array.isArray(r.prod_why_why) && r.prod_why_why.some(w => Boolean(w && String(w).trim())))
                               )
                             )) ? (
-                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200" style={{ padding: '2px 10px', borderRadius: '9999px', fontSize: '10px', fontWeight: 700 }}>
                                 AWAITING REVIEW
                               </span>
                             ) : (
-                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200" style={{ padding: '2px 10px', borderRadius: '9999px', fontSize: '10px', fontWeight: 700 }}>
                                 PENDING
                               </span>
                             )}
                           </td>
-                          <td className="py-3.5 px-3 text-slate-600 truncate max-w-[150px]" title={r.remarks || '—'}>
+                          <td className="py-3.5 px-3 text-slate-600 truncate max-w-[150px]" title={r.remarks || '—'} style={{ padding: isMobile ? '10px 8px' : '14px 12px', maxWidth: isMobile ? '100px' : '150px' }}>
                             {r.remarks || '—'}
                           </td>
-                          <td className="py-3.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-center gap-1.5">
+                          <td className="py-3.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()} style={{ padding: isMobile ? '10px 8px' : '14px 12px', textAlign: 'center' }}>
+                            <div className="flex items-center justify-center gap-1.5" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -2838,8 +3497,19 @@ const IhlrApprovals = () => {
                                 }}
                                 className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
                                 title="View Full Report"
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: 'none',
+                                  backgroundColor: 'transparent',
+                                  cursor: 'pointer'
+                                }}
                               >
-                                <Eye className="w-4 h-4" />
+                                <Eye style={{ width: '16px', height: '16px' }} />
                               </button>
                               {isAdmin && (() => {
                                 const isRowClosed = (r.status || '').toUpperCase() === 'CLOSED' || (r.status || '').toUpperCase() === 'APPROVED';
@@ -2851,7 +3521,17 @@ const IhlrApprovals = () => {
                                       if (isRowClosed) return;
                                       populateForm(r, true);
                                       setAdminEditCloser(true);
-                                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                                      if (isDesktop) {
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                      } else {
+                                        if (mobileTab === 'queue') {
+                                          setMobileTab('form');
+                                        } else {
+                                          setTimeout(() => {
+                                            formSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                          }, 50);
+                                        }
+                                      }
                                     }}
                                     className={`p-1 rounded-md transition ${
                                       isRowClosed
@@ -2861,8 +3541,17 @@ const IhlrApprovals = () => {
                                           : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50 cursor-pointer'
                                     }`}
                                     title={isRowClosed ? "Issue is closed. Editing is disabled." : "Admin: Edit Closer Fields"}
+                                    style={{
+                                      width: '32px',
+                                      height: '32px',
+                                      borderRadius: '6px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      cursor: isRowClosed ? 'not-allowed' : 'pointer'
+                                    }}
                                   >
-                                    <Pencil className="w-4 h-4" />
+                                    <Pencil style={{ width: '16px', height: '16px' }} />
                                   </button>
                                 );
                               })()}
@@ -2877,8 +3566,21 @@ const IhlrApprovals = () => {
             </div>
 
             {/* Pagination Controls (Matching Reference Image 2 Bottom Row) */}
-            <div className="p-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-4 text-xs text-slate-600">
-              <div className="flex items-center gap-2">
+            <div
+              className="p-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-4 text-xs text-slate-600"
+              style={{
+                padding: isMobile ? '12px 14px' : '14px 16px',
+                borderTop: '1px solid #f1f5f9',
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: 'center',
+                justifyContent: isMobile ? 'center' : 'flex-end',
+                gap: isMobile ? '10px' : '16px',
+                fontSize: '11px',
+                color: '#475569'
+              }}
+            >
+              <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>Rows per page:</span>
                 <select
                   value={rowsPerPage}
@@ -2887,36 +3589,76 @@ const IhlrApprovals = () => {
                     setCurrentPage(1);
                   }}
                   className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none cursor-pointer"
+                  style={{
+                    height: '28px',
+                    padding: '0 8px',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>
                 </select>
               </div>
 
-              <div className="font-mono text-[11px] text-slate-500">
+              <div
+                className="font-mono text-[11px] text-slate-500"
+                style={{ fontFamily: 'monospace', fontSize: '11px', color: '#64748b' }}
+              >
                 {totalRecords === 0
                   ? '0–0 of 0'
                   : `${startIndex + 1}–${endIndex} of ${totalRecords}`}
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <button
                   type="button"
                   disabled={currentPage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                   className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#64748b',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
+                    opacity: currentPage <= 1 ? 0.3 : 1
+                  }}
                   title="Previous Page"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft style={{ width: '16px', height: '16px' }} />
                 </button>
                 <button
                   type="button"
                   disabled={currentPage >= totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                   className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#64748b',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+                    opacity: currentPage >= totalPages ? 0.3 : 1
+                  }}
                   title="Next Page"
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight style={{ width: '16px', height: '16px' }} />
                 </button>
               </div>
             </div>
