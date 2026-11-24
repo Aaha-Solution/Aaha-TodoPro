@@ -307,18 +307,6 @@ const UnifiedNotificationCenter = ({ tab: forcedTab }) => {
               {isIhlr ? 'IHLR DEFECT STREAM' : 'PROCESS AUDIT STREAM'}
             </span>
           </div>
-          <p
-            style={{
-              fontSize: isMobile ? '12px' : '13px',
-              color: '#64748b',
-              marginTop: '4px',
-              marginBottom: 0
-            }}
-          >
-            {isIhlr
-              ? 'Real-time alert feed for line defect reports, containment actions, and sign-offs.'
-              : 'Real-time alert feed for audit observations, containment actions, and sign-off requests.'}
-          </p>
         </div>
 
         {/* Mark All Read */}

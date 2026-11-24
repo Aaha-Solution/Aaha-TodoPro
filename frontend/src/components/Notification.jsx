@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Bell, CheckCheck, ExternalLink } from 'lucide-react';
+import { Bell, CheckCheck, ExternalLink, X } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { setNotifications, markAsRead, markAllAsRead } from '../redux/slices/notificationSlice';
 import {
@@ -164,22 +164,34 @@ const Notification = () => {
                 {unreadCount} unread alert{unreadCount === 1 ? '' : 's'}
               </p>
             </div>
-            {unreadCount > 0 && (
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="text-[11px] text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  <span>Mark all read</span>
+                </button>
+              )}
               <button
-                onClick={handleMarkAllRead}
-                className="text-[11px] text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer"
+                type="button"
+                onClick={() => setOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                title="Close"
+                aria-label="Close"
               >
-                <CheckCheck className="w-3.5 h-3.5" />
-                Mark all read
+                <X className="w-4 h-4" />
               </button>
-            )}
+            </div>
           </div>
 
           <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
             {notifications.length === 0 ? (
               <p className="p-6 text-center text-xs text-slate-400">No notifications in stream</p>
             ) : (
-              notifications.slice(0, 6).map((item) => {
+              notifications.slice(0, 1).map((item) => {
                 const badgeColor =
                   item.accentColor === 'emerald'
                     ? 'bg-emerald-600'
