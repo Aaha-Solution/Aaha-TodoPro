@@ -106,7 +106,15 @@ const Notification = () => {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-84 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+        <div
+          className="absolute right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+          style={{
+            maxWidth: 'calc(100vw - 24px)',
+            width: '360px',
+            right: 0,
+            boxSizing: 'border-box'
+          }}
+        >
           <div className="px-4 pb-2.5 flex items-center justify-between border-b border-slate-100">
             <div>
               <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
