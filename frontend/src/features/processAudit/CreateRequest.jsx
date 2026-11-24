@@ -204,6 +204,21 @@ const CreateRequest = () => {
 
   const [errors, setErrors] = useState({});
 
+  // Responsive screen width handling for mobile, tablet, and desktop
+  const [screenWidth, setScreenWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+
+  useEffect(() => {
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = screenWidth < 768;
+  const isTablet = screenWidth >= 768 && screenWidth < 1024;
+  const isDesktop = screenWidth >= 1024;
+
   const MANDATORY_FIELD_LABELS = {
     date: 'Escalation Date',
     shift: 'Shift',
@@ -794,10 +809,42 @@ const CreateRequest = () => {
   // If user is not from QAD, display restricted authorization notice
   if (!canCreate) {
     return (
-      <div className="space-y-6 w-full pb-12">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div
+        className="space-y-6 w-full pb-12"
+        style={{
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          overflowX: 'hidden',
+          paddingBottom: isMobile ? '32px' : '48px',
+          boxSizing: 'border-box'
+        }}
+      >
+        <div
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            justifyContent: 'space-between',
+            gap: isMobile ? '12px' : '16px',
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box'
+          }}
+        >
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h1
+              className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+              style={{
+                fontSize: isMobile ? '22px' : isTablet ? '26px' : '30px',
+                lineHeight: isMobile ? '28px' : isTablet ? '32px' : '36px',
+                fontWeight: 800,
+                color: '#0f172a',
+                letterSpacing: '-0.025em',
+                margin: 0
+              }}
+            >
               Raise NC
             </h1>
             <p className="text-xs text-slate-500 mt-1">
@@ -806,7 +853,14 @@ const CreateRequest = () => {
           </div>
         </div>
 
-        <div className="max-w-2xl mx-auto my-8 bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/90 shadow-sm text-center">
+        <div
+          className="max-w-2xl mx-auto my-8 bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/90 shadow-sm text-center"
+          style={{
+            padding: isMobile ? '20px 16px' : '32px 24px',
+            borderRadius: isMobile ? '16px' : '24px',
+            boxSizing: 'border-box'
+          }}
+        >
           <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-4">
             <ShieldAlert className="w-8 h-8" />
           </div>
@@ -834,16 +888,40 @@ const CreateRequest = () => {
               <strong className="text-rose-600 font-semibold">{currentDept || 'Not Assigned / Other Department'}</strong>
             </div>
           </div>
-          <div className="flex items-center justify-center gap-3">
+          <div
+            className="flex items-center justify-center gap-3"
+            style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              width: '100%',
+              gap: '10px'
+            }}
+          >
             <button
               onClick={() => navigate('/process-audit/dashboard')}
               className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+              style={{
+                width: isMobile ? '100%' : 'auto',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxSizing: 'border-box'
+              }}
             >
               Go to Dashboard
             </button>
             <button
               onClick={() => navigate('/process-audit/all-requests')}
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+              style={{
+                width: isMobile ? '100%' : 'auto',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxSizing: 'border-box'
+              }}
             >
               View Total NC
             </button>
@@ -854,24 +932,67 @@ const CreateRequest = () => {
   }
 
   return (
-    <div className="space-y-6 w-full pb-12">
+    <div
+      className="space-y-6 w-full pb-12"
+      style={{
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        overflowX: 'hidden',
+        paddingBottom: isMobile ? '32px' : '64px',
+        boxSizing: 'border-box'
+      }}
+    >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          justifyContent: 'space-between',
+          gap: isMobile ? '12px' : '16px',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
+        }}
+      >
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1
+            className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+            style={{
+              fontSize: isMobile ? '22px' : isTablet ? '26px' : '30px',
+              lineHeight: isMobile ? '28px' : isTablet ? '32px' : '36px',
+              fontWeight: 800,
+              color: '#0f172a',
+              letterSpacing: '-0.025em',
+              margin: 0
+            }}
+          >
             Raise NC
           </h1>
-         
         </div>
-
-       
       </div>
 
       {/* Draft Restored Banner */}
       {hasRestoredDraft && (
-        <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50/90 border border-blue-200/90 rounded-xl text-xs text-blue-800 shadow-2xs">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+        <div
+          className="flex items-center justify-between px-4 py-2.5 bg-blue-50/90 border border-blue-200/90 rounded-xl text-xs text-blue-800 shadow-2xs"
+          style={{
+            padding: '10px 14px',
+            borderRadius: '10px',
+            fontSize: '11px',
+            boxSizing: 'border-box',
+            maxWidth: '100%',
+            minWidth: 0
+          }}
+        >
+          <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
+              className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"
+              style={{ width: '8px', height: '8px', borderRadius: '9999px', backgroundColor: '#2563eb' }}
+            />
             <span>
               <strong>Draft Restored:</strong> Your form inputs were preserved across tab switching.
             </span>
@@ -880,6 +1001,7 @@ const CreateRequest = () => {
             type="button"
             onClick={handleResetForm}
             className="text-xs text-blue-700 hover:text-red-600 font-semibold underline ml-3 cursor-pointer shrink-0 transition"
+            style={{ fontSize: '11px', cursor: 'pointer' }}
           >
             Discard Draft
           </button>
@@ -887,22 +1009,85 @@ const CreateRequest = () => {
       )}
 
       {/* Form Container */}
-      <form onSubmit={handleSubmit} noValidate className="space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        noValidate
+        className="space-y-6"
+        style={{ width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}
+      >
         {/* Section 1: Production Details */}
-        <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
-          <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
-            <FileText className="w-5 h-5 text-slate-700 mt-0.5" />
+        <div
+          className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs"
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: isMobile ? '14px' : '16px',
+            padding: isMobile ? '16px' : isTablet ? '20px' : '28px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
+          <div
+            className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              paddingBottom: '12px',
+              marginBottom: '16px',
+              borderBottom: '1px solid #f1f5f9'
+            }}
+          >
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: '#eff6ff',
+                color: '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <FileText className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
+            </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">1. Production Details</h2>
-              
+              <h2
+                className="text-sm font-bold text-slate-900"
+                style={{
+                  fontSize: isMobile ? '12px' : '13px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: '#0f172a',
+                  margin: 0
+                }}
+              >
+                1. Production Details
+              </h2>
             </div>
           </div>
 
           <div className="space-y-4">
             {/* Row 1 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
+                gap: isMobile ? '12px' : '16px',
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                boxSizing: 'border-box'
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                   <span>ISSUE NO (Auto-Generated)</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
@@ -911,18 +1096,26 @@ const CreateRequest = () => {
                   disabled
                   value={String(formData.requestId || '').startsWith('PA-') ? formData.requestId : `PA-${formData.requestId || '1'}`}
                   className="w-full px-3.5 py-2.5 bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-500 cursor-not-allowed select-none"
+                  style={{
+                    height: '38px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    padding: '0 12px',
+                    boxSizing: 'border-box',
+                    width: '100%'
+                  }}
                 />
                 <span className="text-[10px] text-slate-400 mt-1 block">Unique sequential tracking ID</span>
               </div>
 
               {/* Created By (Manual entry by user - Text only) */}
-              <div id="field-created_by">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <div id="field-created_by" style={{ minWidth: 0 }}>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between" style={{ fontSize: '11px', marginBottom: '4px' }}>
                   <span className="flex items-center">
                     <span>CREATED BY</span>
                     <span className="text-slate-400 font-normal lowercase ml-1.5 text-[10px]">(optional)</span>
                   </span>
-                  <span className="text-[10px] text-slate-400 font-normal uppercase truncate max-w-[200px]" title={`Defaults to: ${getLoggedInUserName()}`}>
+                  <span className="text-[10px] text-slate-400 font-normal uppercase truncate max-w-[120px] sm:max-w-[200px]" title={`Defaults to: ${getLoggedInUserName()}`}>
                     DEFAULTS TO: <strong className="text-slate-600 font-bold">{getLoggedInUserName().toUpperCase()}</strong>
                   </span>
                 </label>
@@ -956,6 +1149,14 @@ const CreateRequest = () => {
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
                       : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
+                  style={{
+                    height: '38px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    padding: '0 12px',
+                    boxSizing: 'border-box',
+                    width: '100%'
+                  }}
                 />
                 {errors.created_by && (
                   <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -964,8 +1165,8 @@ const CreateRequest = () => {
                 )}
               </div>
 
-              <div id="field-date">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <div id="field-date" style={{ minWidth: 0 }}>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between" style={{ fontSize: '11px', marginBottom: '4px' }}>
                   <span className="flex items-center">
                     <span>Escalation Date</span>
                     <span className="text-red-500 font-bold ml-1">*</span>
@@ -993,6 +1194,14 @@ const CreateRequest = () => {
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
                       : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
+                  style={{
+                    height: '38px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    padding: '0 12px',
+                    boxSizing: 'border-box',
+                    width: '100%'
+                  }}
                 />
                 {errors.date && (
                   <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -1001,8 +1210,8 @@ const CreateRequest = () => {
                 )}
               </div>
 
-              <div id="field-shift">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+              <div id="field-shift" style={{ minWidth: 0 }}>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                   <span>Shift</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
@@ -1019,6 +1228,14 @@ const CreateRequest = () => {
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
                       : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
+                  style={{
+                    height: '38px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    padding: '0 12px',
+                    boxSizing: 'border-box',
+                    width: '100%'
+                  }}
                 >
                   <option value="">Select Shift</option>
                   {PROCESS_AUDIT_SHIFTS.map((s) => (
@@ -1036,9 +1253,20 @@ const CreateRequest = () => {
             </div>
 
             {/* Row 2 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div id="field-product">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
+                gap: isMobile ? '12px' : '16px',
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                boxSizing: 'border-box'
+              }}
+            >
+              <div id="field-product" style={{ minWidth: 0 }}>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                   <span>Product</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
@@ -1055,6 +1283,14 @@ const CreateRequest = () => {
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
                       : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
+                  style={{
+                    height: '38px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    padding: '0 12px',
+                    boxSizing: 'border-box',
+                    width: '100%'
+                  }}
                 >
                   <option value="">Select Product</option>
                   <option value="SMT">SMT</option>
@@ -1074,8 +1310,8 @@ const CreateRequest = () => {
                 )}
               </div>
 
-              <div id="field-model">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+              <div id="field-model" style={{ minWidth: 0 }}>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                   <span>Model</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
@@ -1101,6 +1337,14 @@ const CreateRequest = () => {
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
                       : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
+                  style={{
+                    height: '38px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    padding: '0 12px',
+                    boxSizing: 'border-box',
+                    width: '100%'
+                  }}
                 />
                 {errors.model && (
                   <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -1109,8 +1353,8 @@ const CreateRequest = () => {
                 )}
               </div>
 
-              <div id="field-processOperation">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+              <div id="field-processOperation" style={{ minWidth: 0 }}>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                   <span>Process / Operation</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
@@ -1136,6 +1380,14 @@ const CreateRequest = () => {
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
                       : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
+                  style={{
+                    height: '38px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    padding: '0 12px',
+                    boxSizing: 'border-box',
+                    width: '100%'
+                  }}
                 />
                 {errors.processOperation && (
                   <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -1144,8 +1396,8 @@ const CreateRequest = () => {
                 )}
               </div>
 
-              <div id="field-issueType">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+              <div id="field-issueType" style={{ minWidth: 0 }}>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                   <span>Issue Type</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
@@ -1162,6 +1414,14 @@ const CreateRequest = () => {
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
                       : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
+                  style={{
+                    height: '38px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    padding: '0 12px',
+                    boxSizing: 'border-box',
+                    width: '100%'
+                  }}
                 >
                   <option value="">Select Issue Type</option>
                   <option value="Repeated">Repeated</option>
@@ -1176,9 +1436,20 @@ const CreateRequest = () => {
             </div>
 
             {/* Row 3 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div id="field-priority">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
+                gap: isMobile ? '12px' : '16px',
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                boxSizing: 'border-box'
+              }}
+            >
+              <div id="field-priority" style={{ minWidth: 0 }}>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                   <span>Priority</span>
                   <span className="text-red-500 font-bold ml-1">*</span>
                 </label>
@@ -1195,6 +1466,14 @@ const CreateRequest = () => {
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
                       : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                   }`}
+                  style={{
+                    height: '38px',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    padding: '0 12px',
+                    boxSizing: 'border-box',
+                    width: '100%'
+                  }}
                 >
                   <option value="">Select Priority</option>
                   <option value="High">High</option>
@@ -1211,8 +1490,8 @@ const CreateRequest = () => {
             </div>
 
             {/* Row 4 - Issue / Observation */}
-            <div id="field-issueObservation">
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+            <div id="field-issueObservation" style={{ minWidth: 0 }}>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>Issue / Observation</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
@@ -1238,6 +1517,11 @@ const CreateRequest = () => {
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
                     : 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                 }`}
+                style={{
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  boxSizing: 'border-box'
+                }}
               />
               {errors.issueObservation && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
@@ -1249,16 +1533,63 @@ const CreateRequest = () => {
         </div>
 
         {/* Section 2: Attachments & Technical Drawings */}
-        <div id="field-attachments" className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
-          <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
-            <Paperclip className="w-5 h-5 text-slate-700 mt-0.5" />
+        <div
+          id="field-attachments"
+          className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs"
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: isMobile ? '14px' : '16px',
+            padding: isMobile ? '16px' : isTablet ? '20px' : '28px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
+          <div
+            className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              paddingBottom: '12px',
+              marginBottom: '16px',
+              borderBottom: '1px solid #f1f5f9'
+            }}
+          >
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: '#eff6ff',
+                color: '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Paperclip className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
+            </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900 flex items-center">
+              <h2
+                className="text-sm font-bold text-slate-900 flex items-center"
+                style={{
+                  fontSize: isMobile ? '12px' : '13px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: '#0f172a',
+                  margin: 0
+                }}
+              >
                 <span>2. Attachments & Technical Drawings</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </h2>
-              <p className="text-xs text-slate-500">
-                Upload CAD blueprints, PDF drawings, defect photos, or Excel inspection sheets. Click "Annotate" on any image to mark with circles, arrows, lines, and freehand sketches.
+              <p className="text-xs text-slate-500 mt-0.5">
+                Upload CAD blueprints, PDF drawings, defect photos, or Excel inspection sheets.
               </p>
             </div>
           </div>
@@ -1267,11 +1598,17 @@ const CreateRequest = () => {
           <label
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer transition-colors ${
+            className={`border-2 border-dashed rounded-2xl text-center flex flex-col items-center justify-center cursor-pointer transition-colors ${
               errors.attachments
                 ? 'border-rose-400 bg-rose-50/30 hover:bg-rose-50/50'
                 : 'border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-slate-50'
             }`}
+            style={{
+              padding: isMobile ? '20px 12px' : '28px 16px',
+              borderRadius: '14px',
+              boxSizing: 'border-box',
+              width: '100%'
+            }}
           >
             <input
               type="file"
@@ -1288,7 +1625,7 @@ const CreateRequest = () => {
             <p className="text-xs font-semibold text-slate-800">
               Drag & drop files here or <span className="text-blue-600 underline">browse</span>
             </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">
+            <p className="text-[11px] text-slate-400 mt-0.5 text-center px-2">
               Supports Excel (.xlsx, .xls), PowerPoint (.pptx, .ppt), JPEG/Images, and PDF (Max 25MB per file) • Select multiple files
             </p>
           </label>
@@ -1301,7 +1638,16 @@ const CreateRequest = () => {
 
           {/* Attached Files List */}
           {attachments.length > 0 && (
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div
+              className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))',
+                gap: isMobile ? '10px' : '12px',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            >
               {attachments.map((file, idx) => {
                 const meta = getFileMeta(file);
                 const IconComponent = meta.icon;
@@ -1310,6 +1656,11 @@ const CreateRequest = () => {
                     key={idx}
                     onClick={() => setPreviewAttachment(file)}
                     className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs hover:border-blue-400 hover:shadow-xs transition cursor-pointer group"
+                    style={{
+                      borderRadius: '12px',
+                      padding: isMobile ? '10px 12px' : '12px',
+                      boxSizing: 'border-box'
+                    }}
                     title="Click to preview file"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 pr-2">
@@ -1383,20 +1734,75 @@ const CreateRequest = () => {
           )}
         </div>
 
-
         {/* Section 3: Assign Executor */}
-        <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
-          <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
-            <UserCheck className="w-5 h-5 text-slate-700 mt-0.5" />
+        <div
+          className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs"
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: isMobile ? '14px' : '16px',
+            padding: isMobile ? '16px' : isTablet ? '20px' : '28px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
+          <div
+            className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              paddingBottom: '12px',
+              marginBottom: '16px',
+              borderBottom: '1px solid #f1f5f9'
+            }}
+          >
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: '#eff6ff',
+                color: '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <UserCheck className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
+            </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">3. Assign Executor</h2>
-            
+              <h2
+                className="text-sm font-bold text-slate-900"
+                style={{
+                  fontSize: isMobile ? '12px' : '13px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: '#0f172a',
+                  margin: 0
+                }}
+              >
+                3. Assign Executor
+              </h2>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div id="field-department">
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+              gap: isMobile ? '12px' : '16px',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}
+          >
+            <div id="field-department" style={{ minWidth: 0 }}>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>Department</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
@@ -1423,8 +1829,16 @@ const CreateRequest = () => {
                     ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500 bg-rose-50/20 text-slate-900'
                     : 'border-slate-200 text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
                 }`}
+                style={{
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  padding: '0 12px',
+                  boxSizing: 'border-box',
+                  width: '100%'
+                }}
               >
-                <option value="">Select</option>
+                <option value="">Select Department</option>
                 {departmentList.map((dept) => (
                   <option key={dept} value={dept}>
                     {dept}
@@ -1438,8 +1852,8 @@ const CreateRequest = () => {
               )}
             </div>
 
-            <div id="field-executor" className="relative" ref={executorDropdownRef}>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+            <div id="field-executor" className="relative" ref={executorDropdownRef} style={{ minWidth: 0 }}>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center" style={{ fontSize: '11px', marginBottom: '4px' }}>
                 <span>Assign Executor</span>
                 <span className="text-red-500 font-bold ml-1">*</span>
               </label>
@@ -1470,6 +1884,11 @@ const CreateRequest = () => {
                     ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 cursor-pointer shadow-xs'
                     : 'bg-white border-slate-200 hover:border-slate-300 text-slate-800 cursor-pointer shadow-2xs'
                 }`}
+                style={{
+                  minHeight: '38px',
+                  borderRadius: '10px',
+                  boxSizing: 'border-box'
+                }}
               >
                 <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0 py-0.5">
                   {!formData.department ? (
@@ -1550,7 +1969,14 @@ const CreateRequest = () => {
 
               {/* Dropdown Menu */}
               {executorDropdownOpen && formData.department && availableExecutors.length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div
+                  className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                  style={{
+                    borderRadius: '14px',
+                    maxHeight: '280px',
+                    width: '100%'
+                  }}
+                >
                   {/* Search box inside dropdown if more than 3 options */}
                   {availableExecutors.length > 3 && (
                     <div className="p-2 border-b border-slate-100 bg-slate-50/70">
@@ -1664,7 +2090,7 @@ const CreateRequest = () => {
           {/* Optional Notify / CC Emails across all departments - Multi-Select with Search */}
           <div className="relative mt-5 pt-5 border-t border-slate-100" ref={notifyEmailDropdownRef}>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5" style={{ fontSize: '11px' }}>
                 <Mail className="w-3.5 h-3.5 text-blue-600" />
                 <span>Notify / CC Emails (All Users)</span>
                 <span className="text-[10px] font-semibold text-slate-400 lowercase italic tracking-normal">(optional)</span>
@@ -1688,6 +2114,11 @@ const CreateRequest = () => {
                   ? 'bg-white border-blue-500 ring-2 ring-blue-500/20 shadow-xs'
                   : 'bg-white border-slate-200 hover:border-slate-300 text-slate-800 shadow-2xs'
               }`}
+              style={{
+                minHeight: '38px',
+                borderRadius: '10px',
+                boxSizing: 'border-box'
+              }}
             >
               <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0 py-0.5">
                 {getSelectedNotifyEmails().length === 0 ? (
@@ -1707,7 +2138,7 @@ const CreateRequest = () => {
                         title={displayName}
                       >
                         <Mail className="w-3 h-3 text-blue-500 shrink-0" />
-                        <span className="truncate max-w-[200px]">
+                        <span className="truncate max-w-[150px] sm:max-w-[200px]">
                           {matched?.name ? `${matched.name} (${email})` : email}
                         </span>
                         <button
@@ -1740,7 +2171,14 @@ const CreateRequest = () => {
 
             {/* Dropdown Menu */}
             {isNotifyEmailDropdownOpen && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div
+                className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                style={{
+                  borderRadius: '14px',
+                  maxHeight: '280px',
+                  width: '100%'
+                }}
+              >
                 {/* Search box inside dropdown */}
                 <div className="p-2 border-b border-slate-100 bg-slate-50/70">
                   <div className="relative">
@@ -1847,23 +2285,65 @@ const CreateRequest = () => {
           </div>
         </div>
 
-
-
         {/* Section 4: Production Notes & Comments */}
-        <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs">
-          <div className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100">
-            <MessageSquare className="w-5 h-5 text-slate-700 mt-0.5" />
+        <div
+          className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/90 shadow-2xs"
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: isMobile ? '14px' : '16px',
+            padding: isMobile ? '16px' : isTablet ? '20px' : '28px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
+          <div
+            className="flex items-start gap-3 pb-5 mb-5 border-b border-slate-100"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              paddingBottom: '12px',
+              marginBottom: '16px',
+              borderBottom: '1px solid #f1f5f9'
+            }}
+          >
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: '#eff6ff',
+                color: '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <MessageSquare className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
+            </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+              <h2
+                className="text-sm font-bold text-slate-900 flex items-center gap-1.5"
+                style={{
+                  fontSize: isMobile ? '12px' : '13px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: '#0f172a',
+                  margin: 0
+                }}
+              >
                 <span>4. Comments</span>
-                <span className="text-xs font-normal text-slate-400">(Optional)</span>
+                <span className="text-xs font-normal text-slate-400 lowercase">(optional)</span>
               </h2>
-            
             </div>
           </div>
 
           <div>
-           
             <textarea
               rows={3}
               placeholder="Enter optional comments, remarks, or specific handling notes..."
@@ -1879,15 +2359,41 @@ const CreateRequest = () => {
               }}
               onBlur={() => setFormData((prev) => ({ ...prev, comments: (prev.comments || '').trim() }))}
               className="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+              style={{
+                borderRadius: '10px',
+                fontSize: isMobile ? '13px' : '12px',
+                boxSizing: 'border-box'
+              }}
             />
           </div>
         </div>
 
         {/* Action Buttons & Missed Mandatory Inputs Area in Red */}
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-3 border-t border-slate-200/90">
+        <div
+          className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-3 border-t border-slate-200/90"
+          style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'stretch' : 'center',
+            justifyContent: 'space-between',
+            gap: isMobile ? '12px' : '16px',
+            paddingTop: '16px',
+            borderTop: '1px solid #e2e8f0',
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box'
+          }}
+        >
           {/* Left Area: Missed Mandatory Inputs in Red */}
           {missingErrors.length > 0 ? (
-            <div className="flex-1 min-w-0 bg-red-50/95 border border-red-300 rounded-2xl p-3 flex items-start gap-2.5 shadow-xs animate-in fade-in slide-in-from-bottom-2 duration-150">
+            <div
+              className="flex-1 min-w-0 bg-red-50/95 border border-red-300 rounded-2xl p-3 flex items-start gap-2.5 shadow-xs animate-in fade-in slide-in-from-bottom-2 duration-150"
+              style={{
+                borderRadius: '12px',
+                padding: isMobile ? '10px 12px' : '12px 14px',
+                boxSizing: 'border-box'
+              }}
+            >
               <div className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
                 <AlertCircle className="w-3.5 h-3.5 stroke-[2.5]" />
               </div>
@@ -1921,33 +2427,64 @@ const CreateRequest = () => {
           )}
 
           {/* Action Buttons: Clear Form & Submit */}
-          <div className="flex items-center justify-end gap-3 shrink-0 self-end lg:self-center">
+          <div
+            className="flex items-center justify-end gap-3 shrink-0 self-end lg:self-center"
+            style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column-reverse' : 'row',
+              alignItems: 'center',
+              justifyContent: isMobile ? 'stretch' : 'flex-end',
+              gap: isMobile ? '8px' : '12px',
+              width: isMobile ? '100%' : 'auto',
+              boxSizing: 'border-box'
+            }}
+          >
             <button
               type="button"
               onClick={handleResetForm}
               className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+              style={{
+                width: isMobile ? '100%' : 'auto',
+                height: '42px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: isMobile ? '13px' : '12px',
+                boxSizing: 'border-box'
+              }}
             >
               Clear Form
             </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-6 py-2.5 bg-[#2563eb] hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 flex items-center gap-2 transition cursor-pointer disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Submitting...</span>
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                <span>Submit </span>
-              </>
-            )}
-          </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-6 py-2.5 bg-[#2563eb] hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 flex items-center gap-2 transition cursor-pointer disabled:cursor-not-allowed"
+              style={{
+                width: isMobile ? '100%' : 'auto',
+                height: '42px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: isMobile ? '13px' : '12px',
+                boxSizing: 'border-box'
+              }}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  <span>Submit</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
-      </div>
     </form>
 
       {/* Universal Attachment Preview Modal (Interactive Excel Spreadsheet, PDF, Images) */}
