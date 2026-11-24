@@ -108,6 +108,21 @@ const AllRequests = () => {
   const [endDate, setEndDate] = useState(defaultEndDate);
   const [showFilters, setShowFilters] = useState(Boolean(queryRequestId));
 
+  // Responsive screen width handling for mobile, tablet, and desktop
+  const [screenWidth, setScreenWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+
+  useEffect(() => {
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = screenWidth < 768;
+  const isTablet = screenWidth >= 768 && screenWidth < 1024;
+  const isDesktop = screenWidth >= 1024;
+
   const isDefaultRange = startDate === defaultStartDate && endDate === defaultEndDate;
   const hasActiveFilters =
     Boolean((search || '').trim()) ||
@@ -550,13 +565,44 @@ const AllRequests = () => {
   };
 
   return (
-    <div className="space-y-6 w-full pb-16">
+    <div
+      className="space-y-6 w-full pb-16"
+      style={{
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        overflowX: 'hidden',
+        paddingBottom: isMobile ? '32px' : '64px',
+        boxSizing: 'border-box'
+      }}
+    >
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          justifyContent: 'space-between',
+          gap: isMobile ? '12px' : '16px',
+          marginBottom: isMobile ? '14px' : '20px',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}
+      >
         <div>
-         
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <h1
+              className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+              style={{
+                fontSize: isMobile ? '22px' : isTablet ? '26px' : '30px',
+                lineHeight: isMobile ? '28px' : isTablet ? '32px' : '36px',
+                fontWeight: 800,
+                color: '#0f172a',
+                letterSpacing: '-0.025em',
+                margin: 0
+              }}
+            >
               Total NC
             </h1>
             {!canEdit && (
@@ -566,17 +612,32 @@ const AllRequests = () => {
               </span>
             )}
           </div>
-          
         </div>
 
-        <div className="flex items-center gap-2">
-          
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: isMobile ? '100%' : 'auto' }}>
           {canCreate && (
             <button
               onClick={() => navigate('/process-audit/create-request')}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
+              style={{
+                width: isMobile ? '100%' : 'auto',
+                height: '38px',
+                padding: '0 16px',
+                borderRadius: '10px',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                fontSize: isMobile ? '13px' : '12px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
               <span>Raise NC</span>
             </button>
           )}
@@ -584,8 +645,38 @@ const AllRequests = () => {
       </div>
 
       {/* Filter and Search Bar (matching IHLR & Dashboard layout) */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-3.5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+      <div
+        className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-3.5"
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: isMobile ? '14px' : '16px',
+          padding: isMobile ? '14px 16px' : '20px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: isMobile ? '10px' : '14px',
+          marginBottom: isMobile ? '14px' : '20px',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
+        }}
+      >
+        <div
+          className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-2 border-b border-slate-100"
+          style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            justifyContent: 'space-between',
+            gap: isMobile ? '10px' : '12px',
+            paddingBottom: '8px',
+            borderBottom: '1px solid #f1f5f9',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}
+        >
           <div className="flex items-center gap-2.5 flex-wrap">
             <span className="text-xs font-black uppercase tracking-tight text-slate-800 flex items-center gap-1.5">
               <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
@@ -603,14 +694,24 @@ const AllRequests = () => {
                   ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/25 ring-2 ring-blue-500/20'
                   : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90 hover:border-slate-300'
               }`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '10px',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
               title={showFilters ? 'Hide filter controls' : 'Show filter controls'}
             >
-              <Filter className="w-3.5 h-3.5" />
+              <Filter className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
               <span>{showFilters ? 'Hide Filters' : 'Filter'}</span>
               {hasActiveFilters && !showFilters && (
-                <span className="w-2 h-2 rounded-full bg-blue-500 ring-2 ring-white" />
+                <span className="w-2 h-2 rounded-full bg-blue-500 ring-2 ring-white" style={{ width: '8px', height: '8px', borderRadius: '9999px', backgroundColor: '#3b82f6' }} />
               )}
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`} style={{ width: '14px', height: '14px' }} />
             </button>
           </div>
 
@@ -620,9 +721,19 @@ const AllRequests = () => {
                 type="button"
                 onClick={handleResetFilters}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/90 border border-rose-200/90 rounded-xl transition-all active:scale-95 cursor-pointer shadow-2xs"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '10px',
+                  cursor: 'pointer'
+                }}
                 title="Clear all active filters"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
                 <span>Reset Filters</span>
               </button>
             )}
@@ -633,14 +744,27 @@ const AllRequests = () => {
         {showFilters && (
           <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
             {/* Search Input */}
-            <div className="relative w-full">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5 pointer-events-none" />
+            <div className="relative w-full" style={{ width: '100%', position: 'relative' }}>
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5 pointer-events-none" style={{ width: '16px', height: '16px', position: 'absolute', left: '12px', top: '11px', color: '#94a3b8', pointerEvents: 'none' }} />
               <input
                 type="text"
                 placeholder="Search observation, model, operation, executor, auditor, or Req#..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium"
+                style={{
+                  width: '100%',
+                  height: '38px',
+                  paddingLeft: '36px',
+                  paddingRight: '36px',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '10px',
+                  fontSize: isMobile ? '13px' : '12px',
+                  color: '#0f172a',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
               />
               {search && (
                 <button
@@ -652,24 +776,46 @@ const AllRequests = () => {
                     } catch (_) {}
                   }}
                   className="absolute right-3 top-2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition cursor-pointer"
+                  style={{ position: 'absolute', right: '10px', top: '9px', cursor: 'pointer' }}
                   title="Clear search"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
                 </button>
               )}
             </div>
 
             {/* Filter Dropdowns Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs items-center">
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs items-center"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))',
+                gap: isMobile ? '10px' : '12px',
+                alignItems: 'center',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            >
               {/* Shift Filter */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              <div style={{ minWidth: 0 }}>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1" style={{ fontSize: '10px', marginBottom: '4px' }}>
                   Shift
                 </label>
                 <select
                   value={selectedShift}
                   onChange={(e) => setSelectedShift(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                  style={{
+                    width: '100%',
+                    height: '38px',
+                    padding: '0 12px',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    fontWeight: 600,
+                    boxSizing: 'border-box'
+                  }}
                 >
                   <option value="All Shifts">All Shifts</option>
                   {PROCESS_AUDIT_SHIFTS.map((s) => (
@@ -681,14 +827,25 @@ const AllRequests = () => {
               </div>
 
               {/* Stage / Model Filter */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              <div style={{ minWidth: 0 }}>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1" style={{ fontSize: '10px', marginBottom: '4px' }}>
                   Stage / Model
                 </label>
                 <select
                   value={selectedStage}
                   onChange={(e) => setSelectedStage(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                  style={{
+                    width: '100%',
+                    height: '38px',
+                    padding: '0 12px',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    fontWeight: 600,
+                    boxSizing: 'border-box'
+                  }}
                 >
                   <option value="All Stages">All Stages</option>
                   {distinctStages.map((stg) => (
@@ -698,14 +855,25 @@ const AllRequests = () => {
               </div>
 
               {/* Department Filter */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              <div style={{ minWidth: 0 }}>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1" style={{ fontSize: '10px', marginBottom: '4px' }}>
                   Department
                 </label>
                 <select
                   value={selectedDepartment}
                   onChange={(e) => setSelectedDepartment(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                  style={{
+                    width: '100%',
+                    height: '38px',
+                    padding: '0 12px',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    fontWeight: 600,
+                    boxSizing: 'border-box'
+                  }}
                 >
                   <option value="All Departments">All Departments</option>
                   {departmentList.map((d) => (
@@ -715,14 +883,25 @@ const AllRequests = () => {
               </div>
 
               {/* Status Filter */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              <div style={{ minWidth: 0 }}>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1" style={{ fontSize: '10px', marginBottom: '4px' }}>
                   Status
                 </label>
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                  style={{
+                    width: '100%',
+                    height: '38px',
+                    padding: '0 12px',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    fontWeight: 600,
+                    boxSizing: 'border-box'
+                  }}
                 >
                   <option value="All Statuses">All Statuses</option>
                   <option value="Pending">Pending</option>
@@ -732,11 +911,18 @@ const AllRequests = () => {
               </div>
 
               {/* Date Range Cluster */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              <div style={{ minWidth: 0 }}>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1" style={{ fontSize: '10px', marginBottom: '4px' }}>
                   Timeline Range
                 </label>
-                <div className="flex items-center gap-1 bg-slate-50 hover:bg-slate-100/70 focus-within:bg-white border border-slate-200/90 focus-within:border-blue-500 rounded-xl p-1 shadow-2xs focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                <div
+                  className="flex items-center gap-1 bg-slate-50 hover:bg-slate-100/70 focus-within:bg-white border border-slate-200/90 focus-within:border-blue-500 rounded-xl p-1 shadow-2xs focus-within:ring-2 focus-within:ring-blue-500/20 transition-all"
+                  style={{
+                    height: '38px',
+                    borderRadius: '10px',
+                    boxSizing: 'border-box'
+                  }}
+                >
                   <Calendar className="w-3.5 h-3.5 text-indigo-600 ml-1 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <DateInput
@@ -763,14 +949,55 @@ const AllRequests = () => {
       </div>
 
       {/* Process Audit Analysis Report Master Table (matching IHLR Analysis Report UI) */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+      <div
+        className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden"
+        style={{
+          borderRadius: isMobile ? '14px' : '16px',
+          overflow: 'hidden',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}
+      >
         {/* Card Header matching IHLR */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-slate-600 font-mono">
+        <div
+          className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between"
+          style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            justifyContent: 'space-between',
+            gap: isMobile ? '12px' : '16px',
+            padding: isMobile ? '14px 16px' : '16px 20px',
+            boxSizing: 'border-box',
+            width: '100%'
+          }}
+        >
+          <div className="flex items-center gap-2 flex-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
+            <span
+              className="text-xs font-extrabold uppercase tracking-widest text-slate-600 font-mono"
+              style={{
+                fontSize: '11px',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: '#475569',
+                fontFamily: 'monospace'
+              }}
+            >
               PROCESS AUDIT ANALYSIS and Action REPORT
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 font-mono">
+            <span
+              className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 font-mono"
+              style={{
+                padding: '2px 8px',
+                borderRadius: '9999px',
+                fontSize: '10px',
+                fontWeight: 700,
+                backgroundColor: '#eff6ff',
+                color: '#1d4ed8',
+                fontFamily: 'monospace'
+              }}
+            >
               {filteredRequests.length} Records
             </span>
           </div>
@@ -778,15 +1005,48 @@ const AllRequests = () => {
             onClick={handleOpenExportModal}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow transition transform active:scale-95 cursor-pointer"
             id="export-view-btn"
+            style={{
+              width: isMobile ? '100%' : 'auto',
+              height: '38px',
+              padding: '0 16px',
+              borderRadius: '10px',
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              fontSize: isMobile ? '13px' : '12px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              flexShrink: 0,
+              boxSizing: 'border-box'
+            }}
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
             <span>Export View</span>
           </button>
         </div>
 
         {/* Master Table with Grouped Phase Headers */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1250px]">
+        <div
+          className="overflow-x-auto"
+          style={{
+            width: '100%',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          <table
+            className="w-full text-left border-collapse"
+            style={{
+              width: '100%',
+              minWidth: isMobile ? '1000px' : isTablet ? '1100px' : '100%',
+              borderCollapse: 'collapse',
+              textAlign: 'left'
+            }}
+          >
             <thead>
 
               {/* Detailed Column Header Row */}
@@ -1004,9 +1264,31 @@ const AllRequests = () => {
 
         {/* Pagination Controls matching IHLR */}
         {!loading && (
-          <div className="p-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-4 text-xs text-slate-600">
-            <div className="flex items-center gap-2">
-              <span>Rows per page:</span>
+          <div
+            className="p-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-4 text-xs text-slate-600"
+            style={{
+              padding: isMobile ? '12px 14px' : '14px 20px',
+              borderTop: '1px solid #f1f5f9',
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: isMobile ? 'stretch' : 'center',
+              justifyContent: isMobile ? 'center' : 'flex-end',
+              gap: isMobile ? '10px' : '16px',
+              fontSize: '12px',
+              color: '#475569',
+              boxSizing: 'border-box'
+            }}
+          >
+            <div
+              className="flex items-center gap-2"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: isMobile ? 'space-between' : 'flex-start',
+                gap: '8px'
+              }}
+            >
+              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Rows per page:</span>
               <select
                 value={rowsPerPage}
                 onChange={(e) => {
@@ -1014,19 +1296,27 @@ const AllRequests = () => {
                   setCurrentPage(1);
                 }}
                 className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none cursor-pointer"
+                style={{
+                  height: '28px',
+                  padding: '0 8px',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  fontSize: '12px'
+                }}
               >
                 <option value={5}>5</option>
                 <option value={10}>10</option>
               </select>
             </div>
 
-            <div className="font-mono text-[11px] text-slate-500">
+            <div className="font-mono text-[11px] text-slate-500" style={{ textAlign: isMobile ? 'center' : 'left' }}>
               {totalRecords === 0
                 ? '0–0 of 0'
                 : `${startIndex + 1}–${endIndex} of ${totalRecords}`}
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" style={{ justifyContent: isMobile ? 'center' : 'flex-end' }}>
               <button
                 type="button"
                 disabled={currentPage <= 1}
@@ -1090,19 +1380,25 @@ const AllRequests = () => {
       {showReassignModal && reassigningRequest && createPortal(
         <div 
           className="fixed inset-0 !m-0 !mt-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overscroll-contain"
-          style={{ zIndex: 10001 }}
+          style={{ zIndex: 10001, padding: isMobile ? '12px' : '16px' }}
         >
           <div 
             className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200/80 space-y-5 animate-in zoom-in-95 relative overscroll-contain"
-            style={{ zIndex: 10002 }}
+            style={{
+              zIndex: 10002,
+              padding: isMobile ? '16px' : '24px',
+              borderRadius: isMobile ? '20px' : '24px',
+              maxWidth: isMobile ? '95vw' : '512px',
+              boxSizing: 'border-box'
+            }}
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                   <ArrowRightLeft className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">
+                  <h3 className="text-sm font-bold text-slate-900" style={{ fontSize: isMobile ? '13px' : '14px' }}>
                     Reassign Audit Observation
                   </h3>
                   <p className="text-[11px] text-slate-500 font-mono">
@@ -1127,7 +1423,7 @@ const AllRequests = () => {
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                 Current Assignment
               </span>
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <span className="text-slate-600">Department: <strong className="text-slate-800">{reassigningRequest.department}</strong></span>
                 <span className="text-slate-600">Executor: <strong className="text-slate-800">{reassigningRequest.executor}</strong></span>
               </div>
@@ -1147,6 +1443,12 @@ const AllRequests = () => {
                       setReassignExecutor('');
                     }}
                     className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer appearance-none pr-8"
+                    style={{
+                      height: '38px',
+                      borderRadius: '10px',
+                      fontSize: isMobile ? '13px' : '12px',
+                      boxSizing: 'border-box'
+                    }}
                   >
                     {departmentList.map((d) => (
                       <option key={d} value={d}>{d}</option>
@@ -1172,6 +1474,12 @@ const AllRequests = () => {
                     value={reassignExecutor}
                     onChange={(e) => setReassignExecutor(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer appearance-none pr-8"
+                    style={{
+                      height: '38px',
+                      borderRadius: '10px',
+                      fontSize: isMobile ? '13px' : '12px',
+                      boxSizing: 'border-box'
+                    }}
                   >
                     <option value="">-- Select Executor for {reassignDept} --</option>
                     {deptUsers.length === 0 ? (
@@ -1204,12 +1512,28 @@ const AllRequests = () => {
                   onChange={(e) => setReassignReason(e.target.value)}
                   placeholder="Explain why this request is being reassigned (e.g. wrong department selected at creation, transferred to responsible team, etc.)..."
                   className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-none"
+                  style={{
+                    borderRadius: '10px',
+                    fontSize: isMobile ? '13px' : '12px',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+            <div
+              className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100"
+              style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column-reverse' : 'row',
+                alignItems: 'center',
+                justifyContent: isMobile ? 'stretch' : 'flex-end',
+                gap: '8px',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            >
               <button
                 type="button"
                 onClick={() => {
@@ -1218,6 +1542,15 @@ const AllRequests = () => {
                 }}
                 disabled={reassignLoading}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-50"
+                style={{
+                  width: isMobile ? '100%' : 'auto',
+                  height: '40px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxSizing: 'border-box'
+                }}
               >
                 Cancel
               </button>
@@ -1226,6 +1559,15 @@ const AllRequests = () => {
                 onClick={handleConfirmReassign}
                 disabled={reassignLoading}
                 className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition"
+                style={{
+                  width: isMobile ? '100%' : 'auto',
+                  height: '40px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxSizing: 'border-box'
+                }}
               >
                 {reassignLoading ? (
                   <>
