@@ -85,6 +85,17 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFormat, setExportFormat] = useState('excel'); // 'excel' | 'pdf'
 
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  const isMobile = windowWidth < 768;
+  const isTablet = windowWidth >= 768 && windowWidth < 1024;
+
   // Admin Review & Sign-Off States (Tab 3: Sign Fields & Tracks)
   const [adminRemarks, setAdminRemarks] = useState('');
   const [adminReviewedBy, setAdminReviewedBy] = useState('');
@@ -1326,7 +1337,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
   return createPortal(
     <>
       <div
-        className="fixed inset-0 !m-0 !mt-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150"
+        className="fixed inset-0 !m-0 !mt-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-5 animate-in fade-in duration-150 overflow-y-auto"
         style={{ zIndex: 99990 }}
         onClick={() => {
           if (!isEditMode) {
@@ -1335,18 +1346,19 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
         }}
       >
         <div
-          className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
+          className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+          style={{ maxHeight: isMobile ? 'calc(100dvh - 16px)' : '92vh', width: isMobile ? 'calc(100vw - 16px)' : '100%' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
-                <Eye className="w-5 h-5" />
+          <div className="p-3.5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white gap-2">
+            <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm sm:text-lg font-bold text-slate-900 leading-snug break-words">
                     IHLR Rejection Analysis Report
                   </h3>
                   {isAdmin && activeTab === 'requester' && (
@@ -1354,7 +1366,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       <button
                         type="button"
                         disabled={true}
-                        className="px-3 py-1 bg-slate-100 text-slate-400 border border-slate-200 text-[11px] font-bold rounded-full uppercase tracking-wider shadow-none cursor-not-allowed select-none opacity-60 flex items-center gap-1.5"
+                        className="px-2.5 sm:px-3 py-1 bg-slate-100 text-slate-400 border border-slate-200 text-[10px] sm:text-[11px] font-bold rounded-full uppercase tracking-wider shadow-none cursor-not-allowed select-none opacity-60 flex items-center gap-1.5"
                         title="This issue has been closed. Editing is disabled."
                       >
                         <Edit2 className="w-3 h-3 text-slate-400" />
@@ -1362,7 +1374,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </button>
                     ) : isEditMode ? (
                       <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 bg-amber-500 text-white text-[10px] font-black rounded-full uppercase tracking-wider animate-pulse">
+                        <span className="px-2.5 sm:px-3 py-1 bg-amber-500 text-white text-[9px] sm:text-[10px] font-black rounded-full uppercase tracking-wider animate-pulse">
                           EDITING REQUESTER DETAILS
                         </span>
                         <button
@@ -1371,7 +1383,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                             initEditState(req);
                             setIsEditMode(false);
                           }}
-                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded-full uppercase tracking-wider transition cursor-pointer"
+                          className="px-2 sm:px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] sm:text-[11px] font-bold rounded-full uppercase tracking-wider transition cursor-pointer"
                         >
                           Cancel
                         </button>
@@ -1384,7 +1396,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                           setIsEditMode(true);
                           setActiveTab('requester');
                         }}
-                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[11px] font-bold rounded-full uppercase tracking-wider transition shadow-2xs cursor-pointer flex items-center gap-1.5"
+                        className="px-2.5 sm:px-3 py-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[10px] sm:text-[11px] font-bold rounded-full uppercase tracking-wider transition shadow-2xs cursor-pointer flex items-center gap-1.5"
                         title="Edit Requester Details (Admin Only)"
                       >
                         <Edit2 className="w-3 h-3" />
@@ -1393,7 +1405,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     )
                   )}
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 sm:gap-2 flex-wrap">
                   <span>
                     Tracking details for:{' '}
                     <strong className="text-slate-900 font-mono">
@@ -1401,7 +1413,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     </strong>
                   </span>
                   {hasReassignments && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
                       <ArrowRightLeft className="w-2.5 h-2.5 text-purple-600" />
                       <span>Reassigned ({reassignCount})</span>
                     </span>
@@ -1416,21 +1428,21 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
               className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer shrink-0"
               title="Close Details"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
 
           {/* Tab Navigation: Cleanly separate Requester Details vs Closer Details vs Sign & Tracks */}
-          <div className="flex items-center gap-2 sm:gap-4 px-6 pt-2 border-b border-slate-200 bg-slate-50/80 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-4 px-3 sm:px-6 pt-2 border-b border-slate-200 bg-slate-50/80 shrink-0 overflow-x-auto no-scrollbar scroll-smooth">
             <button
               type="button"
               onClick={() => setActiveTab('requester')}
-              className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'requester'
+              className={`pb-2.5 sm:pb-3 px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold transition border-b-2 flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 outline-none focus:outline-none focus:ring-0 select-none ${activeTab === 'requester'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
             >
-              <Folder className="w-4 h-4" />
+              <Folder className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>Requester Details</span>
             </button>
             <button
@@ -1441,25 +1453,25 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 }
                 setActiveTab('closer');
               }}
-              className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'closer'
+              className={`pb-2.5 sm:pb-3 px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold transition border-b-2 flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 outline-none focus:outline-none focus:ring-0 select-none ${activeTab === 'closer'
                   ? isClosed
                     ? 'border-emerald-600 text-emerald-700'
                     : 'border-amber-600 text-amber-700'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
             >
-              <CheckCircle2 className={`w-4 h-4 ${isClosed ? 'text-emerald-600' : 'text-amber-600'}`} />
+              <CheckCircle2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isClosed ? 'text-emerald-600' : 'text-amber-600'}`} />
               <span>Closer Details</span>
               {isClosed ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
                   Closed
                 </span>
               ) : isCompleted ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
                   Awaiting Review
                 </span>
               ) : (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300">
                   Pending
                 </span>
               )}
@@ -1472,27 +1484,27 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                 }
                 setActiveTab('sign_tracks');
               }}
-              className={`pb-3 px-3 text-xs font-bold transition border-b-2 flex items-center gap-2 cursor-pointer ${activeTab === 'sign_tracks'
+              className={`pb-2.5 sm:pb-3 px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold transition border-b-2 flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 outline-none focus:outline-none focus:ring-0 select-none ${activeTab === 'sign_tracks'
                   ? 'border-indigo-600 text-indigo-700'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
             >
-              <ShieldCheck className={`w-4 h-4 ${isClosed ? 'text-emerald-600' : 'text-indigo-600'}`} />
+              <ShieldCheck className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isClosed ? 'text-emerald-600' : 'text-indigo-600'}`} />
               <span>Sign Fields &amp; Tracks</span>
               {isClosed ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
                   Signed Off
                 </span>
               ) : hasReassignments ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-300">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-300">
                   Tracks ({reassignCount})
                 </span>
               ) : isCompleted ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
                   Review Ready
                 </span>
               ) : (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-100 text-indigo-800 border border-indigo-300">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-indigo-100 text-indigo-800 border border-indigo-300">
                   Admin Review
                 </span>
               )}
@@ -1500,7 +1512,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
           </div>
 
           {/* Modal Body: Scrollable Tab Content */}
-          <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+          <div className="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 flex-1 bg-white">
             {activeTab === 'sign_tracks' ? (
               /* TAB 3: SIGN FIELDS & TRACKS */
               <div className="space-y-6 animate-in fade-in duration-150">
@@ -1819,42 +1831,42 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
               /* TAB 2: CLOSER DETAILS */
               <div className="space-y-6 animate-in fade-in duration-150">
                 {/* 1. Quick Summary Bar */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200/90 flex flex-wrap items-center justify-between gap-4 text-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shadow-2xs">
-                      <CheckCircle2 className="w-5 h-5" />
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 text-xs">
+                  <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shadow-2xs shrink-0">
+                      <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono font-bold text-slate-900 text-sm">
                           {request.req_no || `IHLR-${request.id}`}
                         </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                           INCIDENT CLOSED
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-[11px] text-slate-500 mt-0.5 break-words">
                         Model Name / Part: <strong className="text-slate-800">{request.model || '—'}</strong> | Problem Detected At:{' '}
                         <strong className="text-slate-800">{request.problem_detected_at || '—'}</strong>
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 text-[11px] font-medium text-slate-600">
+                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 sm:gap-4 text-[11px] font-medium text-slate-600 pt-2 sm:pt-0 border-t sm:border-t-0 border-emerald-200/60 w-full sm:w-auto">
                     <div>
                       <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Responsibility (Resp)</span>
-                      <span className="font-bold text-slate-800">
+                      <span className="font-bold text-slate-800 truncate block">
                         {request.resp || 'Production'}{request.resp_person ? ` (${request.resp_person})` : ''}
                       </span>
                     </div>
                     <div>
                       <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-600">Closer Filled By</span>
-                      <span className="font-bold text-emerald-800">
+                      <span className="font-bold text-emerald-800 truncate block">
                         {closerSubmitter}
                       </span>
                     </div>
                     {hasReassignments && (
-                      <div>
+                      <div className="col-span-2 sm:col-span-1">
                         <span className="block text-[10px] font-bold uppercase tracking-wider text-purple-500">Reassigned</span>
                         <span className="font-bold text-purple-700 font-mono">
                           Yes ({reassignCount})
@@ -1866,12 +1878,12 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                 {/* 2. Occurrence Cause (Production Team - 5-Why) */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
-                      <ShieldAlert className="w-4 h-4" />
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider">
+                      <ShieldAlert className="w-4 h-4 shrink-0" />
                       <span>Occurrence Cause (5-Why Analysis)</span>
                     </div>
-                    <span className="text-[11px] text-slate-400 font-mono">W1 to W5 Breakdown</span>
+                    <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono">W1 to W5 Breakdown</span>
                   </div>
 
                   <div className="grid grid-cols-1 gap-2.5 text-xs">
@@ -1885,11 +1897,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                       if (validWhys.length > 0) {
                         return validWhys.map((item, idx) => (
-                          <div key={idx} className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
-                            <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                          <div key={idx} className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                            <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-mono font-black text-[10px] sm:text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
                               {item.label}:{['W1', 'W2', 'W3'].includes(item.label) && <span className="text-red-500 font-bold ml-0.5">*</span>}
                             </span>
-                            <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
+                            <span className="text-slate-800 font-medium leading-relaxed pt-0.5 break-words min-w-0 flex-1">
                               {item.val}
                             </span>
                           </div>
@@ -1898,11 +1910,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
 
                       // If no data recorded, show only one clean box with W1
                       return (
-                        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
-                          <span className="px-2.5 py-1 rounded-lg font-mono font-black text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                        <div className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                          <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-mono font-black text-[10px] sm:text-[11px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
                             W1:<span className="text-red-500 font-bold ml-0.5">*</span>
                           </span>
-                          <span className="text-slate-800 font-medium leading-relaxed pt-0.5">
+                          <span className="text-slate-800 font-medium leading-relaxed pt-0.5 min-w-0 flex-1">
                             <span className="text-slate-400 italic">No entry recorded</span>
                           </span>
                         </div>
@@ -1922,26 +1934,26 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   {/* 1. Temporary Action Taken */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider">
-                      <Wrench className="w-4 h-4" />
+                      <Wrench className="w-4 h-4 shrink-0" />
                       <span>Temporary Action Taken</span>
                     </div>
-                    <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium break-words">
                       {request.temporary_action || <span className="text-slate-400 italic">No temporary action recorded.</span>}
                     </div>
                   </div>
 
                   {/* 2. Temporary Evidence Attachment */}
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
-                        <Paperclip className="w-4 h-4" />
+                        <Paperclip className="w-4 h-4 shrink-0" />
                         <span>Temporary Evidence Attachment(s) ({evidenceAttachments.length})</span>
                       </div>
-                      <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
+                      <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
                     </div>
 
                     {evidenceAttachments && evidenceAttachments.length > 0 ? (
-                      <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
+                      <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50/60 border border-slate-200/80">
                         <AttachmentChipList
                           attachments={evidenceAttachments}
                           onPreview={(att) => setPreviewAttachment(att)}
@@ -1949,16 +1961,16 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         />
                       </div>
                     ) : (
-                      <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
+                      <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
                         No temporary evidence attachments uploaded.
                       </div>
                     )}
                   </div>
 
                   {/* 3. Temporary Target Date & Closed By */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
+                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                      <span className="block text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         TEMPORARY TARGET DATE
                       </span>
                       <span className="font-mono font-bold text-slate-900 text-sm">
@@ -1966,11 +1978,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </span>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                      <span className="block text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         TEMPORARY CLOSED BY
                       </span>
-                      <span className="font-bold text-slate-900 block text-xs">
+                      <span className="font-bold text-slate-900 block text-xs truncate">
                         {request.temporary_closed_by || req.temporary_closed_by || '—'}
                       </span>
                     </div>
@@ -1988,26 +2000,26 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   {/* 1. Permanent Action (Words) */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold uppercase tracking-wider">
-                      <Wrench className="w-4 h-4" />
+                      <Wrench className="w-4 h-4 shrink-0" />
                       <span>Permanent Action (Countermeasure)</span>
                     </div>
-                    <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium">
+                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-800 leading-relaxed font-medium break-words">
                       {request.permanent_fix || <span className="text-slate-400 italic">No permanent action recorded.</span>}
                     </div>
                   </div>
 
                   {/* 2. Permanent Action Evidence Attachment */}
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 text-purple-600 text-xs font-bold uppercase tracking-wider">
-                        <Paperclip className="w-4 h-4" />
+                        <Paperclip className="w-4 h-4 shrink-0" />
                         <span>Permanent Evidence Attachment(s) ({permanentEvidenceAttachments.length})</span>
                       </div>
-                      <span className="text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
+                      <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono">Format: PPT, JPEG, EXCEL &amp; PDF</span>
                     </div>
 
                     {permanentEvidenceAttachments && permanentEvidenceAttachments.length > 0 ? (
-                      <div className="p-4 rounded-2xl bg-slate-50/60 border border-slate-200/80">
+                      <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50/60 border border-slate-200/80">
                         <AttachmentChipList
                           attachments={permanentEvidenceAttachments}
                           onPreview={(att) => setPreviewAttachment(att)}
@@ -2015,16 +2027,16 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                         />
                       </div>
                     ) : (
-                      <div className="p-4 rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
+                      <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50/60 border border-dashed border-slate-200 text-xs text-slate-400 italic text-center">
                         No permanent action evidence attachments uploaded.
                       </div>
                     )}
                   </div>
 
                   {/* 3. Permanent Fix Target Date */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
+                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                      <span className="block text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         PERMANENT TARGET DATE
                       </span>
                       <span className="font-mono font-bold text-slate-900 text-sm">
@@ -2032,11 +2044,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       </span>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
-                      <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
+                      <span className="block text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         PERMANENT CLOSED BY
                       </span>
-                      <span className="font-bold text-slate-900 block text-xs">
+                      <span className="font-bold text-slate-900 block text-xs truncate">
                         {request.permanent_closed_by || req.permanent_closed_by || '—'}
                       </span>
                     </div>
@@ -2688,7 +2700,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     <span>1. INCIDENT &amp; LINE DEFECT DETAILS</span>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-6 text-xs p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80">
+                  <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-4 gap-y-3 sm:gap-y-4 gap-x-3 sm:gap-x-6 text-xs p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50/70 border border-slate-200/80">
                     <div>
                       <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         REQ NO
@@ -2985,16 +2997,17 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
           </div>
 
           {/* Modal Footer */}
-          <div className="p-4 sm:p-5 border-t border-slate-100 bg-white flex items-center justify-between shrink-0">
+          {/* Footer Actions */}
+          <div className="p-3.5 sm:p-5 border-t border-slate-100 bg-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
             {isEditMode && activeTab === 'requester' ? (
               <>
                 <div className="flex items-center gap-2 text-xs text-slate-600">
-                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shrink-0" />
                   <span className="font-semibold text-slate-800">Updating Requester Details only.</span>
                   <span className="hidden sm:inline text-slate-400">Closer details and status are preserved.</span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => {
@@ -3002,7 +3015,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                       setIsEditMode(false);
                     }}
                     disabled={isSavingRequester}
-                    className="px-4 py-2 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl border border-slate-300 transition cursor-pointer"
+                    className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2.5 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl border border-slate-300 transition cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -3011,11 +3024,11 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                     type="button"
                     onClick={handleSaveRequesterDetails}
                     disabled={isSavingRequester}
-                    className="flex items-center gap-1.5 px-5 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50"
                   >
                     {isSavingRequester ? (
                       <>
-                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
                         <span>Saving Changes...</span>
                       </>
                     ) : (
@@ -3029,36 +3042,36 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
               </>
             ) : (
               <>
-                <div>
+                <div className="text-xs text-slate-500 font-medium truncate">
                   {activeTab === 'closer' ? (
                     (evidenceAttachments.length > 0 || permanentEvidenceAttachments.length > 0) && (
-                      <span className="text-xs text-slate-400 font-medium">
+                      <span>
                         {evidenceAttachments.length + permanentEvidenceAttachments.length} closer evidence attachment{evidenceAttachments.length + permanentEvidenceAttachments.length > 1 ? 's' : ''} available
                       </span>
                     )
                   ) : activeTab === 'sign_tracks' ? (
-                    <span className="text-xs text-slate-500 font-medium">
+                    <span>
                       {hasReassignments
                         ? `${reassignCount} reassignment track${reassignCount > 1 ? 's' : ''} recorded`
                         : 'Original assignee tracking record'}
                     </span>
                   ) : (
                     attachments.length > 0 && (
-                      <span className="text-xs text-slate-400 font-medium">
+                      <span>
                         {attachments.length} attachment{attachments.length > 1 ? 's' : ''} available
                       </span>
                     )
                   )}
                 </div>
 
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowExportModal(true);
                     }}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
                     id="modal-export-btn"
                   >
                     <Download className="w-3.5 h-3.5" />
@@ -3068,7 +3081,7 @@ const IhlrRequestDetailsModal = ({ isOpen, request, onClose, onEditMode, initial
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl border border-slate-300 transition cursor-pointer"
+                    className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2.5 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl border border-slate-300 transition cursor-pointer"
                   >
                     Close Details
                   </button>
