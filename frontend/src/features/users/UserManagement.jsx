@@ -61,6 +61,20 @@ const UserManagement = () => {
   const [selectedRole, setSelectedRole] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
 
+  // Viewport breakpoint state for mobile/tablet responsive handling
+  const [screenWidth, setScreenWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+  useEffect(() => {
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = screenWidth < 768;
+  const isTablet = screenWidth >= 768 && screenWidth < 1024;
+  const isDesktop = screenWidth >= 1024;
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddPassword, setShowAddPassword] = useState(false);
@@ -615,821 +629,1265 @@ const UserManagement = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6"
+      style={{
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        overflowX: 'hidden',
+        paddingBottom: isMobile ? '32px' : '64px',
+        boxSizing: 'border-box'
+      }}
+    >
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div
+          className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-in fade-in slide-in-from-bottom-3 duration-200"
+          style={{
+            borderRadius: '12px',
+            padding: '12px 16px',
+            fontSize: '12px',
+            maxWidth: isMobile ? 'calc(100vw - 32px)' : '400px'
+          }}
+        >
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" style={{ width: '16px', height: '16px' }} />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Page Title & Actions Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-        
-          <div className="flex items-center gap-3">
-            <img src="/images/logo.png" alt="INEL Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain shrink-0" />
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+      <div
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          justifyContent: 'space-between',
+          gap: isMobile ? '12px' : '16px',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div className="flex items-center gap-3" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img
+              src="/images/logo.png"
+              alt="INEL Logo"
+              className="w-8 h-8 sm:w-9 sm:h-9 object-contain shrink-0"
+              style={{
+                width: isMobile ? '30px' : '36px',
+                height: isMobile ? '30px' : '36px',
+                flexShrink: 0
+              }}
+            />
+            <h1
+              className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight"
+              style={{
+                fontSize: isMobile ? '20px' : isTablet ? '24px' : '28px',
+                lineHeight: isMobile ? '26px' : isTablet ? '30px' : '34px',
+                fontWeight: 900,
+                color: '#0f172a',
+                letterSpacing: '-0.025em',
+                margin: 0
+              }}
+            >
               Enterprise User Management
             </h1>
           </div>
-        
         </div>
 
-        <div className="flex items-center gap-3">
-       
+        <div
+          className="flex items-center gap-3"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: isMobile ? '8px' : '12px',
+            width: isMobile ? '100%' : 'auto',
+            boxSizing: 'border-box'
+          }}
+        >
           <button
             onClick={handleExportPdf}
-            className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold shadow-2xs hover:shadow-xs transition transform active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold shadow-2xs hover:shadow-xs transition transform active:scale-95 cursor-pointer"
+            style={{
+              height: '38px',
+              padding: isMobile ? '0 12px' : '0 14px',
+              borderRadius: '10px',
+              fontSize: '12px',
+              fontWeight: 700,
+              flex: isMobile ? 1 : 'initial',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxSizing: 'border-box'
+            }}
             title="Export User Directory as PDF"
             id="export-users-pdf-header-btn"
           >
-            <Download className="w-4 h-4 text-blue-600" />
+            <Download className="w-4 h-4 text-blue-600" style={{ width: '16px', height: '16px' }} />
             <span>Export PDF</span>
           </button>
 
           <button
             onClick={handleOpenAddModal}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-95 cursor-pointer"
+            style={{
+              height: '38px',
+              padding: isMobile ? '0 14px' : '0 16px',
+              borderRadius: '10px',
+              fontSize: '12px',
+              fontWeight: 700,
+              flex: isMobile ? 1 : 'initial',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxSizing: 'border-box'
+            }}
           >
-            <UserPlus className="w-4 h-4" />
+            <UserPlus className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
             <span>Add New User</span>
           </button>
         </div>
       </div>
 
+      {/* KPI Metrics Strip - Common across all tabs */}
+      <div
+        className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
+          gap: isMobile ? '10px' : '16px',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
+        }}
+      >
+        <div
+          className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs"
+          style={{
+            padding: isMobile ? '12px' : '16px',
+            borderRadius: '14px',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
+          <div className="flex items-center justify-between mb-1.5" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider" style={{ fontSize: '11px', fontWeight: 700 }}>Total Users</span>
+            <Users className="w-4 h-4 text-slate-400" style={{ width: '16px', height: '16px' }} />
+          </div>
+          <p className="text-2xl font-extrabold text-slate-900" style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: 800, margin: 0, color: '#0f172a' }}>{totalCount}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5" style={{ fontSize: '10px', marginTop: '2px', color: '#94a3b8' }}>Common to all portals</p>
+        </div>
 
-        {/* KPI Metrics Strip - Common across all tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Users</span>
-              <Users className="w-4 h-4 text-slate-400" />
-            </div>
-            <p className="text-2xl font-extrabold text-slate-900">{totalCount}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Common to all portals</p>
+        <div
+          className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs"
+          style={{
+            padding: isMobile ? '12px' : '16px',
+            borderRadius: '14px',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
+          <div className="flex items-center justify-between mb-1.5" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider" style={{ fontSize: '11px', fontWeight: 700 }}>Active Users</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" style={{ width: '16px', height: '16px' }} />
+          </div>
+          <p className="text-2xl font-extrabold text-emerald-600" style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: 800, margin: 0, color: '#059669' }}>{activeCount}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5" style={{ fontSize: '10px', marginTop: '2px', color: '#94a3b8' }}>{totalCount - activeCount} inactive users</p>
+        </div>
+
+        <div
+          className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs"
+          style={{
+            padding: isMobile ? '12px' : '16px',
+            borderRadius: '14px',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
+          <div className="flex items-center justify-between mb-1.5" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider" style={{ fontSize: '11px', fontWeight: 700 }}>Admin Users</span>
+            <Shield className="w-4 h-4 text-indigo-600" style={{ width: '16px', height: '16px' }} />
+          </div>
+          <p className="text-2xl font-extrabold text-indigo-700" style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: 800, margin: 0, color: '#4338ca' }}>{adminCount}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5" style={{ fontSize: '10px', marginTop: '2px', color: '#94a3b8' }}>Full administrative access</p>
+        </div>
+
+        <div
+          className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs"
+          style={{
+            padding: isMobile ? '12px' : '16px',
+            borderRadius: '14px',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
+          <div className="flex items-center justify-between mb-1.5" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider" style={{ fontSize: '11px', fontWeight: 700 }}>Standard Users</span>
+            <Users className="w-4 h-4 text-blue-600" style={{ width: '16px', height: '16px' }} />
+          </div>
+          <p className="text-2xl font-extrabold text-blue-700" style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: 800, margin: 0, color: '#1d4ed8' }}>{standardUserCount}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5" style={{ fontSize: '10px', marginTop: '2px', color: '#94a3b8' }}>Universal tabs access</p>
+        </div>
+      </div>
+
+      {/* Filter and Search Bar Card */}
+      <div
+        className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5"
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: isMobile ? '14px' : '16px',
+          padding: isMobile ? '12px' : '16px',
+          border: '1px solid #e2e8f0',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
+        }}
+      >
+        <div
+          className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(12, minmax(0, 1fr))',
+            gap: isMobile ? '10px' : '12px',
+            alignItems: 'center',
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
+          }}
+        >
+          {/* Search */}
+          <div
+            className="md:col-span-5 relative"
+            style={{
+              gridColumn: isMobile ? '1 / -1' : isTablet ? '1 / -1' : 'span 5 / span 5',
+              position: 'relative',
+              minWidth: 0
+            }}
+          >
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" style={{ width: '16px', height: '16px', left: '12px', top: '11px' }} />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search user name, email, or employee ID..."
+              style={{
+                height: '38px',
+                paddingLeft: '38px',
+                paddingRight: '14px',
+                borderRadius: '10px',
+                fontSize: isMobile ? '13px' : '12px',
+                boxSizing: 'border-box'
+              }}
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition outline-none"
+            />
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Active Users</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            </div>
-            <p className="text-2xl font-extrabold text-emerald-600">{activeCount}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">{totalCount - activeCount} inactive users</p>
+          {/* Department Filter */}
+          <div
+            className="md:col-span-3"
+            style={{
+              gridColumn: isMobile ? '1 / -1' : isTablet ? 'span 1 / span 1' : 'span 3 / span 3',
+              minWidth: 0
+            }}
+          >
+            <select
+              value={selectedDept}
+              onChange={(e) => setSelectedDept(e.target.value)}
+              style={{
+                height: '38px',
+                padding: '0 12px',
+                borderRadius: '10px',
+                fontSize: isMobile ? '13px' : '12px',
+                boxSizing: 'border-box'
+              }}
+              className="w-full bg-slate-50 border border-slate-200 text-slate-700 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+            >
+              <option value="ALL">All Departments</option>
+              {DEPARTMENTS.map((dept) => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">Admin Users</span>
-              <Shield className="w-4 h-4 text-indigo-600" />
-            </div>
-            <p className="text-2xl font-extrabold text-indigo-700">{adminCount}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Full administrative access</p>
+          {/* Role Filter */}
+          <div
+            className="md:col-span-2"
+            style={{
+              gridColumn: isMobile ? '1 / -1' : isTablet ? 'span 1 / span 1' : 'span 2 / span 2',
+              minWidth: 0
+            }}
+          >
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              style={{
+                height: '38px',
+                padding: '0 12px',
+                borderRadius: '10px',
+                fontSize: isMobile ? '13px' : '12px',
+                boxSizing: 'border-box'
+              }}
+              className="w-full bg-slate-50 border border-slate-200 text-slate-700 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+            >
+              <option value="ALL">All Roles</option>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Standard Users</span>
-              <Users className="w-4 h-4 text-blue-600" />
+          {/* Status Filter & Reset */}
+          <div
+            className="md:col-span-2 flex items-center gap-2"
+            style={{
+              gridColumn: isMobile ? '1 / -1' : isTablet ? 'span 2 / span 2' : 'span 2 / span 2',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              minWidth: 0
+            }}
+          >
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              style={{
+                height: '38px',
+                padding: '0 12px',
+                borderRadius: '10px',
+                fontSize: isMobile ? '13px' : '12px',
+                boxSizing: 'border-box',
+                flex: 1
+              }}
+              className="bg-slate-50 border border-slate-200 text-slate-700 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+            >
+              <option value="ALL">All Status</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+
+            {(search || selectedDept !== 'ALL' || selectedRole !== 'ALL' || selectedStatus !== 'ALL') && (
+              <button
+                onClick={() => {
+                  setSearch('');
+                  setSelectedDept('ALL');
+                  setSelectedRole('ALL');
+                  setSelectedStatus('ALL');
+                }}
+                style={{
+                  height: '38px',
+                  width: '38px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
+                title="Reset all filters"
+              >
+                <X className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Directory Table */}
+      <div
+        className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden"
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: isMobile ? '14px' : '16px',
+          border: '1px solid #e2e8f0',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
+        }}
+      >
+        <div
+          className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50"
+          style={{
+            padding: isMobile ? '12px 14px' : '16px 24px',
+            borderBottom: '1px solid #f1f5f9',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxSizing: 'border-box'
+          }}
+        >
+          <div className="flex items-center gap-2.5" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider" style={{ fontSize: isMobile ? '11px' : '12px', fontWeight: 800, margin: 0 }}>
+              Enterprise Users Directory
+            </h3>
+            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[11px] font-bold" style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '9999px' }}>
+              {filteredUsers.length} Users
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:block text-xs text-slate-400" style={{ fontSize: '12px' }}>
+              Showing filtered results
             </div>
-            <p className="text-2xl font-extrabold text-blue-700">{standardUserCount}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Universal tabs access</p>
           </div>
         </div>
 
-        {/* Filter and Search Bar Card */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-            {/* Search */}
-            <div className="md:col-span-5 relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search user name, email, or employee ID..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition outline-none"
-              />
-            </div>
-
-            {/* Department Filter */}
-            <div className="md:col-span-3">
-              <select
-                value={selectedDept}
-                onChange={(e) => setSelectedDept(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-              >
-                <option value="ALL">All Departments</option>
-                {DEPARTMENTS.map((dept) => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Role Filter */}
-            <div className="md:col-span-2">
-              <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-              >
-                <option value="ALL">All Roles</option>
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Status Filter & Reset */}
-            <div className="md:col-span-2 flex items-center gap-2">
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-              >
-                <option value="ALL">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-
-              {(search || selectedDept !== 'ALL' || selectedRole !== 'ALL' || selectedStatus !== 'ALL') && (
-                <button
-                  onClick={() => {
-                    setSearch('');
-                    setSelectedDept('ALL');
-                    setSelectedRole('ALL');
-                    setSelectedStatus('ALL');
-                  }}
-                  className="px-2.5 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
-                  title="Reset all filters"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Directory Table */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <div className="flex items-center gap-2.5">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Enterprise Users Directory
-              </h3>
-              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[11px] font-bold">
-                {filteredUsers.length} Users
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:block text-xs text-slate-400">
-                Showing filtered results
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3.5 px-4 text-center w-16">SL NO</th>
-                  <th className="py-3.5 px-6">USER &amp; DETAILS</th>
-                  <th className="py-3.5 px-4">EMPLOYEE ID</th>
-                  <th className="py-3.5 px-4">ROLE</th>
-                  <th className="py-3.5 px-4">DEPARTMENT</th>
-                  <th className="py-3.5 px-4">TABS &amp; SCOPE</th>
-                  <th className="py-3.5 px-4">STATUS</th>
-                  <th className="py-3.5 px-6 text-right">ACTIONS</th>
+        <div
+          className="overflow-x-auto"
+          style={{
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            boxSizing: 'border-box'
+          }}
+        >
+          <table
+            className="w-full text-left border-collapse"
+            style={{
+              minWidth: isMobile ? '680px' : '750px',
+              width: '100%'
+            }}
+          >
+            <thead>
+              <tr className="bg-[#f8fafc] border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500" style={{ fontSize: '11px', borderBottom: '1px solid #f1f5f9' }}>
+                <th className="py-3.5 px-4 text-center w-16" style={{ padding: '12px 16px', textAlign: 'center', width: '64px' }}>SL NO</th>
+                <th className="py-3.5 px-6" style={{ padding: '12px 24px' }}>USER &amp; DETAILS</th>
+                <th className="py-3.5 px-4" style={{ padding: '12px 16px' }}>EMPLOYEE ID</th>
+                <th className="py-3.5 px-4" style={{ padding: '12px 16px' }}>ROLE</th>
+                <th className="py-3.5 px-4" style={{ padding: '12px 16px' }}>DEPARTMENT</th>
+                <th className="py-3.5 px-4" style={{ padding: '12px 16px' }}>TABS &amp; SCOPE</th>
+                <th className="py-3.5 px-4" style={{ padding: '12px 16px' }}>STATUS</th>
+                <th className="py-3.5 px-6 text-right" style={{ padding: '12px 24px', textAlign: 'right' }}>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs" style={{ fontSize: '12px' }}>
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400" style={{ padding: '48px 16px', textAlign: 'center' }}>
+                    <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" style={{ width: '32px', height: '32px', margin: '0 auto 8px auto' }} />
+                    <p className="font-semibold text-slate-600" style={{ fontSize: '13px', margin: 0 }}>No personnel found</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5" style={{ fontSize: '11px', marginTop: '2px' }}>Try refining your search terms or filters.</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
-                      <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                      <p className="font-semibold text-slate-600">No personnel found</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Try refining your search terms or filters.</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredUsers.map((u, index) => {
-                    const isCurrent =
-                      (currentAuthUser?.id && String(currentAuthUser.id) === String(u.id)) ||
-                      (currentAuthUser?.email && u.email && currentAuthUser.email.toLowerCase() === u.email.toLowerCase());
+              ) : (
+                filteredUsers.map((u, index) => {
+                  const isCurrent =
+                    (currentAuthUser?.id && String(currentAuthUser.id) === String(u.id)) ||
+                    (currentAuthUser?.email && u.email && currentAuthUser.email.toLowerCase() === u.email.toLowerCase());
 
-                    return (
-                      <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
-                        {/* SL NO */}
-                        <td className="py-4 px-4 text-center font-mono font-semibold text-slate-500">
-                          {index + 1}
-                        </td>
+                  return (
+                    <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
+                      {/* SL NO */}
+                      <td className="py-4 px-4 text-center font-mono font-semibold text-slate-500" style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        {index + 1}
+                      </td>
 
-                        {/* User Column */}
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-extrabold text-xs shadow-2xs shrink-0">
-                              {u.name?.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-slate-900">{u.name}</span>
-                                {isCurrent && (
-                                  <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                                    Current
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[11px] text-slate-400 font-mono block">{u.email}</span>
-                            </div>
+                      {/* User Column */}
+                      <td className="py-4 px-6" style={{ padding: '14px 24px' }}>
+                        <div className="flex items-center gap-3" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-extrabold text-xs shadow-2xs shrink-0" style={{ width: '36px', height: '36px', borderRadius: '9999px', flexShrink: 0, fontSize: '12px', fontWeight: 800 }}>
+                            {u.name?.charAt(0).toUpperCase()}
                           </div>
-                        </td>
+                          <div>
+                            <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span className="font-bold text-slate-900" style={{ fontWeight: 700, color: '#0f172a' }}>{u.name}</span>
+                              {isCurrent && (
+                                <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold" style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px' }}>
+                                  Current
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-slate-400 font-mono block" style={{ fontSize: '11px', color: '#94a3b8' }}>{u.email}</span>
+                          </div>
+                        </div>
+                      </td>
 
-                        {/* Employee ID */}
-                        <td className="py-4 px-4 font-mono font-bold text-slate-700">
-                          {u.employeeId || u.employee_id || u.id}
-                        </td>
+                      {/* Employee ID */}
+                      <td className="py-4 px-4 font-mono font-bold text-slate-700" style={{ padding: '14px 16px' }}>
+                        {u.employeeId || u.employee_id || u.id}
+                      </td>
 
-                        {/* Role */}
-                        <td className="py-4 px-4">
-                          <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap ${
+                      {/* Role */}
+                      <td className="py-4 px-4" style={{ padding: '14px 16px' }}>
+                        <span
+                          className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap ${
                             u.role?.toLowerCase() === 'admin'
                               ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                               : 'bg-blue-50 text-blue-700 border-blue-200'
-                          }`}>
-                            {u.role}
+                          }`}
+                          style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '9999px' }}
+                        >
+                          {u.role}
+                        </span>
+                      </td>
+
+                      {/* Department */}
+                      <td className="py-4 px-4 text-slate-700 font-medium" style={{ padding: '14px 16px' }}>
+                        {u.department}
+                      </td>
+
+                      {/* Tabs & Access Scope */}
+                      <td className="py-4 px-4 whitespace-nowrap" style={{ padding: '14px 16px' }}>
+                        <div className="flex flex-wrap items-center gap-1" style={{ gap: '4px' }}>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200" style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px' }} title="Process Audit Observation tabs">
+                            Process Audit
                           </span>
-                        </td>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px' }} title="In-House Line Rejection tabs">
+                            IHLR
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200" style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px' }} title="Try Out Status tabs">
+                            Try Out
+                          </span>
+                        </div>
+                      </td>
 
-                        {/* Department */}
-                        <td className="py-4 px-4 text-slate-700 font-medium">
-                          {u.department}
-                        </td>
+                      {/* Status (Read-Only) */}
+                      <td className="py-4 px-4" style={{ padding: '14px 16px' }}>
+                        <span
+                          className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border select-none cursor-default ${
+                            u.status === 'Active' || u.status === 'ACTIVE'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-slate-100 text-slate-500 border-slate-200'
+                          }`}
+                          style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '9999px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${u.status === 'Active' || u.status === 'ACTIVE' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} style={{ width: '6px', height: '6px', borderRadius: '9999px' }} />
+                          <span>{u.status || 'Active'}</span>
+                        </span>
+                      </td>
 
-                        {/* Tabs & Access Scope */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <div className="flex flex-wrap items-center gap-1">
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200" title="Process Audit Observation tabs">
-                              Process Audit
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" title="In-House Line Rejection tabs">
-                              IHLR
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200" title="Try Out Status tabs">
-                              Try Out
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* Status (Read-Only) */}
-                        <td className="py-4 px-4">
-                          <span
-                            className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border select-none cursor-default ${
-                              u.status === 'Active' || u.status === 'ACTIVE'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-slate-100 text-slate-500 border-slate-200'
-                            }`}
+                      {/* Actions */}
+                      <td className="py-4 px-6 text-right" style={{ padding: '14px 24px', textAlign: 'right' }}>
+                        <div className="flex items-center justify-end gap-1.5" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                          {/* Edit User */}
+                          <button
+                            onClick={() => handleOpenEditModal(u)}
+                            className="p-1.5 text-slate-500 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg transition shadow-2xs cursor-pointer"
+                            style={{ padding: '6px', borderRadius: '8px' }}
+                            title="Edit user details and roles"
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full ${u.status === 'Active' || u.status === 'ACTIVE' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                            <span>{u.status || 'Active'}</span>
-                          </span>
-                        </td>
+                            <Edit2 className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
+                          </button>
 
-                        {/* Actions */}
-                        <td className="py-4 px-6 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {/* Edit User */}
+                          {/* Delete User - Hidden for Current Logged-In User */}
+                          {!isCurrent && (
                             <button
-                              onClick={() => handleOpenEditModal(u)}
-                              className="p-1.5 text-slate-500 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg transition shadow-2xs cursor-pointer"
-                              title="Edit user details and roles"
+                              onClick={() => handleDelete(u.id, u.name)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-lg transition shadow-2xs cursor-pointer"
+                              style={{ padding: '6px', borderRadius: '8px' }}
+                              title="Delete user"
                             >
-                              <Edit2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-3.5 h-3.5" style={{ width: '14px', height: '14px' }} />
                             </button>
-
-                            {/* Delete User - Hidden for Current Logged-In User */}
-                            {!isCurrent && (
-                              <button
-                                onClick={() => handleDelete(u.id, u.name)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-lg transition shadow-2xs cursor-pointer"
-                                title="Delete user"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
+      </div>
 
       {/* ADD USER MODAL */}
       {showAddModal &&
         createPortal(
           <div 
             className="fixed inset-0 !m-0 !mt-0 z-[99990] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+            style={{
+              padding: isMobile ? '12px' : '16px',
+              boxSizing: 'border-box'
+            }}
             onClick={(e) => {
               if (e.target === e.currentTarget) setShowAddModal(false);
             }}
           >
-            <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 my-8">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <UserPlus className="w-4 h-4" />
+            <div
+              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 my-8"
+              style={{
+                borderRadius: isMobile ? '16px' : '24px',
+                padding: isMobile ? '16px' : '28px',
+                maxWidth: isMobile ? '100%' : '520px',
+                margin: isMobile ? '16px 0' : '32px 0',
+                boxSizing: 'border-box'
+              }}
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100" style={{ paddingBottom: '14px', borderBottom: '1px solid #f1f5f9' }}>
+                <div className="flex items-center gap-2.5" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center" style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <UserPlus className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900" style={{ fontSize: isMobile ? '14px' : '16px', fontWeight: 800, margin: 0, color: '#0f172a' }}>Add New Enterprise User</h3>
+                    <p className="text-[11px] text-slate-400" style={{ fontSize: '11px', margin: '2px 0 0 0', color: '#94a3b8' }}>Assign role and system authorization</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Add New Enterprise User</h3>
-                  <p className="text-[11px] text-slate-400">Assign role and system authorization</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form noValidate onSubmit={handleCreateUserSubmit} className="mt-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Full Name */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => {
-                      setFormData({ ...formData, name: e.target.value });
-                      if (addFormErrors.name) setAddFormErrors((prev) => ({ ...prev, name: '' }));
-                    }}
-                    placeholder="e.g. Ramesh Kumar"
-                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
-                      addFormErrors.name
-                        ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
-                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
-                    }`}
-                  />
-                  {addFormErrors.name && (
-                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
-                      <span>{addFormErrors.name}</span>
-                    </p>
-                  )}
-                </div>
-
-                {/* Employee ID */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Employee ID *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.employeeId}
-                    onChange={(e) => {
-                      setFormData({ ...formData, employeeId: e.target.value });
-                      if (addFormErrors.employeeId) setAddFormErrors((prev) => ({ ...prev, employeeId: '' }));
-                    }}
-                    placeholder="e.g. USR-008"
-                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 font-mono focus:bg-white focus:ring-2 outline-none transition ${
-                      addFormErrors.employeeId || isAddEmpDuplicate
-                        ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
-                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
-                    }`}
-                  />
-                  {(addFormErrors.employeeId || isAddEmpDuplicate) && (
-                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
-                      <span>{addFormErrors.employeeId || `Employee ID "${formData.employeeId}" is already registered.`}</span>
-                    </p>
-                  )}
-                </div>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  style={{ padding: '6px', borderRadius: '8px' }}
+                >
+                  <X className="w-5 h-5" style={{ width: '18px', height: '18px' }} />
+                </button>
               </div>
 
-              {/* Email Address */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Enterprise Email *
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => {
-                      setFormData({ ...formData, email: e.target.value });
-                      if (addFormErrors.email) setAddFormErrors((prev) => ({ ...prev, email: '' }));
-                    }}
-                    placeholder="ramesh@inel.co.in"
-                    className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
-                      addFormErrors.email
-                        ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
-                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
-                    }`}
-                  />
-                </div>
-                {addFormErrors.email && (
-                  <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
-                    <span>{addFormErrors.email}</span>
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Department (First) */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Department *
-                  </label>
-                  <select
-                    value={formData.department}
-                    onChange={(e) => handleDepartmentChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
-                  >
-                    {DEPARTMENTS.map((dept) => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Role (Second) */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Operational Role *
-                  </label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) => handleRoleChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
-                  >
-                    {ROLES.map((role) => (
-                      <option key={role} value={role}>{role}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Initial Password & Status */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Password *
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+              <form noValidate onSubmit={handleCreateUserSubmit} className="mt-5 space-y-4" style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                    gap: isMobile ? '12px' : '16px'
+                  }}
+                >
+                  {/* Full Name */}
+                  <div style={{ minWidth: 0 }}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                      Full Name *
+                    </label>
                     <input
-                      type={showAddPassword ? 'text' : 'password'}
-                      value={formData.password}
+                      type="text"
+                      value={formData.name}
                       onChange={(e) => {
-                        setFormData({ ...formData, password: e.target.value });
-                        if (addFormErrors.password) setAddFormErrors((prev) => ({ ...prev, password: '' }));
+                        setFormData({ ...formData, name: e.target.value });
+                        if (addFormErrors.name) setAddFormErrors((prev) => ({ ...prev, name: '' }));
                       }}
-                      placeholder="Enter password"
-                      className={`w-full pl-9 pr-10 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
-                        addFormErrors.password
+                      placeholder="e.g. Ramesh Kumar"
+                      style={{
+                        height: '38px',
+                        padding: '0 12px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        boxSizing: 'border-box'
+                      }}
+                      className={`w-full bg-slate-50 border text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
+                        addFormErrors.name
                           ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
                           : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
                       }`}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowAddPassword(!showAddPassword)}
-                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition cursor-pointer p-0.5"
-                      title={showAddPassword ? "Hide password" : "Show password"}
-                    >
-                      {showAddPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                    {addFormErrors.name && (
+                      <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150" style={{ fontSize: '11px', marginTop: '4px' }}>
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" style={{ width: '14px', height: '14px' }} />
+                        <span>{addFormErrors.name}</span>
+                      </p>
+                    )}
                   </div>
-                  {addFormErrors.password && (
-                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
-                      <span>{addFormErrors.password}</span>
+
+                  {/* Employee ID */}
+                  <div style={{ minWidth: 0 }}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                      Employee ID *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.employeeId}
+                      onChange={(e) => {
+                        setFormData({ ...formData, employeeId: e.target.value });
+                        if (addFormErrors.employeeId) setAddFormErrors((prev) => ({ ...prev, employeeId: '' }));
+                      }}
+                      placeholder="e.g. USR-008"
+                      style={{
+                        height: '38px',
+                        padding: '0 12px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        boxSizing: 'border-box'
+                      }}
+                      className={`w-full bg-slate-50 border text-slate-800 font-mono focus:bg-white focus:ring-2 outline-none transition ${
+                        addFormErrors.employeeId || isAddEmpDuplicate
+                          ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                          : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
+                    />
+                    {(addFormErrors.employeeId || isAddEmpDuplicate) && (
+                      <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150" style={{ fontSize: '11px', marginTop: '4px' }}>
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" style={{ width: '14px', height: '14px' }} />
+                        <span>{addFormErrors.employeeId || `Employee ID "${formData.employeeId}" is already registered.`}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Email Address */}
+                <div style={{ minWidth: 0 }}>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                    Enterprise Email *
+                  </label>
+                  <div className="relative" style={{ position: 'relative' }}>
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" style={{ width: '16px', height: '16px', left: '12px', top: '11px' }} />
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => {
+                        setFormData({ ...formData, email: e.target.value });
+                        if (addFormErrors.email) setAddFormErrors((prev) => ({ ...prev, email: '' }));
+                      }}
+                      placeholder="ramesh@inel.co.in"
+                      style={{
+                        height: '38px',
+                        paddingLeft: '38px',
+                        paddingRight: '12px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        boxSizing: 'border-box'
+                      }}
+                      className={`w-full bg-slate-50 border text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
+                        addFormErrors.email
+                          ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                          : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
+                    />
+                  </div>
+                  {addFormErrors.email && (
+                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150" style={{ fontSize: '11px', marginTop: '4px' }}>
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" style={{ width: '14px', height: '14px' }} />
+                      <span>{addFormErrors.email}</span>
                     </p>
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Account Status
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                <div
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                    gap: isMobile ? '12px' : '16px'
+                  }}
+                >
+                  {/* Department (First) */}
+                  <div style={{ minWidth: 0 }}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                      Department *
+                    </label>
+                    <select
+                      value={formData.department}
+                      onChange={(e) => handleDepartmentChange(e.target.value)}
+                      style={{
+                        height: '38px',
+                        padding: '0 12px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        boxSizing: 'border-box'
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                    >
+                      {DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Role (Second) */}
+                  <div style={{ minWidth: 0 }}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                      Operational Role *
+                    </label>
+                    <select
+                      value={formData.role}
+                      onChange={(e) => handleRoleChange(e.target.value)}
+                      style={{
+                        height: '38px',
+                        padding: '0 12px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        boxSizing: 'border-box'
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                    >
+                      {ROLES.map((role) => (
+                        <option key={role} value={role}>{role}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Initial Password & Status */}
+                <div
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                    gap: isMobile ? '12px' : '16px'
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                      Password *
+                    </label>
+                    <div className="relative" style={{ position: 'relative' }}>
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" style={{ width: '16px', height: '16px', left: '12px', top: '11px' }} />
+                      <input
+                        type={showAddPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => {
+                          setFormData({ ...formData, password: e.target.value });
+                          if (addFormErrors.password) setAddFormErrors((prev) => ({ ...prev, password: '' }));
+                        }}
+                        placeholder="Enter password"
+                        style={{
+                          height: '38px',
+                          paddingLeft: '38px',
+                          paddingRight: '38px',
+                          borderRadius: '10px',
+                          fontSize: isMobile ? '13px' : '12px',
+                          boxSizing: 'border-box'
+                        }}
+                        className={`w-full bg-slate-50 border text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
+                          addFormErrors.password
+                            ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                            : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAddPassword(!showAddPassword)}
+                        className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition cursor-pointer p-0.5"
+                        style={{ right: '10px', top: '9px', padding: '2px' }}
+                        title={showAddPassword ? "Hide password" : "Show password"}
+                      >
+                        {showAddPassword ? <EyeOff className="w-4 h-4" style={{ width: '16px', height: '16px' }} /> : <Eye className="w-4 h-4" style={{ width: '16px', height: '16px' }} />}
+                      </button>
+                    </div>
+                    {addFormErrors.password && (
+                      <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150" style={{ fontSize: '11px', marginTop: '4px' }}>
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" style={{ width: '14px', height: '14px' }} />
+                        <span>{addFormErrors.password}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  <div style={{ minWidth: 0 }}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                      Account Status
+                    </label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      style={{
+                        height: '38px',
+                        padding: '0 12px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        boxSizing: 'border-box'
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    >
+                      <option value="Active">Active</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Universal Tab Permissions Info */}
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5" style={{ padding: '12px', borderRadius: '12px' }}>
+                  <span className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider" style={{ fontSize: '11px' }}>
+                    Universal Tab Scope (Active for all portals)
+                  </span>
+                  <p className="text-[11px] text-slate-500" style={{ fontSize: '11px', margin: '2px 0 6px 0' }}>
+                    This enterprise user will automatically have access to all tabs across all portals.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 pt-0.5" style={{ gap: '6px' }}>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>
+                      <Check className="w-3 h-3 text-blue-600" style={{ width: '12px', height: '12px' }} /> Process Audit
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>
+                      <Check className="w-3 h-3 text-indigo-600" style={{ width: '12px', height: '12px' }} /> IHLR Defect Tracking
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>
+                      <Check className="w-3 h-3 text-amber-600" style={{ width: '12px', height: '12px' }} /> Try Out Trials
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-3" style={{ display: 'flex', gap: '10px', paddingTop: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    style={{
+                      height: '42px',
+                      borderRadius: '10px',
+                      fontSize: '12px',
+                      fontWeight: 600
+                    }}
+                    className="flex-1 px-4 border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                   >
-                    <option value="Active">Active</option>
-                  </select>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    style={{
+                      height: '42px',
+                      borderRadius: '10px',
+                      fontSize: '12px',
+                      fontWeight: 700
+                    }}
+                    className="flex-1 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition cursor-pointer"
+                  >
+                    Save &amp; Add User
+                  </button>
                 </div>
-              </div>
-
-              {/* Universal Tab Permissions Info */}
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5">
-                <span className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                  Universal Tab Scope (Active for all portals)
-                </span>
-                <p className="text-[11px] text-slate-500">
-                  This enterprise user will automatically have access to all tabs across all portals.
-                </p>
-                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                    <Check className="w-3 h-3 text-blue-600" /> Process Audit
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                    <Check className="w-3 h-3 text-indigo-600" /> IHLR Defect Tracking
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                    <Check className="w-3 h-3 text-amber-600" /> Try Out Trials
-                  </span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition cursor-pointer"
-                >
-                  Save &amp; Add User
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* EDIT USER MODAL */}
       {showEditModal && editingUser &&
         createPortal(
           <div 
             className="fixed inset-0 !m-0 !mt-0 z-[99990] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+            style={{
+              padding: isMobile ? '12px' : '16px',
+              boxSizing: 'border-box'
+            }}
             onClick={(e) => {
               if (e.target === e.currentTarget) setShowEditModal(false);
             }}
           >
-            <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 my-8">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                  <Edit2 className="w-4 h-4" />
+            <div
+              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 my-8"
+              style={{
+                borderRadius: isMobile ? '16px' : '24px',
+                padding: isMobile ? '16px' : '28px',
+                maxWidth: isMobile ? '100%' : '520px',
+                margin: isMobile ? '16px 0' : '32px 0',
+                boxSizing: 'border-box'
+              }}
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100" style={{ paddingBottom: '14px', borderBottom: '1px solid #f1f5f9' }}>
+                <div className="flex items-center gap-2.5" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center" style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#e0e7ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Edit2 className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900" style={{ fontSize: isMobile ? '14px' : '16px', fontWeight: 800, margin: 0, color: '#0f172a' }}>Edit User Details</h3>
+                    <p className="text-[11px] text-slate-400" style={{ fontSize: '11px', margin: '2px 0 0 0', color: '#94a3b8' }}>Update personnel profile &amp; employee ID</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Edit User Details</h3>
-                  <p className="text-[11px] text-slate-400">Update personnel profile &amp; employee ID</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form noValidate onSubmit={handleEditUserSubmit} className="mt-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Full Name */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={editingUser.name}
-                    onChange={(e) => {
-                      setEditingUser({ ...editingUser, name: e.target.value });
-                      if (editFormErrors.name) setEditFormErrors((prev) => ({ ...prev, name: '' }));
-                    }}
-                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
-                      editFormErrors.name
-                        ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
-                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
-                    }`}
-                  />
-                  {editFormErrors.name && (
-                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
-                      <span>{editFormErrors.name}</span>
-                    </p>
-                  )}
-                </div>
-
-                {/* Employee ID (Editable & Validated) */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Employee ID *
-                  </label>
-                  <input
-                    type="text"
-                    value={editingUser.employeeId || ''}
-                    onChange={(e) => {
-                      setEditingUser({ ...editingUser, employeeId: e.target.value });
-                      if (editFormErrors.employeeId) setEditFormErrors((prev) => ({ ...prev, employeeId: '' }));
-                    }}
-                    placeholder="e.g. USR-008"
-                    className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 font-mono focus:bg-white focus:ring-2 outline-none transition ${
-                      editFormErrors.employeeId || isEditEmpDuplicate
-                        ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
-                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
-                    }`}
-                  />
-                  {(editFormErrors.employeeId || isEditEmpDuplicate) && (
-                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
-                      <span>{editFormErrors.employeeId || `Employee ID "${editingUser.employeeId}" is already taken by another user.`}</span>
-                    </p>
-                  )}
-                </div>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  style={{ padding: '6px', borderRadius: '8px' }}
+                >
+                  <X className="w-5 h-5" style={{ width: '18px', height: '18px' }} />
+                </button>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center justify-between">
-                  <span>Enterprise Email</span>
-                  <span className="text-[10px] text-slate-400 lowercase font-medium tracking-normal">(cannot be modified)</span>
-                </label>
-                <input
-                  type="email"
-                  disabled
-                  value={editingUser.email}
-                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 cursor-not-allowed outline-none select-none font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Department (First) */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700">
-                      Department *
+              <form noValidate onSubmit={handleEditUserSubmit} className="mt-5 space-y-4" style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                    gap: isMobile ? '12px' : '16px'
+                  }}
+                >
+                  {/* Full Name */}
+                  <div style={{ minWidth: 0 }}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                      Full Name *
                     </label>
-                    {editingUser.hasData && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                        <Lock className="w-3 h-3 text-amber-600" /> Locked
-                      </span>
+                    <input
+                      type="text"
+                      value={editingUser.name}
+                      onChange={(e) => {
+                        setEditingUser({ ...editingUser, name: e.target.value });
+                        if (editFormErrors.name) setEditFormErrors((prev) => ({ ...prev, name: '' }));
+                      }}
+                      style={{
+                        height: '38px',
+                        padding: '0 12px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        boxSizing: 'border-box'
+                      }}
+                      className={`w-full bg-slate-50 border text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
+                        editFormErrors.name
+                          ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                          : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
+                    />
+                    {editFormErrors.name && (
+                      <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150" style={{ fontSize: '11px', marginTop: '4px' }}>
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" style={{ width: '14px', height: '14px' }} />
+                        <span>{editFormErrors.name}</span>
+                      </p>
                     )}
                   </div>
-                  <select
-                    value={editingUser.department}
-                    disabled={editingUser.hasData}
-                    onChange={(e) => handleEditDepartmentChange(e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-xl text-xs text-slate-800 outline-none transition ${
-                      editingUser.hasData
-                        ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed select-none font-medium'
-                        : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
-                    }`}
-                  >
-                    {DEPARTMENTS.map((dept) => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
-                  {editingUser.hasData && (
-                    <p className="text-[10px] text-amber-600 mt-1 font-medium">
-                      Cannot be modified (has existing records).
-                    </p>
-                  )}
-                  {editFormErrors.department && (
-                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
-                      <span>{editFormErrors.department}</span>
-                    </p>
-                  )}
+
+                  {/* Employee ID (Editable & Validated) */}
+                  <div style={{ minWidth: 0 }}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                      Employee ID *
+                    </label>
+                    <input
+                      type="text"
+                      value={editingUser.employeeId || ''}
+                      onChange={(e) => {
+                        setEditingUser({ ...editingUser, employeeId: e.target.value });
+                        if (editFormErrors.employeeId) setEditFormErrors((prev) => ({ ...prev, employeeId: '' }));
+                      }}
+                      placeholder="e.g. USR-008"
+                      style={{
+                        height: '38px',
+                        padding: '0 12px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        boxSizing: 'border-box'
+                      }}
+                      className={`w-full bg-slate-50 border text-slate-800 font-mono focus:bg-white focus:ring-2 outline-none transition ${
+                        editFormErrors.employeeId || isEditEmpDuplicate
+                          ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                          : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
+                    />
+                    {(editFormErrors.employeeId || isEditEmpDuplicate) && (
+                      <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150" style={{ fontSize: '11px', marginTop: '4px' }}>
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" style={{ width: '14px', height: '14px' }} />
+                        <span>{editFormErrors.employeeId || `Employee ID "${editingUser.employeeId}" is already taken by another user.`}</span>
+                      </p>
+                    )}
+                  </div>
                 </div>
 
-                {/* Role (Second) */}
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Operational Role *
+                <div style={{ minWidth: 0 }}>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center justify-between" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                    <span>Enterprise Email</span>
+                    <span className="text-[10px] text-slate-400 lowercase font-medium tracking-normal">(cannot be modified)</span>
+                  </label>
+                  <input
+                    type="email"
+                    disabled
+                    value={editingUser.email}
+                    style={{
+                      height: '38px',
+                      padding: '0 12px',
+                      borderRadius: '10px',
+                      fontSize: isMobile ? '13px' : '12px',
+                      boxSizing: 'border-box'
+                    }}
+                    className="w-full bg-slate-100 border border-slate-200 text-slate-500 cursor-not-allowed outline-none select-none font-medium"
+                  />
+                </div>
+
+                <div
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                    gap: isMobile ? '12px' : '16px'
+                  }}
+                >
+                  {/* Department (First) */}
+                  <div style={{ minWidth: 0 }}>
+                    <div className="flex items-center justify-between mb-1" style={{ marginBottom: '4px' }}>
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700" style={{ fontSize: '11px' }}>
+                        Department *
+                      </label>
+                      {editingUser.hasData && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200" style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px' }}>
+                          <Lock className="w-3 h-3 text-amber-600" style={{ width: '12px', height: '12px' }} /> Locked
+                        </span>
+                      )}
+                    </div>
+                    <select
+                      value={editingUser.department}
+                      disabled={editingUser.hasData}
+                      onChange={(e) => handleEditDepartmentChange(e.target.value)}
+                      style={{
+                        height: '38px',
+                        padding: '0 12px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        boxSizing: 'border-box'
+                      }}
+                      className={`w-full border text-xs text-slate-800 outline-none transition ${
+                        editingUser.hasData
+                          ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed select-none font-medium'
+                          : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer'
+                      }`}
+                    >
+                      {DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                    {editingUser.hasData && (
+                      <p className="text-[10px] text-amber-600 mt-1 font-medium" style={{ fontSize: '10px', marginTop: '2px' }}>
+                        Cannot be modified (has existing records).
+                      </p>
+                    )}
+                    {editFormErrors.department && (
+                      <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150" style={{ fontSize: '11px', marginTop: '4px' }}>
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" style={{ width: '14px', height: '14px' }} />
+                        <span>{editFormErrors.department}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Role (Second) */}
+                  <div style={{ minWidth: 0 }}>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                      Operational Role *
+                    </label>
+                    <select
+                      value={editingUser.role ? editingUser.role.toUpperCase() : 'USER'}
+                      onChange={(e) => handleEditRoleChange(e.target.value)}
+                      style={{
+                        height: '38px',
+                        padding: '0 12px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        boxSizing: 'border-box'
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ minWidth: 0 }}>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                    Account Status
                   </label>
                   <select
-                    value={editingUser.role ? editingUser.role.toUpperCase() : 'USER'}
-                    onChange={(e) => handleEditRoleChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                    value={editingUser.status && editingUser.status.toUpperCase() === 'INACTIVE' ? 'Inactive' : 'Active'}
+                    onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value })}
+                    style={{
+                      height: '38px',
+                      padding: '0 12px',
+                      borderRadius: '10px',
+                      fontSize: isMobile ? '13px' : '12px',
+                      boxSizing: 'border-box'
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
                   >
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
                   </select>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Account Status
-                </label>
-                <select
-                  value={editingUser.status && editingUser.status.toUpperCase() === 'INACTIVE' ? 'Inactive' : 'Active'}
-                  onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
+                {/* Password & Update Password Field */}
+                <div style={{ minWidth: 0 }}>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center justify-between" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                    <span>Password</span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      (Leave blank to keep unchanged)
+                    </span>
+                  </label>
+                  <div className="relative" style={{ position: 'relative' }}>
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" style={{ width: '16px', height: '16px', left: '12px', top: '11px' }} />
+                    <input
+                      type={showEditPassword ? 'text' : 'password'}
+                      value={editingUser.password || ''}
+                      onChange={(e) => {
+                        setEditingUser({ ...editingUser, password: e.target.value });
+                        if (editFormErrors.password) setEditFormErrors((prev) => ({ ...prev, password: '' }));
+                      }}
+                      placeholder="Enter new password to update..."
+                      style={{
+                        height: '38px',
+                        paddingLeft: '38px',
+                        paddingRight: '38px',
+                        borderRadius: '10px',
+                        fontSize: isMobile ? '13px' : '12px',
+                        boxSizing: 'border-box'
+                      }}
+                      className={`w-full bg-slate-50 border text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
+                        editFormErrors.password
+                          ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
+                          : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEditPassword(!showEditPassword)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition cursor-pointer p-0.5"
+                      style={{ right: '10px', top: '9px', padding: '2px' }}
+                      title={showEditPassword ? "Hide password" : "Show password"}
+                    >
+                      {showEditPassword ? <EyeOff className="w-4 h-4" style={{ width: '16px', height: '16px' }} /> : <Eye className="w-4 h-4" style={{ width: '16px', height: '16px' }} />}
+                    </button>
+                  </div>
+                  {editFormErrors.password && (
+                    <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150" style={{ fontSize: '11px', marginTop: '4px' }}>
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" style={{ width: '14px', height: '14px' }} />
+                      <span>{editFormErrors.password}</span>
+                    </p>
+                  )}
+                  {editingUser.password && !editFormErrors.password && (
+                    <p className="text-[10px] text-blue-600 font-medium mt-1 flex items-center gap-1" style={{ fontSize: '10px', marginTop: '4px' }}>
+                      <Sparkles className="w-3 h-3" style={{ width: '12px', height: '12px' }} /> New password will be saved upon clicking "Save Changes"
+                    </p>
+                  )}
+                </div>
 
-              {/* Password & Update Password Field */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center justify-between">
-                  <span>Password</span>
-                  <span className="text-[10px] text-slate-400 font-normal">
-                    (Leave blank to keep unchanged)
+                {/* Universal Tab Permissions Info */}
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5" style={{ padding: '12px', borderRadius: '12px' }}>
+                  <span className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider" style={{ fontSize: '11px' }}>
+                    Universal Tab Scope (Active for all portals)
                   </span>
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-                  <input
-                    type={showEditPassword ? 'text' : 'password'}
-                    value={editingUser.password || ''}
-                    onChange={(e) => {
-                      setEditingUser({ ...editingUser, password: e.target.value });
-                      if (editFormErrors.password) setEditFormErrors((prev) => ({ ...prev, password: '' }));
-                    }}
-                    placeholder="Enter new password to update..."
-                    className={`w-full pl-9 pr-10 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 outline-none transition ${
-                      editFormErrors.password
-                        ? 'border-red-400 focus:ring-red-500/20 focus:border-red-500 bg-red-50/20'
-                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
-                    }`}
-                  />
+                  <p className="text-[11px] text-slate-500" style={{ fontSize: '11px', margin: '2px 0 6px 0' }}>
+                    Role and department updates will immediately apply across all tabs in all portals.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 pt-0.5" style={{ gap: '6px' }}>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>
+                      <Check className="w-3 h-3 text-blue-600" style={{ width: '12px', height: '12px' }} /> Process Audit
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>
+                      <Check className="w-3 h-3 text-indigo-600" style={{ width: '12px', height: '12px' }} /> IHLR Defect Tracking
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>
+                      <Check className="w-3 h-3 text-amber-600" style={{ width: '12px', height: '12px' }} /> Try Out Trials
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-3" style={{ display: 'flex', gap: '10px', paddingTop: '12px' }}>
                   <button
                     type="button"
-                    onClick={() => setShowEditPassword(!showEditPassword)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition cursor-pointer p-0.5"
-                    title={showEditPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowEditModal(false)}
+                    style={{
+                      height: '42px',
+                      borderRadius: '10px',
+                      fontSize: '12px',
+                      fontWeight: 600
+                    }}
+                    className="flex-1 px-4 border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                   >
-                    {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    style={{
+                      height: '42px',
+                      borderRadius: '10px',
+                      fontSize: '12px',
+                      fontWeight: 700
+                    }}
+                    className="flex-1 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition cursor-pointer"
+                  >
+                    Save Changes
                   </button>
                 </div>
-                {editFormErrors.password && (
-                  <p className="text-[11px] text-red-500 font-semibold mt-1 flex items-center gap-1 animate-in fade-in duration-150">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
-                    <span>{editFormErrors.password}</span>
-                  </p>
-                )}
-                {editingUser.password && !editFormErrors.password && (
-                  <p className="text-[10px] text-blue-600 font-medium mt-1 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> New password will be saved upon clicking "Save Changes"
-                  </p>
-                )}
-              </div>
-
-              {/* Universal Tab Permissions Info */}
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5">
-                <span className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                  Universal Tab Scope (Active for all portals)
-                </span>
-                <p className="text-[11px] text-slate-500">
-                  Role and department updates will immediately apply across all tabs in all portals.
-                </p>
-                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                    <Check className="w-3 h-3 text-blue-600" /> Process Audit
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                    <Check className="w-3 h-3 text-indigo-600" /> IHLR Defect Tracking
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                    <Check className="w-3 h-3 text-amber-600" /> Try Out Trials
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition cursor-pointer"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
