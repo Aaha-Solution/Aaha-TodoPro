@@ -1,13 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Bell, CheckCheck, ExternalLink, X } from 'lucide-react';
+import { Bell, ExternalLink, X } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
-import { setNotifications, markAsRead, markAllAsRead } from '../redux/slices/notificationSlice';
-import {
-  fetchNotificationsForTab,
-  markNotificationReadForTab,
-  markAllNotificationsReadForTab
-} from '../services/notificationFeedService';
+import { setNotifications } from '../redux/slices/notificationSlice';
+import { fetchNotificationsForTab } from '../services/notificationFeedService';
 import { useAuth } from '../hooks/useAuth';
 import { storage } from '../utils/storage';
 
@@ -73,27 +69,9 @@ const Notification = () => {
     };
   }, []);
 
-  const handleItemClick = async (item) => {
-    const activeUser = user || storage.getUser();
-    const targetReqNo = item.reqNo;
-
-    // Immediately mark item as read in Redux so header badge decrements instantly
-    dispatch(markAsRead(item.id));
-    if (item.notifId) dispatch(markAsRead(item.notifId));
-
-    if (!item.read) {
-      markNotificationReadForTab(tabMode, item.notifId, item.rawId, true, activeUser, item.id, item.notifId ? null : targetReqNo);
-    }
+  const handleItemClick = (item) => {
     setOpen(false);
     navigate(isIhlr ? '/ihlr/notifications' : '/process-audit/notifications');
-  };
-
-  const handleMarkAllRead = async () => {
-    const activeUser = user || storage.getUser();
-    const allIds = notifications.map((n) => n.notifId || n.id).filter(Boolean);
-    await markAllNotificationsReadForTab(tabMode, activeUser?.name, activeUser, allIds);
-    dispatch(markAllAsRead());
-    window.dispatchEvent(new Event('refreshNotifications'));
   };
 
   return (
@@ -164,27 +142,15 @@ const Notification = () => {
                 {unreadCount} unread alert{unreadCount === 1 ? '' : 's'}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  onClick={handleMarkAllRead}
-                  className="text-[11px] text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  <CheckCheck className="w-3.5 h-3.5" />
-                  <span>Mark all read</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                title="Close"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              title="Close"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
           <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
