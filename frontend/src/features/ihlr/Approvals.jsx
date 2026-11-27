@@ -3403,7 +3403,7 @@ const IhlrApprovals = () => {
                     <th className="py-3 px-3 text-center w-12" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900, textAlign: 'center', width: '48px' }}>SL NO</th>
                     <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>IHLR REQ NO</th>
                     <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>REQUESTED DATE</th>
-                    <th className="py-3 px-4" style={{ padding: isMobile ? '10px 8px' : '12px 16px', fontSize: '10px', fontWeight: 900 }}>PROBLEM &amp; MODEL</th>
+                    <th className="py-3 px-4" style={{ padding: isMobile ? '10px 8px' : '12px 16px', fontSize: '10px', fontWeight: 900 }}>PROBLEM / DEFECT DESCRIPTION</th>
                     <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>EVIDENCE</th>
                     <th className="py-3 px-3 text-center" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900, textAlign: 'center' }}>STATUS</th>
                     <th className="py-3 px-3" style={{ padding: isMobile ? '10px 8px' : '12px 12px', fontSize: '10px', fontWeight: 900 }}>REMARKS</th>
@@ -3457,38 +3457,9 @@ const IhlrApprovals = () => {
                             {formatDateDDMMYYYY(r.batch_date)}
                           </td>
                           <td className="py-3.5 px-4" style={{ padding: isMobile ? '10px 8px' : '14px 16px' }}>
-                            <div className="font-semibold text-slate-900 truncate max-w-[180px]" title={r.problem} style={{ maxWidth: isMobile ? '140px' : '180px' }}>
-                              {r.problem}
+                            <div className="font-semibold text-slate-900 truncate max-w-[200px]" title={r.problem} style={{ maxWidth: isMobile ? '140px' : '200px' }}>
+                              {r.problem || '—'}
                             </div>
-                            <div className="text-[11px] text-slate-500 truncate max-w-[180px]" title={r.model} style={{ maxWidth: isMobile ? '140px' : '180px' }}>
-                              {r.model}
-                            </div>
-                            {r.resp_person && (() => {
-                              const reassignInfo = formatReassignmentHistory(r.reassignment_history);
-                              const isReassigned = Boolean(reassignInfo?.hasReassignments);
-                              return (
-                                <div
-                                  className={`text-[10px] mt-0.5 truncate max-w-[180px] ${
-                                    isReassigned ? 'text-purple-700 font-medium' : 'text-slate-500'
-                                  }`}
-                                  title={`${isReassigned ? 'Reassigned' : 'Assigned'}: ${r.resp_person}${isReassigned && reassignInfo.count > 1 ? ` (${reassignInfo.count} times)` : ''}`}
-                                  style={{ maxWidth: isMobile ? '140px' : '180px' }}
-                                >
-                                  <span className={`font-semibold ${isReassigned ? 'text-purple-700' : 'text-slate-400'}`}>
-                                    {isReassigned ? 'Reassigned: ' : 'Assigned: '}
-                                  </span>
-                                  <span className={`font-bold ${isReassigned ? 'text-purple-900' : 'text-slate-700'}`}>
-                                    {r.resp_person}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                            {(r.closer_updated_by || r.temporary_closed_by || r.permanent_closed_by) && (
-                              <div className="text-[10px] text-emerald-700 mt-0.5 truncate max-w-[180px]" title={`Closer filled by: ${r.closer_updated_by || r.temporary_closed_by || r.permanent_closed_by}`} style={{ maxWidth: isMobile ? '140px' : '180px' }}>
-                                <span className="font-medium text-emerald-600">Filled by: </span>
-                                <span className="font-bold text-emerald-800">{r.closer_updated_by || r.temporary_closed_by || r.permanent_closed_by}</span>
-                              </div>
-                            )}
                           </td>
                           <td className="py-3.5 px-3" style={{ padding: isMobile ? '10px 8px' : '14px 12px' }}>
                             <IhlrAttachmentThumbnail
