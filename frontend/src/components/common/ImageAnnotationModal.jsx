@@ -89,6 +89,13 @@ const ImageAnnotationModal = ({ isOpen, imageAttachment, onClose, onSave }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoadingFile, setIsLoadingFile] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setIsSaving(false);
+    }
+  }, [isOpen]);
 
   const COLORS = [
     { label: 'Red', value: '#ef4444', bg: 'bg-red-500' },
@@ -412,31 +419,38 @@ const ImageAnnotationModal = ({ isOpen, imageAttachment, onClose, onSave }) => {
 
   // Save annotated drawing as a new File and update attachment
   const handleSaveAnnotated = () => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || isSaving) return;
 
+    setIsSaving(true);
     const canvas = canvasRef.current;
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
+    setTimeout(() => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            setIsSaving(false);
+            return;
+          }
 
-        const baseName = (imageAttachment?.name || 'technical_drawing')
-          .replace(/\.[^/.]+$/, '')
-          .replace(/_annotated$/, '');
-        const pageSuffix = isPdf && totalPages > 1 ? `_p${currentPage}` : '';
-        const newFileName = `${baseName}${pageSuffix}_annotated.png`;
+          const baseName = (imageAttachment?.name || 'technical_drawing')
+            .replace(/\.[^/.]+$/, '')
+            .replace(/_annotated$/, '');
+          const pageSuffix = isPdf && totalPages > 1 ? `_p${currentPage}` : '';
+          const newFileName = `${baseName}${pageSuffix}_annotated.png`;
 
-        const annotatedFile = new File([blob], newFileName, {
-          type: 'image/png',
-          lastModified: Date.now(),
-        });
+          const annotatedFile = new File([blob], newFileName, {
+            type: 'image/png',
+            lastModified: Date.now(),
+          });
 
-        const newPreviewUrl = URL.createObjectURL(blob);
-        onSave(annotatedFile, newPreviewUrl);
-        onClose();
-      },
-      'image/png',
-      0.95
-    );
+          const newPreviewUrl = URL.createObjectURL(blob);
+          onSave(annotatedFile, newPreviewUrl);
+          setIsSaving(false);
+          onClose();
+        },
+        'image/png',
+        0.95
+      );
+    }, 50);
   };
 
   if (!isOpen || !imageAttachment) return null;
@@ -501,7 +515,7 @@ const ImageAnnotationModal = ({ isOpen, imageAttachment, onClose, onSave }) => {
             <button
               type="button"
               onClick={handleUndo}
-              disabled={undoStack.length <= 1}
+              disabled={undoStack.length <= 1 || isSaving}
               className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
               title="Undo last annotation"
             >
@@ -512,7 +526,7 @@ const ImageAnnotationModal = ({ isOpen, imageAttachment, onClose, onSave }) => {
             <button
               type="button"
               onClick={handleClear}
-              disabled={undoStack.length <= 1}
+              disabled={undoStack.length <= 1 || isSaving}
               className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
               title="Clear all annotations"
             >
@@ -523,17 +537,27 @@ const ImageAnnotationModal = ({ isOpen, imageAttachment, onClose, onSave }) => {
             <button
               type="button"
               onClick={handleSaveAnnotated}
-              disabled={!imageLoaded}
-              className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm shadow-blue-600/20 cursor-pointer active:scale-95 disabled:opacity-50"
+              disabled={!imageLoaded || isSaving}
+              className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm shadow-blue-600/20 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Check className="w-4 h-4" />
-              <span>Save Annotation</span>
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Save Annotation</span>
+                </>
+              )}
             </button>
 
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer ml-1"
+              disabled={isSaving}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer ml-1 disabled:opacity-30 disabled:cursor-not-allowed"
               title="Close without saving"
             >
               <X className="w-5 h-5" />
@@ -679,6 +703,12 @@ const ImageAnnotationModal = ({ isOpen, imageAttachment, onClose, onSave }) => {
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-xs text-xs font-semibold text-slate-700 gap-2">
                   <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
                   <span>{isPdf ? 'Rendering PDF Blueprint to canvas...' : 'Loading image into canvas...'}</span>
+                </div>
+              )}
+              {isSaving && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/80 backdrop-blur-xs text-xs font-semibold text-slate-800 gap-2.5 animate-in fade-in duration-150">
+                  <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                  <span>Saving annotated drawing...</span>
                 </div>
               )}
             </div>
